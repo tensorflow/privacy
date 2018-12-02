@@ -9,5 +9,5 @@ The content of this repository will superseed the following existing repository:
 
 # Contact
 
-Steve Chien (schien@google.com)
-Nicolas Papernot (@npapernot)
+* Steve Chien (schien@google.com)
+* Nicolas Papernot (@npapernot)
