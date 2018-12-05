@@ -5,7 +5,7 @@ py_library(
     srcs = ["gaussian_average_query.py"],
     deps = [
         ":private_queries",
-        "//third_party/py/tensorflow",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -24,7 +24,7 @@ py_library(
     ],
     deps = [
         ":gaussian_average_query",
-        "//third_party/py/tensorflow",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -35,7 +35,7 @@ py_library(
     ],
     deps = [
         ":gaussian_average_query",
-        "//third_party/py/tensorflow",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
@@ -44,8 +44,8 @@ py_test(
     srcs = ["dp_optimizer_test.py"],
     deps = [
         ":dp_optimizers",
-        "//third_party/py/absl/testing:parameterized",
-        "//third_party/py/tensorflow",
+        "@absl_py//absl/testing:parameterized",
+        "@org_tensorflow//tensorflow:tensorflow_py",
     ],
 )
 
