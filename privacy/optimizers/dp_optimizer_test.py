@@ -22,8 +22,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.optimizers import dp_adam
-from tensorflow_privacy.privacy.optimizers import dp_gradient_descent
+from privacy.optimizers import dp_adam
+from privacy.optimizers import dp_gradient_descent
 
 
 def loss(val0, val1):

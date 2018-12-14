@@ -23,7 +23,7 @@ import collections
 
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.optimizers import private_queries
+from privacy.optimizers import private_queries
 
 
 class GaussianAverageQuery(private_queries.PrivateAverageQuery):

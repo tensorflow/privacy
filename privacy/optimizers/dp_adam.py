@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import tensorflow_privacy.privacy.optimizers.gaussian_average_query as ph
+import privacy.optimizers.gaussian_average_query as ph
 
 
 class DPAdamOptimizer(tf.train.AdamOptimizer):
