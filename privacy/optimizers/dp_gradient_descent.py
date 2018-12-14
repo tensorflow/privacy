@@ -80,8 +80,9 @@ class DPGradientDescentOptimizer(tf.train.GradientDescentOptimizer):
       grads, _ = zip(*super(DPGradientDescentOptimizer, self).compute_gradients(
           tf.gather(microbatches_losses, [i]), var_list, gate_gradients,
           aggregation_method, colocate_gradients_with_ops, grad_loss))
+      grads_list = list(grads)
       sample_state = self._privacy_helper.accumulate_record(
-          sample_params, sample_state, grads)
+          sample_params, sample_state, grads_list)
       return [tf.add(i, 1), sample_state]
 
     i = tf.constant(0)

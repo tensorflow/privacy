@@ -71,6 +71,42 @@ class PrivateQuery(object):
     """
     pass
 
+  @abc.abstractmethod
+  def get_query_result(self, sample_state, global_state):
+    """Gets query result after all records of sample have been accumulated.
+
+    Args:
+      sample_state: The sample state after all records have been accumulated.
+      global_state: The global state.
+
+    Returns:
+      A tuple (result, new_global_state) where "result" is the result of the
+      query and "new_global_state" is the updated global state.
+    """
+    pass
+
+
+class PrivateSumQuery(PrivateQuery):
+  """Interface for differentially private mechanisms to compute a sum."""
+
+  @abc.abstractmethod
+  def get_noised_sum(self, sample_state, global_state):
+    """Gets estimate of sum after all records of sample have been accumulated.
+
+    Args:
+      sample_state: The sample state after all records have been accumulated.
+      global_state: The global state.
+
+    Returns:
+      A tuple (estimate, new_global_state) where "estimate" is the estimated
+      sum of the records and "new_global_state" is the updated global state.
+    """
+    pass
+
+  def get_query_result(self, sample_state, global_state):
+    """Delegates to get_noised_sum."""
+    return self.get_noised_sum(sample_state, global_state)
+
 
 class PrivateAverageQuery(PrivateQuery):
   """Interface for differentially private mechanisms to compute an average."""
@@ -88,3 +124,7 @@ class PrivateAverageQuery(PrivateQuery):
       average of the records and "new_global_state" is the updated global state.
     """
     pass
+
+  def get_query_result(self, sample_state, global_state):
+    """Delegates to get_noised_average."""
+    return self.get_noised_average(sample_state, global_state)
