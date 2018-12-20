@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import privacy.optimizers.gaussian_average_query as ph
+from privacy.optimizers import gaussian_query
 
 
 def make_optimizer_class(cls):
@@ -40,9 +40,9 @@ def make_optimizer_class(cls):
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       stddev = l2_norm_clip * noise_multiplier
       self._num_microbatches = num_microbatches
-      self._privacy_helper = ph.GaussianAverageQuery(l2_norm_clip, stddev,
-                                                     num_microbatches)
-      self._ph_global_state = self._privacy_helper.initial_global_state()
+      self._private_query = gaussian_query.GaussianAverageQuery(
+          l2_norm_clip, stddev, num_microbatches)
+      self._global_state = self._private_query.initial_global_state()
 
     def compute_gradients(self,
                           loss,
@@ -58,7 +58,7 @@ def make_optimizer_class(cls):
       # sampling from the dataset without replacement.
       microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
       sample_params = (
-          self._privacy_helper.derive_sample_params(self._ph_global_state))
+          self._private_query.derive_sample_params(self._global_state))
 
       def process_microbatch(i, sample_state):
         """Process one microbatch (record) with privacy helper."""
@@ -66,7 +66,7 @@ def make_optimizer_class(cls):
             tf.gather(microbatches_losses, [i]), var_list, gate_gradients,
             aggregation_method, colocate_gradients_with_ops, grad_loss))
         grads_list = list(grads)
-        sample_state = self._privacy_helper.accumulate_record(
+        sample_state = self._private_query.accumulate_record(
             sample_params, sample_state, grads_list)
         return [tf.add(i, 1), sample_state]
 
@@ -76,8 +76,8 @@ def make_optimizer_class(cls):
         var_list = (
             tf.trainable_variables() + tf.get_collection(
                 tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
-      sample_state = self._privacy_helper.initial_sample_state(
-          self._ph_global_state, var_list)
+      sample_state = self._private_query.initial_sample_state(
+          self._global_state, var_list)
 
       # Use of while_loop here requires that sample_state be a nested structure
       # of tensors. In general, we would prefer to allow it to be an arbitrary
@@ -85,9 +85,9 @@ def make_optimizer_class(cls):
       _, final_state = tf.while_loop(
           lambda i, _: tf.less(i, self._num_microbatches), process_microbatch,
           [i, sample_state])
-      final_grads, self._ph_global_state = (
-          self._privacy_helper.get_noised_average(final_state,
-                                                  self._ph_global_state))
+      final_grads, self._global_state = (
+          self._private_query.get_noised_average(final_state,
+                                                 self._global_state))
 
       return zip(final_grads, var_list)
 

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Training a CNN on MNIST with differentially private Adam optimizer."""
+"""Training a CNN on MNIST with differentially private SGD optimizer."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,14 +25,14 @@ from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers import dp_optimizer
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-Adam. If False,'
-                        'train with vanilla Adam.')
-tf.flags.DEFINE_float('learning_rate', 0.0015, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.0,
+tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False,'
+                        'train with vanilla SGD.')
+tf.flags.DEFINE_float('learning_rate', 0.08, 'Learning rate for training')
+tf.flags.DEFINE_float('noise_multiplier', 1.12,
                       'Ratio of the standard deviation to the clipping norm')
 tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
 tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 15, 'Number of epochs')
+tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
 tf.flags.DEFINE_integer('microbatches', 256,
                         'Number of microbatches (must evenly divide batch_size')
 tf.flags.DEFINE_string('model_dir', None, 'Model directory')
@@ -69,18 +69,19 @@ def cnn_model_fn(features, labels, mode):
   if mode == tf.estimator.ModeKeys.TRAIN:
 
     if FLAGS.dpsgd:
-      # Use DP version of AdamOptimizer. For illustration purposes, we do that
-      # here by calling make_optimizer_class() explicitly, though DP versions
-      # of standard optimizers are available in dp_optimizer.
+      # Use DP version of GradientDescentOptimizer. For illustration purposes,
+      # we do that here by calling make_optimizer_class() explicitly, though DP
+      # versions of standard optimizers are available in dp_optimizer.
       dp_optimizer_class = dp_optimizer.make_optimizer_class(
-          tf.train.AdamOptimizer)
+          tf.train.GradientDescentOptimizer)
       optimizer = dp_optimizer_class(
           learning_rate=FLAGS.learning_rate,
           noise_multiplier=FLAGS.noise_multiplier,
           l2_norm_clip=FLAGS.l2_norm_clip,
           num_microbatches=FLAGS.microbatches)
     else:
-      optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+      optimizer = tf.train.GradientDescentOptimizer(
+          learning_rate=FLAGS.learning_rate)
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=vector_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(mode=mode,
@@ -177,7 +178,7 @@ def main(unused_argv):
       eps = compute_epsilon(epoch * steps_per_epoch)
       print('For delta=1e-5, the current epsilon is: %.2f' % eps)
     else:
-      print('Trained with vanilla non-private Adam optimizer')
+      print('Trained with vanilla non-private SGD optimizer')
 
 if __name__ == '__main__':
   tf.app.run()
