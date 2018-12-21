@@ -79,9 +79,9 @@ tensorflow/models [repository](https://github.com/tensorflow/models/tree/master/
 If you have any questions that cannot be addressed by raising an issue, feel
 free to contact: 
   
-*   Nicolas Papernot (@npapernot)
-*   Steve Chien
 * Galen Andrew (@galenmandrew)
+* Steve Chien (@schien1729)
+* Nicolas Papernot (@npapernot)
 
 ## Copyright
 
