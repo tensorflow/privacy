@@ -30,6 +30,11 @@ nest = tf.contrib.framework.nest
 
 _basic_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
 
+try:
+    xrange
+except NameError:
+    xrange = range
+
 
 def _run_query(query, records):
   """Executes query on the given set of records as a single sample.
