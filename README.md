@@ -36,7 +36,7 @@ your `PYTHONPATH`:
 
 ```
 cd privacy
-pip install -e ./privacy
+pip install -e .
 ```
 
 If you'd like to make contributions, we recommend first forking the repository
