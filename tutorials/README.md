@@ -1,6 +1,6 @@
 # Tutorials
 
-As demonstrated on MNIST in `mnist_dpsgd_tutorial.py`, the easiest to use
+As demonstrated on MNIST in `mnist_dpsgd_tutorial.py`, the easiest way to use
 a differentially private optimizer is to modify an existing training loop
 to replace an existing vanilla optimizer with its differentially private
 counterpart implemented in the library.
