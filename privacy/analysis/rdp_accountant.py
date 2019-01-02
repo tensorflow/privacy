@@ -1,4 +1,4 @@
-# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""RDP analysis of the Sampled Gaussian mechanism.
+"""RDP analysis of the Sampled Gaussian Mechanism.
 
 Functionality for computing Renyi differential privacy (RDP) of an additive
-Sampled Gaussian mechanism (SGM). Its public interface consists of two methods:
-  compute_rdp(q, stddev_to_sensitivity_ratio, T, orders) computes RDP with for
-                                   SGM iterated T times.
+Sampled Gaussian Mechanism (SGM). Its public interface consists of two methods:
+  compute_rdp(q, noise_multiplier, T, orders) computes RDP for SGM iterated
+                                   T times.
   get_privacy_spent(orders, rdp, target_eps, target_delta) computes delta
                                    (or eps) given RDP at multiple orders and
                                    a target value for eps (or delta).
@@ -63,7 +63,7 @@ def _log_add(logx, logy):
 def _log_sub(logx, logy):
   """Subtract two numbers in the log space. Answer must be non-negative."""
   if logx < logy:
-    raise ValueError("The result of subtraction must be non-negative .")
+    raise ValueError("The result of subtraction must be non-negative.")
   if logy == -np.inf:  # subtracting 0
     return logx
   if logx == logy:
@@ -104,7 +104,7 @@ def _compute_log_a_int(q, sigma, alpha):
 
 def _compute_log_a_frac(q, sigma, alpha):
   """Compute log(A_alpha) for fractional alpha. 0 < q < 1."""
-  # The two parts of A_alpha, integrals over (-inf,z0] and (z0, +inf), are
+  # The two parts of A_alpha, integrals over (-inf,z0] and [z0, +inf), are
   # initialized to 0 in the log space:
   log_a0, log_a1 = -np.inf, -np.inf
   i = 0
@@ -148,6 +148,7 @@ def _compute_log_a(q, sigma, alpha):
 
 
 def _log_erfc(x):
+  """Compute log(erfc(x)) with high accuracy for large x."""
   try:
     return math.log(2) + special.log_ndtr(-x * 2**.5)
   except NameError:
@@ -165,7 +166,7 @@ def _log_erfc(x):
 
 
 def _compute_delta(orders, rdp, eps):
-  """Compute delta given an RDP curve and target epsilon.
+  """Compute delta given a list of RDP values and target epsilon.
 
   Args:
     orders: An array (or a scalar) of orders.
@@ -191,7 +192,7 @@ def _compute_delta(orders, rdp, eps):
 
 
 def _compute_eps(orders, rdp, delta):
-  """Compute epsilon given an RDP curve and target delta.
+  """Compute epsilon given a list of RDP values and target delta.
 
   Args:
     orders: An array (or a scalar) of orders.
@@ -240,31 +241,30 @@ def _compute_rdp(q, sigma, alpha):
   return _compute_log_a(q, sigma, alpha) / (alpha - 1)
 
 
-def compute_rdp(q, stddev_to_sensitivity_ratio, steps, orders):
-  """Compute RDP of the Sampled Gaussian Mechanism for given parameters.
+def compute_rdp(q, noise_multiplier, steps, orders):
+  """Compute RDP of the Sampled Gaussian Mechanism.
 
   Args:
     q: The sampling rate.
-    stddev_to_sensitivity_ratio: The ratio of std of the Gaussian noise to the
-      l2-sensitivity of the function to which it is added.
+    noise_multiplier: The ratio of the standard deviation of the Gaussian noise
+        to the l2-sensitivity of the function to which it is added.
     steps: The number of steps.
     orders: An array (or a scalar) of RDP orders.
 
   Returns:
     The RDPs at all orders, can be np.inf.
   """
-
   if np.isscalar(orders):
-    rdp = _compute_rdp(q, stddev_to_sensitivity_ratio, orders)
+    rdp = _compute_rdp(q, noise_multiplier, orders)
   else:
-    rdp = np.array([_compute_rdp(q, stddev_to_sensitivity_ratio, order)
+    rdp = np.array([_compute_rdp(q, noise_multiplier, order)
                     for order in orders])
 
   return rdp * steps
 
 
 def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
-  """Compute delta (or eps) for given eps (or delta) from the RDP curve.
+  """Compute delta (or eps) for given eps (or delta) from RDP values.
 
   Args:
     orders: An array (or a scalar) of RDP orders.
@@ -273,6 +273,7 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
               delta.
     target_delta: If not None, the delta for which we compute the corresponding
               epsilon. Exactly one of target_eps and target_delta must be None.
+
   Returns:
     eps, delta, opt_order.
 

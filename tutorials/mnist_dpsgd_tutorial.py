@@ -156,7 +156,7 @@ def main(unused_argv):
     orders = [1 + x / 10. for x in range(1, 100)] + range(12, 64)
     sampling_probability = FLAGS.batch_size / 60000
     rdp = compute_rdp(q=sampling_probability,
-                      stddev_to_sensitivity_ratio=FLAGS.noise_multiplier,
+                      noise_multiplier=FLAGS.noise_multiplier,
                       steps=steps,
                       orders=orders)
     # Delta is set to 1e-5 because MNIST has 60000 training points.

@@ -1,6 +1,6 @@
 # Tutorials
 
-As demonstrated on MNIST in `mnist_dpsgd_tutorial.py`, the easiest to use
+As demonstrated on MNIST in `mnist_dpsgd_tutorial.py`, the easiest way to use
 a differentially private optimizer is to modify an existing training loop
 to replace an existing vanilla optimizer with its differentially private
 counterpart implemented in the library.
@@ -26,26 +26,25 @@ be tuned in addition to any existing hyperparameter. There are currently three:
 
 ## Measuring Privacy
 
-Differential privacy is measured by two values, epsilon and delta. Roughly 
-speaking, they mean the following:
+Differential privacy can be expressed using two values, epsilon and delta.
+Roughly speaking, they mean the following:
 
-* epsilon gives a ceiling on how much the probability of a change in model
-  behavior can increase by including a single extra training example. This is 
-  the far more sensitive value, and we usually want it to be at most 10.0 or 
-  so. However, note that this is only an upper bound, and a large value of 
-  epsilon may still mean good practical privacy.
-* delta bounds the probability of an "unconditional" change in model behavior. 
-  We can usually set this to a very small number (1e-7 or so) without 
-  compromising utility. A rule of thumb is to set it to the inverse of the
-  order of magnitude of the training data size.
+* epsilon gives a ceiling on how much the probability of a particular output
+  can increase by including (or removing) a single training example. We usually
+  want it to be a small constant (less than 10, or, for more stringent privacy
+  guarantees, less than 1). However, this is only an upper bound, and a large
+  value of epsilon may still mean good practical privacy.
+* delta bounds the probability of an arbitrary change in model behavior.
+  We can usually set this to a very small number (1e-7 or so) without
+  compromising utility. A rule of thumb is to set it to be less than the inverse
+  of the training data size.
 
 To find out the epsilon given a fixed delta value for your model, follow the
 approach demonstrated in the `compute_epsilon` of the `mnist_dpsgd_tutorial.py`
 where the arguments used to call the RDP accountant (i.e., the tool used to
 compute the privacy guarantee) are:
 
-* q : The sampling ratio, defined as (number of examples consumed in one 
+* q : The sampling ratio, defined as (number of examples consumed in one
   step) / (total training examples).
-* stddev_to_sensitivity_ratio : The noise_multiplier from your parameters above.
+* noise_multiplier : The noise_multiplier from your parameters above.
 * steps : The number of global steps taken.
-

@@ -1,4 +1,4 @@
-# Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ import mpmath as mp
 import numpy as np
 
 from privacy.analysis import rdp_accountant
-
 
 class TestGaussianMoments(parameterized.TestCase):
   #################################
@@ -134,7 +133,7 @@ class TestGaussianMoments(parameterized.TestCase):
               16., 20., 24., 28., 32., 64., 256.)
 
     rdp = rdp_accountant.compute_rdp(q=1e-4,
-                                     stddev_to_sensitivity_ratio=.4,
+                                     noise_multiplier=.4,
                                      steps=40000,
                                      orders=orders)
 
@@ -142,7 +141,7 @@ class TestGaussianMoments(parameterized.TestCase):
                                                          target_delta=1e-6)
 
     rdp += rdp_accountant.compute_rdp(q=0.1,
-                                      stddev_to_sensitivity_ratio=2,
+                                      noise_multiplier=2,
                                       steps=100,
                                       orders=orders)
     eps, _, opt_order = rdp_accountant.get_privacy_spent(orders, rdp,
