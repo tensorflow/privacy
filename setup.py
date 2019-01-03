@@ -18,10 +18,14 @@ setup(name='privacy',
       version='0.0.1',
       url='https://github.com/tensorflow/privacy',
       license='Apache-2.0',
+      install_requires=[
+          'scipy>=0.17',
+          'mpmath',  # used in tests only
+      ],
       # Explicit dependence on TensorFlow is not supported.
       # See https://github.com/tensorflow/tensorflow/issues/7166
       extras_require={
-          "tf": ["tensorflow>=1.0.0"],
-          "tf_gpu": ["tensorflow-gpu>=1.0.0"],
+          'tf': ['tensorflow>=1.0.0'],
+          'tf_gpu': ['tensorflow-gpu>=1.0.0'],
       },
       packages=find_packages())
