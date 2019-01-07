@@ -24,11 +24,6 @@ import tensorflow as tf
 
 from privacy.optimizers import gaussian_query
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 
 def _run_query(query, records):
   """Executes query on the given set of records as a single sample.

@@ -24,11 +24,6 @@ import tensorflow as tf
 
 from privacy.optimizers import dp_optimizer
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 
 def loss(val0, val1):
   """Loss function that is minimized at the mean of the input points."""
