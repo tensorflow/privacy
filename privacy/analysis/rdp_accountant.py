@@ -46,6 +46,11 @@ import sys
 import numpy as np
 from scipy import special
 
+try:
+  long
+except NameError:
+  long = int
+
 ########################
 # LOG-SPACE ARITHMETIC #
 ########################
