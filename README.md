@@ -6,6 +6,8 @@ library that includes implementations of TensorFlow optimizers for training
 machine learning models with differential privacy. The library comes with
 tutorials and analysis tools for computing the privacy guarantees provided.
 
+
+
 The TensorFlow Privacy library is under continual development, always welcoming
 contributions. In particular, we always welcome help towards resolving the
 issues currently open.
