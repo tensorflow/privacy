@@ -1,6 +1,5 @@
 # TensorFlow Privacy
 
-
 This repository contains the source code for TensorFlow Privacy, a Python
 library that includes implementations of TensorFlow optimizers for training
 machine learning models with differential privacy. The library comes with
