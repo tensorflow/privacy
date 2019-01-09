@@ -153,7 +153,7 @@ def main(unused_argv):
     """Computes epsilon value for given hyperparameters."""
     if FLAGS.noise_multiplier == 0.0:
       return float('inf')
-    orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+    orders = [1 + x / 10. for x in range(1, 100)] + range(12, 64)
     sampling_probability = FLAGS.batch_size / 60000
     rdp = compute_rdp(q=sampling_probability,
                       noise_multiplier=FLAGS.noise_multiplier,
