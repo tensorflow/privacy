@@ -89,7 +89,7 @@ def make_optimizer_class(cls):
           self._private_query.get_noised_average(final_state,
                                                  self._global_state))
 
-      return zip(final_grads, var_list)
+      return list(zip(final_grads, var_list))
 
   return DPOptimizerClass
 
