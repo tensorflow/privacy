@@ -21,7 +21,9 @@ performance, it is also recommended to install TensorFlow with GPU support
 installation documentation).
 
 In addition to TensorFlow and its dependencies, other prerequisites are:
+
   * `scipy` >= 0.17
+  
   * `mpmath` (for testing)
 
 ### Installing TensorFlow Privacy
