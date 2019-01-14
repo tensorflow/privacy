@@ -71,6 +71,12 @@ NOTE: the tutorials are maintained carefully. However, they are not considered
 part of the API and they can change at any time without warning. You should not
 write 3rd party code that imports the tutorials and expect that the interface
 will not break.
+  
+## Research directory
+
+This folder contains code to reproduce results from research papers related to
+privacy in machine learning. It is not maintained as carefully as the tutorials
+directory, but rather intended as a convenient archive. 
 
 ## Remarks
 
