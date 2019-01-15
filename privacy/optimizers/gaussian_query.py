@@ -132,12 +132,12 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
       denominator: The normalization constant (applied after noise is added to
         the sum).
     """
-    self._sum_query = GaussianSumQuery(l2_norm_clip, sum_stddev)
+    self._numerator = GaussianSumQuery(l2_norm_clip, sum_stddev)
     self._denominator = denominator
 
   def initial_global_state(self):
     """Returns the initial global state for the GaussianAverageQuery."""
-    sum_global_state = self._sum_query.initial_global_state()
+    sum_global_state = self._numerator.initial_global_state()
     return self._GlobalState(sum_global_state, float(self._denominator))
 
   def derive_sample_params(self, global_state):
@@ -149,7 +149,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
     Returns:
       Parameters to use to process records in the next sample.
     """
-    return self._sum_query.derive_sample_params(global_state.sum_state)
+    return self._numerator.derive_sample_params(global_state.sum_state)
 
   def initial_sample_state(self, global_state, tensors):
     """Returns an initial state to use for the next sample.
@@ -162,7 +162,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
     Returns: An initial sample state.
     """
     # GaussianAverageQuery has no state beyond the sum state.
-    return self._sum_query.initial_sample_state(global_state.sum_state, tensors)
+    return self._numerator.initial_sample_state(global_state.sum_state, tensors)
 
   def accumulate_record(self, params, sample_state, record):
     """Accumulates a single record into the sample state.
@@ -175,7 +175,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
     Returns:
       The updated sample state.
     """
-    return self._sum_query.accumulate_record(params, sample_state, record)
+    return self._numerator.accumulate_record(params, sample_state, record)
 
   def get_noised_average(self, sample_state, global_state):
     """Gets noised average after all records of sample have been accumulated.
@@ -188,7 +188,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
       A tuple (estimate, new_global_state) where "estimate" is the estimated
       average of the records and "new_global_state" is the updated global state.
     """
-    noised_sum, new_sum_global_state = self._sum_query.get_noised_sum(
+    noised_sum, new_sum_global_state = self._numerator.get_noised_sum(
         sample_state, global_state.sum_state)
     new_global_state = self._GlobalState(
         new_sum_global_state, global_state.denominator)
