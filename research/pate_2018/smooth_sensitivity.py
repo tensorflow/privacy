@@ -261,7 +261,7 @@ def compute_local_sensitivity_bounds_threshold(counts, num_teachers, threshold,
   """Computes a list of max-LS-at-distance-d for the threshold mechanism."""
 
   def _compute_ls(v):
-    ls_step_up, ls_step_down = None, None
+    ls_step_up, ls_step_down = float("-inf"), float("-inf")
     if v > 0:
       ls_step_down = abs(rdp_list[v - 1] - rdp_list[v])
     if v < num_teachers:
@@ -273,7 +273,7 @@ def compute_local_sensitivity_bounds_threshold(counts, num_teachers, threshold,
 
   ls = np.zeros(num_teachers)
   for d in range(max(cur_max, num_teachers - cur_max)):
-    ls_up, ls_down = None, None
+    ls_up, ls_down = float("-inf"), float("-inf")
     if cur_max + d <= num_teachers:
       ls_up = _compute_ls(cur_max + d)
     if cur_max - d >= 0:
