@@ -136,6 +136,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   def testEstimator(self):
     """Tests that DP optimizers work with tf.estimator."""
+
     def linear_model_fn(features, labels, mode):
       preds = tf.keras.layers.Dense(
           1, activation='linear', name='dense').apply(features['x'])
@@ -172,6 +173,32 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         linear_regressor.get_variable_value('dense/kernel'),
         true_weights,
         atol=1.0)
+
+  @parameterized.named_parameters(
+      ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
+      ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
+      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+  def testUnrollMicrobatches(self, cls):
+    with self.cached_session() as sess:
+      var0 = tf.Variable([1.0, 2.0])
+      data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
+
+      opt = cls(
+          l2_norm_clip=1.0e9,
+          noise_multiplier=0.0,
+          num_microbatches=4,
+          learning_rate=2.0,
+          unroll_microbatches=True)
+
+      self.evaluate(tf.global_variables_initializer())
+      # Fetch params to validate initial values
+      self.assertAllClose([1.0, 2.0], self.evaluate(var0))
+
+      # Expected gradient is sum of differences divided by number of
+      # microbatches.
+      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      grads_and_vars = sess.run(gradient_op)
+      self.assertAllCloseAccordingToType([-2.5, -2.5], grads_and_vars[0][0])
 
 
 if __name__ == '__main__':

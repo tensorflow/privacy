@@ -35,13 +35,23 @@ def make_optimizer_class(cls):
   class DPOptimizerClass(cls):
     """Differentially private subclass of given class cls."""
 
-    def __init__(self, l2_norm_clip, noise_multiplier, num_microbatches, *args,
-                 **kwargs):
+    def __init__(
+        self,
+        l2_norm_clip,
+        noise_multiplier,
+        num_microbatches,
+        unroll_microbatches=False,
+        *args,  # pylint: disable=keyword-arg-before-vararg
+        **kwargs):
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       stddev = l2_norm_clip * noise_multiplier
       self._num_microbatches = num_microbatches
       self._private_query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip, stddev, num_microbatches)
+      # TODO(b/122613513): Set unroll_microbatches=True to avoid this bug.
+      # Beware: When num_microbatches is large (>100), enabling this parameter
+      # may cause an OOM error.
+      self._unroll_microbatches = unroll_microbatches
       self._global_state = self._private_query.initial_global_state()
 
     def compute_gradients(self,
@@ -68,9 +78,7 @@ def make_optimizer_class(cls):
         grads_list = list(grads)
         sample_state = self._private_query.accumulate_record(
             sample_params, sample_state, grads_list)
-        return [tf.add(i, 1), sample_state]
-
-      i = tf.constant(0)
+        return sample_state
 
       if var_list is None:
         var_list = (
@@ -79,14 +87,20 @@ def make_optimizer_class(cls):
       sample_state = self._private_query.initial_sample_state(
           self._global_state, var_list)
 
-      # Use of while_loop here requires that sample_state be a nested structure
-      # of tensors. In general, we would prefer to allow it to be an arbitrary
-      # opaque type.
-      _, final_state = tf.while_loop(
-          lambda i, _: tf.less(i, self._num_microbatches), process_microbatch,
-          [i, sample_state])
+      if self._unroll_microbatches:
+        for idx in range(self._num_microbatches):
+          sample_state = process_microbatch(idx, sample_state)
+      else:
+        # Use of while_loop here requires that sample_state be a nested
+        # structure of tensors. In general, we would prefer to allow it to be
+        # an arbitrary opaque type.
+        cond_fn = lambda i, _: tf.less(i, self._num_microbatches)
+        body_fn = lambda i, state: [tf.add(i, 1), process_microbatch(i, state)]
+        idx = tf.constant(0)
+        _, sample_state = tf.while_loop(cond_fn, body_fn, [idx, sample_state])
+
       final_grads, self._global_state = (
-          self._private_query.get_noised_average(final_state,
+          self._private_query.get_noised_average(sample_state,
                                                  self._global_state))
 
       return list(zip(final_grads, var_list))
