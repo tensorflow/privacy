@@ -45,11 +45,7 @@ import sys
 
 import numpy as np
 from scipy import special
-
-try:
-  long
-except NameError:
-  long = int
+import six
 
 ########################
 # LOG-SPACE ARITHMETIC #
@@ -91,7 +87,7 @@ def _log_print(logx):
 
 def _compute_log_a_int(q, sigma, alpha):
   """Compute log(A_alpha) for integer alpha. 0 < q < 1."""
-  assert isinstance(alpha, (int, long))
+  assert isinstance(alpha, six.integer_types)
 
   # Initialize with 0 in the log space.
   log_a = -np.inf

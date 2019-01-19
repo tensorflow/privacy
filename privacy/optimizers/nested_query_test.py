@@ -30,11 +30,6 @@ nest = tf.contrib.framework.nest
 
 _basic_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 
 def _run_query(query, records):
   """Executes query on the given set of records as a single sample.
@@ -145,7 +140,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       query_result = _run_query(query, [record1, record2])
 
       noised_averages = []
-      for _ in xrange(1000):
+      for _ in range(1000):
         noised_averages.append(nest.flatten(sess.run(query_result)))
 
       result_stddev = np.std(noised_averages, 0)

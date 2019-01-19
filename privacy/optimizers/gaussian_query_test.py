@@ -24,11 +24,6 @@ import tensorflow as tf
 
 from privacy.optimizers import gaussian_query
 
-try:
-    xrange
-except NameError:
-    xrange = range
-
 
 def _run_query(query, records):
   """Executes query on the given set of records as a single sample.
@@ -114,7 +109,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       query_result = _run_query(query, [record1, record2])
 
       noised_averages = []
-      for _ in xrange(1000):
+      for _ in range(1000):
         noised_averages.append(sess.run(query_result))
 
       result_stddev = np.std(noised_averages)
