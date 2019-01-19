@@ -44,10 +44,14 @@ class NoPrivacySumQuery(private_queries.PrivateSumQuery):
     del global_state  # unused.
     return nest.map_structure(tf.zeros_like, tensors)
 
-  def accumulate_record(self, params, sample_state, record):
-    """See base class."""
+  def accumulate_record(self, params, sample_state, record, weight=1):
+    """See base class. Optional argument for weighted sum queries."""
     del params  # unused.
-    return nest.map_structure(tf.add, sample_state, record)
+
+    def add_weighted(state_tensor, record_tensor):
+      return tf.add(state_tensor, weight * record_tensor)
+
+    return nest.map_structure(add_weighted, sample_state, record)
 
   def get_noised_sum(self, sample_state, global_state):
     """See base class."""
@@ -77,11 +81,13 @@ class NoPrivacyAverageQuery(private_queries.PrivateAverageQuery):
     """See base class."""
     return self._numerator.initial_sample_state(global_state, tensors), 0.0
 
-  def accumulate_record(self, params, sample_state, record):
-    """See base class."""
+  def accumulate_record(self, params, sample_state, record, weight=1):
+    """See base class. Optional argument for weighted average queries."""
     sum_sample_state, denominator = sample_state
-    return self._numerator.accumulate_record(params, sum_sample_state,
-                                             record), tf.add(denominator, 1.0)
+    return (
+        self._numerator.accumulate_record(
+            params, sum_sample_state, record, weight),
+        tf.add(denominator, weight))
 
   def get_noised_average(self, sample_state, global_state):
     """See base class."""
