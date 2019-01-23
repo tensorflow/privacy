@@ -22,31 +22,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from privacy.optimizers import no_privacy_query
-
-
-def _run_query(query, records, weights=None):
-  """Executes query on the given set of records as a single sample.
-
-  Args:
-    query: A PrivateQuery to run.
-    records: An iterable containing records to pass to the query.
-    weights: An optional iterable containing the weights of the records.
-
-  Returns:
-    The result of the query.
-  """
-  global_state = query.initial_global_state()
-  params = query.derive_sample_params(global_state)
-  sample_state = query.initial_sample_state(global_state, next(iter(records)))
-  if weights is None:
-    for record in records:
-      sample_state = query.accumulate_record(params, sample_state, record)
-  else:
-    for weight, record in zip(weights, records):
-      sample_state = query.accumulate_record(params, sample_state, record,
-                                             weight)
-  result, _ = query.get_query_result(sample_state, global_state)
-  return result
+from privacy.optimizers import test_utils
 
 
 class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
@@ -57,7 +33,7 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record2 = tf.constant([-1.0, 1.0])
 
       query = no_privacy_query.NoPrivacySumQuery()
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -71,7 +47,8 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       weight2 = 2
 
       query = no_privacy_query.NoPrivacySumQuery()
-      query_result = _run_query(query, [record1, record2], [weight1, weight2])
+      query_result = test_utils.run_query(
+          query, [record1, record2], [weight1, weight2])
       result = sess.run(query_result)
       expected = [0.0, 2.0]
       self.assertAllClose(result, expected)
@@ -82,7 +59,7 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record2 = tf.constant([-1.0, 2.0])
 
       query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [2.0, 1.0]
       self.assertAllClose(result, expected)
@@ -96,7 +73,8 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       weight2 = 3
 
       query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result = _run_query(query, [record1, record2], [weight1, weight2])
+      query_result = test_utils.run_query(
+          query, [record1, record2], [weight1, weight2])
       result = sess.run(query_result)
       expected = [0.25, 0.75]
       self.assertAllClose(result, expected)
@@ -108,7 +86,7 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_incompatible_records(self, record1, record2, error_type):
     query = no_privacy_query.NoPrivacySumQuery()
     with self.assertRaises(error_type):
-      _run_query(query, [record1, record2])
+      test_utils.run_query(query, [record1, record2])
 
 
 if __name__ == '__main__':

@@ -25,29 +25,11 @@ import tensorflow as tf
 
 from privacy.optimizers import gaussian_query
 from privacy.optimizers import nested_query
+from privacy.optimizers import test_utils
 
 nest = tf.contrib.framework.nest
 
 _basic_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-
-
-def _run_query(query, records):
-  """Executes query on the given set of records as a single sample.
-
-  Args:
-    query: A PrivateQuery to run.
-    records: An iterable containing records to pass to the query.
-
-  Returns:
-    The result of the query.
-  """
-  global_state = query.initial_global_state()
-  params = query.derive_sample_params(global_state)
-  sample_state = query.initial_sample_state(global_state, next(iter(records)))
-  for record in records:
-    sample_state = query.accumulate_record(params, sample_state, record)
-  result, _ = query.get_query_result(sample_state, global_state)
-  return result
 
 
 class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
@@ -64,7 +46,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [2.0, 3.0]]
       record2 = [4.0, [3.0, 2.0]]
 
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [5.0, [5.0, 5.0]]
       self.assertAllClose(result, expected)
@@ -81,7 +63,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [2.0, 3.0]]
       record2 = [4.0, [3.0, 2.0]]
 
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, [1.0, 1.0]]
       self.assertAllClose(result, expected)
@@ -98,7 +80,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [12.0, 9.0]]  # Clipped to [1.0, [4.0, 3.0]]
       record2 = [5.0, [1.0, 2.0]]   # Clipped to [4.0, [1.0, 2.0]]
 
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, [1.0, 1.0]]
       self.assertAllClose(result, expected)
@@ -118,7 +100,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [{'a': 0.0, 'b': 2.71828}, {'c': (-4.0, 6.0), 'd': [-4.0]}]
       record2 = [{'a': 3.14159, 'b': 0.0}, {'c': (6.0, -4.0), 'd': [5.0]}]
 
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [{'a': 1.0, 'b': 1.0}, {'c': (1.0, 1.0), 'd': [1.0]}]
       self.assertAllClose(result, expected)
@@ -137,7 +119,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = (3.0, [2.0, 1.5])
       record2 = (0.0, [-1.0, -3.5])
 
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
 
       noised_averages = []
       for _ in range(1000):
@@ -157,7 +139,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_record_incompatible_with_query(
       self, queries, record, error_type):
     with self.assertRaises(error_type):
-      _run_query(nested_query.NestedQuery(queries), [record])
+      test_utils.run_query(nested_query.NestedQuery(queries), [record])
 
 
 if __name__ == '__main__':

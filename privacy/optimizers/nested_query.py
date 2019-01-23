@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Implements PrivateQuery interface for queries over nested structures.
+"""Implements DPQuery interface for queries over nested structures.
 """
 
 from __future__ import absolute_import
@@ -22,13 +22,13 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from privacy.optimizers import private_queries
+from privacy.optimizers import dp_query
 
 nest = tf.contrib.framework.nest
 
 
-class NestedQuery(private_queries.PrivateQuery):
-  """Implements PrivateQuery interface for structured queries.
+class NestedQuery(dp_query.DPQuery):
+  """Implements DPQuery interface for structured queries.
 
   NestedQuery evaluates arbitrary nested structures of queries. Records must be
   nested structures of tensors that are compatible (in type and arity) with the
@@ -100,7 +100,7 @@ class NestedQuery(private_queries.PrivateQuery):
     return self._map_to_queries(
         'accumulate_record', params, sample_state, record)
 
-  def get_query_result(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """Gets query result after all records of sample have been accumulated.
 
     Args:
@@ -114,7 +114,7 @@ class NestedQuery(private_queries.PrivateQuery):
       for the subqueries.
     """
     estimates_and_new_global_states = self._map_to_queries(
-        'get_query_result', sample_state, global_state)
+        'get_noised_result', sample_state, global_state)
 
     flat_estimates, flat_new_global_states = zip(
         *nest.flatten_up_to(self._queries, estimates_and_new_global_states))

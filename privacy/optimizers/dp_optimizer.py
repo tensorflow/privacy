@@ -37,22 +37,19 @@ def make_optimizer_class(cls):
 
     def __init__(
         self,
-        l2_norm_clip,
-        noise_multiplier,
+        dp_average_query,
         num_microbatches,
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg
         **kwargs):
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
-      stddev = l2_norm_clip * noise_multiplier
+      self._dp_average_query = dp_average_query
       self._num_microbatches = num_microbatches
-      self._private_query = gaussian_query.GaussianAverageQuery(
-          l2_norm_clip, stddev, num_microbatches)
+      self._global_state = self._dp_average_query.initial_global_state()
       # TODO(b/122613513): Set unroll_microbatches=True to avoid this bug.
       # Beware: When num_microbatches is large (>100), enabling this parameter
       # may cause an OOM error.
       self._unroll_microbatches = unroll_microbatches
-      self._global_state = self._private_query.initial_global_state()
 
     def compute_gradients(self,
                           loss,
@@ -68,7 +65,7 @@ def make_optimizer_class(cls):
       # sampling from the dataset without replacement.
       microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
       sample_params = (
-          self._private_query.derive_sample_params(self._global_state))
+          self._dp_average_query.derive_sample_params(self._global_state))
 
       def process_microbatch(i, sample_state):
         """Process one microbatch (record) with privacy helper."""
@@ -76,7 +73,7 @@ def make_optimizer_class(cls):
             tf.gather(microbatches_losses, [i]), var_list, gate_gradients,
             aggregation_method, colocate_gradients_with_ops, grad_loss))
         grads_list = list(grads)
-        sample_state = self._private_query.accumulate_record(
+        sample_state = self._dp_average_query.accumulate_record(
             sample_params, sample_state, grads_list)
         return sample_state
 
@@ -84,7 +81,7 @@ def make_optimizer_class(cls):
         var_list = (
             tf.trainable_variables() + tf.get_collection(
                 tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
-      sample_state = self._private_query.initial_sample_state(
+      sample_state = self._dp_average_query.initial_sample_state(
           self._global_state, var_list)
 
       if self._unroll_microbatches:
@@ -100,15 +97,48 @@ def make_optimizer_class(cls):
         _, sample_state = tf.while_loop(cond_fn, body_fn, [idx, sample_state])
 
       final_grads, self._global_state = (
-          self._private_query.get_noised_average(sample_state,
-                                                 self._global_state))
+          self._dp_average_query.get_noised_result(
+              sample_state, self._global_state))
 
       return list(zip(final_grads, var_list))
 
   return DPOptimizerClass
 
 
+def make_gaussian_optimizer_class(cls):
+  """Constructs a DP optimizer with Gaussian averaging of updates."""
+
+  class DPGaussianOptimizerClass(make_optimizer_class(cls)):
+    """DP subclass of given class cls using Gaussian averaging."""
+
+    def __init__(
+        self,
+        l2_norm_clip,
+        noise_multiplier,
+        num_microbatches,
+        unroll_microbatches=False,
+        *args,  # pylint: disable=keyword-arg-before-vararg
+        **kwargs):
+      dp_average_query = gaussian_query.GaussianAverageQuery(
+          l2_norm_clip, l2_norm_clip * noise_multiplier, num_microbatches)
+      super(DPGaussianOptimizerClass, self).__init__(
+          dp_average_query,
+          num_microbatches,
+          unroll_microbatches,
+          *args,
+          **kwargs)
+
+  return DPGaussianOptimizerClass
+
+
 DPAdagradOptimizer = make_optimizer_class(tf.train.AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(tf.train.AdamOptimizer)
 DPGradientDescentOptimizer = make_optimizer_class(
     tf.train.GradientDescentOptimizer)
+
+DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(
+    tf.train.AdagradOptimizer)
+DPAdamGaussianOptimizer = make_gaussian_optimizer_class(tf.train.AdamOptimizer)
+DPGradientDescentGaussianOptimizer = make_gaussian_optimizer_class(
+    tf.train.GradientDescentOptimizer)
+

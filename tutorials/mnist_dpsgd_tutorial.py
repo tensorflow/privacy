@@ -70,15 +70,13 @@ def cnn_model_fn(features, labels, mode):
 
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. For illustration purposes,
-      # we do that here by calling make_optimizer_class() explicitly, though DP
+      # we do that here by calling optimizer_from_args() explicitly, though DP
       # versions of standard optimizers are available in dp_optimizer.
-      dp_optimizer_class = dp_optimizer.make_optimizer_class(
-          tf.train.GradientDescentOptimizer)
-      optimizer = dp_optimizer_class(
-          learning_rate=FLAGS.learning_rate,
-          noise_multiplier=FLAGS.noise_multiplier,
+      optimizer = dp_optimizer.DPGradientDescentGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
-          num_microbatches=FLAGS.microbatches)
+          noise_multiplier=FLAGS.noise_multiplier,
+          num_microbatches=FLAGS.microbatches,
+          learning_rate=FLAGS.learning_rate)
       opt_loss = vector_loss
     else:
       optimizer = tf.train.GradientDescentOptimizer(

@@ -23,6 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from privacy.optimizers import dp_optimizer
+from privacy.optimizers import gaussian_query
 
 
 def loss(val0, val1):
@@ -51,9 +52,11 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
+      dp_average_query = gaussian_query.GaussianAverageQuery(
+          1.0e9, 0.0, num_microbatches)
+
       opt = cls(
-          l2_norm_clip=1.0e9,
-          noise_multiplier=0.0,
+          dp_average_query,
           num_microbatches=num_microbatches,
           learning_rate=2.0)
 
@@ -76,11 +79,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0, 0.0])
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
-      opt = cls(
-          l2_norm_clip=1.0,
-          noise_multiplier=0.0,
-          num_microbatches=1,
-          learning_rate=2.0)
+      dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
+
+      opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -100,11 +101,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0])
       data0 = tf.Variable([[0.0]])
 
-      opt = cls(
-          l2_norm_clip=4.0,
-          noise_multiplier=2.0,
-          num_microbatches=1,
-          learning_rate=2.0)
+      dp_average_query = gaussian_query.GaussianAverageQuery(4.0, 8.0, 1)
+
+      opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -143,9 +142,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       vector_loss = tf.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(vector_loss)
+      dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
       optimizer = dp_optimizer.DPGradientDescentOptimizer(
-          l2_norm_clip=1.0,
-          noise_multiplier=0.0,
+          dp_average_query,
           num_microbatches=1,
           learning_rate=1.0)
       global_step = tf.train.get_global_step()
@@ -183,9 +182,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
+      dp_average_query = (
+          gaussian_query.GaussianAverageQuery(1.0e9, 0.0, 4))
       opt = cls(
-          l2_norm_clip=1.0e9,
-          noise_multiplier=0.0,
+          dp_average_query,
           num_microbatches=4,
           learning_rate=2.0,
           unroll_microbatches=True)
@@ -200,6 +200,33 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType([-2.5, -2.5], grads_and_vars[0][0])
 
+  @parameterized.named_parameters(
+      ('DPGradientDescent', dp_optimizer.DPGradientDescentGaussianOptimizer),
+      ('DPAdagrad', dp_optimizer.DPAdagradGaussianOptimizer),
+      ('DPAdam', dp_optimizer.DPAdamGaussianOptimizer))
+  def testDPGaussianOptimizerClass(self, cls):
+    with self.cached_session() as sess:
+      var0 = tf.Variable([0.0])
+      data0 = tf.Variable([[0.0]])
+
+      opt = cls(
+          l2_norm_clip=4.0,
+          noise_multiplier=2.0,
+          num_microbatches=1,
+          learning_rate=2.0)
+
+      self.evaluate(tf.global_variables_initializer())
+      # Fetch params to validate initial values
+      self.assertAllClose([0.0], self.evaluate(var0))
+
+      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      grads = []
+      for _ in range(1000):
+        grads_and_vars = sess.run(gradient_op)
+        grads.append(grads_and_vars[0][0])
+
+      # Test standard deviation is close to l2_norm_clip * noise_multiplier.
+      self.assertNear(np.std(grads), 2.0 * 4.0, 0.5)
 
 if __name__ == '__main__':
   tf.test.main()

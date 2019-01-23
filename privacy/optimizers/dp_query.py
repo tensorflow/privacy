@@ -22,14 +22,14 @@ from __future__ import print_function
 import abc
 
 
-class PrivateQuery(object):
+class DPQuery(object):
   """Interface for differentially private query mechanisms."""
 
   __metaclass__ = abc.ABCMeta
 
   @abc.abstractmethod
   def initial_global_state(self):
-    """Returns the initial global state for the PrivateQuery."""
+    """Returns the initial global state for the DPQuery."""
     pass
 
   @abc.abstractmethod
@@ -72,7 +72,7 @@ class PrivateQuery(object):
     pass
 
   @abc.abstractmethod
-  def get_query_result(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """Gets query result after all records of sample have been accumulated.
 
     Args:
@@ -84,47 +84,3 @@ class PrivateQuery(object):
       query and "new_global_state" is the updated global state.
     """
     pass
-
-
-class PrivateSumQuery(PrivateQuery):
-  """Interface for differentially private mechanisms to compute a sum."""
-
-  @abc.abstractmethod
-  def get_noised_sum(self, sample_state, global_state):
-    """Gets estimate of sum after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      sum of the records and "new_global_state" is the updated global state.
-    """
-    pass
-
-  def get_query_result(self, sample_state, global_state):
-    """Delegates to get_noised_sum."""
-    return self.get_noised_sum(sample_state, global_state)
-
-
-class PrivateAverageQuery(PrivateQuery):
-  """Interface for differentially private mechanisms to compute an average."""
-
-  @abc.abstractmethod
-  def get_noised_average(self, sample_state, global_state):
-    """Gets average estimate after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      average of the records and "new_global_state" is the updated global state.
-    """
-    pass
-
-  def get_query_result(self, sample_state, global_state):
-    """Delegates to get_noised_average."""
-    return self.get_noised_average(sample_state, global_state)

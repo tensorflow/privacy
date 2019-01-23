@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Implements PrivateQuery interface for Gaussian average queries.
+"""Implements DPQuery interface for Gaussian average queries.
 """
 
 from __future__ import absolute_import
@@ -23,13 +23,13 @@ import collections
 
 import tensorflow as tf
 
-from privacy.optimizers import private_queries
+from privacy.optimizers import dp_query
 
 nest = tf.contrib.framework.nest
 
 
-class GaussianSumQuery(private_queries.PrivateSumQuery):
-  """Implements PrivateQuery interface for Gaussian sum queries.
+class GaussianSumQuery(dp_query.DPQuery):
+  """Implements DPQuery interface for Gaussian sum queries.
 
   Accumulates clipped vectors, then adds Gaussian noise to the sum.
   """
@@ -94,7 +94,7 @@ class GaussianSumQuery(private_queries.PrivateSumQuery):
     clipped = nest.pack_sequence_as(record, clipped_as_list)
     return nest.map_structure(tf.add, sample_state, clipped)
 
-  def get_noised_sum(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """Gets noised sum after all records of sample have been accumulated.
 
     Args:
@@ -111,10 +111,15 @@ class GaussianSumQuery(private_queries.PrivateSumQuery):
     return nest.map_structure(add_noise, sample_state), global_state
 
 
-class GaussianAverageQuery(private_queries.PrivateAverageQuery):
-  """Implements PrivateQuery interface for Gaussian average queries.
+class GaussianAverageQuery(dp_query.DPQuery):
+  """Implements DPQuery interface for Gaussian average queries.
 
   Accumulates clipped vectors, adds Gaussian noise, and normalizes.
+
+  Note that we use "fixed-denominator" estimation: the denominator should be
+  specified as the expected number of records per sample. Accumulating the
+  denominator separately would also be possible but would be produce a higher
+  variance estimator.
   """
 
   # pylint: disable=invalid-name
@@ -177,7 +182,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
     """
     return self._numerator.accumulate_record(params, sample_state, record)
 
-  def get_noised_average(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """Gets noised average after all records of sample have been accumulated.
 
     Args:
@@ -188,7 +193,7 @@ class GaussianAverageQuery(private_queries.PrivateAverageQuery):
       A tuple (estimate, new_global_state) where "estimate" is the estimated
       average of the records and "new_global_state" is the updated global state.
     """
-    noised_sum, new_sum_global_state = self._numerator.get_noised_sum(
+    noised_sum, new_sum_global_state = self._numerator.get_noised_result(
         sample_state, global_state.sum_state)
     new_global_state = self._GlobalState(
         new_sum_global_state, global_state.denominator)

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implements PrivateQuery interface for no privacy average queries."""
+"""Implements DPQuery interface for no privacy average queries."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -19,13 +19,13 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from privacy.optimizers import private_queries
+from privacy.optimizers import dp_query
 
 nest = tf.contrib.framework.nest
 
 
-class NoPrivacySumQuery(private_queries.PrivateSumQuery):
-  """Implements PrivateQuery interface for a sum query with no privacy.
+class NoPrivacySumQuery(dp_query.DPQuery):
+  """Implements DPQuery interface for a sum query with no privacy.
 
   Accumulates vectors without clipping or adding noise.
   """
@@ -53,13 +53,13 @@ class NoPrivacySumQuery(private_queries.PrivateSumQuery):
 
     return nest.map_structure(add_weighted, sample_state, record)
 
-  def get_noised_sum(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """See base class."""
     return sample_state, global_state
 
 
-class NoPrivacyAverageQuery(private_queries.PrivateAverageQuery):
-  """Implements PrivateQuery interface for an average query with no privacy.
+class NoPrivacyAverageQuery(dp_query.DPQuery):
+  """Implements DPQuery interface for an average query with no privacy.
 
   Accumulates vectors and normalizes by the total number of accumulated vectors.
   """
@@ -89,10 +89,10 @@ class NoPrivacyAverageQuery(private_queries.PrivateAverageQuery):
             params, sum_sample_state, record, weight),
         tf.add(denominator, weight))
 
-  def get_noised_average(self, sample_state, global_state):
+  def get_noised_result(self, sample_state, global_state):
     """See base class."""
     sum_sample_state, denominator = sample_state
-    exact_sum, new_global_state = self._numerator.get_noised_sum(
+    exact_sum, new_global_state = self._numerator.get_noised_result(
         sum_sample_state, global_state)
 
     def normalize(v):

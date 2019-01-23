@@ -23,25 +23,7 @@ import numpy as np
 import tensorflow as tf
 
 from privacy.optimizers import gaussian_query
-
-
-def _run_query(query, records):
-  """Executes query on the given set of records as a single sample.
-
-  Args:
-    query: A PrivateQuery to run.
-    records: An iterable containing records to pass to the query.
-
-  Returns:
-    The result of the query.
-  """
-  global_state = query.initial_global_state()
-  params = query.derive_sample_params(global_state)
-  sample_state = query.initial_sample_state(global_state, next(iter(records)))
-  for record in records:
-    sample_state = query.accumulate_record(params, sample_state, record)
-  result, _ = query.get_query_result(sample_state, global_state)
-  return result
+from privacy.optimizers import test_utils
 
 
 class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
@@ -53,7 +35,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=10.0, stddev=0.0)
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -65,7 +47,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=5.0, stddev=0.0)
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -77,7 +59,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=5.0, stddev=stddev)
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
 
       noised_sums = []
       for _ in xrange(1000):
@@ -93,7 +75,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip=3.0, sum_stddev=0.0, denominator=2.0)
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected_average = [1.0, 1.0]
       self.assertAllClose(result, expected_average)
@@ -106,7 +88,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip=5.0, sum_stddev=sum_stddev, denominator=denominator)
-      query_result = _run_query(query, [record1, record2])
+      query_result = test_utils.run_query(query, [record1, record2])
 
       noised_averages = []
       for _ in range(1000):
@@ -123,7 +105,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_incompatible_records(self, record1, record2, error_type):
     query = gaussian_query.GaussianSumQuery(1.0, 0.0)
     with self.assertRaises(error_type):
-      _run_query(query, [record1, record2])
+      test_utils.run_query(query, [record1, record2])
 
 
 if __name__ == '__main__':
