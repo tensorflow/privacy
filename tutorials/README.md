@@ -70,6 +70,19 @@ Test accuracy after 60 epochs is: 0.966
 For delta=1e-5, the current epsilon is: 2.92
 ```
 
+## Using Command-Line Interface for Privacy Budgeting
+
+Before launching a (possibly quite lengthy) training procedure, it is possible
+to compute, quickly and accurately, privacy loss at any point of the training.
+To do so, run the script `privacy/analysis/compute_dp_sgd_privacy.py`, which
+does not have any TensorFlow dependencies. For example, executing
+```
+compute_dp_sgd_privacy.py --N=60000 --batch_size=256 --noise_multiplier=1.12 --epochs=60 --delta=1e-5
+```
+allows us to conclude, in a matter of seconds, that DP-SGD run with default
+parameters satisfies differential privacy with eps = 2.92 and delta = 1e-05.
+
+
 ## Select Parameters
 
 The table below has a few sample parameters illustrating various accuracy/privacy
