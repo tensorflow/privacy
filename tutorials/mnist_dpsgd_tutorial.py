@@ -47,17 +47,13 @@ def cnn_model_fn(features, labels, mode):
   input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
   y = tf.keras.layers.Conv2D(16, 8,
                              strides=2,
-                             padding='same',
-                             kernel_initializer='he_normal').apply(input_layer)
+                             padding='same').apply(input_layer)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Conv2D(32, 4,
-                             strides=2,
-                             padding='valid',
-                             kernel_initializer='he_normal').apply(y)
+  y = tf.keras.layers.Conv2D(32, 4, strides=2, padding='valid').apply(y)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
   y = tf.keras.layers.Flatten().apply(y)
-  y = tf.keras.layers.Dense(32, kernel_initializer='he_normal').apply(y)
-  logits = tf.keras.layers.Dense(10, kernel_initializer='he_normal').apply(y)
+  y = tf.keras.layers.Dense(32).apply(y)
+  logits = tf.keras.layers.Dense(10).apply(y)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
