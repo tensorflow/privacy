@@ -86,11 +86,13 @@ parameters satisfies differential privacy with eps = 2.92 and delta = 1e-05.
 ## Select Parameters
 
 The table below has a few sample parameters illustrating various accuracy/privacy
-tradeoffs (the first line is the default setting; privacy epsilon is reported
+tradeoffs (default parameters are in __bold__; privacy epsilon is reported
 at delta=1e-5; accuracy is averaged over 10 runs).
 
 | Learning rate | Noise multiplier | Clipping threshold | Number of microbatches | Number of epochs | Privacy eps | Accuracy |
 | ------------- | ---------------- | -----------------  | ---------------------  | ---------------- | ----------- | -------- |
-| 0.08          | 1.12             | 1.0                | 256                    | 60               | 2.92        | 96.6%    |
-| 0.4           | 0.6              | 1.0                | 256                    | 30               | 9.74        | 97.3%    |
-| 0.32          | 1.2              | 1.0                | 256                    | 10               | 1.20        | 95.0%    |
+| 0.1          |                  |                    | __256__                | 10               | no privacy  | 98.8%    |
+| 0.32          | 1.2              | __1.0__            | __256__                | 10               | 1.20        | 95.0%    |
+| __0.08__      | __1.12__         | __1.0__            | __256__                | __60__           | 2.92        | 96.6%    |
+| 0.4           | 0.6              | __1.0__            | __256__                | 30               | 9.74        | 97.3%    |
+
