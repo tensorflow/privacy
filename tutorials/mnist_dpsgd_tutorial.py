@@ -27,8 +27,8 @@ from privacy.optimizers import dp_optimizer
 
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                         'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', 0.08, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.12,
+tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
+tf.flags.DEFINE_float('noise_multiplier', 1.1,
                       'Ratio of the standard deviation to the clipping norm')
 tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
 tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
@@ -121,10 +121,24 @@ def load_mnist():
   assert train_data.max() == 1.
   assert test_data.min() == 0.
   assert test_data.max() == 1.
-  assert len(train_labels.shape) == 1
-  assert len(test_labels.shape) == 1
+  assert train_labels.ndim == 1
+  assert test_labels.ndim == 1
 
   return train_data, train_labels, test_data, test_labels
+
+
+def compute_epsilon(steps):
+  """Computes epsilon value for given hyperparameters."""
+  if FLAGS.noise_multiplier == 0.0:
+    return float('inf')
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  sampling_probability = FLAGS.batch_size / 60000
+  rdp = compute_rdp(q=sampling_probability,
+                    noise_multiplier=FLAGS.noise_multiplier,
+                    steps=steps,
+                    orders=orders)
+  # Delta is set to 1e-5 because MNIST has 60000 training points.
+  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
 
 def main(unused_argv):
@@ -151,20 +165,6 @@ def main(unused_argv):
       y=test_labels,
       num_epochs=1,
       shuffle=False)
-
-  # Define a function that computes privacy budget expended so far.
-  def compute_epsilon(steps):
-    """Computes epsilon value for given hyperparameters."""
-    if FLAGS.noise_multiplier == 0.0:
-      return float('inf')
-    orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-    sampling_probability = FLAGS.batch_size / 60000
-    rdp = compute_rdp(q=sampling_probability,
-                      noise_multiplier=FLAGS.noise_multiplier,
-                      steps=steps,
-                      orders=orders)
-    # Delta is set to 1e-5 because MNIST has 60000 training points.
-    return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
   # Training loop.
   steps_per_epoch = 60000 // FLAGS.batch_size

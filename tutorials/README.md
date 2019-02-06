@@ -60,14 +60,14 @@ When the script is run with the default parameters, the output will
 contain the following lines (leaving out a lot of diagnostic info):
 ```
 ...
-Test accuracy after 1 epochs is: 0.743
-For delta=1e-5, the current epsilon is: 1.00
+Test accuracy after 1 epochs is: 0.774
+For delta=1e-5, the current epsilon is: 1.03
 ...
-Test accuracy after 2 epochs is: 0.839
-For delta=1e-5, the current epsilon is: 1.04
+Test accuracy after 2 epochs is: 0.877
+For delta=1e-5, the current epsilon is: 1.11
 ...
 Test accuracy after 60 epochs is: 0.966
-For delta=1e-5, the current epsilon is: 2.92
+For delta=1e-5, the current epsilon is: 3.01
 ```
 
 ## Using Command-Line Interface for Privacy Budgeting
@@ -77,22 +77,23 @@ to compute, quickly and accurately, privacy loss at any point of the training.
 To do so, run the script `privacy/analysis/compute_dp_sgd_privacy.py`, which
 does not have any TensorFlow dependencies. For example, executing
 ```
-compute_dp_sgd_privacy.py --N=60000 --batch_size=256 --noise_multiplier=1.12 --epochs=60 --delta=1e-5
+compute_dp_sgd_privacy.py --N=60000 --batch_size=256 --noise_multiplier=1.1 --epochs=60 --delta=1e-5
 ```
 allows us to conclude, in a matter of seconds, that DP-SGD run with default
-parameters satisfies differential privacy with eps = 2.92 and delta = 1e-05.
+parameters satisfies differential privacy with eps = 3.01 and delta = 1e-05.
 
 
 ## Select Parameters
 
 The table below has a few sample parameters illustrating various accuracy/privacy
 tradeoffs (default parameters are in __bold__; privacy epsilon is reported
-at delta=1e-5; accuracy is averaged over 10 runs).
+at delta=1e-5; accuracy is averaged over 10 runs, its standard deviation is
+less than .3% in all cases).
 
 | Learning rate | Noise multiplier | Clipping threshold | Number of microbatches | Number of epochs | Privacy eps | Accuracy |
-| ------------- | ---------------- | -----------------  | ---------------------  | ---------------- | ----------- | -------- |
-| 0.1          |                  |                    | __256__                | 10               | no privacy  | 98.8%    |
-| 0.32          | 1.2              | __1.0__            | __256__                | 10               | 1.20        | 95.0%    |
-| __0.08__      | __1.12__         | __1.0__            | __256__                | __60__           | 2.92        | 96.6%    |
-| 0.4           | 0.6              | __1.0__            | __256__                | 30               | 9.74        | 97.3%    |
+| ------------- | ---------------- | -----------------  | ---------------------- | ---------------- | ----------- | -------- |
+| 0.1           |                  |                    | __256__                | 20               | no privacy  | 99.0%    |
+| 0.25          | 1.3              | 1.5                | __256__                | 15               | 1.19        | 95.0%    |
+| __0.15__      | __1.1__          | __1.0__            | __256__                |__60__            | 3.01        | 96.6%    |
+| 0.25          | 0.7              | 1.5                | __256__                | 45               | 7.10        | 97.0%    |
 
