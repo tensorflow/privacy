@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.optimizers import gaussian_query
 
 
@@ -121,6 +122,19 @@ def make_gaussian_optimizer_class(cls):
         **kwargs):
       dp_average_query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier, num_microbatches)
+      if 'population_size' in kwargs:
+        population_size = kwargs.pop('population_size')
+        max_queries = kwargs.pop('ledger_max_queries', 1e6)
+        max_samples = kwargs.pop('ledger_max_samples', 1e6)
+        selection_probability = num_microbatches / population_size
+        ledger = privacy_ledger.PrivacyLedger(
+            population_size,
+            selection_probability,
+            max_samples,
+            max_queries)
+        dp_average_query = privacy_ledger.QueryWithLedger(
+            dp_average_query, ledger)
+
       super(DPGaussianOptimizerClass, self).__init__(
           dp_average_query,
           num_microbatches,

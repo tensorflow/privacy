@@ -38,16 +38,18 @@ class GaussianSumQuery(dp_query.DPQuery):
   _GlobalState = collections.namedtuple(
       '_GlobalState', ['l2_norm_clip', 'stddev'])
 
-  def __init__(self, l2_norm_clip, stddev):
+  def __init__(self, l2_norm_clip, stddev, ledger=None):
     """Initializes the GaussianSumQuery.
 
     Args:
       l2_norm_clip: The clipping norm to apply to the global norm of each
         record.
       stddev: The stddev of the noise added to the sum.
+      ledger: The privacy ledger to which queries should be recorded.
     """
     self._l2_norm_clip = l2_norm_clip
     self._stddev = stddev
+    self._ledger = ledger
 
   def initial_global_state(self):
     """Returns the initial global state for the GaussianSumQuery."""
@@ -74,8 +76,12 @@ class GaussianSumQuery(dp_query.DPQuery):
 
     Returns: An initial sample state.
     """
-    del global_state  # unused.
-    return nest.map_structure(tf.zeros_like, tensors)
+    if self._ledger:
+      dependencies = [self._ledger.record_sum_query(*global_state)]
+    else:
+      dependencies = []
+    with tf.control_dependencies(dependencies):
+      return nest.map_structure(tf.zeros_like, tensors)
 
   def accumulate_record(self, params, sample_state, record):
     """Accumulates a single record into the sample state.
@@ -126,7 +132,11 @@ class GaussianAverageQuery(dp_query.DPQuery):
   _GlobalState = collections.namedtuple(
       '_GlobalState', ['sum_state', 'denominator'])
 
-  def __init__(self, l2_norm_clip, sum_stddev, denominator):
+  def __init__(self,
+               l2_norm_clip,
+               sum_stddev,
+               denominator,
+               ledger=None):
     """Initializes the GaussianAverageQuery.
 
     Args:
@@ -136,8 +146,9 @@ class GaussianAverageQuery(dp_query.DPQuery):
         normalization).
       denominator: The normalization constant (applied after noise is added to
         the sum).
+      ledger: The privacy ledger to which queries should be recorded.
     """
-    self._numerator = GaussianSumQuery(l2_norm_clip, sum_stddev)
+    self._numerator = GaussianSumQuery(l2_norm_clip, sum_stddev, ledger)
     self._denominator = denominator
 
   def initial_global_state(self):

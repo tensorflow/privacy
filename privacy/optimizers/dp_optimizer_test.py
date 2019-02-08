@@ -22,6 +22,7 @@ import mock
 import numpy as np
 import tensorflow as tf
 
+from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 from tensorflow_privacy.privacy.optimizers import gaussian_query
 
@@ -52,8 +53,12 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
+      ledger = privacy_ledger.PrivacyLedger(
+          1e6, num_microbatches / 1e6, 50, 50)
       dp_average_query = gaussian_query.GaussianAverageQuery(
-          1.0e9, 0.0, num_microbatches)
+          1.0e9, 0.0, num_microbatches, ledger)
+      dp_average_query = privacy_ledger.QueryWithLedger(
+          dp_average_query, ledger)
 
       opt = cls(
           dp_average_query,
@@ -79,7 +84,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0, 0.0])
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
+      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6, 50, 50)
       dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
+      dp_average_query = privacy_ledger.QueryWithLedger(
+          dp_average_query, ledger)
 
       opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
 
@@ -101,7 +109,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0])
       data0 = tf.Variable([[0.0]])
 
+      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6, 5000, 5000)
       dp_average_query = gaussian_query.GaussianAverageQuery(4.0, 8.0, 1)
+      dp_average_query = privacy_ledger.QueryWithLedger(
+          dp_average_query, ledger)
 
       opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
 
@@ -142,7 +153,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       vector_loss = tf.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(vector_loss)
+      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6, 500, 500)
       dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
+      dp_average_query = privacy_ledger.QueryWithLedger(
+          dp_average_query, ledger)
       optimizer = dp_optimizer.DPGradientDescentOptimizer(
           dp_average_query,
           num_microbatches=1,
@@ -182,11 +196,17 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
-      dp_average_query = (
-          gaussian_query.GaussianAverageQuery(1.0e9, 0.0, 4))
+      num_microbatches = 4
+
+      ledger = privacy_ledger.PrivacyLedger(
+          1e6, num_microbatches / 1e6, 50, 50)
+      dp_average_query = gaussian_query.GaussianAverageQuery(1.0e9, 0.0, 4)
+      dp_average_query = privacy_ledger.QueryWithLedger(
+          dp_average_query, ledger)
+
       opt = cls(
           dp_average_query,
-          num_microbatches=4,
+          num_microbatches=num_microbatches,
           learning_rate=2.0,
           unroll_microbatches=True)
 

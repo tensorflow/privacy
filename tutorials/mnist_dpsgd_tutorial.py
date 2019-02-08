@@ -76,7 +76,8 @@ def cnn_model_fn(features, labels, mode):
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
           num_microbatches=FLAGS.microbatches,
-          learning_rate=FLAGS.learning_rate)
+          learning_rate=FLAGS.learning_rate,
+          population_size=60000)
       opt_loss = vector_loss
     else:
       optimizer = tf.train.GradientDescentOptimizer(
