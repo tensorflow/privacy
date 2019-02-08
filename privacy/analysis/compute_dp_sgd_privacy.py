@@ -37,8 +37,8 @@ import math
 from absl import app
 from absl import flags
 
-from privacy.analysis.rdp_accountant import compute_rdp
-from privacy.analysis.rdp_accountant import get_privacy_spent
+from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
+from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
 FLAGS = flags.FLAGS
 

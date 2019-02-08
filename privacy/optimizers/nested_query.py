@@ -22,7 +22,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from privacy.optimizers import dp_query
+from tensorflow_privacy.privacy.optimizers import dp_query
 
 nest = tf.contrib.framework.nest
 

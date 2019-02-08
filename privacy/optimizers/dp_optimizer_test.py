@@ -22,8 +22,8 @@ import mock
 import numpy as np
 import tensorflow as tf
 
-from privacy.optimizers import dp_optimizer
-from privacy.optimizers import gaussian_query
+from tensorflow_privacy.privacy.optimizers import dp_optimizer
+from tensorflow_privacy.privacy.optimizers import gaussian_query
 
 
 def loss(val0, val1):

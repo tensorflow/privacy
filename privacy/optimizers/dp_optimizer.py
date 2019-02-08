@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from privacy.optimizers import gaussian_query
+from tensorflow_privacy.privacy.optimizers import gaussian_query
 
 
 def make_optimizer_class(cls):

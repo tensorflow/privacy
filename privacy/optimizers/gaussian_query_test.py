@@ -22,8 +22,8 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
 
-from privacy.optimizers import gaussian_query
-from privacy.optimizers import test_utils
+from tensorflow_privacy.privacy.optimizers import gaussian_query
+from tensorflow_privacy.privacy.optimizers import test_utils
 
 
 class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
