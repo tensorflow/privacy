@@ -76,7 +76,12 @@ class PrivacyLedger(object):
         initial_value=0.0, trainable=False, name='sample_count')
     self._query_count = tf.Variable(
         initial_value=0.0, trainable=False, name='query_count')
-    self._cs = tf.contrib.framework.CriticalSection()
+    try:
+      # Newer versions of TF
+      self._cs = tf.CriticalSection()
+    except AttributeError:
+      # Older versions of TF
+      self._cs = tf.contrib.framework.CriticalSection()
 
   def record_sum_query(self, l2_norm_bound, noise_stddev):
     """Records that a query was issued.
