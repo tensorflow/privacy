@@ -21,8 +21,8 @@ from __future__ import print_function
 from absl.testing import parameterized
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.optimizers import no_privacy_query
-from tensorflow_privacy.privacy.optimizers import test_utils
+from privacy.optimizers import no_privacy_query
+from privacy.optimizers import test_utils
 
 
 class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):

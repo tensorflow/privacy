@@ -21,9 +21,9 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
-from tensorflow_privacy.privacy.optimizers import dp_optimizer
+from privacy.analysis.rdp_accountant import compute_rdp
+from privacy.analysis.rdp_accountant import get_privacy_spent
+from privacy.optimizers import dp_optimizer
 
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                         'train with vanilla SGD.')

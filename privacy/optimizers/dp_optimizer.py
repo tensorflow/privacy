@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
-from tensorflow_privacy.privacy.optimizers import gaussian_query
+from privacy.analysis import privacy_ledger
+from privacy.optimizers import gaussian_query
 
 
 def make_optimizer_class(cls):

@@ -19,7 +19,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.analysis import tensor_buffer
+from privacy.analysis import tensor_buffer
 
 tf.enable_eager_execution()
 

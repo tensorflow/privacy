@@ -25,7 +25,7 @@ from absl.testing import parameterized
 import mpmath as mp
 import numpy as np
 
-from tensorflow_privacy.privacy.analysis import rdp_accountant
+from privacy.analysis import rdp_accountant
 
 
 class TestGaussianMoments(parameterized.TestCase):
