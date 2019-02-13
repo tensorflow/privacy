@@ -37,16 +37,16 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   # Parameters for testing: optimizer, num_microbatches, expected answer.
   @parameterized.named_parameters(
       ('DPGradientDescent 1', dp_optimizer.DPGradientDescentOptimizer, 1,
-       [-10.0, -10.0]),
+       [-2.5, -2.5]),
       ('DPGradientDescent 2', dp_optimizer.DPGradientDescentOptimizer, 2,
-       [-5.0, -5.0]),
+       [-2.5, -2.5]),
       ('DPGradientDescent 4', dp_optimizer.DPGradientDescentOptimizer, 4,
        [-2.5, -2.5]),
-      ('DPAdagrad 1', dp_optimizer.DPAdagradOptimizer, 1, [-10.0, -10.0]),
-      ('DPAdagrad 2', dp_optimizer.DPAdagradOptimizer, 2, [-5.0, -5.0]),
+      ('DPAdagrad 1', dp_optimizer.DPAdagradOptimizer, 1, [-2.5, -2.5]),
+      ('DPAdagrad 2', dp_optimizer.DPAdagradOptimizer, 2, [-2.5, -2.5]),
       ('DPAdagrad 4', dp_optimizer.DPAdagradOptimizer, 4, [-2.5, -2.5]),
-      ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-10.0, -10.0]),
-      ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-5.0, -5.0]),
+      ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-2.5, -2.5]),
+      ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
       ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]))
   def testBaseline(self, cls, num_microbatches, expected_answer):
     with self.cached_session() as sess:

@@ -71,7 +71,8 @@ def make_optimizer_class(cls):
       def process_microbatch(i, sample_state):
         """Process one microbatch (record) with privacy helper."""
         grads, _ = zip(*super(cls, self).compute_gradients(
-            tf.gather(microbatches_losses, [i]), var_list, gate_gradients,
+            tf.reduce_mean(tf.gather(microbatches_losses,
+                                     [i])), var_list, gate_gradients,
             aggregation_method, colocate_gradients_with_ops, grad_loss))
         grads_list = list(grads)
         sample_state = self._dp_average_query.accumulate_record(
@@ -155,4 +156,3 @@ DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(
 DPAdamGaussianOptimizer = make_gaussian_optimizer_class(tf.train.AdamOptimizer)
 DPGradientDescentGaussianOptimizer = make_gaussian_optimizer_class(
     tf.train.GradientDescentOptimizer)
-
