@@ -69,9 +69,10 @@ def cnn_model_fn(features, labels, mode):
   if mode == tf.estimator.ModeKeys.TRAIN:
 
     if FLAGS.dpsgd:
-      # Use DP version of GradientDescentOptimizer. For illustration purposes,
-      # we do that here by calling optimizer_from_args() explicitly, though DP
-      # versions of standard optimizers are available in dp_optimizer.
+      # Use DP version of GradientDescentOptimizer. Other optimizers are
+      # available in dp_optimizer. Most optimizers inheriting from
+      # tf.train.Optimizer should be wrappable in differentially private
+      # counterparts by calling dp_optimizer.optimizer_from_args().
       optimizer = dp_optimizer.DPGradientDescentGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
