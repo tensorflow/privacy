@@ -58,51 +58,89 @@ def make_optimizer_class(cls):
                           gate_gradients=tf.train.Optimizer.GATE_OP,
                           aggregation_method=None,
                           colocate_gradients_with_ops=False,
-                          grad_loss=None):
+                          grad_loss=None,
+                          gradient_tape=None):
+      if callable(loss):
+        # TF is running in Eager mode, check we received a vanilla tape.
+        if not gradient_tape:
+          raise ValueError('When in Eager mode, a tape needs to be passed.')
 
-      # Note: it would be closer to the correct i.i.d. sampling of records if
-      # we sampled each microbatch from the appropriate binomial distribution,
-      # although that still wouldn't be quite correct because it would be
-      # sampling from the dataset without replacement.
-      microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
-      sample_params = (
-          self._dp_average_query.derive_sample_params(self._global_state))
+        vector_loss = loss()
+        sample_state = self._dp_average_query.initial_sample_state(
+            self._global_state, var_list)
+        microbatches_losses = tf.reshape(vector_loss,
+                                         [self._num_microbatches, -1])
+        sample_params = (
+            self._dp_average_query.derive_sample_params(self._global_state))
 
-      def process_microbatch(i, sample_state):
-        """Process one microbatch (record) with privacy helper."""
-        grads, _ = zip(*super(cls, self).compute_gradients(
-            tf.reduce_mean(tf.gather(microbatches_losses,
-                                     [i])), var_list, gate_gradients,
-            aggregation_method, colocate_gradients_with_ops, grad_loss))
-        grads_list = list(grads)
-        sample_state = self._dp_average_query.accumulate_record(
-            sample_params, sample_state, grads_list)
-        return sample_state
+        def process_microbatch(i, sample_state):
+          """Process one microbatch (record) with privacy helper."""
+          microbatch_loss = tf.gather(microbatches_losses, [i])
+          grads = gradient_tape.gradient(microbatch_loss, var_list)
+          sample_state = self._dp_average_query.accumulate_record(sample_params,
+                                                                  sample_state,
+                                                                  grads)
+          return sample_state
 
-      if var_list is None:
-        var_list = (
-            tf.trainable_variables() + tf.get_collection(
-                tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
-      sample_state = self._dp_average_query.initial_sample_state(
-          self._global_state, var_list)
-
-      if self._unroll_microbatches:
         for idx in range(self._num_microbatches):
           sample_state = process_microbatch(idx, sample_state)
+
+        final_grads, self._global_state = (
+            self._dp_average_query.get_noised_result(sample_state,
+                                                     self._global_state))
+
+        grads_and_vars = list(zip(final_grads, var_list))
+        return grads_and_vars
+
       else:
-        # Use of while_loop here requires that sample_state be a nested
-        # structure of tensors. In general, we would prefer to allow it to be
-        # an arbitrary opaque type.
-        cond_fn = lambda i, _: tf.less(i, self._num_microbatches)
-        body_fn = lambda i, state: [tf.add(i, 1), process_microbatch(i, state)]
-        idx = tf.constant(0)
-        _, sample_state = tf.while_loop(cond_fn, body_fn, [idx, sample_state])
+        # TF is running in graph mode, check we did not receive a gradient tape.
+        if gradient_tape:
+          raise ValueError('When in graph mode, a tape should not be passed.')
 
-      final_grads, self._global_state = (
-          self._dp_average_query.get_noised_result(
-              sample_state, self._global_state))
+        # Note: it would be closer to the correct i.i.d. sampling of records if
+        # we sampled each microbatch from the appropriate binomial distribution,
+        # although that still wouldn't be quite correct because it would be
+        # sampling from the dataset without replacement.
+        microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
+        sample_params = (
+            self._dp_average_query.derive_sample_params(self._global_state))
 
-      return list(zip(final_grads, var_list))
+        def process_microbatch(i, sample_state):
+          """Process one microbatch (record) with privacy helper."""
+          grads, _ = zip(*super(cls, self).compute_gradients(
+              tf.reduce_mean(tf.gather(microbatches_losses,
+                                       [i])), var_list, gate_gradients,
+              aggregation_method, colocate_gradients_with_ops, grad_loss))
+          grads_list = list(grads)
+          sample_state = self._dp_average_query.accumulate_record(
+              sample_params, sample_state, grads_list)
+          return sample_state
+
+        if var_list is None:
+          var_list = (
+              tf.trainable_variables() + tf.get_collection(
+                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+
+        sample_state = self._dp_average_query.initial_sample_state(
+            self._global_state, var_list)
+
+        if self._unroll_microbatches:
+          for idx in range(self._num_microbatches):
+            sample_state = process_microbatch(idx, sample_state)
+        else:
+          # Use of while_loop here requires that sample_state be a nested
+          # structure of tensors. In general, we would prefer to allow it to be
+          # an arbitrary opaque type.
+          cond_fn = lambda i, _: tf.less(i, self._num_microbatches)
+          body_fn = lambda i, state: [tf.add(i, 1), process_microbatch(i, state)]  # pylint: disable=line-too-long
+          idx = tf.constant(0)
+          _, sample_state = tf.while_loop(cond_fn, body_fn, [idx, sample_state])
+
+        final_grads, self._global_state = (
+            self._dp_average_query.get_noised_result(
+                sample_state, self._global_state))
+
+        return list(zip(final_grads, var_list))
 
   return DPOptimizerClass
 
