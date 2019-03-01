@@ -27,12 +27,11 @@ from privacy.optimizers import dp_optimizer
 from privacy.optimizers import gaussian_query
 
 
-def loss(val0, val1):
-  """Loss function that is minimized at the mean of the input points."""
-  return 0.5 * tf.reduce_sum(tf.squared_difference(val0, val1), axis=1)
-
-
 class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
+
+  def _loss(self, val0, val1):
+    """Loss function that is minimized at the mean of the input points."""
+    return 0.5 * tf.reduce_sum(tf.squared_difference(val0, val1), axis=1)
 
   # Parameters for testing: optimizer, num_microbatches, expected answer.
   @parameterized.named_parameters(
@@ -71,7 +70,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       # Expected gradient is sum of differences divided by number of
       # microbatches.
-      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType(expected_answer, grads_and_vars[0][0])
 
@@ -96,7 +95,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose([0.0, 0.0], self.evaluate(var0))
 
       # Expected gradient is sum of differences.
-      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType([-0.6, -0.8], grads_and_vars[0][0])
 
@@ -120,7 +119,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       # Fetch params to validate initial values
       self.assertAllClose([0.0], self.evaluate(var0))
 
-      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads = []
       for _ in range(1000):
         grads_and_vars = sess.run(gradient_op)
@@ -216,7 +215,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       # Expected gradient is sum of differences divided by number of
       # microbatches.
-      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType([-2.5, -2.5], grads_and_vars[0][0])
 
@@ -239,7 +238,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       # Fetch params to validate initial values
       self.assertAllClose([0.0], self.evaluate(var0))
 
-      gradient_op = opt.compute_gradients(loss(data0, var0), [var0])
+      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads = []
       for _ in range(1000):
         grads_and_vars = sess.run(gradient_op)
@@ -247,6 +246,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       # Test standard deviation is close to l2_norm_clip * noise_multiplier.
       self.assertNear(np.std(grads), 2.0 * 4.0, 0.5)
+
 
 if __name__ == '__main__':
   tf.test.main()
