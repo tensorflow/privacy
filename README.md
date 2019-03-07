@@ -25,6 +25,8 @@ In addition to TensorFlow and its dependencies, other prerequisites are:
   * `scipy` >= 0.17
   
   * `mpmath` (for testing)
+  
+  * `tensorflow_datasets` (for the RNN tutorial `lm_dpsgd_tutorial.py` only)
 
 ### Installing TensorFlow Privacy
 
