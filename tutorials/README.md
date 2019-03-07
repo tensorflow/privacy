@@ -56,8 +56,9 @@ compute the privacy guarantee) are:
 
 ## Expected Output
 
-When the script is run with the default parameters, the output will
-contain the following lines (leaving out a lot of diagnostic info):
+When the `mnist_dpsgd_tutorial.py` script is run with the default parameters,
+the output will contain the following lines (leaving out a lot of diagnostic
+info):
 ```
 ...
 Test accuracy after 1 epochs is: 0.774
@@ -81,14 +82,18 @@ compute_dp_sgd_privacy.py --N=60000 --batch_size=256 --noise_multiplier=1.1 --ep
 ```
 allows us to conclude, in a matter of seconds, that DP-SGD run with default
 parameters satisfies differential privacy with eps = 3.01 and delta = 1e-05.
+Note that the flags provided in the command above correspond to the tutorial in
+`mnist_dpsgd_tutorial.py`. The command is applicable to other datasets but the
+values passed must be adapted (e.g., N the number of training points).
 
 
 ## Select Parameters
 
-The table below has a few sample parameters illustrating various accuracy/privacy
-tradeoffs (default parameters are in __bold__; privacy epsilon is reported
-at delta=1e-5; accuracy is averaged over 10 runs, its standard deviation is
-less than .3% in all cases).
+The table below has a few sample parameters illustrating various
+accuracy/privacy tradeoffs achieved by the MNIST tutorial in
+`mnist_dpsgd_tutorial.py` (default parameters are in __bold__; privacy epsilon
+is reported at delta=1e-5; accuracy is averaged over 10 runs, its standard
+deviation is less than .3% in all cases).
 
 | Learning rate | Noise multiplier | Clipping threshold | Number of microbatches | Number of epochs | Privacy eps | Accuracy |
 | ------------- | ---------------- | -----------------  | ---------------------- | ---------------- | ----------- | -------- |
