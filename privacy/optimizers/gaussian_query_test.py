@@ -53,6 +53,28 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
 
+  def test_gaussian_sum_with_changing_clip_no_noise(self):
+    with self.cached_session() as sess:
+      record1 = tf.constant([-6.0, 8.0])  # Clipped to [-3.0, 4.0].
+      record2 = tf.constant([4.0, -3.0])  # Not clipped.
+
+      l2_norm_clip = tf.Variable(5.0)
+      l2_norm_clip_placeholder = tf.placeholder(tf.float32)
+      assign_l2_norm_clip = tf.assign(l2_norm_clip, l2_norm_clip_placeholder)
+      query = gaussian_query.GaussianSumQuery(
+          l2_norm_clip=l2_norm_clip, stddev=0.0)
+      query_result = test_utils.run_query(query, [record1, record2])
+
+      self.evaluate(tf.global_variables_initializer())
+      result = sess.run(query_result)
+      expected = [1.0, 1.0]
+      self.assertAllClose(result, expected)
+
+      sess.run(assign_l2_norm_clip, {l2_norm_clip_placeholder: 0.0})
+      result = sess.run(query_result)
+      expected = [0.0, 0.0]
+      self.assertAllClose(result, expected)
+
   def test_gaussian_sum_with_noise(self):
     with self.cached_session() as sess:
       record1, record2 = 2.71828, 3.14159
