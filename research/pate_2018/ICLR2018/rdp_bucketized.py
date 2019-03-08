@@ -36,6 +36,8 @@ import math
 import os
 import sys
 
+from six.moves import xrange
+
 sys.path.append('..')  # Main modules reside in the parent directory.
 
 from absl import app
