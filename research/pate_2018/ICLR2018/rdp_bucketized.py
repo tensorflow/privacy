@@ -36,17 +36,16 @@ import math
 import os
 import sys
 
-from six.moves import xrange
-
 sys.path.append('..')  # Main modules reside in the parent directory.
 
 from absl import app
 from absl import flags
+import core as pate
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt  # pylint: disable=g-import-not-at-top
 import numpy as np
-import core as pate
+from six.moves import xrange
 
 plt.style.use('ggplot')
 
