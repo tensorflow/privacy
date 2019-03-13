@@ -13,16 +13,13 @@
 # limitations under the License.
 # ==============================================================================
 
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import deep_cnn
+import input  # pylint: disable=redefined-builtin
+import metrics
 import tensorflow as tf
-
-from differential_privacy.multiple_teachers import deep_cnn
-from differential_privacy.multiple_teachers import input
-from differential_privacy.multiple_teachers import metrics
 
 
 tf.flags.DEFINE_string('dataset', 'svhn', 'The name of the dataset to use')

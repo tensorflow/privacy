@@ -24,7 +24,7 @@ from six.moves import xrange
 import tensorflow as tf
 import time
 
-from differential_privacy.multiple_teachers import utils
+import utils
 
 FLAGS = tf.app.flags.FLAGS
 

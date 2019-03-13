@@ -44,7 +44,7 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-from differential_privacy.multiple_teachers.input import maybe_download
+import maybe_download
 
 # These parameters can be changed to compute bounds for different failure rates
 # or different model predictions.

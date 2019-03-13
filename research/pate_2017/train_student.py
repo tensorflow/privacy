@@ -13,19 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 
-
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
+import aggregation
+import deep_cnn
+import input  # pylint: disable=redefined-builtin
+import metrics
 import numpy as np
 from six.moves import xrange
 import tensorflow as tf
-
-from differential_privacy.multiple_teachers import aggregation
-from differential_privacy.multiple_teachers import deep_cnn
-from differential_privacy.multiple_teachers import input
-from differential_privacy.multiple_teachers import metrics
 
 FLAGS = tf.flags.FLAGS
 
