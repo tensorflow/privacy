@@ -46,7 +46,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [2.0, 3.0]]
       record2 = [4.0, [3.0, 2.0]]
 
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [5.0, [5.0, 5.0]]
       self.assertAllClose(result, expected)
@@ -63,7 +63,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [2.0, 3.0]]
       record2 = [4.0, [3.0, 2.0]]
 
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, [1.0, 1.0]]
       self.assertAllClose(result, expected)
@@ -80,7 +80,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [1.0, [12.0, 9.0]]  # Clipped to [1.0, [4.0, 3.0]]
       record2 = [5.0, [1.0, 2.0]]   # Clipped to [4.0, [1.0, 2.0]]
 
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, [1.0, 1.0]]
       self.assertAllClose(result, expected)
@@ -100,7 +100,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = [{'a': 0.0, 'b': 2.71828}, {'c': (-4.0, 6.0), 'd': [-4.0]}]
       record2 = [{'a': 3.14159, 'b': 0.0}, {'c': (6.0, -4.0), 'd': [5.0]}]
 
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [{'a': 1.0, 'b': 1.0}, {'c': (1.0, 1.0), 'd': [1.0]}]
       self.assertAllClose(result, expected)
@@ -119,7 +119,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = (3.0, [2.0, 1.5])
       record2 = (0.0, [-1.0, -3.5])
 
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
 
       noised_averages = []
       for _ in range(1000):

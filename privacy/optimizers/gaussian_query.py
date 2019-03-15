@@ -79,6 +79,23 @@ class GaussianSumQuery(dp_query.DPQuery):
     with tf.control_dependencies(dependencies):
       return nest.map_structure(tf.zeros_like, tensors)
 
+  def accumulate_record_impl(self, params, sample_state, record):
+    """Accumulates a single record into the sample state.
+
+    Args:
+      params: The parameters for the sample.
+      sample_state: The current sample state.
+      record: The record to accumulate.
+
+    Returns:
+      A tuple containing the updated sample state and the global norm.
+    """
+    l2_norm_clip = params
+    record_as_list = nest.flatten(record)
+    clipped_as_list, norm = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
+    clipped = nest.pack_sequence_as(record, clipped_as_list)
+    return nest.map_structure(tf.add, sample_state, clipped), norm
+
   def accumulate_record(self, params, sample_state, record):
     """Accumulates a single record into the sample state.
 
@@ -90,11 +107,9 @@ class GaussianSumQuery(dp_query.DPQuery):
     Returns:
       The updated sample state.
     """
-    l2_norm_clip = params
-    record_as_list = nest.flatten(record)
-    clipped_as_list, _ = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
-    clipped = nest.pack_sequence_as(record, clipped_as_list)
-    return nest.map_structure(tf.add, sample_state, clipped)
+    new_sample_state, _ = self.accumulate_record_impl(
+        params, sample_state, record)
+    return new_sample_state
 
   def get_noised_result(self, sample_state, global_state):
     """Gets noised sum after all records of sample have been accumulated.

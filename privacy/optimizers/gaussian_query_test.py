@@ -36,7 +36,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=10.0, stddev=0.0)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -48,7 +48,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=5.0, stddev=0.0)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -63,7 +63,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       assign_l2_norm_clip = tf.assign(l2_norm_clip, l2_norm_clip_placeholder)
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=l2_norm_clip, stddev=0.0)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
 
       self.evaluate(tf.global_variables_initializer())
       result = sess.run(query_result)
@@ -82,7 +82,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianSumQuery(
           l2_norm_clip=5.0, stddev=stddev)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
 
       noised_sums = []
       for _ in xrange(1000):
@@ -98,7 +98,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip=3.0, sum_stddev=0.0, denominator=2.0)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected_average = [1.0, 1.0]
       self.assertAllClose(result, expected_average)
@@ -111,7 +111,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       query = gaussian_query.GaussianAverageQuery(
           l2_norm_clip=5.0, sum_stddev=sum_stddev, denominator=denominator)
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
 
       noised_averages = []
       for _ in range(1000):

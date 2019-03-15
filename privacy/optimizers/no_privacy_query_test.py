@@ -33,7 +33,7 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record2 = tf.constant([-1.0, 1.0])
 
       query = no_privacy_query.NoPrivacySumQuery()
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
       self.assertAllClose(result, expected)
@@ -43,12 +43,11 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = tf.constant([2.0, 0.0])
       record2 = tf.constant([-1.0, 1.0])
 
-      weight1 = 1
-      weight2 = 2
+      weights = [1, 2]
 
       query = no_privacy_query.NoPrivacySumQuery()
-      query_result = test_utils.run_query(
-          query, [record1, record2], [weight1, weight2])
+      query_result, _ = test_utils.run_query(
+          query, [record1, record2], weights=weights)
       result = sess.run(query_result)
       expected = [0.0, 2.0]
       self.assertAllClose(result, expected)
@@ -59,7 +58,7 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record2 = tf.constant([-1.0, 2.0])
 
       query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result = test_utils.run_query(query, [record1, record2])
+      query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [2.0, 1.0]
       self.assertAllClose(result, expected)
@@ -69,12 +68,11 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = tf.constant([4.0, 0.0])
       record2 = tf.constant([-1.0, 1.0])
 
-      weight1 = 1
-      weight2 = 3
+      weights = [1, 3]
 
       query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result = test_utils.run_query(
-          query, [record1, record2], [weight1, weight2])
+      query_result, _ = test_utils.run_query(
+          query, [record1, record2], weights=weights)
       result = sess.run(query_result)
       expected = [0.25, 0.75]
       self.assertAllClose(result, expected)
