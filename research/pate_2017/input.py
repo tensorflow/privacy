@@ -250,7 +250,7 @@ def extract_mnist_data(filename, num_images, image_size, pixel_depth):
       np.save(filename, data)
       return data
   else:
-    with tf.gfile.Open(filename+'.npy', mode='r') as file_obj:
+    with tf.gfile.Open(filename+'.npy', mode='rb') as file_obj:
       return np.load(file_obj)
 
 
@@ -266,7 +266,7 @@ def extract_mnist_labels(filename, num_images):
       np.save(filename, labels)
     return labels
   else:
-    with tf.gfile.Open(filename+'.npy', mode='r') as file_obj:
+    with tf.gfile.Open(filename+'.npy', mode='rb') as file_obj:
       return np.load(file_obj)
 
 
