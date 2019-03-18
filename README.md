@@ -67,13 +67,14 @@ Github pull requests. To speed the code review process, we ask that:
 
 To help you get started with the functionalities provided by this library, the
 `tutorials/` folder comes with scripts demonstrating how to use the library
-features.
+features. The list of tutorials is described in the README included in the
+tutorials directory.
 
 NOTE: the tutorials are maintained carefully. However, they are not considered
 part of the API and they can change at any time without warning. You should not
 write 3rd party code that imports the tutorials and expect that the interface
 will not break.
-  
+
 ## Research directory
 
 This folder contains code to reproduce results from research papers related to

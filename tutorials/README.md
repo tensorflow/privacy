@@ -1,9 +1,27 @@
 # Tutorials
 
+This folder contains a set of tutorials that demonstrate the features of this
+library.
 As demonstrated on MNIST in `mnist_dpsgd_tutorial.py`, the easiest way to use
-a differentially private optimizer is to modify an existing training loop
+a differentially private optimizer is to modify an existing TF training loop
 to replace an existing vanilla optimizer with its differentially private
 counterpart implemented in the library.
+
+Here is a list of all the tutorials included:
+
+* `lm_dpsgd_tutorial.py`: learn a language model with differential privacy.
+
+* `mnist_dpsgd_tutorial.py`: learn a convolutional neural network on MNIST with
+  differential privacy.
+
+* `mnist_dpsgd_tutorial_eager.py`: learn a convolutional neural network on MNIST
+  with differential privacy using Eager mode.
+
+* `mnist_dpsgd_tutorial_keras.py`: learn a convolutional neural network on MNIST
+  with differential privacy using tf.Keras.
+
+The rest of this README describes the different parameters used to configure
+DP-SGD as well as expected outputs for the `mnist_dpsgd_tutorial.py` tutorial.
 
 ## Parameters
 
