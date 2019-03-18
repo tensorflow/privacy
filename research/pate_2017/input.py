@@ -18,6 +18,7 @@ from __future__ import division
 from __future__ import print_function
 
 import cPickle
+#import pickle #for python 3
 import gzip
 import math
 import numpy as np
@@ -156,6 +157,7 @@ def unpickle_cifar_dic(file):
   """
   fo = open(file, 'rb')
   dict = cPickle.load(fo)
+  #dict = pickle.load(fo) #for python 3
   fo.close()
   return dict['data'], dict['labels']
 
