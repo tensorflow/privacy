@@ -127,10 +127,10 @@ def extract_svhn(local_url):
 
   with tf.gfile.Open(local_url, mode='r') as file_obj:
     # Load MATLAB matrix using scipy IO
-    dict = loadmat(file_obj)
+    data_dict = loadmat(file_obj)
 
     # Extract each dictionary (one for data, one for labels)
-    data, labels = dict["X"], dict["y"]
+    data, labels = data_dict["X"], data_dict["y"]
 
     # Set np type
     data = np.asarray(data, dtype=np.float32)
@@ -155,9 +155,9 @@ def unpickle_cifar_dic(file):
   :return: tuple of (images, labels)
   """
   fo = open(file, 'rb')
-  dict = pickle.load(fo)
+  data_dict = pickle.load(fo)
   fo.close()
-  return dict['data'], dict['labels']
+  return data_dict['data'], data_dict['labels']
 
 
 def extract_cifar10(local_url, data_dir):
