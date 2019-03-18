@@ -22,7 +22,11 @@ import sys
 
 from absl.testing import absltest
 from absl.testing import parameterized
-import mpmath as mp
+from mpmath import exp
+from mpmath import inf
+from mpmath import log
+from mpmath import npdf
+from mpmath import quad
 import numpy as np
 
 from privacy.analysis import rdp_accountant
@@ -38,21 +42,21 @@ class TestGaussianMoments(parameterized.TestCase):
   def _log_float_mp(self, x):
     # Convert multi-precision input to float log space.
     if x >= sys.float_info.min:
-      return float(mp.log(x))
+      return float(log(x))
     else:
       return -np.inf
 
-  def _integral_mp(self, fn, bounds=(-mp.inf, mp.inf)):
-    integral, _ = mp.quad(fn, bounds, error=True, maxdegree=8)
+  def _integral_mp(self, fn, bounds=(-inf, inf)):
+    integral, _ = quad(fn, bounds, error=True, maxdegree=8)
     return integral
 
   def _distributions_mp(self, sigma, q):
 
     def _mu0(x):
-      return mp.npdf(x, mu=0, sigma=sigma)
+      return npdf(x, mu=0, sigma=sigma)
 
     def _mu1(x):
-      return mp.npdf(x, mu=1, sigma=sigma)
+      return npdf(x, mu=1, sigma=sigma)
 
     def _mu(x):
       return (1 - q) * _mu0(x) + q * _mu1(x)
@@ -61,7 +65,7 @@ class TestGaussianMoments(parameterized.TestCase):
 
   def _mu1_over_mu0(self, x, sigma):
     # Closed-form expression for N(1, sigma^2) / N(0, sigma^2) at x.
-    return mp.exp((2 * x - 1) / (2 * sigma**2))
+    return exp((2 * x - 1) / (2 * sigma**2))
 
   def _mu_over_mu0(self, x, q, sigma):
     return (1 - q) + q * self._mu1_over_mu0(x, sigma)
