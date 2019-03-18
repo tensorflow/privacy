@@ -20,6 +20,7 @@ from __future__ import print_function
 
 
 from absl.testing import parameterized
+from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
@@ -27,7 +28,10 @@ from privacy.optimizers import gaussian_query
 from privacy.optimizers import nested_query
 from privacy.optimizers import test_utils
 
-nest = tf.contrib.framework.nest
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  nest = tf.contrib.framework.nest
+else:
+  nest = tf.nest
 
 _basic_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
 

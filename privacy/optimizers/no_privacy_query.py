@@ -17,11 +17,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from distutils.version import LooseVersion
 import tensorflow as tf
 
 from privacy.optimizers import dp_query
 
-nest = tf.contrib.framework.nest
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  nest = tf.contrib.framework.nest
+else:
+  nest = tf.nest
 
 
 class NoPrivacySumQuery(dp_query.DPQuery):

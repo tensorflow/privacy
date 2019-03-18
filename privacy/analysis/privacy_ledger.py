@@ -21,12 +21,16 @@ from __future__ import print_function
 
 import collections
 
+from distutils.version import LooseVersion
 import tensorflow as tf
 
 from privacy.analysis import tensor_buffer
 from privacy.optimizers import dp_query
 
-nest = tf.contrib.framework.nest
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  nest = tf.contrib.framework.nest
+else:
+  nest = tf.nest
 
 SampleEntry = collections.namedtuple(  # pylint: disable=invalid-name
     'SampleEntry', ['population_size', 'selection_probability', 'queries'])
