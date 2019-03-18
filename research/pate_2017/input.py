@@ -17,17 +17,17 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from six.moves import cPickle as pickle
 import gzip
 import math
-import numpy as np
 import os
-from scipy.io import loadmat as loadmat
-from six.moves import urllib
-from six.moves import xrange
 import sys
 import tarfile
 
+import numpy as np
+from scipy.io import loadmat as loadmat
+from six.moves import cPickle as pickle
+from six.moves import urllib
+from six.moves import xrange
 import tensorflow as tf
 
 FLAGS = tf.flags.FLAGS
