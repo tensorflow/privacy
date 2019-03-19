@@ -55,6 +55,12 @@ from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
 from privacy.optimizers.gaussian_query import GaussianAverageQuery
 
+# Compatibility with tf 1 and 2 APIs
+try:
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+except:  # pylint: disable=bare-except
+  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                         'train with vanilla SGD.')
 tf.flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
@@ -133,8 +139,7 @@ def main(unused_argv):
         learning_rate=FLAGS.learning_rate,
         unroll_microbatches=True)
   else:
-    optimizer = tf.train.GradientDescentOptimizer(
-        learning_rate=FLAGS.learning_rate)
+    optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
 
   def keras_loss_fn(labels, logits):
     """This removes the mandatory named arguments for this loss fn."""

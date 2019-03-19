@@ -183,14 +183,21 @@ def make_gaussian_optimizer_class(cls):
 
   return DPGaussianOptimizerClass
 
+# Compatibility with tf 1 and 2 APIs
+try:
+  AdagradOptimizer = tf.train.AdagradOptimizer
+  AdamOptimizer = tf.train.AdamOptimizer
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+except:  # pylint: disable=bare-except
+  AdagradOptimizer = tf.optimizers.Adagrad
+  AdamOptimizer = tf.optimizers.Adam
+  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
-DPAdagradOptimizer = make_optimizer_class(tf.train.AdagradOptimizer)
-DPAdamOptimizer = make_optimizer_class(tf.train.AdamOptimizer)
-DPGradientDescentOptimizer = make_optimizer_class(
-    tf.train.GradientDescentOptimizer)
+DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
+DPAdamOptimizer = make_optimizer_class(AdamOptimizer)
+DPGradientDescentOptimizer = make_optimizer_class(GradientDescentOptimizer)
 
-DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(
-    tf.train.AdagradOptimizer)
-DPAdamGaussianOptimizer = make_gaussian_optimizer_class(tf.train.AdamOptimizer)
+DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(AdagradOptimizer)
+DPAdamGaussianOptimizer = make_gaussian_optimizer_class(AdamOptimizer)
 DPGradientDescentGaussianOptimizer = make_gaussian_optimizer_class(
-    tf.train.GradientDescentOptimizer)
+    GradientDescentOptimizer)

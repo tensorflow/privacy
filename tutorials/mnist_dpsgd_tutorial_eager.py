@@ -24,6 +24,12 @@ from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
 from privacy.optimizers.gaussian_query import GaussianAverageQuery
 
+# Compatibility with tf 1 and 2 APIs
+try:
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+except:  # pylint: disable=bare-except
+  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+
 tf.enable_eager_execution()
 
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -97,7 +103,7 @@ def main(_):
         FLAGS.microbatches,
         learning_rate=FLAGS.learning_rate)
   else:
-    opt = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+    opt = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
 
   # Training loop.
   steps_per_epoch = 60000 // FLAGS.batch_size

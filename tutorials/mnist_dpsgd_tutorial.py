@@ -25,6 +25,12 @@ from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers import dp_optimizer
 
+# Compatibility with tf 1 and 2 APIs
+try:
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+except:  # pylint: disable=bare-except
+  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                         'train with vanilla SGD.')
 tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
@@ -81,8 +87,7 @@ def cnn_model_fn(features, labels, mode):
           population_size=60000)
       opt_loss = vector_loss
     else:
-      optimizer = tf.train.GradientDescentOptimizer(
-          learning_rate=FLAGS.learning_rate)
+      optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
