@@ -22,7 +22,8 @@ from __future__ import print_function
 from distutils.version import LooseVersion
 import tensorflow as tf
 
-from privacy.optimizers import dp_query
+from privacy.dp_query import dp_query
+from privacy.dp_query import normalized_query
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   nest = tf.contrib.framework.nest
@@ -132,7 +133,7 @@ class GaussianSumQuery(dp_query.DPQuery):
     return nest.map_structure(add_noise, sample_state), global_state
 
 
-class GaussianAverageQuery(dp_query.DPQuery):
+class GaussianAverageQuery(normalized_query.NormalizedQuery):
   """Implements DPQuery interface for Gaussian average queries.
 
   Accumulates clipped vectors, adds Gaussian noise, and normalizes.
@@ -159,65 +160,6 @@ class GaussianAverageQuery(dp_query.DPQuery):
         the sum).
       ledger: The privacy ledger to which queries should be recorded.
     """
-    self._numerator = GaussianSumQuery(l2_norm_clip, sum_stddev, ledger)
-    self._denominator = tf.to_float(denominator)
-
-  def initial_global_state(self):
-    """Returns the initial global state for the GaussianAverageQuery."""
-    # GaussianAverageQuery has no global state beyond the numerator state.
-    return self._numerator.initial_global_state()
-
-  def derive_sample_params(self, global_state):
-    """Given the global state, derives parameters to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-
-    Returns:
-      Parameters to use to process records in the next sample.
-    """
-    return self._numerator.derive_sample_params(global_state)
-
-  def initial_sample_state(self, global_state, tensors):
-    """Returns an initial state to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
-
-    Returns: An initial sample state.
-    """
-    # GaussianAverageQuery has no sample state beyond the sum state.
-    return self._numerator.initial_sample_state(global_state, tensors)
-
-  def accumulate_record(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
-
-    Args:
-      params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
-
-    Returns:
-      The updated sample state.
-    """
-    return self._numerator.accumulate_record(params, sample_state, record)
-
-  def get_noised_result(self, sample_state, global_state):
-    """Gets noised average after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      average of the records and "new_global_state" is the updated global state.
-    """
-    noised_sum, new_sum_global_state = self._numerator.get_noised_result(
-        sample_state, global_state)
-    def normalize(v):
-      return tf.truediv(v, self._denominator)
-
-    return nest.map_structure(normalize, noised_sum), new_sum_global_state
+    super(GaussianAverageQuery, self).__init__(
+        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev, ledger),
+        denominator=tf.to_float(denominator))

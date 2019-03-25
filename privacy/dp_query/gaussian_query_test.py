@@ -23,8 +23,8 @@ import numpy as np
 from six.moves import xrange
 import tensorflow as tf
 
-from privacy.optimizers import gaussian_query
-from privacy.optimizers import test_utils
+from privacy.dp_query import gaussian_query
+from privacy.dp_query import test_utils
 
 
 class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):

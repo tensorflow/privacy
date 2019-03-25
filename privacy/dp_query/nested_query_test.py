@@ -24,9 +24,9 @@ from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
-from privacy.optimizers import gaussian_query
-from privacy.optimizers import nested_query
-from privacy.optimizers import test_utils
+from privacy.dp_query import gaussian_query
+from privacy.dp_query import nested_query
+from privacy.dp_query import test_utils
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   nest = tf.contrib.framework.nest

@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 
 from privacy.analysis import privacy_ledger
-from privacy.optimizers import gaussian_query
+from privacy.dp_query import gaussian_query
 
 
 def make_optimizer_class(cls):
