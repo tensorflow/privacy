@@ -80,7 +80,8 @@ def main(argv):
   if q > 1:
     raise app.UsageError('N must be larger than the batch size.')
 
-  orders = [1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] + list(range(5, 64)) + [128, 256, 512]
+  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] + 
+            list(range(5, 64)) + [128, 256, 512])
 
   steps = int(math.ceil(FLAGS.epochs * FLAGS.N / FLAGS.batch_size))
 
