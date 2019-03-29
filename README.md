@@ -65,7 +65,16 @@ Github pull requests. To speed the code review process, we ask that:
 
 ## Tutorials directory
 
-To help you get started with the functionalities provided by this library, the
+To help you get started with the functionalities provided by this library, we
+provide a detailed walkthrough [here](tutorials/walkthrough/walkthrough.md) that
+will teach you how to wrap existing optimizers
+(e.g., SGD, Adam, ...) into their differentially private counterparts using
+TensorFlow (TF) Privacy. You will also learn how to tune the parameters
+introduced by differentially private optimization and how to
+measure the privacy guarantees provided using analysis tools included in TF
+Privacy.
+  
+In addition, the
 `tutorials/` folder comes with scripts demonstrating how to use the library
 features. The list of tutorials is described in the README included in the
 tutorials directory.
