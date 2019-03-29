@@ -21,7 +21,8 @@ from __future__ import print_function
 import numpy as np
 import tensorflow as tf
 
-from privacy.analysis.rdp_accountant import compute_rdp
+from privacy.analysis import privacy_ledger
+from privacy.analysis.rdp_accountant import compute_rdp_from_ledger
 from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers import dp_optimizer
 
@@ -44,6 +45,27 @@ tf.flags.DEFINE_integer('microbatches', 256, 'Number of microbatches '
 tf.flags.DEFINE_string('model_dir', None, 'Model directory')
 
 FLAGS = tf.flags.FLAGS
+
+
+class EpsilonPrintingTrainingHook(tf.estimator.SessionRunHook):
+  """Training hook to print current value of epsilon after an epoch."""
+
+  def __init__(self, ledger):
+    """Initalizes the EpsilonPrintingTrainingHook.
+
+    Args:
+      ledger: The privacy ledger.
+    """
+    self._samples, self._queries = ledger.get_unformatted_ledger()
+
+  def end(self, session):
+    orders = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+    samples = session.run(self._samples)
+    queries = session.run(self._queries)
+    formatted_ledger = privacy_ledger.format_ledger(samples, queries)
+    rdp = compute_rdp_from_ledger(formatted_ledger, orders)
+    eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+    print('For delta=1e-5, the current epsilon is: %.2f' % eps)
 
 
 def cnn_model_fn(features, labels, mode):
@@ -75,6 +97,12 @@ def cnn_model_fn(features, labels, mode):
   if mode == tf.estimator.ModeKeys.TRAIN:
 
     if FLAGS.dpsgd:
+      ledger = privacy_ledger.PrivacyLedger(
+          population_size=60000,
+          selection_probability=(FLAGS.batch_size / 60000),
+          max_samples=1e6,
+          max_queries=1e6)
+
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
       # tf.train.Optimizer should be wrappable in differentially private
@@ -83,11 +111,15 @@ def cnn_model_fn(features, labels, mode):
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
           num_microbatches=FLAGS.microbatches,
-          learning_rate=FLAGS.learning_rate,
-          population_size=60000)
+          ledger=ledger,
+          learning_rate=FLAGS.learning_rate)
+      training_hooks = [
+          EpsilonPrintingTrainingHook(ledger)
+      ]
       opt_loss = vector_loss
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+      training_hooks = []
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
@@ -97,7 +129,8 @@ def cnn_model_fn(features, labels, mode):
     # minimized is opt_loss defined above and passed to optimizer.minimize().
     return tf.estimator.EstimatorSpec(mode=mode,
                                       loss=scalar_loss,
-                                      train_op=train_op)
+                                      train_op=train_op,
+                                      training_hooks=training_hooks)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
@@ -107,6 +140,7 @@ def cnn_model_fn(features, labels, mode):
                 labels=labels,
                 predictions=tf.argmax(input=logits, axis=1))
     }
+
     return tf.estimator.EstimatorSpec(mode=mode,
                                       loss=scalar_loss,
                                       eval_metric_ops=eval_metric_ops)
@@ -132,20 +166,6 @@ def load_mnist():
   assert test_labels.ndim == 1
 
   return train_data, train_labels, test_data, test_labels
-
-
-def compute_epsilon(steps):
-  """Computes epsilon value for given hyperparameters."""
-  if FLAGS.noise_multiplier == 0.0:
-    return float('inf')
-  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
-  # Delta is set to 1e-5 because MNIST has 60000 training points.
-  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
 
 def main(unused_argv):
@@ -183,13 +203,6 @@ def main(unused_argv):
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     test_accuracy = eval_results['accuracy']
     print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
-
-    # Compute the privacy budget expended so far.
-    if FLAGS.dpsgd:
-      eps = compute_epsilon(epoch * steps_per_epoch)
-      print('For delta=1e-5, the current epsilon is: %.2f' % eps)
-    else:
-      print('Trained with vanilla non-private SGD optimizer')
 
 if __name__ == '__main__':
   tf.app.run()

@@ -295,3 +295,42 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
   else:
     eps, opt_order = _compute_eps(orders, rdp, target_delta)
     return eps, target_delta, opt_order
+
+
+def compute_rdp_from_ledger(ledger, orders):
+  """Compute RDP of Sampled Gaussian Mechanism from ledger.
+
+  Args:
+    ledger: A formatted privacy ledger.
+    orders: An array (or a scalar) of RDP orders.
+
+  Returns:
+    RDP at all orders, can be np.inf.
+  """
+  total_rdp = 0
+  for sample in ledger:
+    # Compute equivalent z from l2_clip_bounds and noise stddevs in sample.
+    # See https://arxiv.org/pdf/1812.06210.pdf for derivation of this formula.
+    effective_z = sum([
+        (q.noise_stddev / q.l2_norm_bound)**-2 for q in sample.queries])**-0.5
+    total_rdp += compute_rdp(
+        sample.selection_probability, effective_z, 1, orders)
+  return total_rdp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

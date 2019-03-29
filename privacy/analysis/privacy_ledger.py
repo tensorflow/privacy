@@ -22,6 +22,7 @@ from __future__ import print_function
 import collections
 
 from distutils.version import LooseVersion
+import numpy as np
 import tensorflow as tf
 
 from privacy.analysis import tensor_buffer
@@ -37,6 +38,24 @@ SampleEntry = collections.namedtuple(  # pylint: disable=invalid-name
 
 GaussianSumQueryEntry = collections.namedtuple(  # pylint: disable=invalid-name
     'GaussianSumQueryEntry', ['l2_norm_bound', 'noise_stddev'])
+
+
+def format_ledger(sample_array, query_array):
+  """Converts array representation into a list of SampleEntries."""
+  samples = []
+  query_pos = 0
+  sample_pos = 0
+  for sample in sample_array:
+    population_size, selection_probability, num_queries = sample
+    queries = []
+    for _ in range(int(num_queries)):
+      query = query_array[query_pos]
+      assert int(query[0]) == sample_pos
+      queries.append(GaussianSumQueryEntry(*query[1:]))
+      query_pos += 1
+    samples.append(SampleEntry(population_size, selection_probability, queries))
+    sample_pos += 1
+  return samples
 
 
 class PrivacyLedger(object):
@@ -118,22 +137,8 @@ class PrivacyLedger(object):
           tf.assign(self._query_count, 0)]):
         return self._sample_buffer.append(self._sample_var)
 
-  def _format_ledger(self, sample_array, query_array):
-    """Converts underlying representation into a list of SampleEntries."""
-    samples = []
-    query_pos = 0
-    sample_pos = 0
-    for sample in sample_array:
-      num_queries = int(sample[2])
-      queries = []
-      for _ in range(num_queries):
-        query = query_array[query_pos]
-        assert int(query[0]) == sample_pos
-        queries.append(GaussianSumQueryEntry(*query[1:]))
-        query_pos += 1
-      samples.append(SampleEntry(sample[0], sample[1], queries))
-      sample_pos += 1
-    return samples
+  def get_unformatted_ledger(self):
+    return self._sample_buffer.values, self._query_buffer.values
 
   def get_formatted_ledger(self, sess):
     """Gets the formatted query ledger.
@@ -147,7 +152,7 @@ class PrivacyLedger(object):
     sample_array = sess.run(self._sample_buffer.values)
     query_array = sess.run(self._query_buffer.values)
 
-    return self._format_ledger(sample_array, query_array)
+    return format_ledger(sample_array, query_array)
 
   def get_formatted_ledger_eager(self):
     """Gets the formatted query ledger.
@@ -158,7 +163,36 @@ class PrivacyLedger(object):
     sample_array = self._sample_buffer.values.numpy()
     query_array = self._query_buffer.values.numpy()
 
-    return self._format_ledger(sample_array, query_array)
+    return format_ledger(sample_array, query_array)
+
+
+class DummyLedger(object):
+  """A ledger that records nothing.
+
+  This ledger may be passed in place of a normal PrivacyLedger in case privacy
+  accounting is to be handled externally.
+  """
+
+  def record_sum_query(self, l2_norm_bound, noise_stddev):
+    del l2_norm_bound
+    del noise_stddev
+    return tf.no_op()
+
+  def finalize_sample(self):
+    return tf.no_op()
+
+  def get_unformatted_ledger(self):
+    empty_array = tf.zeros(shape=[0, 3])
+    return empty_array, empty_array
+
+  def get_formatted_ledger(self, sess):
+    del sess
+    empty_array = np.zeros(shape=[0, 3])
+    return empty_array, empty_array
+
+  def get_formatted_ledger_eager(self):
+    empty_array = np.zeros(shape=[0, 3])
+    return empty_array, empty_array
 
 
 class QueryWithLedger(dp_query.DPQuery):

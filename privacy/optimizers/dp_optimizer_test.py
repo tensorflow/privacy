@@ -232,7 +232,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           l2_norm_clip=4.0,
           noise_multiplier=2.0,
           num_microbatches=1,
-          learning_rate=2.0)
+          learning_rate=2.0,
+          ledger=privacy_ledger.DummyLedger())
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values

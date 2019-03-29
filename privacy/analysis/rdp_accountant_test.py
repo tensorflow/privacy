@@ -29,6 +29,7 @@ from mpmath import npdf
 from mpmath import quad
 import numpy as np
 
+from privacy.analysis import privacy_ledger
 from privacy.analysis import rdp_accountant
 
 
@@ -153,6 +154,23 @@ class TestGaussianMoments(parameterized.TestCase):
                                                          target_delta=1e-5)
     self.assertAlmostEqual(eps, 8.509656, places=5)
     self.assertEqual(opt_order, 2.5)
+
+  def test_compute_rdp_from_ledger(self):
+    orders = range(2, 33)
+    q = 0.1
+    n = 1000
+    l2_norm_clip = 3.14159
+    noise_stddev = 2.71828
+    steps = 3
+
+    query_entry = privacy_ledger.GaussianSumQueryEntry(
+        l2_norm_clip, noise_stddev)
+    ledger = [privacy_ledger.SampleEntry(n, q, [query_entry])] * steps
+
+    z = noise_stddev / l2_norm_clip
+    rdp = rdp_accountant.compute_rdp(q, z, steps, orders)
+    rdp_from_ledger = rdp_accountant.compute_rdp_from_ledger(ledger, orders)
+    self.assertSequenceAlmostEqual(rdp, rdp_from_ledger)
 
 
 if __name__ == '__main__':

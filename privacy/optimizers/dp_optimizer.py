@@ -156,21 +156,14 @@ def make_gaussian_optimizer_class(cls):
         l2_norm_clip,
         noise_multiplier,
         num_microbatches,
+        ledger,
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg
         **kwargs):
       dp_average_query = gaussian_query.GaussianAverageQuery(
-          l2_norm_clip, l2_norm_clip * noise_multiplier, num_microbatches)
-      if 'population_size' in kwargs:
-        population_size = kwargs.pop('population_size')
-        max_queries = kwargs.pop('ledger_max_queries', 1e6)
-        max_samples = kwargs.pop('ledger_max_samples', 1e6)
-        selection_probability = num_microbatches / population_size
-        ledger = privacy_ledger.PrivacyLedger(
-            population_size,
-            selection_probability,
-            max_samples,
-            max_queries)
+          l2_norm_clip, l2_norm_clip * noise_multiplier,
+          num_microbatches, ledger)
+      if ledger:
         dp_average_query = privacy_ledger.QueryWithLedger(
             dp_average_query, ledger)
 
@@ -180,6 +173,10 @@ def make_gaussian_optimizer_class(cls):
           unroll_microbatches,
           *args,
           **kwargs)
+
+    @property
+    def ledger(self):
+      return self._ledger
 
   return DPGaussianOptimizerClass
 
