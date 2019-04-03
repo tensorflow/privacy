@@ -22,8 +22,8 @@ import tensorflow as tf
 
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
+from privacy.dp_query.gaussian_query import GaussianAverageQuery
 from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
-from privacy.optimizers.gaussian_query import GaussianAverageQuery
 
 # Compatibility with tf 1 and 2 APIs
 try:
