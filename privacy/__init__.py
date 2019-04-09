@@ -13,10 +13,7 @@
 # limitations under the License.
 """TensorFlow Privacy library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
+from privacy.analysis.privacy_ledger import DummyLedger
 from privacy.analysis.privacy_ledger import GaussianSumQueryEntry
 from privacy.analysis.privacy_ledger import PrivacyLedger
 from privacy.analysis.privacy_ledger import QueryWithLedger
