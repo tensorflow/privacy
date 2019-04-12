@@ -20,23 +20,23 @@ import sys
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import DummyLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import GaussianSumQueryEntry
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import PrivacyLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import QueryWithLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import SampleEntry
+  from privacy.analysis.privacy_ledger import DummyLedger
+  from privacy.analysis.privacy_ledger import GaussianSumQueryEntry
+  from privacy.analysis.privacy_ledger import PrivacyLedger
+  from privacy.analysis.privacy_ledger import QueryWithLedger
+  from privacy.analysis.privacy_ledger import SampleEntry
 
-  from tensorflow_privacy.privacy.dp_query.dp_query import DPQuery
-  from tensorflow_privacy.privacy.dp_query.gaussian_query import GaussianAverageQuery
-  from tensorflow_privacy.privacy.dp_query.gaussian_query import GaussianSumQuery
-  from tensorflow_privacy.privacy.dp_query.nested_query import NestedQuery
-  from tensorflow_privacy.privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery
-  from tensorflow_privacy.privacy.dp_query.no_privacy_query import NoPrivacySumQuery
-  from tensorflow_privacy.privacy.dp_query.normalized_query import NormalizedQuery
+  from privacy.dp_query.dp_query import DPQuery
+  from privacy.dp_query.gaussian_query import GaussianAverageQuery
+  from privacy.dp_query.gaussian_query import GaussianSumQuery
+  from privacy.dp_query.nested_query import NestedQuery
+  from privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery
+  from privacy.dp_query.no_privacy_query import NoPrivacySumQuery
+  from privacy.dp_query.normalized_query import NormalizedQuery
 
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+  from privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
+  from privacy.optimizers.dp_optimizer import DPAdagradOptimizer
+  from privacy.optimizers.dp_optimizer import DPAdamGaussianOptimizer
+  from privacy.optimizers.dp_optimizer import DPAdamOptimizer
+  from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
+  from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
