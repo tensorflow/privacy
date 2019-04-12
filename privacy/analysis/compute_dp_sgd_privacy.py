@@ -33,11 +33,15 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+import sys
 
 from absl import app
 from absl import flags
 
-from privacy.analysis.rdp_accountant import compute_rdp
+# Opting out of loading all sibling packages and their dependencies.
+sys.skip_tf_privacy_import = True
+
+from privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
 from privacy.analysis.rdp_accountant import get_privacy_spent
 
 FLAGS = flags.FLAGS
