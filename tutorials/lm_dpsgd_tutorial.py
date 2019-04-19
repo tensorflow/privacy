@@ -40,13 +40,14 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
+from privacy.analysis import privacy_ledger
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers import dp_optimizer
 
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                         'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', .001, 'Learning rate for training')
+tf.flags.DEFINE_float('learning_rate', 0.001, 'Learning rate for training')
 tf.flags.DEFINE_float('noise_multiplier', 0.001,
                       'Ratio of the standard deviation to the clipping norm')
 tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
@@ -84,13 +85,20 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   # Configure the training op (for TRAIN mode).
   if mode == tf.estimator.ModeKeys.TRAIN:
     if FLAGS.dpsgd:
+
+      ledger = privacy_ledger.PrivacyLedger(
+          population_size=NB_TRAIN,
+          selection_probability=(FLAGS.batch_size / NB_TRAIN),
+          max_samples=1e6,
+          max_queries=1e6)
+
       optimizer = dp_optimizer.DPAdamGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
           num_microbatches=FLAGS.microbatches,
+          ledger=ledger,
           learning_rate=FLAGS.learning_rate,
-          unroll_microbatches=True,
-          population_size=NB_TRAIN)
+          unroll_microbatches=True)
       opt_loss = vector_loss
     else:
       optimizer = tf.train.AdamOptimizer(
