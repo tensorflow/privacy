@@ -379,9 +379,16 @@ and `get_privacy_spent`.
 These methods are found in its `analysis.rdp_accountant` module. Here is how to use them.
 
 First, we need to define a list of orders, at which the Rényi divergence will be
-computed. The first method `compute_rdp` returns the Rényi differential privacy
-achieved by the Gaussian mechanism applied to gradients in DP-SGD, for each of
-these orders.
+computed. While some finer points of how to use the RDP accountant are outside the 
+scope of this document, it is useful to keep in mind the following.
+First, there is very little downside in expanding the list of orders for which RDP
+is computed. Second, the computed privacy budget is typically not very sensitive to
+the exact value of the order (being close enough will land you in the right neighborhood).
+Finally, if you are targeting a particular range of epsilons (say, 1—10) and your delta is
+fixed (say, `10^-5`), then your orders must cover the range between `1+ln(1/delta)/10≈2.15` and 
+`1+ln(1/delta)/1≈12.5`. This last rule may appear circular (how do you know what privacy
+parameters you get without running the privacy accountant?!), one or two adjustments 
+of the range of the orders would usually suffice.
 
 ```python
 orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))

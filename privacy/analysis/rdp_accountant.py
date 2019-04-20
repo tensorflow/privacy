@@ -316,21 +316,3 @@ def compute_rdp_from_ledger(ledger, orders):
     total_rdp += compute_rdp(
         sample.selection_probability, effective_z, 1, orders)
   return total_rdp
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
