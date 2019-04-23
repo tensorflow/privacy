@@ -170,7 +170,7 @@ def load_mnist():
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  if FLAGS.batch_size % FLAGS.microbatches != 0:
+  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Load training and test data.

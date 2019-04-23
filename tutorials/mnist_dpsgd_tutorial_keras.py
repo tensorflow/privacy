@@ -46,6 +46,20 @@ tf.flags.DEFINE_string('model_dir', None, 'Model directory')
 FLAGS = tf.flags.FLAGS
 
 
+def compute_epsilon(steps):
+  """Computes epsilon value for given hyperparameters."""
+  if FLAGS.noise_multiplier == 0.0:
+    return float('inf')
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  sampling_probability = FLAGS.batch_size / 60000
+  rdp = compute_rdp(q=sampling_probability,
+                    noise_multiplier=FLAGS.noise_multiplier,
+                    steps=steps,
+                    orders=orders)
+  # Delta is set to 1e-5 because MNIST has 60000 training points.
+  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+
+
 def load_mnist():
   """Loads MNIST and preprocesses to combine training and validation data."""
   train, test = tf.keras.datasets.mnist.load_data()
@@ -74,7 +88,7 @@ def load_mnist():
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  if FLAGS.batch_size % FLAGS.microbatches != 0:
+  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Load training and test data.
@@ -125,17 +139,11 @@ def main(unused_argv):
             batch_size=FLAGS.batch_size)
 
   # Compute the privacy budget expended.
-  if FLAGS.noise_multiplier == 0.0:
+  if FLAGS.dpsgd:
+    eps = compute_epsilon(FLAGS.epochs * 60000 // FLAGS.batch_size)
+    print('For delta=1e-5, the current epsilon is: %.2f' % eps)
+  else:
     print('Trained with vanilla non-private SGD optimizer')
-  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=(FLAGS.epochs * 60000 // FLAGS.batch_size),
-                    orders=orders)
-  # Delta is set to 1e-5 because MNIST has 60000 training points.
-  eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
-  print('For delta=1e-5, the current epsilon is: %.2f' % eps)
 
 if __name__ == '__main__':
   tf.app.run()
