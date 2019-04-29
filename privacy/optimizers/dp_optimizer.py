@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from distutils.version import LooseVersion
 import tensorflow as tf
 
 from privacy.analysis import privacy_ledger
@@ -25,8 +26,15 @@ from privacy.dp_query import gaussian_query
 
 def make_optimizer_class(cls):
   """Constructs a DP optimizer class from an existing one."""
-  if (tf.train.Optimizer.compute_gradients.__code__ is
-      not cls.compute_gradients.__code__):
+  if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+    parent_code = tf.train.Optimizer.compute_gradients.__code__
+    child_code = cls.compute_gradients.__code__
+    GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
+  else:
+    parent_code = tf.optimizers.Optimizer.compute_gradients.__code__
+    child_code = cls._compute_gradients.__code__  # pylint: disable=protected-access
+    GATE_OP = None  # pylint: disable=invalid-name
+  if child_code is not parent_code:
     tf.logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
@@ -55,7 +63,7 @@ def make_optimizer_class(cls):
     def compute_gradients(self,
                           loss,
                           var_list,
-                          gate_gradients=tf.train.Optimizer.GATE_OP,
+                          gate_gradients=GATE_OP,
                           aggregation_method=None,
                           colocate_gradients_with_ops=False,
                           grad_loss=None,

@@ -19,11 +19,15 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from distutils.version import LooseVersion
 import tensorflow as tf
 
 from privacy.dp_query import dp_query
 
-nest = tf.contrib.framework.nest
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  nest = tf.contrib.framework.nest
+else:
+  nest = tf.nest
 
 
 class NormalizedQuery(dp_query.DPQuery):
@@ -37,7 +41,7 @@ class NormalizedQuery(dp_query.DPQuery):
       denominator: A value for the denominator.
     """
     self._numerator = numerator_query
-    self._denominator = tf.to_float(denominator)
+    self._denominator = tf.cast(denominator, tf.float32)
 
   def initial_global_state(self):
     """Returns the initial global state for the NormalizedQuery."""

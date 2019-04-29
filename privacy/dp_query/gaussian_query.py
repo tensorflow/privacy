@@ -46,8 +46,8 @@ class GaussianSumQuery(dp_query.DPQuery):
       stddev: The stddev of the noise added to the sum.
       ledger: The privacy ledger to which queries should be recorded.
     """
-    self._l2_norm_clip = tf.to_float(l2_norm_clip)
-    self._stddev = tf.to_float(stddev)
+    self._l2_norm_clip = tf.cast(l2_norm_clip, tf.float32)
+    self._stddev = tf.cast(stddev, tf.float32)
     self._ledger = ledger
 
   def initial_global_state(self):
@@ -127,8 +127,13 @@ class GaussianSumQuery(dp_query.DPQuery):
       A tuple (estimate, new_global_state) where "estimate" is the estimated
       sum of the records and "new_global_state" is the updated global state.
     """
-    def add_noise(v):
-      return v + tf.random_normal(tf.shape(v), stddev=self._stddev)
+    if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+      def add_noise(v):
+        return v + tf.random_normal(tf.shape(v), stddev=self._stddev)
+    else:
+      random_normal = tf.random_normal_initializer(stddev=self._stddev)
+      def add_noise(v):
+        return v + random_normal(tf.shape(v))
 
     return nest.map_structure(add_noise, sample_state), global_state
 
@@ -162,4 +167,4 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
     """
     super(GaussianAverageQuery, self).__init__(
         numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev, ledger),
-        denominator=tf.to_float(denominator))
+        denominator=tf.cast(denominator, tf.float32))
