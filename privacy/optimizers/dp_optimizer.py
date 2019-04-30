@@ -31,7 +31,7 @@ def make_optimizer_class(cls):
     child_code = cls.compute_gradients.__code__
     GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
   else:
-    parent_code = tf.optimizers.Optimizer.compute_gradients.__code__
+    parent_code = tf.optimizers.Optimizer._compute_gradients.__code__  # pylint: disable=protected-access
     child_code = cls._compute_gradients.__code__  # pylint: disable=protected-access
     GATE_OP = None  # pylint: disable=invalid-name
   if child_code is not parent_code:

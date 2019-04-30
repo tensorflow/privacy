@@ -47,7 +47,7 @@ tf.flags.DEFINE_string('model_dir', None, 'Model directory')
 FLAGS = tf.flags.FLAGS
 
 
-class EpsilonPrintingTrainingHook(tf.estimator.SessionRunHook):
+class EpsilonPrintingTrainingHook(tf.train.SessionRunHook):
   """Training hook to print current value of epsilon after an epoch."""
 
   def __init__(self, ledger):
