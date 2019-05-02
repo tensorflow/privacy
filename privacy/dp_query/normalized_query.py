@@ -41,7 +41,8 @@ class NormalizedQuery(dp_query.DPQuery):
       denominator: A value for the denominator.
     """
     self._numerator = numerator_query
-    self._denominator = tf.cast(denominator, tf.float32)
+    self._denominator = tf.cast(denominator,
+                                tf.float32) if denominator is not None else None
 
   def initial_global_state(self):
     """Returns the initial global state for the NormalizedQuery."""
@@ -103,4 +104,5 @@ class NormalizedQuery(dp_query.DPQuery):
 
     return nest.map_structure(normalize, noised_sum), new_sum_global_state
 
-
+  def set_denominator(self, denominator):
+    self._denominator = tf.cast(denominator, tf.float32)

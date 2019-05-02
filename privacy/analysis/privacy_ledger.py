@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""PrivacyLedger class for keeping a record of private queries.
-"""
+"""PrivacyLedger class for keeping a record of private queries."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -65,36 +63,39 @@ class PrivacyLedger(object):
   for the purpose of computing privacy guarantees.
   """
 
-  def __init__(
-      self,
-      population_size,
-      selection_probability,
-      max_samples,
-      max_queries):
+  def __init__(self,
+               population_size,
+               selection_probability=None,
+               max_samples=None,
+               max_queries=None):
     """Initialize the PrivacyLedger.
 
     Args:
       population_size: An integer (may be variable) specifying the size of the
-        population.
+        population, i.e. size of the training data used in each epoch.
       selection_probability: A float (may be variable) specifying the
         probability each record is included in a sample.
-      max_samples: The maximum number of samples. An exception is thrown if
-        more than this many samples are recorded.
-      max_queries: The maximum number of queries. An exception is thrown if
-        more than this many queries are recorded.
+      max_samples: The maximum number of samples. An exception is thrown if more
+        than this many samples are recorded.
+      max_queries: The maximum number of queries. An exception is thrown if more
+        than this many queries are recorded.
     """
     self._population_size = population_size
     self._selection_probability = selection_probability
+    if max_samples is None:
+      max_samples = 1000 * population_size
+    if max_queries is None:
+      max_queries = 1000 * population_size
 
     # The query buffer stores rows corresponding to GaussianSumQueryEntries.
-    self._query_buffer = tensor_buffer.TensorBuffer(
-        max_queries, [3], tf.float32, 'query')
+    self._query_buffer = tensor_buffer.TensorBuffer(max_queries, [3],
+                                                    tf.float32, 'query')
     self._sample_var = tf.Variable(
         initial_value=tf.zeros([3]), trainable=False, name='sample')
 
     # The sample buffer stores rows corresponding to SampleEntries.
-    self._sample_buffer = tensor_buffer.TensorBuffer(
-        max_samples, [3], tf.float32, 'sample')
+    self._sample_buffer = tensor_buffer.TensorBuffer(max_samples, [3],
+                                                     tf.float32, 'sample')
     self._sample_count = tf.Variable(
         initial_value=0.0, trainable=False, name='sample_count')
     self._query_count = tf.Variable(
@@ -116,9 +117,10 @@ class PrivacyLedger(object):
     Returns:
       An operation recording the sum query to the ledger.
     """
+
     def _do_record_query():
-      with tf.control_dependencies([
-          tf.assign(self._query_count, self._query_count + 1)]):
+      with tf.control_dependencies(
+          [tf.assign(self._query_count, self._query_count + 1)]):
         return self._query_buffer.append(
             [self._sample_count, l2_norm_bound, noise_stddev])
 
@@ -127,14 +129,15 @@ class PrivacyLedger(object):
   def finalize_sample(self):
     """Finalizes sample and records sample ledger entry."""
     with tf.control_dependencies([
-        tf.assign(
-            self._sample_var,
-            [self._population_size,
-             self._selection_probability,
-             self._query_count])]):
+        tf.assign(self._sample_var, [
+            self._population_size, self._selection_probability,
+            self._query_count
+        ])
+    ]):
       with tf.control_dependencies([
           tf.assign(self._sample_count, self._sample_count + 1),
-          tf.assign(self._query_count, 0)]):
+          tf.assign(self._query_count, 0)
+      ]):
         return self._sample_buffer.append(self._sample_var)
 
   def get_unformatted_ledger(self):
@@ -164,6 +167,10 @@ class PrivacyLedger(object):
     query_array = self._query_buffer.values.numpy()
 
     return format_ledger(sample_array, query_array)
+
+  def set_sample_size(self, batch_size):
+    self._selection_probability = tf.cast(batch_size,
+                                          tf.float32) / self._population_size
 
 
 class DummyLedger(object):
@@ -212,8 +219,8 @@ class QueryWithLedger(dp_query.DPQuery):
 
     Args:
       query: The query whose events should be recorded to the ledger. Any
-        subqueries (including those in the leaves of a nested query) should
-        also contain a reference to the same ledger given here.
+        subqueries (including those in the leaves of a nested query) should also
+        contain a reference to the same ledger given here.
       ledger: A PrivacyLedger to which privacy events should be recorded.
     """
     self._query = query
@@ -240,3 +247,7 @@ class QueryWithLedger(dp_query.DPQuery):
     with tf.control_dependencies(nest.flatten(sample_state)):
       with tf.control_dependencies([self._ledger.finalize_sample()]):
         return self._query.get_noised_result(sample_state, global_state)
+
+  def set_denominator(self, num_microbatches, microbatch_size=1):
+    self._query.set_denominator(num_microbatches)
+    self._ledger.set_sample_size(num_microbatches * microbatch_size)

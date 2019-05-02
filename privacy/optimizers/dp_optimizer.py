@@ -47,10 +47,22 @@ def make_optimizer_class(cls):
     def __init__(
         self,
         dp_average_query,
-        num_microbatches,
+        num_microbatches=None,
         unroll_microbatches=False,
-        *args,  # pylint: disable=keyword-arg-before-vararg
+        *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
         **kwargs):
+      """Initialize the DPOptimizerClass.
+
+      Args:
+        dp_average_query: DPQuery object, specifying differential privacy
+          mechanism to use.
+        num_microbatches: How many microbatches into which the minibatch is
+          split. If None, will default to the size of the minibatch, and
+          per-example gradients will be computed.
+        unroll_microbatches: If true, processes microbatches within a Python
+          loop instead of a tf.while_loop. Can be used if using a tf.while_loop
+          raises an exception.
+      """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._dp_average_query = dp_average_query
       self._num_microbatches = num_microbatches
@@ -74,6 +86,9 @@ def make_optimizer_class(cls):
           raise ValueError('When in Eager mode, a tape needs to be passed.')
 
         vector_loss = loss()
+        if self._num_microbatches is None:
+          self._num_microbatches = tf.shape(vector_loss)[0]
+          self._dp_average_query.set_denominator(self._num_microbatches)
         sample_state = self._dp_average_query.initial_sample_state(
             self._global_state, var_list)
         microbatches_losses = tf.reshape(vector_loss,
@@ -109,6 +124,9 @@ def make_optimizer_class(cls):
         # we sampled each microbatch from the appropriate binomial distribution,
         # although that still wouldn't be quite correct because it would be
         # sampling from the dataset without replacement.
+        if self._num_microbatches is None:
+          self._num_microbatches = tf.shape(loss)[0]
+          self._dp_average_query.set_denominator(self._num_microbatches)
         microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
         sample_params = (
             self._dp_average_query.derive_sample_params(self._global_state))

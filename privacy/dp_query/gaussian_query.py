@@ -167,4 +167,4 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
     """
     super(GaussianAverageQuery, self).__init__(
         numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev, ledger),
-        denominator=tf.cast(denominator, tf.float32))
+        denominator=denominator)

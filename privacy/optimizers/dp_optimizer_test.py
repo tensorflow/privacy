@@ -46,14 +46,15 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdagrad 4', dp_optimizer.DPAdagradOptimizer, 4, [-2.5, -2.5]),
       ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-2.5, -2.5]),
       ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
-      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]))
+      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]),
+      ('DPAdam None', dp_optimizer.DPAdamOptimizer, None, [-2.5, -2.5]))
   def testBaseline(self, cls, num_microbatches, expected_answer):
     with self.cached_session() as sess:
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
       ledger = privacy_ledger.PrivacyLedger(
-          1e6, num_microbatches / 1e6, 50, 50)
+          1e6, num_microbatches / 1e6 if num_microbatches else None, 50, 50)
       dp_average_query = gaussian_query.GaussianAverageQuery(
           1.0e9, 0.0, num_microbatches, ledger)
       dp_average_query = privacy_ledger.QueryWithLedger(
