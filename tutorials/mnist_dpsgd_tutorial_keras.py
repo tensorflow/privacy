@@ -19,6 +19,8 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import sys
+sys.path.insert(0, '/Users/trog/Documents/Spyder/privacy')
 
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
@@ -31,64 +33,28 @@ try:
 except:  # pylint: disable=bare-except
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                        'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.1,
-                      'Ratio of the standard deviation to the clipping norm')
-tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-tf.flags.DEFINE_integer('batch_size', 250, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-tf.flags.DEFINE_integer('microbatches', 250, 'Number of microbatches '
-                        '(must evenly divide batch_size)')
-tf.flags.DEFINE_string('model_dir', None, 'Model directory')
+
+try:
+    tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
+                            'train with vanilla SGD.')
+    tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
+    tf.flags.DEFINE_float('noise_multiplier', 1.1,
+                          'Ratio of the standard deviation to the clipping norm')
+    tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
+    tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
+    tf.flags.DEFINE_integer('epochs', 1, 'Number of epochs')
+    tf.flags.DEFINE_integer('microbatches', 256, 'Number of microbatches '
+                            '(must evenly divide batch_size)')
+    tf.flags.DEFINE_string('model_dir', "modelGen", 'Model directory')
+except:
+    print("Flags Already INitialized")   
 
 FLAGS = tf.flags.FLAGS
-
-
-def compute_epsilon(steps):
-  """Computes epsilon value for given hyperparameters."""
-  if FLAGS.noise_multiplier == 0.0:
-    return float('inf')
-  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
-  # Delta is set to 1e-5 because MNIST has 60000 training points.
-  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
-
-
-def load_mnist():
-  """Loads MNIST and preprocesses to combine training and validation data."""
-  train, test = tf.keras.datasets.mnist.load_data()
-  train_data, train_labels = train
-  test_data, test_labels = test
-
-  train_data = np.array(train_data, dtype=np.float32) / 255
-  test_data = np.array(test_data, dtype=np.float32) / 255
-
-  train_data = train_data.reshape(train_data.shape[0], 28, 28, 1)
-  test_data = test_data.reshape(test_data.shape[0], 28, 28, 1)
-
-  train_labels = np.array(train_labels, dtype=np.int32)
-  test_labels = np.array(test_labels, dtype=np.int32)
-
-  train_labels = tf.keras.utils.to_categorical(train_labels, num_classes=10)
-  test_labels = tf.keras.utils.to_categorical(test_labels, num_classes=10)
-
-  assert train_data.min() == 0.
-  assert train_data.max() == 1.
-  assert test_data.min() == 0.
-  assert test_data.max() == 1.
-
-  return train_data, train_labels, test_data, test_labels
-
+#%%
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
+  if FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Load training and test data.
@@ -123,11 +89,12 @@ def main(unused_argv):
         learning_rate=FLAGS.learning_rate,
         unroll_microbatches=True)
     # Compute vector of per-example loss rather than its mean over a minibatch.
-    loss = tf.keras.losses.CategoricalCrossentropy(
-        from_logits=True, reduction=tf.losses.Reduction.NONE)
+    #loss = tf.keras.losses.CategoricalCrossentropy(
+        #from_logits=True, reduction=tf.losses.Reduction.NONE)
+    loss = 'categorical_crossentropy'
   else:
     optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
-    loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
+    #loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)
 
   # Compile model with Keras
   model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
@@ -139,11 +106,45 @@ def main(unused_argv):
             batch_size=FLAGS.batch_size)
 
   # Compute the privacy budget expended.
-  if FLAGS.dpsgd:
-    eps = compute_epsilon(FLAGS.epochs * 60000 // FLAGS.batch_size)
-    print('For delta=1e-5, the current epsilon is: %.2f' % eps)
-  else:
+  if FLAGS.noise_multiplier == 0.0:
     print('Trained with vanilla non-private SGD optimizer')
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  sampling_probability = FLAGS.batch_size / 60000
+  rdp = compute_rdp(q=sampling_probability,
+                    noise_multiplier=FLAGS.noise_multiplier,
+                    steps=(FLAGS.epochs * 60000 // FLAGS.batch_size),
+                    orders=orders)
+  # Delta is set to 1e-5 because MNIST has 60000 training points.
+  eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+  print('For delta=1e-5, the current epsilon is: %.2f' % eps)
+#%%
+
+
+def load_mnist():
+  """Loads MNIST and preprocesses to combine training and validation data."""
+  train, test = tf.keras.datasets.mnist.load_data()
+  train_data, train_labels = train
+  test_data, test_labels = test
+
+  train_data = np.array(train_data, dtype=np.float32) / 255
+  test_data = np.array(test_data, dtype=np.float32) / 255
+
+  train_data = train_data.reshape(train_data.shape[0], 28, 28, 1)
+  test_data = test_data.reshape(test_data.shape[0], 28, 28, 1)
+
+  train_labels = np.array(train_labels, dtype=np.int32)
+  test_labels = np.array(test_labels, dtype=np.int32)
+
+  train_labels = tf.keras.utils.to_categorical(train_labels, num_classes=10)
+  test_labels = tf.keras.utils.to_categorical(test_labels, num_classes=10)
+
+  assert train_data.min() == 0.
+  assert train_data.max() == 1.
+  assert test_data.min() == 0.
+  assert test_data.max() == 1.
+
+  return train_data, train_labels, test_data, test_labels
+
 
 if __name__ == '__main__':
   tf.app.run()

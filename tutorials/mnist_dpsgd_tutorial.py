@@ -20,6 +20,8 @@ from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+import sys
+sys.path.insert(0, '/Users/trog/Documents/Spyder/privacy')
 
 from privacy.analysis import privacy_ledger
 from privacy.analysis.rdp_accountant import compute_rdp_from_ledger
@@ -32,22 +34,25 @@ try:
 except:  # pylint: disable=bare-except
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                        'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.1,
-                      'Ratio of the standard deviation to the clipping norm')
-tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-tf.flags.DEFINE_integer('microbatches', 256, 'Number of microbatches '
-                        '(must evenly divide batch_size)')
-tf.flags.DEFINE_string('model_dir', None, 'Model directory')
+try:
+    tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
+                            'train with vanilla SGD.')
+    tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
+    tf.flags.DEFINE_float('noise_multiplier', 1.1,
+                          'Ratio of the standard deviation to the clipping norm')
+    tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
+    tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
+    tf.flags.DEFINE_integer('epochs', 2, 'Number of epochs')
+    tf.flags.DEFINE_integer('microbatches', 256, 'Number of microbatches '
+                            '(must evenly divide batch_size)')
+    tf.flags.DEFINE_string('model_dir', None, 'Model directory')
+except:
+    print("Flags Already INitialized")    
 
 FLAGS = tf.flags.FLAGS
 
 
-class EpsilonPrintingTrainingHook(tf.train.SessionRunHook):
+class EpsilonPrintingTrainingHook(tf.estimator.SessionRunHook):
   """Training hook to print current value of epsilon after an epoch."""
 
   def __init__(self, ledger):
@@ -170,7 +175,7 @@ def load_mnist():
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
+  if FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Load training and test data.
