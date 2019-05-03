@@ -34,7 +34,7 @@ class TensorBuffer(object):
 
     Args:
       capacity: Initial capacity. Buffer will double in capacity each time it is
-                filled to capacity.
+        filled to capacity.
       shape: The shape (as tuple or list) of the tensors to accumulate.
       dtype: The type of the tensors.
       name: A string name for the variable_scope used.
