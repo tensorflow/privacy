@@ -36,6 +36,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+
+from absl import app
+from absl import flags
+
 import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
@@ -45,20 +49,22 @@ from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.optimizers import dp_optimizer
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                        'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', 0.001, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 0.001,
-                      'Ratio of the standard deviation to the clipping norm')
-tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-tf.flags.DEFINE_integer('microbatches', 256, 'Number of microbatches '
-                        '(must evenly divide batch_size)')
-tf.flags.DEFINE_string('model_dir', None, 'Model directory')
-tf.flags.DEFINE_string('data_dir', None, 'Directory containing the PTB data.')
+flags.DEFINE_boolean(
+    'dpsgd', True, 'If True, train with DP-SGD. If False, '
+    'train with vanilla SGD.')
+flags.DEFINE_float('learning_rate', 0.001, 'Learning rate for training')
+flags.DEFINE_float('noise_multiplier', 0.001,
+                   'Ratio of the standard deviation to the clipping norm')
+flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
+flags.DEFINE_integer('batch_size', 256, 'Batch size')
+flags.DEFINE_integer('epochs', 60, 'Number of epochs')
+flags.DEFINE_integer(
+    'microbatches', 256, 'Number of microbatches '
+    '(must evenly divide batch_size)')
+flags.DEFINE_string('model_dir', None, 'Model directory')
+flags.DEFINE_string('data_dir', None, 'Directory containing the PTB data.')
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 SEQ_LEN = 80
 NB_TRAIN = 45000
@@ -217,4 +223,4 @@ def main(unused_argv):
       print('Trained with vanilla non-private SGD optimizer')
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

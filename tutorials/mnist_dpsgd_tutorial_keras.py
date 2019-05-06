@@ -17,6 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import app
+from absl import flags
+
 import numpy as np
 import tensorflow as tf
 
@@ -27,23 +30,25 @@ from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
 
 # Compatibility with tf 1 and 2 APIs
 try:
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+  GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 except:  # pylint: disable=bare-except
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                        'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.1,
-                      'Ratio of the standard deviation to the clipping norm')
-tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-tf.flags.DEFINE_integer('batch_size', 250, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-tf.flags.DEFINE_integer('microbatches', 250, 'Number of microbatches '
-                        '(must evenly divide batch_size)')
-tf.flags.DEFINE_string('model_dir', None, 'Model directory')
+flags.DEFINE_boolean(
+    'dpsgd', True, 'If True, train with DP-SGD. If False, '
+    'train with vanilla SGD.')
+flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
+flags.DEFINE_float('noise_multiplier', 1.1,
+                   'Ratio of the standard deviation to the clipping norm')
+flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
+flags.DEFINE_integer('batch_size', 250, 'Batch size')
+flags.DEFINE_integer('epochs', 60, 'Number of epochs')
+flags.DEFINE_integer(
+    'microbatches', 250, 'Number of microbatches '
+    '(must evenly divide batch_size)')
+flags.DEFINE_string('model_dir', None, 'Model directory')
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
 
 
 def compute_epsilon(steps):
@@ -146,4 +151,4 @@ def main(unused_argv):
     print('Trained with vanilla non-private SGD optimizer')
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)
