@@ -99,9 +99,7 @@ def cnn_model_fn(features, labels, mode):
     if FLAGS.dpsgd:
       ledger = privacy_ledger.PrivacyLedger(
           population_size=60000,
-          selection_probability=(FLAGS.batch_size / 60000),
-          max_samples=1e6,
-          max_queries=1e6)
+          selection_probability=(FLAGS.batch_size / 60000))
 
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
