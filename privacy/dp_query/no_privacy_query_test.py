@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ from privacy.dp_query import test_utils
 
 class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_no_privacy_sum(self):
+  def test_sum(self):
     with self.cached_session() as sess:
       record1 = tf.constant([2.0, 0.0])
       record2 = tf.constant([-1.0, 1.0])
@@ -36,20 +36,6 @@ class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
       query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
-      self.assertAllClose(result, expected)
-
-  def test_no_privacy_weighted_sum(self):
-    with self.cached_session() as sess:
-      record1 = tf.constant([2.0, 0.0])
-      record2 = tf.constant([-1.0, 1.0])
-
-      weights = [1, 2]
-
-      query = no_privacy_query.NoPrivacySumQuery()
-      query_result, _ = test_utils.run_query(
-          query, [record1, record2], weights=weights)
-      result = sess.run(query_result)
-      expected = [0.0, 2.0]
       self.assertAllClose(result, expected)
 
   def test_no_privacy_average(self):

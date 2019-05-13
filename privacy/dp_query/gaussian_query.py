@@ -31,7 +31,7 @@ else:
   nest = tf.nest
 
 
-class GaussianSumQuery(dp_query.DPQuery):
+class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for Gaussian sum queries.
 
   Accumulates clipped vectors, then adds Gaussian noise to the sum.
@@ -50,31 +50,10 @@ class GaussianSumQuery(dp_query.DPQuery):
     self._stddev = tf.cast(stddev, tf.float32)
     self._ledger = ledger
 
-  def initial_global_state(self):
-    """Returns the initial global state for the GaussianSumQuery."""
-    return None
-
   def derive_sample_params(self, global_state):
-    """Given the global state, derives parameters to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-
-    Returns:
-      Parameters to use to process records in the next sample.
-    """
     return self._l2_norm_clip
 
-  def initial_sample_state(self, global_state, tensors):
-    """Returns an initial state to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
-
-    Returns: An initial sample state.
-    """
+  def initial_sample_state(self, global_state, template):
     if self._ledger:
       dependencies = [
           self._ledger.record_sum_query(self._l2_norm_clip, self._stddev)
@@ -82,51 +61,32 @@ class GaussianSumQuery(dp_query.DPQuery):
     else:
       dependencies = []
     with tf.control_dependencies(dependencies):
-      return nest.map_structure(tf.zeros_like, tensors)
+      return nest.map_structure(
+          dp_query.zeros_like, template)
 
-  def accumulate_record_impl(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
+  def preprocess_record_impl(self, params, record):
+    """Clips the l2 norm, returning the clipped record and the l2 norm.
 
     Args:
       params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
+      record: The record to be processed.
 
     Returns:
-      A tuple containing the updated sample state and the global norm.
+      A tuple (preprocessed_records, l2_norm) where `preprocessed_records` is
+        the structure of preprocessed tensors, and l2_norm is the total l2 norm
+        before clipping.
     """
     l2_norm_clip = params
     record_as_list = nest.flatten(record)
     clipped_as_list, norm = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
-    clipped = nest.pack_sequence_as(record, clipped_as_list)
-    return nest.map_structure(tf.add, sample_state, clipped), norm
+    return nest.pack_sequence_as(record, clipped_as_list), norm
 
-  def accumulate_record(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
-
-    Args:
-      params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
-
-    Returns:
-      The updated sample state.
-    """
-    new_sample_state, _ = self.accumulate_record_impl(
-        params, sample_state, record)
-    return new_sample_state
+  def preprocess_record(self, params, record):
+    preprocessed_record, _ = self.preprocess_record_impl(params, record)
+    return preprocessed_record
 
   def get_noised_result(self, sample_state, global_state):
-    """Gets noised sum after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      sum of the records and "new_global_state" is the updated global state.
-    """
+    """See base class."""
     if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
       def add_noise(v):
         return v + tf.random_normal(tf.shape(v), stddev=self._stddev)

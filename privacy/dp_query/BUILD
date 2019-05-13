@@ -5,6 +5,10 @@ licenses(["notice"])  # Apache 2.0
 py_library(
     name = "dp_query",
     srcs = ["dp_query.py"],
+    deps = [
+        "//third_party/py/distutils",
+        "//third_party/py/tensorflow",
+    ],
 )
 
 py_library(

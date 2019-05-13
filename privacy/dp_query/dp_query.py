@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,6 +47,13 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+from distutils.version import LooseVersion
+
+import tensorflow as tf
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  nest = tf.contrib.framework.nest
+else:
+  nest = tf.nest
 
 
 class DPQuery(object):
@@ -54,12 +61,10 @@ class DPQuery(object):
 
   __metaclass__ = abc.ABCMeta
 
-  @abc.abstractmethod
   def initial_global_state(self):
     """Returns the initial global state for the DPQuery."""
-    pass
+    return ()
 
-  @abc.abstractmethod
   def derive_sample_params(self, global_state):
     """Given the global state, derives parameters to use for the next sample.
 
@@ -69,24 +74,73 @@ class DPQuery(object):
     Returns:
       Parameters to use to process records in the next sample.
     """
-    pass
+    del global_state  # unused.
+    return ()
 
   @abc.abstractmethod
-  def initial_sample_state(self, global_state, tensors):
+  def initial_sample_state(self, global_state, template):
     """Returns an initial state to use for the next sample.
 
     Args:
       global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
+      template: A nested structure of tensors, TensorSpecs, or numpy arrays used
+        as a template to create the initial sample state. It is assumed that the
+        leaves of the structure are python scalars or some type that has
+        properties `shape` and `dtype`.
 
     Returns: An initial sample state.
     """
     pass
 
+  def preprocess_record(self, params, record):
+    """Preprocesses a single record.
+
+    This preprocessing is applied to one client's record, e.g. selecting vectors
+    and clipping them to a fixed L2 norm. This method can be executed in a
+    separate TF session, or even on a different machine, so it should not depend
+    on any TF inputs other than those provided as input arguments. In
+    particular, implementations should avoid accessing any TF tensors or
+    variables that are stored in self.
+
+    Args:
+      params: The parameters for the sample. In standard DP-SGD training,
+        the clipping norm for the sample's microbatch gradients (i.e.,
+        a maximum norm magnitude to which each gradient is clipped)
+      record: The record to be processed. In standard DP-SGD training,
+        the gradient computed for the examples in one microbatch, which
+        may be the gradient for just one example (for size 1 microbatches).
+
+    Returns:
+      A structure of tensors to be aggregated.
+    """
+    del params  # unused.
+    return record
+
   @abc.abstractmethod
+  def accumulate_preprocessed_record(
+      self, sample_state, preprocessed_record):
+    """Accumulates a single preprocessed record into the sample state.
+
+    This method is intended to only do simple aggregation, typically just a sum.
+    In the future, we might remove this method and replace it with a way to
+    declaratively specify the type of aggregation required.
+
+    Args:
+      sample_state: The current sample state. In standard DP-SGD training,
+        the accumulated sum of previous clipped microbatch gradients.
+      preprocessed_record: The preprocessed record to accumulate.
+
+    Returns:
+      The updated sample state.
+    """
+    pass
+
   def accumulate_record(self, params, sample_state, record):
     """Accumulates a single record into the sample state.
+
+    This is a helper method that simply delegates to `preprocess_record` and
+    `accumulate_preprocessed_record` for the common case when both of those
+    functions run on a single device.
 
     Args:
       params: The parameters for the sample. In standard DP-SGD training,
@@ -101,6 +155,21 @@ class DPQuery(object):
     Returns:
       The updated sample state. In standard DP-SGD training, the set of
       previous mcrobatch gradients with the addition of the record argument.
+    """
+    preprocessed_record = self.preprocess_record(params, record)
+    return self.accumulate_preprocessed_record(
+        sample_state, preprocessed_record)
+
+  @abc.abstractmethod
+  def merge_sample_states(self, sample_state_1, sample_state_2):
+    """Merges two sample states into a single state.
+
+    Args:
+      sample_state_1: The first sample state to merge.
+      sample_state_2: The second sample state to merge.
+
+    Returns:
+      The merged sample state.
     """
     pass
 
@@ -123,3 +192,26 @@ class DPQuery(object):
       averaging performed in a manner that guarantees differential privacy.
     """
     pass
+
+
+def zeros_like(arg):
+  """A `zeros_like` function that also works for `tf.TensorSpec`s."""
+  try:
+    arg = tf.convert_to_tensor(arg)
+  except TypeError:
+    pass
+  return tf.zeros(arg.shape, arg.dtype)
+
+
+class SumAggregationDPQuery(DPQuery):
+  """Base class for DPQueries that aggregate via sum."""
+
+  def initial_sample_state(self, global_state, template):
+    del global_state  # unused.
+    return nest.map_structure(zeros_like, template)
+
+  def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
+    return nest.map_structure(tf.add, sample_state, preprocessed_record)
+
+  def merge_sample_states(self, sample_state_1, sample_state_2):
+    return nest.map_structure(tf.add, sample_state_1, sample_state_2)

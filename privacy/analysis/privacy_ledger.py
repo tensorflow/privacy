@@ -234,13 +234,22 @@ class QueryWithLedger(dp_query.DPQuery):
     """See base class."""
     return self._query.derive_sample_params(global_state)
 
-  def initial_sample_state(self, global_state, tensors):
+  def initial_sample_state(self, global_state, template):
     """See base class."""
-    return self._query.initial_sample_state(global_state, tensors)
+    return self._query.initial_sample_state(global_state, template)
 
-  def accumulate_record(self, params, sample_state, record):
+  def preprocess_record(self, params, record):
     """See base class."""
-    return self._query.accumulate_record(params, sample_state, record)
+    return self._query.preprocess_record(params, record)
+
+  def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
+    """See base class."""
+    return self._query.accumulate_preprocessed_record(
+        sample_state, preprocessed_record)
+
+  def merge_sample_states(self, sample_state_1, sample_state_2):
+    """See base class."""
+    return self._query.merge_sample_states(sample_state_1, sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
     """Ensures sample is recorded to the ledger and returns noised result."""

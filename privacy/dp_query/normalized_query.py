@@ -38,65 +38,39 @@ class NormalizedQuery(dp_query.DPQuery):
 
     Args:
       numerator_query: A DPQuery for the numerator.
-      denominator: A value for the denominator.
+      denominator: A value for the denominator. May be None if it will be
+        supplied via the set_denominator function before get_noised_result is
+        called.
     """
     self._numerator = numerator_query
-    self._denominator = tf.cast(denominator,
-                                tf.float32) if denominator is not None else None
+    self._denominator = (
+        tf.cast(denominator, tf.float32) if denominator is not None else None)
 
   def initial_global_state(self):
-    """Returns the initial global state for the NormalizedQuery."""
+    """See base class."""
     # NormalizedQuery has no global state beyond the numerator state.
     return self._numerator.initial_global_state()
 
   def derive_sample_params(self, global_state):
-    """Given the global state, derives parameters to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-
-    Returns:
-      Parameters to use to process records in the next sample.
-    """
+    """See base class."""
     return self._numerator.derive_sample_params(global_state)
 
-  def initial_sample_state(self, global_state, tensors):
-    """Returns an initial state to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
-
-    Returns: An initial sample state.
-    """
+  def initial_sample_state(self, global_state, template):
+    """See base class."""
     # NormalizedQuery has no sample state beyond the numerator state.
-    return self._numerator.initial_sample_state(global_state, tensors)
+    return self._numerator.initial_sample_state(global_state, template)
 
-  def accumulate_record(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
+  def preprocess_record(self, params, record):
+    return self._numerator.preprocess_record(params, record)
 
-    Args:
-      params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
-
-    Returns:
-      The updated sample state.
-    """
-    return self._numerator.accumulate_record(params, sample_state, record)
+  def accumulate_preprocessed_record(
+      self, sample_state, preprocessed_record):
+    """See base class."""
+    return self._numerator.accumulate_preprocessed_record(
+        sample_state, preprocessed_record)
 
   def get_noised_result(self, sample_state, global_state):
-    """Gets noised average after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      average of the records and "new_global_state" is the updated global state.
-    """
+    """See base class."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
         sample_state, global_state)
     def normalize(v):
@@ -104,5 +78,10 @@ class NormalizedQuery(dp_query.DPQuery):
 
     return nest.map_structure(normalize, noised_sum), new_sum_global_state
 
+  def merge_sample_states(self, sample_state_1, sample_state_2):
+    """See base class."""
+    return self._numerator.merge_sample_states(sample_state_1, sample_state_2)
+
   def set_denominator(self, denominator):
+    """Sets the denominator for the NormalizedQuery."""
     self._denominator = tf.cast(denominator, tf.float32)
