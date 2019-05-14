@@ -120,7 +120,6 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         self._sum_query.initial_global_state(),
         self._clipped_fraction_query.initial_global_state())
 
-  @tf.function
   def derive_sample_params(self, global_state):
     """See base class."""
     gs = global_state
