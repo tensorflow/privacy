@@ -106,6 +106,29 @@ py_test(
 )
 
 py_library(
+    name = "quantile_adaptive_clip_sum_query",
+    srcs = ["quantile_adaptive_clip_sum_query.py"],
+    deps = [
+        ":dp_query",
+        ":gaussian_query",
+        ":normalized_query",
+        "//third_party/py/tensorflow",
+    ],
+)
+
+py_test(
+    name = "quantile_adaptive_clip_sum_query_test",
+    srcs = ["quantile_adaptive_clip_sum_query_test.py"],
+    deps = [
+        ":quantile_adaptive_clip_sum_query",
+        ":test_utils",
+        "//third_party/py/numpy",
+        "//third_party/py/tensorflow",
+        "//third_party/py/tensorflow_privacy/privacy/analysis:privacy_ledger",
+    ],
+)
+
+py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
     deps = [],

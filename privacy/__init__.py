@@ -33,6 +33,8 @@ else:
   from privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery
   from privacy.dp_query.no_privacy_query import NoPrivacySumQuery
   from privacy.dp_query.normalized_query import NormalizedQuery
+  from privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipSumQuery
+  from privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipAverageQuery
 
   from privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
   from privacy.optimizers.dp_optimizer import DPAdagradOptimizer
