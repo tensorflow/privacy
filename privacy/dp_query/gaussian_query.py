@@ -19,6 +19,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from distutils.version import LooseVersion
 import tensorflow as tf
 
@@ -37,6 +39,10 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   Accumulates clipped vectors, then adds Gaussian noise to the sum.
   """
 
+  # pylint: disable=invalid-name
+  _GlobalState = collections.namedtuple(
+      '_GlobalState', ['l2_norm_clip', 'stddev'])
+
   def __init__(self, l2_norm_clip, stddev, ledger=None):
     """Initializes the GaussianSumQuery.
 
@@ -46,17 +52,26 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
       stddev: The stddev of the noise added to the sum.
       ledger: The privacy ledger to which queries should be recorded.
     """
-    self._l2_norm_clip = tf.cast(l2_norm_clip, tf.float32)
-    self._stddev = tf.cast(stddev, tf.float32)
+    self._l2_norm_clip = l2_norm_clip
+    self._stddev = stddev
     self._ledger = ledger
 
+  def make_global_state(self, l2_norm_clip, stddev):
+    """Creates a global state from the given parameters."""
+    return self._GlobalState(tf.cast(l2_norm_clip, tf.float32),
+                             tf.cast(stddev, tf.float32))
+
+  def initial_global_state(self):
+    return self.make_global_state(self._l2_norm_clip, self._stddev)
+
   def derive_sample_params(self, global_state):
-    return self._l2_norm_clip
+    return global_state.l2_norm_clip
 
   def initial_sample_state(self, global_state, template):
     if self._ledger:
       dependencies = [
-          self._ledger.record_sum_query(self._l2_norm_clip, self._stddev)
+          self._ledger.record_sum_query(
+              global_state.l2_norm_clip, global_state.stddev)
       ]
     else:
       dependencies = []
@@ -89,9 +104,9 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     """See base class."""
     if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
       def add_noise(v):
-        return v + tf.random_normal(tf.shape(v), stddev=self._stddev)
+        return v + tf.random_normal(tf.shape(v), stddev=global_state.stddev)
     else:
-      random_normal = tf.random_normal_initializer(stddev=self._stddev)
+      random_normal = tf.random_normal_initializer(stddev=global_state.stddev)
       def add_noise(v):
         return v + random_normal(tf.shape(v))
 

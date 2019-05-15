@@ -270,7 +270,7 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
     tf.assign(selection_probability, 0.1)
     _, global_state = test_utils.run_query(query, [record1, record2])
 
-    expected_queries = [[0.5, 0.0], [10.0, 10.0]]
+    expected_queries = [[10.0, 10.0], [0.5, 0.0]]
     formatted = ledger.get_formatted_ledger_eager()
     sample_1 = formatted[0]
     self.assertAllClose(sample_1.population_size, 10.0)
@@ -288,7 +288,7 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
     self.assertAllClose(sample_1.selection_probability, 0.1)
     self.assertAllClose(sample_1.queries, expected_queries)
 
-    expected_queries_2 = [[0.5, 0.0], [9.0, 9.0]]
+    expected_queries_2 = [[9.0, 9.0], [0.5, 0.0]]
     self.assertAllClose(sample_2.population_size, 20.0)
     self.assertAllClose(sample_2.selection_probability, 0.2)
     self.assertAllClose(sample_2.queries, expected_queries_2)

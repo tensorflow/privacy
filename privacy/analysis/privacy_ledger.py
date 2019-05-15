@@ -257,6 +257,6 @@ class QueryWithLedger(dp_query.DPQuery):
       with tf.control_dependencies([self._ledger.finalize_sample()]):
         return self._query.get_noised_result(sample_state, global_state)
 
-  def set_denominator(self, num_microbatches, microbatch_size=1):
-    self._query.set_denominator(num_microbatches)
+  def set_denominator(self, global_state, num_microbatches, microbatch_size=1):
     self._ledger.set_sample_size(num_microbatches * microbatch_size)
+    return self._query.set_denominator(global_state, num_microbatches)

@@ -19,6 +19,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from distutils.version import LooseVersion
 import tensorflow as tf
 
@@ -33,6 +35,10 @@ else:
 class NormalizedQuery(dp_query.DPQuery):
   """DPQuery for queries with a DPQuery numerator and fixed denominator."""
 
+  # pylint: disable=invalid-name
+  _GlobalState = collections.namedtuple(
+      '_GlobalState', ['numerator_state', 'denominator'])
+
   def __init__(self, numerator_query, denominator):
     """Initializer for NormalizedQuery.
 
@@ -43,22 +49,26 @@ class NormalizedQuery(dp_query.DPQuery):
         called.
     """
     self._numerator = numerator_query
-    self._denominator = (
-        tf.cast(denominator, tf.float32) if denominator is not None else None)
+    self._denominator = denominator
 
   def initial_global_state(self):
     """See base class."""
-    # NormalizedQuery has no global state beyond the numerator state.
-    return self._numerator.initial_global_state()
+    if self._denominator is not None:
+      denominator = tf.cast(self._denominator, tf.float32)
+    else:
+      denominator = None
+    return self._GlobalState(
+        self._numerator.initial_global_state(), denominator)
 
   def derive_sample_params(self, global_state):
     """See base class."""
-    return self._numerator.derive_sample_params(global_state)
+    return self._numerator.derive_sample_params(global_state.numerator_state)
 
   def initial_sample_state(self, global_state, template):
     """See base class."""
     # NormalizedQuery has no sample state beyond the numerator state.
-    return self._numerator.initial_sample_state(global_state, template)
+    return self._numerator.initial_sample_state(
+        global_state.numerator_state, template)
 
   def preprocess_record(self, params, record):
     return self._numerator.preprocess_record(params, record)
@@ -72,16 +82,17 @@ class NormalizedQuery(dp_query.DPQuery):
   def get_noised_result(self, sample_state, global_state):
     """See base class."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
-        sample_state, global_state)
+        sample_state, global_state.numerator_state)
     def normalize(v):
-      return tf.truediv(v, self._denominator)
+      return tf.truediv(v, global_state.denominator)
 
-    return nest.map_structure(normalize, noised_sum), new_sum_global_state
+    return (nest.map_structure(normalize, noised_sum),
+            self._GlobalState(new_sum_global_state, global_state.denominator))
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
     """See base class."""
     return self._numerator.merge_sample_states(sample_state_1, sample_state_2)
 
-  def set_denominator(self, denominator):
-    """Sets the denominator for the NormalizedQuery."""
-    self._denominator = tf.cast(denominator, tf.float32)
+  def set_denominator(self, global_state, denominator):
+    """Returns an updated global_state with the given denominator."""
+    return global_state._replace(denominator=tf.cast(denominator, tf.float32))

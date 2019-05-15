@@ -45,7 +45,13 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
 
   # pylint: disable=invalid-name
   _GlobalState = collections.namedtuple(
-      '_GlobalState', ['l2_norm_clip', 'sum_state', 'clipped_fraction_state'])
+      '_GlobalState', [
+          'l2_norm_clip',
+          'noise_multiplier',
+          'target_unclipped_quantile',
+          'learning_rate',
+          'sum_state',
+          'clipped_fraction_state'])
 
   # pylint: disable=invalid-name
   _SampleState = collections.namedtuple(
@@ -75,8 +81,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         found for which approximately 20% of updates are clipped each round.
       learning_rate: The learning rate for the clipping norm adaptation. A
         rate of r means that the clipping norm will change by a maximum of r at
-        each step. This maximum is attained when |clip - target| is 1.0. Can be
-        a tf.Variable for example to implement a learning rate schedule.
+        each step. This maximum is attained when |clip - target| is 1.0.
       clipped_count_stddev: The stddev of the noise added to the clipped_count.
         Since the sensitivity of the clipped count is 0.5, as a rule of thumb it
         should be about 0.5 for reasonable privacy.
@@ -84,19 +89,14 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         estimate the clipped count quantile.
       ledger: The privacy ledger to which queries should be recorded.
     """
-    self._initial_l2_norm_clip = tf.cast(initial_l2_norm_clip, tf.float32)
-    self._noise_multiplier = tf.cast(noise_multiplier, tf.float32)
-    self._target_unclipped_quantile = tf.cast(
-        target_unclipped_quantile, tf.float32)
-    self._learning_rate = tf.cast(learning_rate, tf.float32)
+    self._initial_l2_norm_clip = initial_l2_norm_clip
+    self._noise_multiplier = noise_multiplier
+    self._target_unclipped_quantile = target_unclipped_quantile
+    self._learning_rate = learning_rate
 
-    self._l2_norm_clip = tf.Variable(self._initial_l2_norm_clip)
-    self._sum_stddev = tf.Variable(
-        self._initial_l2_norm_clip * self._noise_multiplier)
+    # Initialize sum query's global state with None, to be set later.
     self._sum_query = gaussian_query.GaussianSumQuery(
-        self._l2_norm_clip,
-        self._sum_stddev,
-        ledger)
+        None, None, ledger)
 
     # self._clipped_fraction_query is a DPQuery used to estimate the fraction of
     # records that are clipped. It accumulates an indicator 0/1 of whether each
@@ -115,29 +115,40 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
 
   def initial_global_state(self):
     """See base class."""
+    initial_l2_norm_clip = tf.cast(self._initial_l2_norm_clip, tf.float32)
+    noise_multiplier = tf.cast(self._noise_multiplier, tf.float32)
+    target_unclipped_quantile = tf.cast(self._target_unclipped_quantile,
+                                        tf.float32)
+    learning_rate = tf.cast(self._learning_rate, tf.float32)
+    sum_stddev = initial_l2_norm_clip * noise_multiplier
+
+    sum_query_global_state = self._sum_query.make_global_state(
+        l2_norm_clip=initial_l2_norm_clip,
+        stddev=sum_stddev)
+
     return self._GlobalState(
-        self._initial_l2_norm_clip,
-        self._sum_query.initial_global_state(),
+        initial_l2_norm_clip,
+        noise_multiplier,
+        target_unclipped_quantile,
+        learning_rate,
+        sum_query_global_state,
         self._clipped_fraction_query.initial_global_state())
 
   def derive_sample_params(self, global_state):
     """See base class."""
-    gs = global_state
 
     # Assign values to variables that inner sum query uses.
-    tf.assign(self._l2_norm_clip, gs.l2_norm_clip)
-    tf.assign(self._sum_stddev, gs.l2_norm_clip * self._noise_multiplier)
-    sum_params = self._sum_query.derive_sample_params(gs.sum_state)
+    sum_params = self._sum_query.derive_sample_params(global_state.sum_state)
     clipped_fraction_params = self._clipped_fraction_query.derive_sample_params(
-        gs.clipped_fraction_state)
+        global_state.clipped_fraction_state)
     return self._SampleParams(sum_params, clipped_fraction_params)
 
   def initial_sample_state(self, global_state, template):
     """See base class."""
-    clipped_fraction_state = self._clipped_fraction_query.initial_sample_state(
-        global_state.clipped_fraction_state, tf.constant(0.0))
     sum_state = self._sum_query.initial_sample_state(
         global_state.sum_state, template)
+    clipped_fraction_state = self._clipped_fraction_query.initial_sample_state(
+        global_state.clipped_fraction_state, tf.constant(0.0))
     return self._SampleState(sum_state, clipped_fraction_state)
 
   def preprocess_record(self, params, record):
@@ -187,6 +198,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
 
     noised_vectors, sum_state = self._sum_query.get_noised_result(
         sample_state.sum_state, gs.sum_state)
+    del sum_state  # Unused. To be set explicitly later.
 
     clipped_fraction_result, new_clipped_fraction_state = (
         self._clipped_fraction_query.get_noised_result(
@@ -202,15 +214,20 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
 
     # Loss function is convex, with derivative in [-1, 1], and minimized when
     # the true quantile matches the target.
-    loss_grad = unclipped_quantile - self._target_unclipped_quantile
+    loss_grad = unclipped_quantile - global_state.target_unclipped_quantile
 
-    new_l2_norm_clip = gs.l2_norm_clip - self._learning_rate * loss_grad
+    new_l2_norm_clip = gs.l2_norm_clip - global_state.learning_rate * loss_grad
     new_l2_norm_clip = tf.maximum(0.0, new_l2_norm_clip)
 
-    new_global_state = self._GlobalState(
-        new_l2_norm_clip,
-        sum_state,
-        new_clipped_fraction_state)
+    new_sum_stddev = new_l2_norm_clip * global_state.noise_multiplier
+    new_sum_query_global_state = self._sum_query.make_global_state(
+        l2_norm_clip=new_l2_norm_clip,
+        stddev=new_sum_stddev)
+
+    new_global_state = global_state._replace(
+        l2_norm_clip=new_l2_norm_clip,
+        sum_state=new_sum_query_global_state,
+        clipped_fraction_state=new_clipped_fraction_state)
 
     return noised_vectors, new_global_state
 

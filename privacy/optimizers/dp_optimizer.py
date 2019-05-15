@@ -88,7 +88,9 @@ def make_optimizer_class(cls):
         vector_loss = loss()
         if self._num_microbatches is None:
           self._num_microbatches = tf.shape(vector_loss)[0]
-          self._dp_average_query.set_denominator(self._num_microbatches)
+          self._global_state = self._dp_average_query.set_denominator(
+              self._global_state,
+              self._num_microbatches)
         sample_state = self._dp_average_query.initial_sample_state(
             self._global_state, var_list)
         microbatches_losses = tf.reshape(vector_loss,
@@ -126,7 +128,9 @@ def make_optimizer_class(cls):
         # sampling from the dataset without replacement.
         if self._num_microbatches is None:
           self._num_microbatches = tf.shape(loss)[0]
-          self._dp_average_query.set_denominator(self._num_microbatches)
+          self._global_state = self._dp_average_query.set_denominator(
+              self._global_state,
+              self._num_microbatches)
         microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
         sample_params = (
             self._dp_average_query.derive_sample_params(self._global_state))
