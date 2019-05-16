@@ -14,6 +14,7 @@ py_library(
         "//third_party/py/tensorflow_privacy/privacy/dp_query:nested_query",
         "//third_party/py/tensorflow_privacy/privacy/dp_query:no_privacy_query",
         "//third_party/py/tensorflow_privacy/privacy/dp_query:normalized_query",
+        "//third_party/py/tensorflow_privacy/privacy/dp_query:quantile_adaptive_clip_sum_query",
         "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer",
     ],
 )
