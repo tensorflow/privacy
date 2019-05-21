@@ -250,9 +250,9 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
     record2 = tf.constant([-7.25])
 
     population_size = tf.Variable(0)
-    selection_probability = tf.Variable(0.0)
+    selection_probability = tf.Variable(1.0)
     ledger = privacy_ledger.PrivacyLedger(
-        population_size, selection_probability, 50, 50)
+        population_size, selection_probability)
 
     query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=10.0,

@@ -65,37 +65,44 @@ class PrivacyLedger(object):
 
   def __init__(self,
                population_size,
-               selection_probability=None,
-               max_samples=None,
-               max_queries=None):
+               selection_probability=None):
     """Initialize the PrivacyLedger.
 
     Args:
       population_size: An integer (may be variable) specifying the size of the
         population, i.e. size of the training data used in each epoch.
       selection_probability: A float (may be variable) specifying the
-        probability each record is included in a sample.
-      max_samples: The maximum number of samples. An exception is thrown if more
-        than this many samples are recorded.
-      max_queries: The maximum number of queries. An exception is thrown if more
-        than this many queries are recorded.
+        probability each record is included in a sample. If None, it can be set
+        later with set_sample_size.
+
+    Raises:
+      ValueError: If selection_probability is 0.
     """
     self._population_size = population_size
     self._selection_probability = selection_probability
-    if max_samples is None:
-      max_samples = 1000 * population_size
-    if max_queries is None:
-      max_queries = 1000 * population_size
+    if selection_probability is None:
+      init_capacity_samples = 1
+    else:
+      if tf.executing_eagerly():
+        if tf.equal(selection_probability, 0):
+          raise ValueError('Selection probability cannot be 0.')
+        init_capacity_samples = tf.cast(tf.ceil(1 / selection_probability),
+                                        tf.int32)
+      else:
+        if selection_probability == 0:
+          raise ValueError('Selection probability cannot be 0.')
+        init_capacity_samples = np.int(np.ceil(1 / selection_probability))
+    init_capacity_queries = init_capacity_samples
 
     # The query buffer stores rows corresponding to GaussianSumQueryEntries.
-    self._query_buffer = tensor_buffer.TensorBuffer(max_queries, [3],
-                                                    tf.float32, 'query')
+    self._query_buffer = tensor_buffer.TensorBuffer(
+        init_capacity_queries, [3], tf.float32, 'query')
     self._sample_var = tf.Variable(
         initial_value=tf.zeros([3]), trainable=False, name='sample')
 
     # The sample buffer stores rows corresponding to SampleEntries.
-    self._sample_buffer = tensor_buffer.TensorBuffer(max_samples, [3],
-                                                     tf.float32, 'sample')
+    self._sample_buffer = tensor_buffer.TensorBuffer(
+        init_capacity_samples, [3], tf.float32, 'sample')
     self._sample_count = tf.Variable(
         initial_value=0.0, trainable=False, name='sample_count')
     self._query_count = tf.Variable(

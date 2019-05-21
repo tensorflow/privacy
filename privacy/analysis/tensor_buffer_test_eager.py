@@ -41,7 +41,7 @@ class TensorBufferTest(tf.test.TestCase):
     self.assertAllEqual(my_buffer.values.numpy(), [value1, value2])
 
   def test_fail_on_scalar(self):
-    with self.assertRaisesRegex(ValueError, 'Shape cannot be scalar.'):
+    with self.assertRaisesRegexp(ValueError, 'Shape cannot be scalar.'):
       tensor_buffer.TensorBuffer(1, ())
 
   def test_fail_on_inconsistent_shape(self):
@@ -49,7 +49,7 @@ class TensorBufferTest(tf.test.TestCase):
 
     my_buffer = tensor_buffer.TensorBuffer(size, shape, name='my_buffer')
 
-    with self.assertRaisesRegex(
+    with self.assertRaisesRegexp(
         tf.errors.InvalidArgumentError,
         'Appending value of inconsistent shape.'):
       my_buffer.append(tf.ones(shape=[3, 4], dtype=tf.int32))

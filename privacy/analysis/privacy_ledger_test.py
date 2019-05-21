@@ -30,8 +30,13 @@ tf.enable_eager_execution()
 
 class PrivacyLedgerTest(tf.test.TestCase):
 
+  def test_fail_on_probability_zero(self):
+    with self.assertRaisesRegexp(ValueError,
+                                 'Selection probability cannot be 0.'):
+      privacy_ledger.PrivacyLedger(10, 0)
+
   def test_basic(self):
-    ledger = privacy_ledger.PrivacyLedger(10, 0.1, 50, 50)
+    ledger = privacy_ledger.PrivacyLedger(10, 0.1)
     ledger.record_sum_query(5.0, 1.0)
     ledger.record_sum_query(2.0, 0.5)
 
@@ -50,9 +55,9 @@ class PrivacyLedgerTest(tf.test.TestCase):
     record2 = tf.constant([-1.0, 1.0])
 
     population_size = tf.Variable(0)
-    selection_probability = tf.Variable(0.0)
+    selection_probability = tf.Variable(1.0)
     ledger = privacy_ledger.PrivacyLedger(
-        population_size, selection_probability, 50, 50)
+        population_size, selection_probability)
 
     query = gaussian_query.GaussianSumQuery(
         l2_norm_clip=10.0, stddev=0.0, ledger=ledger)
@@ -87,9 +92,9 @@ class PrivacyLedgerTest(tf.test.TestCase):
 
   def test_nested_query(self):
     population_size = tf.Variable(0)
-    selection_probability = tf.Variable(0.0)
+    selection_probability = tf.Variable(1.0)
     ledger = privacy_ledger.PrivacyLedger(
-        population_size, selection_probability, 50, 50)
+        population_size, selection_probability)
 
     query1 = gaussian_query.GaussianAverageQuery(
         l2_norm_clip=4.0, sum_stddev=2.0, denominator=5.0, ledger=ledger)
