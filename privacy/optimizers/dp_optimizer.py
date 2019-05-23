@@ -27,9 +27,9 @@ from privacy.dp_query import gaussian_query
 def make_optimizer_class(cls):
   """Constructs a DP optimizer class from an existing one."""
   if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-    parent_code = tf.compat.v1.train.Optimizer.compute_gradients.__code__
+    parent_code = tf.train.Optimizer.compute_gradients.__code__
     child_code = cls.compute_gradients.__code__
-    GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
+    GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
   else:
     parent_code = tf.optimizers.Optimizer._compute_gradients.__code__  # pylint: disable=protected-access
     child_code = cls._compute_gradients.__code__  # pylint: disable=protected-access
@@ -213,12 +213,11 @@ def make_gaussian_optimizer_class(cls):
 
   return DPGaussianOptimizerClass
 
-# Compatibility with tf 1 and 2 APIs
-try:
-  AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
-  AdamOptimizer = tf.compat.v1.train.AdamOptimizer
-  GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
-except:  # pylint: disable=bare-except
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  AdagradOptimizer = tf.train.AdagradOptimizer
+  AdamOptimizer = tf.train.AdamOptimizer
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+else:
   AdagradOptimizer = tf.optimizers.Adagrad
   AdamOptimizer = tf.optimizers.Adam
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name

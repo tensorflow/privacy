@@ -20,6 +20,8 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 
+from distutils.version import LooseVersion
+
 import numpy as np
 import tensorflow as tf
 
@@ -28,10 +30,9 @@ from privacy.analysis.rdp_accountant import get_privacy_spent
 from privacy.dp_query.gaussian_query import GaussianAverageQuery
 from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
 
-# Compatibility with tf 1 and 2 APIs
-try:
-  GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
-except:  # pylint: disable=bare-except
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+else:
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
 flags.DEFINE_boolean(

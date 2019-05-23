@@ -30,7 +30,7 @@ from privacy.dp_query.gaussian_query import GaussianAverageQuery
 from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
   tf.compat.v1.enable_eager_execution()
 else:
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
