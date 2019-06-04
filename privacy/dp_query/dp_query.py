@@ -61,6 +61,16 @@ class DPQuery(object):
 
   __metaclass__ = abc.ABCMeta
 
+  def set_ledger(self, ledger):
+    """Supplies privacy ledger to which the query can record privacy events.
+
+    Args:
+      ledger: A `PrivacyLedger`.
+    """
+    del ledger
+    raise TypeError(
+        'DPQuery type %s does not support set_ledger.' % type(self).__name__)
+
   def initial_global_state(self):
     """Returns the initial global state for the DPQuery."""
     return ()

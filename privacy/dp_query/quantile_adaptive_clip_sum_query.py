@@ -68,8 +68,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
       target_unclipped_quantile,
       learning_rate,
       clipped_count_stddev,
-      expected_num_records,
-      ledger=None):
+      expected_num_records):
     """Initializes the QuantileAdaptiveClipSumQuery.
 
     Args:
@@ -87,7 +86,6 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         should be about 0.5 for reasonable privacy.
       expected_num_records: The expected number of records per round, used to
         estimate the clipped count quantile.
-      ledger: The privacy ledger to which queries should be recorded.
     """
     self._initial_l2_norm_clip = initial_l2_norm_clip
     self._noise_multiplier = noise_multiplier
@@ -95,8 +93,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
     self._learning_rate = learning_rate
 
     # Initialize sum query's global state with None, to be set later.
-    self._sum_query = gaussian_query.GaussianSumQuery(
-        None, None, ledger)
+    self._sum_query = gaussian_query.GaussianSumQuery(None, None)
 
     # self._clipped_fraction_query is a DPQuery used to estimate the fraction of
     # records that are clipped. It accumulates an indicator 0/1 of whether each
@@ -110,8 +107,12 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
     self._clipped_fraction_query = gaussian_query.GaussianAverageQuery(
         l2_norm_clip=0.5,
         sum_stddev=clipped_count_stddev,
-        denominator=expected_num_records,
-        ledger=ledger)
+        denominator=expected_num_records)
+
+  def set_ledger(self, ledger):
+    """See base class."""
+    self._sum_query.set_ledger(ledger)
+    self._clipped_fraction_query.set_ledger(ledger)
 
   def initial_global_state(self):
     """See base class."""
@@ -252,8 +253,7 @@ class QuantileAdaptiveClipAverageQuery(normalized_query.NormalizedQuery):
       target_unclipped_quantile,
       learning_rate,
       clipped_count_stddev,
-      expected_num_records,
-      ledger=None):
+      expected_num_records):
     """Initializes the AdaptiveClipAverageQuery.
 
     Args:
@@ -272,7 +272,6 @@ class QuantileAdaptiveClipAverageQuery(normalized_query.NormalizedQuery):
         should be about 0.5 for reasonable privacy.
       expected_num_records: The expected number of records, used to estimate the
         clipped count quantile.
-      ledger: The privacy ledger to which queries should be recorded.
     """
     numerator_query = QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip,
@@ -280,8 +279,7 @@ class QuantileAdaptiveClipAverageQuery(normalized_query.NormalizedQuery):
         target_unclipped_quantile,
         learning_rate,
         clipped_count_stddev,
-        expected_num_records,
-        ledger)
+        expected_num_records)
     super(QuantileAdaptiveClipAverageQuery, self).__init__(
         numerator_query=numerator_query,
         denominator=denominator)

@@ -67,5 +67,6 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     """See base class."""
     sum_state, denominator = sample_state
 
-    return nest.map_structure(
-        lambda t: tf.truediv(t, denominator), sum_state), global_state
+    return (
+        nest.map_structure(lambda t: t / denominator, sum_state),
+        global_state)

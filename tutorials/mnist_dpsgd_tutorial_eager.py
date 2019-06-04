@@ -26,12 +26,11 @@ import tensorflow as tf
 
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.dp_query.gaussian_query import GaussianAverageQuery
-from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-  tf.compat.v1.enable_eager_execution()
+  tf.enable_eager_execution()
 else:
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
@@ -64,6 +63,9 @@ def compute_epsilon(steps):
 
 
 def main(_):
+  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
+    raise ValueError('Number of microbatches should divide evenly batch_size')
+
   # Fetch the mnist data
   train, test = tf.keras.datasets.mnist.load_data()
   train_images, train_labels = train
@@ -97,13 +99,10 @@ def main(_):
 
   # Instantiate the optimizer
   if FLAGS.dpsgd:
-    dp_average_query = GaussianAverageQuery(
-        FLAGS.l2_norm_clip,
-        FLAGS.l2_norm_clip * FLAGS.noise_multiplier,
-        FLAGS.microbatches)
-    opt = DPGradientDescentOptimizer(
-        dp_average_query,
-        FLAGS.microbatches,
+    opt = DPGradientDescentGaussianOptimizer(
+        l2_norm_clip=FLAGS.l2_norm_clip,
+        noise_multiplier=FLAGS.noise_multiplier,
+        num_microbatches=FLAGS.microbatches,
         learning_rate=FLAGS.learning_rate)
   else:
     opt = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
@@ -145,7 +144,7 @@ def main(_):
 
     # Compute the privacy budget expended so far.
     if FLAGS.dpsgd:
-      eps = compute_epsilon(epoch * steps_per_epoch)
+      eps = compute_epsilon((epoch + 1) * steps_per_epoch)
       print('For delta=1e-5, the current epsilon is: %.2f' % eps)
     else:
       print('Trained with vanilla non-private SGD optimizer')

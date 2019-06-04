@@ -43,17 +43,19 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   _GlobalState = collections.namedtuple(
       '_GlobalState', ['l2_norm_clip', 'stddev'])
 
-  def __init__(self, l2_norm_clip, stddev, ledger=None):
+  def __init__(self, l2_norm_clip, stddev):
     """Initializes the GaussianSumQuery.
 
     Args:
       l2_norm_clip: The clipping norm to apply to the global norm of each
         record.
       stddev: The stddev of the noise added to the sum.
-      ledger: The privacy ledger to which queries should be recorded.
     """
     self._l2_norm_clip = l2_norm_clip
     self._stddev = stddev
+    self._ledger = None
+
+  def set_ledger(self, ledger):
     self._ledger = ledger
 
   def make_global_state(self, l2_norm_clip, stddev):
@@ -68,16 +70,8 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     return global_state.l2_norm_clip
 
   def initial_sample_state(self, global_state, template):
-    if self._ledger:
-      dependencies = [
-          self._ledger.record_sum_query(
-              global_state.l2_norm_clip, global_state.stddev)
-      ]
-    else:
-      dependencies = []
-    with tf.control_dependencies(dependencies):
-      return nest.map_structure(
-          dp_query.zeros_like, template)
+    return nest.map_structure(
+        dp_query.zeros_like, template)
 
   def preprocess_record_impl(self, params, record):
     """Clips the l2 norm, returning the clipped record and the l2 norm.
@@ -110,7 +104,15 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
       def add_noise(v):
         return v + random_normal(tf.shape(v))
 
-    return nest.map_structure(add_noise, sample_state), global_state
+    if self._ledger:
+      dependencies = [
+          self._ledger.record_sum_query(
+              global_state.l2_norm_clip, global_state.stddev)
+      ]
+    else:
+      dependencies = []
+    with tf.control_dependencies(dependencies):
+      return nest.map_structure(add_noise, sample_state), global_state
 
 
 class GaussianAverageQuery(normalized_query.NormalizedQuery):
@@ -127,8 +129,7 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
   def __init__(self,
                l2_norm_clip,
                sum_stddev,
-               denominator,
-               ledger=None):
+               denominator):
     """Initializes the GaussianAverageQuery.
 
     Args:
@@ -138,8 +139,7 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
         normalization).
       denominator: The normalization constant (applied after noise is added to
         the sum).
-      ledger: The privacy ledger to which queries should be recorded.
     """
     super(GaussianAverageQuery, self).__init__(
-        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev, ledger),
+        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev),
         denominator=denominator)

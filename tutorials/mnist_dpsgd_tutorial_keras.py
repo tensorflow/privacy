@@ -27,8 +27,7 @@ import tensorflow as tf
 
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.dp_query.gaussian_query import GaussianAverageQuery
-from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   GradientDescentOptimizer = tf.train.GradientDescentOptimizer
@@ -42,10 +41,10 @@ flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
 flags.DEFINE_float('noise_multiplier', 1.1,
                    'Ratio of the standard deviation to the clipping norm')
 flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-flags.DEFINE_integer('batch_size', 250, 'Batch size')
+flags.DEFINE_integer('batch_size', 256, 'Batch size')
 flags.DEFINE_integer('epochs', 60, 'Number of epochs')
 flags.DEFINE_integer(
-    'microbatches', 250, 'Number of microbatches '
+    'microbatches', 256, 'Number of microbatches '
     '(must evenly divide batch_size)')
 flags.DEFINE_string('model_dir', None, 'Model directory')
 
@@ -119,13 +118,10 @@ def main(unused_argv):
   ])
 
   if FLAGS.dpsgd:
-    dp_average_query = GaussianAverageQuery(
-        FLAGS.l2_norm_clip,
-        FLAGS.l2_norm_clip * FLAGS.noise_multiplier,
-        FLAGS.microbatches)
-    optimizer = DPGradientDescentOptimizer(
-        dp_average_query,
-        FLAGS.microbatches,
+    optimizer = DPGradientDescentGaussianOptimizer(
+        l2_norm_clip=FLAGS.l2_norm_clip,
+        noise_multiplier=FLAGS.noise_multiplier,
+        num_microbatches=FLAGS.num_microbatches,
         learning_rate=FLAGS.learning_rate,
         unroll_microbatches=True)
     # Compute vector of per-example loss rather than its mean over a minibatch.

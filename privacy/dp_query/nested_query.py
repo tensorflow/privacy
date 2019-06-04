@@ -62,6 +62,9 @@ class NestedQuery(dp_query.DPQuery):
     return nest.map_structure_up_to(
         self._queries, caller, self._queries, *inputs)
 
+  def set_ledger(self, ledger):
+    self._map_to_queries('set_ledger', ledger=ledger)
+
   def initial_global_state(self):
     """See base class."""
     return self._map_to_queries('initial_global_state')

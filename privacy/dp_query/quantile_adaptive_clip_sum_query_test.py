@@ -251,8 +251,6 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
 
     population_size = tf.Variable(0)
     selection_probability = tf.Variable(1.0)
-    ledger = privacy_ledger.PrivacyLedger(
-        population_size, selection_probability)
 
     query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=10.0,
@@ -260,10 +258,10 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
         target_unclipped_quantile=0.0,
         learning_rate=1.0,
         clipped_count_stddev=0.0,
-        expected_num_records=2.0,
-        ledger=ledger)
+        expected_num_records=2.0)
 
-    query = privacy_ledger.QueryWithLedger(query, ledger)
+    query = privacy_ledger.QueryWithLedger(
+        query, population_size, selection_probability)
 
     # First sample.
     tf.assign(population_size, 10)
@@ -271,7 +269,7 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
     _, global_state = test_utils.run_query(query, [record1, record2])
 
     expected_queries = [[10.0, 10.0], [0.5, 0.0]]
-    formatted = ledger.get_formatted_ledger_eager()
+    formatted = query.ledger.get_formatted_ledger_eager()
     sample_1 = formatted[0]
     self.assertAllClose(sample_1.population_size, 10.0)
     self.assertAllClose(sample_1.selection_probability, 0.1)
@@ -282,7 +280,7 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase):
     tf.assign(selection_probability, 0.2)
     test_utils.run_query(query, [record1, record2], global_state)
 
-    formatted = ledger.get_formatted_ledger_eager()
+    formatted = query.ledger.get_formatted_ledger_eager()
     sample_1, sample_2 = formatted
     self.assertAllClose(sample_1.population_size, 10.0)
     self.assertAllClose(sample_1.selection_probability, 0.1)

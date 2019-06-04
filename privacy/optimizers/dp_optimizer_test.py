@@ -46,22 +46,18 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdagrad 4', dp_optimizer.DPAdagradOptimizer, 4, [-2.5, -2.5]),
       ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-2.5, -2.5]),
       ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
-      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]),
-      ('DPAdam None', dp_optimizer.DPAdamOptimizer, None, [-2.5, -2.5]))
+      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]))
   def testBaseline(self, cls, num_microbatches, expected_answer):
     with self.cached_session() as sess:
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
-      ledger = privacy_ledger.PrivacyLedger(
-          1e6, num_microbatches / 1e6 if num_microbatches else None)
-      dp_average_query = gaussian_query.GaussianAverageQuery(
-          1.0e9, 0.0, num_microbatches, ledger)
-      dp_average_query = privacy_ledger.QueryWithLedger(
-          dp_average_query, ledger)
+      dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(
+          dp_sum_query, 1e6, num_microbatches / 1e6)
 
       opt = cls(
-          dp_average_query,
+          dp_sum_query,
           num_microbatches=num_microbatches,
           learning_rate=2.0)
 
@@ -84,12 +80,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0, 0.0])
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
-      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6)
-      dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
-      dp_average_query = privacy_ledger.QueryWithLedger(
-          dp_average_query, ledger)
+      dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
-      opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
+      opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -109,12 +103,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       var0 = tf.Variable([0.0])
       data0 = tf.Variable([[0.0]])
 
-      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6)
-      dp_average_query = gaussian_query.GaussianAverageQuery(4.0, 8.0, 1)
-      dp_average_query = privacy_ledger.QueryWithLedger(
-          dp_average_query, ledger)
+      dp_sum_query = gaussian_query.GaussianSumQuery(4.0, 8.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
-      opt = cls(dp_average_query, num_microbatches=1, learning_rate=2.0)
+      opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -153,12 +145,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       vector_loss = tf.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(vector_loss)
-      ledger = privacy_ledger.PrivacyLedger(1e6, 1 / 1e6)
-      dp_average_query = gaussian_query.GaussianAverageQuery(1.0, 0.0, 1)
-      dp_average_query = privacy_ledger.QueryWithLedger(
-          dp_average_query, ledger)
+      dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
       optimizer = dp_optimizer.DPGradientDescentOptimizer(
-          dp_average_query,
+          dp_sum_query,
           num_microbatches=1,
           learning_rate=1.0)
       global_step = tf.train.get_global_step()
@@ -198,14 +188,12 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       num_microbatches = 4
 
-      ledger = privacy_ledger.PrivacyLedger(
-          1e6, num_microbatches / 1e6)
-      dp_average_query = gaussian_query.GaussianAverageQuery(1.0e9, 0.0, 4)
-      dp_average_query = privacy_ledger.QueryWithLedger(
-          dp_average_query, ledger)
+      dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(
+          dp_sum_query, 1e6, num_microbatches / 1e6)
 
       opt = cls(
-          dp_average_query,
+          dp_sum_query,
           num_microbatches=num_microbatches,
           learning_rate=2.0,
           unroll_microbatches=True)
@@ -233,8 +221,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           l2_norm_clip=4.0,
           noise_multiplier=2.0,
           num_microbatches=1,
-          learning_rate=2.0,
-          ledger=privacy_ledger.DummyLedger())
+          learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values

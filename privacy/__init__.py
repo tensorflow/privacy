@@ -20,7 +20,6 @@ import sys
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  from privacy.analysis.privacy_ledger import DummyLedger
   from privacy.analysis.privacy_ledger import GaussianSumQueryEntry
   from privacy.analysis.privacy_ledger import PrivacyLedger
   from privacy.analysis.privacy_ledger import QueryWithLedger

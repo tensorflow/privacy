@@ -51,6 +51,10 @@ class NormalizedQuery(dp_query.DPQuery):
     self._numerator = numerator_query
     self._denominator = denominator
 
+  def set_ledger(self, ledger):
+    """See base class."""
+    self._numerator.set_ledger(ledger)
+
   def initial_global_state(self):
     """See base class."""
     if self._denominator is not None:
@@ -92,7 +96,3 @@ class NormalizedQuery(dp_query.DPQuery):
   def merge_sample_states(self, sample_state_1, sample_state_2):
     """See base class."""
     return self._numerator.merge_sample_states(sample_state_1, sample_state_2)
-
-  def set_denominator(self, global_state, denominator):
-    """Returns an updated global_state with the given denominator."""
-    return global_state._replace(denominator=tf.cast(denominator, tf.float32))

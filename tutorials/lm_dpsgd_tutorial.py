@@ -94,9 +94,7 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
 
       ledger = privacy_ledger.PrivacyLedger(
           population_size=NB_TRAIN,
-          selection_probability=(FLAGS.batch_size / NB_TRAIN),
-          max_samples=1e6,
-          max_queries=1e6)
+          selection_probability=(FLAGS.batch_size / NB_TRAIN))
 
       optimizer = dp_optimizer.DPAdamGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
