@@ -19,10 +19,11 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import optimizers
-from tensorflow.python.training.tracking import base as trackable
 from tensorflow.python.framework import ops as _ops
-from privacy.bolton.loss import StrongConvexLoss
+from privacy.bolton.loss import StrongConvexMixin
 from privacy.bolton.optimizer import Private
+
+_accepted_distributions = ['laplace']
 
 
 class Bolton(Model):
@@ -33,12 +34,16 @@ class Bolton(Model):
   2. Projects weights to R after each batch
   3. Limits learning rate
   4. Use a strongly convex loss function (see compile)
+
+  For more details on the strong convexity requirements, see:
+  Bolt-on Differential Privacy for Scalable Stochastic Gradient
+  Descent-based Analytics by Xi Wu et. al.
   """
+
   def __init__(self,
                n_classes,
                epsilon,
                noise_distribution='laplace',
-               weights_initializer=tf.initializers.GlorotUniform(),
                seed=1,
                dtype=tf.float32
                ):
@@ -59,6 +64,7 @@ class Bolton(Model):
         2. Projects weights to R after each batch
         3. Limits learning rate
       """
+
       def on_train_batch_end(self, batch, logs=None):
         loss = self.model.loss
         self.model.optimizer.limit_learning_rate(
@@ -72,13 +78,17 @@ class Bolton(Model):
         loss = self.model.loss
         self.model._project_weights_to_r(loss.radius(), True)
 
+    if epsilon <= 0:
+      raise ValueError('Detected epsilon: {0}. '
+                       'Valid range is 0 < epsilon <inf'.format(epsilon))
+
+    if noise_distribution not in _accepted_distributions:
+      raise ValueError('Detected noise distribution: {0} not one of: {1} valid'
+                       'distributions'.format(noise_distribution,
+                                              _accepted_distributions))
+
     super(Bolton, self).__init__(name='bolton', dynamic=False)
     self.n_classes = n_classes
-    self.output_layer = tf.keras.layers.Dense(
-        self.n_classes,
-        kernel_regularizer=tf.keras.regularizers.l2(),
-        kernel_initializer=weights_initializer,
-    )
     # if we do regularization here, we require the user to re-instantiate
     # the model each time they want to
     # change lambda, unless we standardize modifying it later at .compile
@@ -87,6 +97,7 @@ class Bolton(Model):
     self.epsilon = epsilon
     self.seed = seed
     self.__in_fit = False
+    self._layers_instantiated = False
     self._callback = MyCustomCallback()
     self._dtype = dtype
 
@@ -114,15 +125,24 @@ class Bolton(Model):
     """See super class. Default optimizer used in Bolton method is SGD.
 
     """
-    if not isinstance(loss, StrongConvexLoss):
-      raise ValueError("Loss must be subclassed from StrongConvexLoss")
-    self.output_layer.kernel_regularizer.l2 = loss.reg_lambda()
+    for key, val in StrongConvexMixin.__dict__.items():
+      if callable(val) and getattr(loss, key, None) is None:
+        raise ValueError("Please ensure you are passing a valid StrongConvex "
+                         "loss that has all the required methods "
+                         "implemented. "
+                         "Required method: {0} not found".format(key))
+    if not self._layers_instantiated:  # compile may be called multiple times
+      kernel_intiializer = kwargs.get('kernel_initializer',
+                                      tf.initializers.GlorotUniform)
+      self.output_layer = tf.keras.layers.Dense(
+          self.n_classes,
+          kernel_regularizer=loss.kernel_regularizer(),
+          kernel_initializer=kernel_intiializer(),
+      )
+      self._layers_instantiated = True
+    self.output_layer.kernel_regularizer.l2 = loss.reg_lambda
     if not isinstance(optimizer, Private):
       optimizer = optimizers.get(optimizer)
-      if isinstance(self.optimizer, trackable.Trackable):
-        self._track_trackable(
-            self.optimizer, name='optimizer', overwrite=True
-        )
       optimizer = Private(optimizer)
 
     super(Bolton, self).compile(optimizer,
@@ -149,21 +169,20 @@ class Bolton(Model):
     Returns:
 
     """
+    data_size = None
     if n_samples is not None:
       data_size = n_samples
     elif hasattr(x, 'shape'):
       data_size = x.shape[0]
     elif hasattr(x, "__len__"):
       data_size = len(x)
-    else:
+    elif data_size is None:
       if n_samples is None:
         raise ValueError("Unable to detect the number of training "
                          "samples and n_smaples was None. "
                          "either pass a dataset with a .shape or "
                          "__len__ attribute or explicitly pass the "
                          "number of samples as n_smaples.")
-      data_size = n_samples
-
     for layer in self._layers:
       layer.kernel = layer.kernel + self._get_noise(
           self.noise_distribution,
@@ -294,8 +313,8 @@ class Bolton(Model):
         Calculates class weighting to be used in training. Can be on
     Args:
         class_weights: str specifying type, array giving weights, or None.
-        class_counts: If class_weights is not None, then the number of
-                        samples for each class
+        class_counts: If class_weights is not None, then an array of
+                      the number of samples for each class
         num_classes: If class_weights is not None, then the number of
                         classes.
     Returns: class_weights as 1D tensor, to be passed to model's fit method.
@@ -313,10 +332,16 @@ class Bolton(Model):
                          "or pass an array".format(class_weights,
                                                    class_keys))
       if class_counts is None:
-        raise ValueError("Class counts must be provided if using"
+        raise ValueError("Class counts must be provided if using "
                          "class_weights=%s" % class_weights)
+      class_counts_shape = tf.Variable(class_counts,
+                                       trainable=False,
+                                       dtype=self._dtype).shape
+      if len(class_counts_shape) != 1:
+        raise ValueError('class counts must be a 1D array.'
+                         'Detected: {0}'.format(class_counts_shape))
       if num_classes is None:
-        raise ValueError("Class counts must be provided if using"
+        raise ValueError("num_classes must be provided if using "
                          "class_weights=%s" % class_weights)
     elif class_weights is not None:
       if num_classes is None:
@@ -327,10 +352,13 @@ class Bolton(Model):
       class_weights = 1
     elif is_string and class_weights == 'balanced':
       num_samples = sum(class_counts)
-      class_weights = tf.Variable(
-          num_samples / (num_classes * class_counts),
-          dtype=self._dtype
-      )
+      weighted_counts = tf.dtypes.cast(tf.math.multiply(num_classes,
+                                                        class_counts,
+                                                        ),
+                                       self._dtype
+                                       )
+      class_weights = tf.Variable(num_samples, dtype=self._dtype) / \
+                      tf.Variable(weighted_counts, dtype=self._dtype)
     else:
       class_weights = _ops.convert_to_tensor_v2(class_weights)
       if len(class_weights.shape) != 1:
@@ -376,7 +404,7 @@ class Bolton(Model):
     distribution = distribution.lower()
     input_dim = self._layers[0].kernel.numpy().shape[0]
     loss = self.loss
-    if distribution == 'laplace':
+    if distribution == _accepted_distributions[0]:  # laplace
       per_class_epsilon = self.epsilon / (self.n_classes)
       l2_sensitivity = (2 *
                         loss.lipchitz_constant(self.class_weight)) / \
@@ -396,7 +424,8 @@ class Bolton(Model):
                               alpha,
                               beta=1 / beta,
                               seed=1,
-                              dtype=self._dtype)
+                              dtype=self._dtype
+                              )
       return unit_vector * gamma
-    raise NotImplementedError("distribution: {0} is not "
-                              "currently supported".format(distribution))
+    raise NotImplementedError('Noise distribution: {0} is not '
+                              'a valid distribution'.format(distribution))

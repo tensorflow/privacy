@@ -10,5 +10,5 @@ if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
   from privacy.bolton.model import Bolton
-  from privacy.bolton.loss import Huber
-  from privacy.bolton.loss import BinaryCrossentropy
+  from privacy.bolton.loss import StrongConvexHuber
+  from privacy.bolton.loss import StrongConvexBinaryCrossentropy

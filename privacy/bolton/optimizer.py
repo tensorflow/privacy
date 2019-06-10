@@ -29,6 +29,10 @@ class Private(optimizer_v2.OptimizerV2):
     as the visible optimizer to the tf model. No matter the optimizer
     passed, "Private" enables the bolton model to control the learning rate
     based on the strongly convex loss.
+
+    For more details on the strong convexity requirements, see:
+    Bolt-on Differential Privacy for Scalable Stochastic Gradient
+    Descent-based Analytics by Xi Wu et. al.
   """
   def __init__(self,
                optimizer: optimizer_v2.OptimizerV2,
@@ -76,13 +80,10 @@ class Private(optimizer_v2.OptimizerV2):
       else:
         self.learning_rate = numerator / (gamma * t)
 
-  def from_config(self, config, custom_objects=None):
+  def from_config(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer.from_config(
-        config,
-        custom_objects=custom_objects
-    )
+    return self._internal_optimizer.from_config(*args, **kwargs)
 
   def __getattr__(self, name):
     """return _internal_optimizer off self instance, and everything else
@@ -116,58 +117,37 @@ class Private(optimizer_v2.OptimizerV2):
     else:
       setattr(self._internal_optimizer, key, value)
 
-  def _resource_apply_dense(self, grad, handle):
+  def _resource_apply_dense(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer._resource_apply_dense(grad, handle)
+    return self._internal_optimizer._resource_apply_dense(*args, **kwargs)
 
-  def _resource_apply_sparse(self, grad, handle, indices):
+  def _resource_apply_sparse(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer._resource_apply_sparse(
-        grad,
-        handle,
-        indices
-    )
+    return self._internal_optimizer._resource_apply_sparse(*args, **kwargs)
 
   def get_updates(self, loss, params):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
     return self._internal_optimizer.get_updates(loss, params)
 
-  def apply_gradients(self, grads_and_vars, name: str = None):
+  def apply_gradients(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer.apply_gradients(
-        grads_and_vars,
-        name=name
-    )
+    return self._internal_optimizer.apply_gradients(*args, **kwargs)
 
-  def minimize(self,
-               loss,
-               var_list,
-               grad_loss: bool = None,
-               name: str = None
-               ):
+  def minimize(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer.minimize(
-        loss,
-        var_list,
-        grad_loss,
-        name
-    )
+    return self._internal_optimizer.minimize(*args, **kwargs)
 
-  def _compute_gradients(self, loss, var_list, grad_loss=None):
+  def _compute_gradients(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer._compute_gradients(
-        loss,
-        var_list,
-        grad_loss=grad_loss
-    )
+    return self._internal_optimizer._compute_gradients(*args, **kwargs)
 
-  def get_gradients(self, loss, params):
+  def get_gradients(self, *args, **kwargs):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer.get_gradients(loss, params)
+    return self._internal_optimizer.get_gradients(*args, **kwargs)
