@@ -32,7 +32,7 @@ from absl.testing import absltest
 from tensorflow.python.keras.regularizers import L1L2
 
 
-class TestLoss(losses.Loss):
+class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model"""
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
@@ -145,21 +145,25 @@ class InitTests(keras_parameterized.TestCase):
     self.assertIsInstance(clf, model.Bolton)
 
   @parameterized.named_parameters([
-    {'testcase_name': 'invalid noise',
-     'n_classes': 1,
-     'epsilon': 1,
-     'noise_distribution': 'not_valid',
-     'weights_initializer': tf.initializers.GlorotUniform(),
-     },
-    {'testcase_name': 'invalid epsilon',
-     'n_classes': 1,
-     'epsilon': -1,
-     'noise_distribution': 'laplace',
-     'weights_initializer': tf.initializers.GlorotUniform(),
-     },
+      {'testcase_name': 'invalid noise',
+       'n_classes': 1,
+       'epsilon': 1,
+       'noise_distribution': 'not_valid',
+       'weights_initializer': tf.initializers.GlorotUniform(),
+       },
+      {'testcase_name': 'invalid epsilon',
+       'n_classes': 1,
+       'epsilon': -1,
+       'noise_distribution': 'laplace',
+       'weights_initializer': tf.initializers.GlorotUniform(),
+       },
   ])
   def test_bad_init_params(
-    self, n_classes, epsilon, noise_distribution, weights_initializer):
+      self,
+      n_classes,
+      epsilon,
+      noise_distribution,
+      weights_initializer):
     # test invalid domains for each variable, especially noise
     seed = 1
     with self.assertRaises(ValueError):
@@ -204,16 +208,16 @@ class InitTests(keras_parameterized.TestCase):
       self.assertEqual(clf.loss, loss)
 
   @parameterized.named_parameters([
-    {'testcase_name': 'Not strong loss',
-     'n_classes': 1,
-     'loss': losses.BinaryCrossentropy(),
-     'optimizer': 'adam',
-     },
-    {'testcase_name': 'Not valid optimizer',
-     'n_classes': 1,
-     'loss': TestLoss(1, 1, 1),
-     'optimizer': 'ada',
-     }
+      {'testcase_name': 'Not strong loss',
+       'n_classes': 1,
+       'loss': losses.BinaryCrossentropy(),
+       'optimizer': 'adam',
+       },
+      {'testcase_name': 'Not valid optimizer',
+       'n_classes': 1,
+       'loss': TestLoss(1, 1, 1),
+       'optimizer': 'ada',
+       }
   ])
   def test_bad_compile(self, n_classes, loss, optimizer):
     # test compilaton of invalid tf.optimizer and non instantiated loss.
@@ -250,7 +254,7 @@ def _cat_dataset(n_samples, input_dim, n_classes, t='train', generator=False):
   y_stack = []
   for i_class in range(n_classes):
     x_stack.append(
-       tf.constant(1*i_class, tf.float32, (n_samples, input_dim))
+        tf.constant(1*i_class, tf.float32, (n_samples, input_dim))
     )
     y_stack.append(
         tf.constant(i_class, tf.float32, (n_samples, n_classes))
@@ -258,7 +262,7 @@ def _cat_dataset(n_samples, input_dim, n_classes, t='train', generator=False):
   x_set, y_set = tf.stack(x_stack), tf.stack(y_stack)
   if generator:
     dataset = tf.data.Dataset.from_tensor_slices(
-      (x_set, y_set)
+        (x_set, y_set)
     )
     return dataset
   return x_set, y_set
@@ -281,10 +285,10 @@ def _do_fit(n_samples,
   clf.compile(optimizer, loss)
   if generator:
     x = _cat_dataset(
-      n_samples,
-      input_dim,
-      n_classes,
-      generator=generator
+        n_samples,
+        input_dim,
+        n_classes,
+        generator=generator
     )
     y = None
     # x = x.batch(batch_size)
@@ -315,26 +319,26 @@ class FitTests(keras_parameterized.TestCase):
 
   # @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
-    {'testcase_name': 'iterator fit',
-     'generator': False,
-     'reset_n_samples': True,
-     'callbacks': None
-     },
-    {'testcase_name': 'iterator fit no samples',
-     'generator': False,
-     'reset_n_samples': True,
-     'callbacks': None
-     },
-    {'testcase_name': 'generator fit',
-     'generator': True,
-     'reset_n_samples': False,
-     'callbacks': None
-     },
-    {'testcase_name': 'with callbacks',
-     'generator': True,
-     'reset_n_samples': False,
-     'callbacks': TestCallback()
-     },
+      {'testcase_name': 'iterator fit',
+       'generator': False,
+       'reset_n_samples': True,
+       'callbacks': None
+       },
+      {'testcase_name': 'iterator fit no samples',
+       'generator': False,
+       'reset_n_samples': True,
+       'callbacks': None
+       },
+      {'testcase_name': 'generator fit',
+       'generator': True,
+       'reset_n_samples': False,
+       'callbacks': None
+       },
+      {'testcase_name': 'with callbacks',
+       'generator': True,
+       'reset_n_samples': False,
+       'callbacks': TestCallback()
+       },
   ])
   def test_fit(self, generator, reset_n_samples, callbacks):
     loss = TestLoss(1, 1, 1)
@@ -344,9 +348,19 @@ class FitTests(keras_parameterized.TestCase):
     epsilon = 1
     batch_size = 1
     n_samples = 10
-    clf = _do_fit(n_samples, input_dim, n_classes, epsilon, generator, batch_size,
-            reset_n_samples, optimizer, loss, callbacks)
-    self.assertEqual(hasattr(clf, '_layers'), True)
+    clf = _do_fit(
+        n_samples,
+        input_dim,
+        n_classes,
+        epsilon,
+        generator,
+        batch_size,
+        reset_n_samples,
+        optimizer,
+        loss,
+        callbacks
+    )
+    self.assertEqual(hasattr(clf, 'layers'), True)
 
   @parameterized.named_parameters([
       {'testcase_name': 'generator fit',
@@ -368,15 +382,15 @@ class FitTests(keras_parameterized.TestCase):
                        )
     clf.compile(optimizer, loss)
     x = _cat_dataset(
-      n_samples,
-      input_dim,
-      n_classes,
-      generator=generator
+        n_samples,
+        input_dim,
+        n_classes,
+        generator=generator
     )
     x = x.batch(batch_size)
     x = x.shuffle(n_samples // 2)
     clf.fit_generator(x, n_samples=n_samples)
-    self.assertEqual(hasattr(clf, '_layers'), True)
+    self.assertEqual(hasattr(clf, 'layers'), True)
 
   @parameterized.named_parameters([
       {'testcase_name': 'iterator no n_samples',
@@ -399,32 +413,43 @@ class FitTests(keras_parameterized.TestCase):
       epsilon = 1
       batch_size = 1
       n_samples = 10
-      _do_fit(n_samples, input_dim, n_classes, epsilon, generator, batch_size,
-              reset_n_samples, optimizer, loss, None, distribution)
+      _do_fit(
+          n_samples,
+          input_dim,
+          n_classes,
+          epsilon,
+          generator,
+          batch_size,
+          reset_n_samples,
+          optimizer,
+          loss,
+          None,
+          distribution
+      )
 
   @parameterized.named_parameters([
-    {'testcase_name': 'None class_weights',
-     'class_weights': None,
-     'class_counts': None,
-     'num_classes': None,
-     'result': 1},
-    {'testcase_name': 'class weights array',
-     'class_weights': [1, 1],
-     'class_counts': [1, 1],
-     'num_classes': 2,
-     'result': [1, 1]},
-    {'testcase_name': 'class weights balanced',
-     'class_weights': 'balanced',
-     'class_counts': [1, 1],
-     'num_classes': 2,
-     'result': [1, 1]},
+      {'testcase_name': 'None class_weights',
+       'class_weights': None,
+       'class_counts': None,
+       'num_classes': None,
+       'result': 1},
+      {'testcase_name': 'class weights array',
+       'class_weights': [1, 1],
+       'class_counts': [1, 1],
+       'num_classes': 2,
+       'result': [1, 1]},
+      {'testcase_name': 'class weights balanced',
+       'class_weights': 'balanced',
+       'class_counts': [1, 1],
+       'num_classes': 2,
+       'result': [1, 1]},
   ])
   def test_class_calculate(self,
                            class_weights,
                            class_counts,
                            num_classes,
                            result
-              ):
+                           ):
     clf = model.Bolton(1, 1)
     expected = clf.calculate_class_weights(class_weights,
                                            class_counts,
@@ -447,14 +472,14 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': 'balanced',
        'class_counts': None,
        'num_classes': 1,
-       'err_msg':
-          "Class counts must be provided if using class_weights=balanced"},
+       'err_msg': "Class counts must be provided if "
+                  "using class_weights=balanced"},
       {'testcase_name': 'no num classes',
        'class_weights': 'balanced',
        'class_counts': [1],
        'num_classes': None,
-       'err_msg':
-          'num_classes must be provided if using class_weights=balanced'},
+       'err_msg': 'num_classes must be provided if '
+                  'using class_weights=balanced'},
       {'testcase_name': 'class counts not array',
        'class_weights': 'balanced',
        'class_counts': 1,
@@ -464,7 +489,7 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': [1],
        'class_counts': None,
        'num_classes': None,
-       'err_msg': "You must pass a value for num_classes if"
+       'err_msg': "You must pass a value for num_classes if "
                   "creating an array of class_weights"},
       {'testcase_name': 'class counts array, improper shape',
        'class_weights': [[1], [1]],
@@ -481,7 +506,8 @@ class FitTests(keras_parameterized.TestCase):
                         class_weights,
                         class_counts,
                         num_classes,
-                        err_msg):
+                        err_msg
+                        ):
     clf = model.Bolton(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):
       expected = clf.calculate_class_weights(class_weights,

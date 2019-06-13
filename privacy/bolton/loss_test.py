@@ -18,23 +18,17 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from tensorflow.python.platform import test
 from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras.optimizer_v2 import adam
-from tensorflow.python.keras.optimizer_v2 import adagrad
-from tensorflow.python.keras.optimizer_v2 import gradient_descent
-from tensorflow.python.keras import losses
 from tensorflow.python.framework import test_util
-from privacy.bolton import model
+from tensorflow.python.keras.regularizers import L1L2
+from absl.testing import parameterized
 from privacy.bolton.loss import StrongConvexBinaryCrossentropy
 from privacy.bolton.loss import StrongConvexHuber
 from privacy.bolton.loss import StrongConvexMixin
-from absl.testing import parameterized
-from absl.testing import absltest
-from tensorflow.python.keras.regularizers import L1L2
 
 
-class StrongConvexTests(keras_parameterized.TestCase):
+class StrongConvexMixinTests(keras_parameterized.TestCase):
+  """Tests for the StrongConvexMixin"""
   @parameterized.named_parameters([
       {'testcase_name': 'beta not implemented',
        'fn': 'beta',
@@ -50,6 +44,12 @@ class StrongConvexTests(keras_parameterized.TestCase):
        'args': []},
   ])
   def test_not_implemented(self, fn, args):
+    """Test that the given fn's are not implemented on the mixin.
+
+    Args:
+      fn: fn on Mixin to test
+      args: arguments to fn of Mixin
+    """
     with self.assertRaises(NotImplementedError):
       loss = StrongConvexMixin()
       getattr(loss, fn, None)(*args)
@@ -60,6 +60,12 @@ class StrongConvexTests(keras_parameterized.TestCase):
        'args': []},
   ])
   def test_return_none(self, fn, args):
+    """Test that fn of Mixin returns None
+
+    Args:
+      fn: fn of Mixin to test
+      args: arguments to fn of Mixin
+    """
     loss = StrongConvexMixin()
     ret = getattr(loss, fn, None)(*args)
     self.assertEqual(ret, None)
@@ -71,44 +77,56 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
        'reg_lambda': 1,
-       'c': 1,
+       'C': 1,
        'radius_constant': 1
        },
   ])
-  def test_init_params(self, reg_lambda, c, radius_constant):
+  def test_init_params(self, reg_lambda, C, radius_constant):
+    """Test initialization for given arguments
+    Args:
+      reg_lambda: initialization value for reg_lambda arg
+      C: initialization value for C arg
+      radius_constant: initialization value for radius_constant arg
+    """
     # test valid domains for each variable
-    loss = StrongConvexBinaryCrossentropy(reg_lambda, c, radius_constant)
+    loss = StrongConvexBinaryCrossentropy(reg_lambda, C, radius_constant)
     self.assertIsInstance(loss, StrongConvexBinaryCrossentropy)
 
   @parameterized.named_parameters([
       {'testcase_name': 'negative c',
        'reg_lambda': 1,
-       'c': -1,
+       'C': -1,
        'radius_constant': 1
        },
       {'testcase_name': 'negative radius',
        'reg_lambda': 1,
-       'c': 1,
+       'C': 1,
        'radius_constant': -1
        },
       {'testcase_name': 'negative lambda',
        'reg_lambda': -1,
-       'c': 1,
+       'C': 1,
        'radius_constant': 1
        },
   ])
-  def test_bad_init_params(self, reg_lambda, c, radius_constant):
+  def test_bad_init_params(self, reg_lambda, C, radius_constant):
+    """Test invalid domain for given params. Should return ValueError
+    Args:
+      reg_lambda: initialization value for reg_lambda arg
+      C: initialization value for C arg
+      radius_constant: initialization value for radius_constant arg
+    """
     # test valid domains for each variable
     with self.assertRaises(ValueError):
-      loss = StrongConvexBinaryCrossentropy(reg_lambda, c, radius_constant)
+      StrongConvexBinaryCrossentropy(reg_lambda, C, radius_constant)
 
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
       # [] for compatibility with tensorflow loss calculation
       {'testcase_name': 'both positive',
-        'logits': [10000],
-        'y_true': [1],
-        'result': 0,
+       'logits': [10000],
+       'y_true': [1],
+       'result': 0,
       },
       {'testcase_name': 'positive gradient negative logits',
        'logits': [-10000],
@@ -127,6 +145,12 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        },
   ])
   def test_calculation(self, logits, y_true, result):
+    """Test the call method to ensure it returns the correct value
+    Args:
+      logits: unscaled output of model
+      y_true: label
+      result: correct loss calculation value
+    """
     logits = tf.Variable(logits, False, dtype=tf.float32)
     y_true = tf.Variable(y_true, False, dtype=tf.float32)
     loss = StrongConvexBinaryCrossentropy(0.00001, 1, 1)
@@ -160,6 +184,13 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        },
   ])
   def test_fns(self, init_args, fn, args, result):
+    """Test that fn of BinaryCrossentropy loss returns the correct result
+    Args:
+      init_args: init values for loss instance
+      fn: the fn to test
+      args: the arguments to above function
+      result: the correct result from the fn
+    """
     loss = StrongConvexBinaryCrossentropy(*init_args)
     expected = getattr(loss, fn, lambda: 'fn not found')(*args)
     if hasattr(expected, 'numpy') and hasattr(result, 'numpy'):  # both tensor
@@ -183,6 +214,12 @@ class HuberTests(keras_parameterized.TestCase):
        },
   ])
   def test_init_params(self, reg_lambda, c, radius_constant, delta):
+    """Test initialization for given arguments
+    Args:
+      reg_lambda: initialization value for reg_lambda arg
+      C: initialization value for C arg
+      radius_constant: initialization value for radius_constant arg
+    """
     # test valid domains for each variable
     loss = StrongConvexHuber(reg_lambda, c, radius_constant, delta)
     self.assertIsInstance(loss, StrongConvexHuber)
@@ -214,18 +251,24 @@ class HuberTests(keras_parameterized.TestCase):
        },
   ])
   def test_bad_init_params(self, reg_lambda, c, radius_constant, delta):
+    """Test invalid domain for given params. Should return ValueError
+    Args:
+      reg_lambda: initialization value for reg_lambda arg
+      C: initialization value for C arg
+      radius_constant: initialization value for radius_constant arg
+    """
     # test valid domains for each variable
     with self.assertRaises(ValueError):
-      loss = StrongConvexHuber(reg_lambda, c, radius_constant, delta)
+      StrongConvexHuber(reg_lambda, c, radius_constant, delta)
 
   # test the bounds and test varied delta's
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
       {'testcase_name': 'delta=1,y_true=1 z>1+h decision boundary',
-        'logits': 2.1,
-        'y_true': 1,
-        'delta': 1,
-        'result': 0,
+       'logits': 2.1,
+       'y_true': 1,
+       'delta': 1,
+       'result': 0,
       },
       {'testcase_name': 'delta=1,y_true=1 z<1+h decision boundary',
        'logits': 1.9,
@@ -277,6 +320,12 @@ class HuberTests(keras_parameterized.TestCase):
        },
   ])
   def test_calculation(self, logits, y_true, delta, result):
+    """Test the call method to ensure it returns the correct value
+    Args:
+      logits: unscaled output of model
+      y_true: label
+      result: correct loss calculation value
+    """
     logits = tf.Variable(logits, False, dtype=tf.float32)
     y_true = tf.Variable(y_true, False, dtype=tf.float32)
     loss = StrongConvexHuber(0.00001, 1, 1, delta)
@@ -310,6 +359,13 @@ class HuberTests(keras_parameterized.TestCase):
        },
   ])
   def test_fns(self, init_args, fn, args, result):
+    """Test that fn of BinaryCrossentropy loss returns the correct result
+    Args:
+      init_args: init values for loss instance
+      fn: the fn to test
+      args: the arguments to above function
+      result: the correct result from the fn
+    """
     loss = StrongConvexHuber(*init_args)
     expected = getattr(loss, fn, lambda: 'fn not found')(*args)
     if hasattr(expected, 'numpy') and hasattr(result, 'numpy'):  # both tensor
