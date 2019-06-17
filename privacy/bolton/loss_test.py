@@ -79,7 +79,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'reg_lambda': 1,
        'C': 1,
        'radius_constant': 1
-       },
+       },  # pylint: disable=invalid-name
   ])
   def test_init_params(self, reg_lambda, C, radius_constant):
     """Test initialization for given arguments
@@ -107,7 +107,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'reg_lambda': -1,
        'C': 1,
        'radius_constant': 1
-       },
+       },  # pylint: disable=invalid-name
   ])
   def test_bad_init_params(self, reg_lambda, C, radius_constant):
     """Test invalid domain for given params. Should return ValueError
@@ -180,7 +180,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'fn': 'kernel_regularizer',
        'init_args': [1, 1, 1],
        'args': [],
-       'result': L1L2(l2=1),
+       'result': L1L2(l2=0.5),
        },
   ])
   def test_fns(self, init_args, fn, args, result):

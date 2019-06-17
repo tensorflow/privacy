@@ -102,7 +102,7 @@ class StrongConvexMixin:
     return tf.math.reduce_max(class_weight)
 
 
-class StrongConvexHuber(losses.Huber, StrongConvexMixin):
+class StrongConvexHuber(losses.Loss, StrongConvexMixin):
   """Strong Convex version of Huber loss using l2 weight regularization.
   """
 
@@ -112,7 +112,6 @@ class StrongConvexHuber(losses.Huber, StrongConvexMixin):
                radius_constant: float,
                delta: float,
                reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
-               name: str = 'huber',
                dtype=tf.float32):
     """Constructor.
 
@@ -137,13 +136,17 @@ class StrongConvexHuber(losses.Huber, StrongConvexMixin):
       raise ValueError('radius_constant: {0}, should be >= 0'.format(
           radius_constant
       ))
-    self.C = C
+    if delta <= 0:
+      raise ValueError('delta: {0}, should be >= 0'.format(
+          delta
+      ))
+    self.C = C  # pylint: disable=invalid-name
+    self.delta = delta
     self.radius_constant = radius_constant
     self.dtype = dtype
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
     super(StrongConvexHuber, self).__init__(
-        delta=delta,
-        name=name,
+        name='huber',
         reduction=reduction,
     )
 
@@ -151,26 +154,25 @@ class StrongConvexHuber(losses.Huber, StrongConvexMixin):
     """Compute loss
 
     Args:
-      y_true: Ground truth values.
+      y_true: Ground truth values. One
       y_pred: The predicted values.
 
     Returns:
       Loss values per sample.
     """
     # return super(StrongConvexHuber, self).call(y_true, y_pred) * self._sample_weight
-    h = self._fn_kwargs['delta']
+    h = self.delta
     z = y_pred * y_true
     one = tf.constant(1, dtype=self.dtype)
     four = tf.constant(4, dtype=self.dtype)
 
     if z > one + h:
-      return z - z
+      return _ops.convert_to_tensor_v2(0, dtype=self.dtype)
     elif tf.math.abs(one - z) <= h:
       return one / (four * h) * tf.math.pow(one + h - z, 2)
     elif z < one - h:
       return one - z
-    else:
-      raise ValueError('')
+    raise ValueError('')  # shouldn't be possible to get here.
 
   def radius(self):
     """See super class.
@@ -186,7 +188,7 @@ class StrongConvexHuber(losses.Huber, StrongConvexMixin):
     """See super class.
     """
     max_class_weight = self.max_class_weight(class_weight, self.dtype)
-    delta = _ops.convert_to_tensor_v2(self._fn_kwargs['delta'],
+    delta = _ops.convert_to_tensor_v2(self.delta,
                                       dtype=self.dtype
                                       )
     return self.C * max_class_weight / (delta *
@@ -250,7 +252,7 @@ class StrongConvexBinaryCrossentropy(
           radius_constant
       ))
     self.dtype = dtype
-    self.C = C
+    self.C = C  # pylint: disable=invalid-name
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
     super(StrongConvexBinaryCrossentropy, self).__init__(
         reduction=reduction,
@@ -306,7 +308,7 @@ class StrongConvexBinaryCrossentropy(
       this loss function to be strongly convex.
     :return:
     """
-    return L1L2(l2=self.reg_lambda)
+    return L1L2(l2=self.reg_lambda/2)
 
 
 # class StrongConvexSparseCategoricalCrossentropy(

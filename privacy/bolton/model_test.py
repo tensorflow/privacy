@@ -19,25 +19,22 @@ from __future__ import print_function
 
 
 import tensorflow as tf
-from tensorflow.python.platform import test
 from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
 from tensorflow.python.keras import losses
 from tensorflow.python.framework import ops as _ops
-from tensorflow.python.framework import test_util
-from privacy.bolton import model
-from privacy.bolton.loss import StrongConvexMixin
-from absl.testing import parameterized
-from absl.testing import absltest
 from tensorflow.python.keras.regularizers import L1L2
-
+from absl.testing import parameterized
+from privacy.bolton import model
+from privacy.bolton.optimizer import Bolton
+from privacy.bolton.loss import StrongConvexMixin
 
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model"""
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C
+    self.C = C  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
@@ -78,13 +75,17 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def call(self, val0, val1):
+  def call(self, y_true, y_pred):
     """Loss function that is minimized at the mean of the input points."""
-    return 0.5 * tf.reduce_sum(tf.math.squared_difference(val0, val1), axis=1)
+    return 0.5 * tf.reduce_sum(
+        tf.math.squared_difference(y_true, y_pred),
+        axis=1
+    )
 
   def max_class_weight(self, class_weight):
     if class_weight is None:
       return 1
+    raise ValueError('')
 
   def kernel_regularizer(self):
     return L1L2(l2=self.reg_lambda)
@@ -116,125 +117,91 @@ class InitTests(keras_parameterized.TestCase):
 
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
-       'n_classes': 1,
-       'epsilon': 1,
-       'noise_distribution': 'laplace',
-       'seed': 1
+       'n_outputs': 1,
        },
-      {'testcase_name': 'extreme range',
-       'n_classes': 5,
-       'epsilon': 0.1,
-       'noise_distribution': 'laplace',
-       'seed': 10
-       },
-      {'testcase_name': 'extreme range2',
-       'n_classes': 50,
-       'epsilon': 10,
-       'noise_distribution': 'laplace',
-       'seed': 100
+      {'testcase_name': 'many outputs',
+       'n_outputs': 100,
        },
   ])
-  def test_init_params(
-      self, n_classes, epsilon, noise_distribution, seed):
+  def test_init_params(self, n_outputs):
+    """test initialization of BoltonModel
+
+    Args:
+        n_outputs: number of output neurons
+    """
     # test valid domains for each variable
-    clf = model.Bolton(n_classes,
-                       epsilon,
-                       noise_distribution,
-                       seed
-                       )
-    self.assertIsInstance(clf, model.Bolton)
+    clf = model.BoltonModel(n_outputs)
+    self.assertIsInstance(clf, model.BoltonModel)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'invalid noise',
-       'n_classes': 1,
-       'epsilon': 1,
-       'noise_distribution': 'not_valid',
-       'weights_initializer': tf.initializers.GlorotUniform(),
-       },
-      {'testcase_name': 'invalid epsilon',
-       'n_classes': 1,
-       'epsilon': -1,
-       'noise_distribution': 'laplace',
-       'weights_initializer': tf.initializers.GlorotUniform(),
+      {'testcase_name': 'invalid n_outputs',
+       'n_outputs': -1,
        },
   ])
-  def test_bad_init_params(
-      self,
-      n_classes,
-      epsilon,
-      noise_distribution,
-      weights_initializer):
+  def test_bad_init_params(self, n_outputs):
+    """test bad initializations of BoltonModel that should raise errors
+
+    Args:
+        n_outputs: number of output neurons
+    """
     # test invalid domains for each variable, especially noise
-    seed = 1
     with self.assertRaises(ValueError):
-      clf = model.Bolton(n_classes,
-                         epsilon,
-                         noise_distribution,
-                         weights_initializer,
-                         seed
-                         )
+      model.BoltonModel(n_outputs)
 
   @parameterized.named_parameters([
       {'testcase_name': 'string compile',
-       'n_classes': 1,
+       'n_outputs': 1,
        'loss': TestLoss(1, 1, 1),
        'optimizer': 'adam',
-       'weights_initializer': tf.initializers.GlorotUniform(),
        },
       {'testcase_name': 'test compile',
-       'n_classes': 100,
+       'n_outputs': 100,
        'loss': TestLoss(1, 1, 1),
        'optimizer': TestOptimizer(),
-       'weights_initializer': tf.initializers.GlorotUniform(),
-       },
-      {'testcase_name': 'invalid weights initializer',
-       'n_classes': 1,
-       'loss': TestLoss(1, 1, 1),
-       'optimizer': TestOptimizer(),
-       'weights_initializer': 'not_valid',
        },
   ])
-  def test_compile(self, n_classes, loss, optimizer, weights_initializer):
+  def test_compile(self, n_outputs, loss, optimizer):
+    """test compilation of BoltonModel
+
+    Args:
+        n_outputs: number of output neurons
+        loss: instantiated TestLoss instance
+        optimizer: instanced TestOptimizer instance
+    """
     # test compilation of valid tf.optimizer and tf.loss
-    epsilon = 1
-    noise_distribution = 'laplace'
     with self.cached_session():
-      clf = model.Bolton(n_classes,
-                         epsilon,
-                         noise_distribution,
-                         weights_initializer
-                         )
+      clf = model.BoltonModel(n_outputs)
       clf.compile(optimizer, loss)
       self.assertEqual(clf.loss, loss)
 
   @parameterized.named_parameters([
       {'testcase_name': 'Not strong loss',
-       'n_classes': 1,
+       'n_outputs': 1,
        'loss': losses.BinaryCrossentropy(),
        'optimizer': 'adam',
        },
       {'testcase_name': 'Not valid optimizer',
-       'n_classes': 1,
+       'n_outputs': 1,
        'loss': TestLoss(1, 1, 1),
        'optimizer': 'ada',
        }
   ])
-  def test_bad_compile(self, n_classes, loss, optimizer):
+  def test_bad_compile(self, n_outputs, loss, optimizer):
+    """test bad compilations of BoltonModel that should raise errors
+
+      Args:
+          n_outputs: number of output neurons
+          loss: instantiated TestLoss instance
+          optimizer: instanced TestOptimizer instance
+      """
     # test compilaton of invalid tf.optimizer and non instantiated loss.
-    epsilon = 1
-    noise_distribution = 'laplace'
-    weights_initializer = tf.initializers.GlorotUniform()
     with self.cached_session():
       with self.assertRaises((ValueError, AttributeError)):
-        clf = model.Bolton(n_classes,
-                           epsilon,
-                           noise_distribution,
-                           weights_initializer
-                           )
+        clf = model.BoltonModel(n_outputs)
         clf.compile(optimizer, loss)
 
 
-def _cat_dataset(n_samples, input_dim, n_classes, t='train', generator=False):
+def _cat_dataset(n_samples, input_dim, n_classes, generator=False):
   """
       Creates a categorically encoded dataset (y is categorical).
       returns the specified dataset either as a static array or as a generator.
@@ -245,10 +212,9 @@ def _cat_dataset(n_samples, input_dim, n_classes, t='train', generator=False):
         n_samples: number of rows
         input_dim: input dimensionality
         n_classes: output dimensionality
-        t: one of 'train', 'val', 'test'
         generator: False for array, True for generator
     Returns:
-      X as (n_samples, input_dim), Y as (n_samples, n_classes)
+      X as (n_samples, input_dim), Y as (n_samples, n_outputs)
     """
   x_stack = []
   y_stack = []
@@ -269,25 +235,39 @@ def _cat_dataset(n_samples, input_dim, n_classes, t='train', generator=False):
 
 def _do_fit(n_samples,
             input_dim,
-            n_classes,
+            n_outputs,
             epsilon,
             generator,
             batch_size,
             reset_n_samples,
             optimizer,
             loss,
-            callbacks,
             distribution='laplace'):
-  clf = model.Bolton(n_classes,
-                     epsilon,
-                     distribution
-                     )
+  """Helper to instantiate necessary components for fitting and perform a model
+  fit.
+
+  Args:
+      n_samples: number of samples in dataset
+      input_dim: the sample dimensionality
+      n_outputs: number of output neurons
+      epsilon: privacy parameter
+      generator: True to create a generator, False to use an iterator
+      batch_size: batch_size to use
+      reset_n_samples: True to set _samples to None prior to fitting.
+                        False does nothing
+      optimizer: instance of TestOptimizer
+      loss: instance of TestLoss
+      distribution: distribution to get noise from.
+
+  Returns: BoltonModel instsance
+  """
+  clf = model.BoltonModel(n_outputs)
   clf.compile(optimizer, loss)
   if generator:
     x = _cat_dataset(
         n_samples,
         input_dim,
-        n_classes,
+        n_outputs,
         generator=generator
     )
     y = None
@@ -295,23 +275,18 @@ def _do_fit(n_samples,
     x = x.shuffle(n_samples//2)
     batch_size = None
   else:
-    x, y = _cat_dataset(n_samples, input_dim, n_classes, generator=generator)
+    x, y = _cat_dataset(n_samples, input_dim, n_outputs, generator=generator)
   if reset_n_samples:
     n_samples = None
 
-  if callbacks is not None:
-    callbacks = [callbacks]
   clf.fit(x,
           y,
           batch_size=batch_size,
           n_samples=n_samples,
-          callbacks=callbacks
+          noise_distribution=distribution,
+          epsilon=epsilon
           )
   return clf
-
-
-class TestCallback(tf.keras.callbacks.Callback):
-  pass
 
 
 class FitTests(keras_parameterized.TestCase):
@@ -322,27 +297,29 @@ class FitTests(keras_parameterized.TestCase):
       {'testcase_name': 'iterator fit',
        'generator': False,
        'reset_n_samples': True,
-       'callbacks': None
        },
       {'testcase_name': 'iterator fit no samples',
        'generator': False,
        'reset_n_samples': True,
-       'callbacks': None
        },
       {'testcase_name': 'generator fit',
        'generator': True,
        'reset_n_samples': False,
-       'callbacks': None
        },
       {'testcase_name': 'with callbacks',
        'generator': True,
        'reset_n_samples': False,
-       'callbacks': TestCallback()
        },
   ])
-  def test_fit(self, generator, reset_n_samples, callbacks):
+  def test_fit(self, generator, reset_n_samples):
+    """Tests fitting of BoltonModel
+
+    Args:
+        generator: True for generator test, False for iterator test.
+        reset_n_samples: True to reset the n_samples to None, False does nothing
+    """
     loss = TestLoss(1, 1, 1)
-    optimizer = TestOptimizer()
+    optimizer = Bolton(TestOptimizer(), loss)
     n_classes = 2
     input_dim = 5
     epsilon = 1
@@ -358,28 +335,27 @@ class FitTests(keras_parameterized.TestCase):
         reset_n_samples,
         optimizer,
         loss,
-        callbacks
     )
     self.assertEqual(hasattr(clf, 'layers'), True)
 
   @parameterized.named_parameters([
       {'testcase_name': 'generator fit',
        'generator': True,
-       'reset_n_samples': False,
-       'callbacks': None
        },
   ])
-  def test_fit_gen(self, generator, reset_n_samples, callbacks):
+  def test_fit_gen(self, generator):
+    """Tests the fit_generator method of BoltonModel
+
+    Args:
+      generator: True to test with a generator dataset
+    """
     loss = TestLoss(1, 1, 1)
     optimizer = TestOptimizer()
     n_classes = 2
     input_dim = 5
-    epsilon = 1
     batch_size = 1
     n_samples = 10
-    clf = model.Bolton(n_classes,
-                       epsilon
-                       )
+    clf = model.BoltonModel(n_classes)
     clf.compile(optimizer, loss)
     x = _cat_dataset(
         n_samples,
@@ -405,6 +381,14 @@ class FitTests(keras_parameterized.TestCase):
        },
   ])
   def test_bad_fit(self, generator, reset_n_samples, distribution):
+    """Tests fitting with invalid parameters, which should raise an error
+
+    Args:
+        generator: True to test with generator, False is iterator
+        reset_n_samples: True to reset the n_samples param to None prior to
+                          passing it to fit
+        distribution: distribution to get noise from.
+    """
     with self.assertRaises(ValueError):
       loss = TestLoss(1, 1, 1)
       optimizer = TestOptimizer()
@@ -423,7 +407,6 @@ class FitTests(keras_parameterized.TestCase):
           reset_n_samples,
           optimizer,
           loss,
-          None,
           distribution
       )
 
@@ -450,7 +433,15 @@ class FitTests(keras_parameterized.TestCase):
                            num_classes,
                            result
                            ):
-    clf = model.Bolton(1, 1)
+    """Tests the BOltonModel calculate_class_weights method
+
+    Args:
+      class_weights: the class_weights to use
+      class_counts: count of number of samples for each class
+      num_classes: number of outputs neurons
+      result: expected result
+    """
+    clf = model.BoltonModel(1, 1)
     expected = clf.calculate_class_weights(class_weights,
                                            class_counts,
                                            num_classes
@@ -508,12 +499,21 @@ class FitTests(keras_parameterized.TestCase):
                         num_classes,
                         err_msg
                         ):
-    clf = model.Bolton(1, 1)
-    with self.assertRaisesRegexp(ValueError, err_msg):
-      expected = clf.calculate_class_weights(class_weights,
-                                             class_counts,
-                                             num_classes
-                                             )
+    """Tests the BOltonModel calculate_class_weights method with invalid params
+        which should raise the expected errors.
+
+      Args:
+        class_weights: the class_weights to use
+        class_counts: count of number of samples for each class
+        num_classes: number of outputs neurons
+        result: expected result
+      """
+    clf = model.BoltonModel(1, 1)
+    with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
+      clf.calculate_class_weights(class_weights,
+                                  class_counts,
+                                  num_classes
+                                  )
 
 
 if __name__ == '__main__':

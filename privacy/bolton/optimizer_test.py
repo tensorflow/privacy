@@ -22,14 +22,16 @@ from tensorflow.python.platform import test
 from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
 from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.keras.regularizers import L1L2
+from tensorflow.python.keras.initializers import constant
 from tensorflow.python.keras import losses
 from tensorflow.python.keras.models import Model
 from tensorflow.python.framework import ops as _ops
 from tensorflow.python.framework import test_util
-
+from tensorflow.python import ops as _ops
 from absl.testing import parameterized
 from privacy.bolton.loss import StrongConvexMixin
 from privacy.bolton import optimizer as opt
+
 
 
 class TestModel(Model):
@@ -46,10 +48,10 @@ class TestModel(Model):
   Descent-based Analytics by Xi Wu et. al.
   """
 
-  def __init__(self, n_classes=2):
+  def __init__(self, n_outputs=2, input_shape=(16,), init_value=2):
     """
     Args:
-        n_classes: number of output classes to predict.
+        n_outputs: number of output neurons
         epsilon: level of privacy guarantee
         noise_distribution: distribution to pull weight perturbations from
         weights_initializer: initializer for weights
@@ -57,13 +59,13 @@ class TestModel(Model):
         dtype: data type to use for tensors
     """
     super(TestModel, self).__init__(name='bolton', dynamic=False)
-    self.n_classes = n_classes
-    self.layer_input_shape = (16, 1)
+    self.n_outputs = n_outputs
+    self.layer_input_shape = input_shape
     self.output_layer = tf.keras.layers.Dense(
-      self.n_classes,
-      input_shape=self.layer_input_shape,
-      kernel_regularizer=L1L2(l2=1),
-      kernel_initializer='glorot_uniform',
+        self.n_outputs,
+        input_shape=self.layer_input_shape,
+        kernel_regularizer=L1L2(l2=1),
+        kernel_initializer=constant(init_value),
     )
 
 
@@ -84,7 +86,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C
+    self.C = C  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
@@ -93,7 +95,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     Returns: radius
 
     """
-    return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
+    return _ops.convert_to_tensor_v2(self.radius_constant, dtype=tf.float32)
 
   def gamma(self):
     """ Gamma strongly convex
@@ -125,13 +127,17 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def call(self, val0, val1):
+  def call(self, y_true, y_pred):
     """Loss function that is minimized at the mean of the input points."""
-    return 0.5 * tf.reduce_sum(tf.math.squared_difference(val0, val1), axis=1)
+    return 0.5 * tf.reduce_sum(
+        tf.math.squared_difference(y_true, y_pred),
+        axis=1
+    )
 
-  def max_class_weight(self, class_weight):
+  def max_class_weight(self, class_weight, dtype=tf.float32):
     if class_weight is None:
       return 1
+    raise NotImplementedError('')
 
   def kernel_regularizer(self):
     return L1L2(l2=self.reg_lambda)
@@ -182,18 +188,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   """Bolton Optimizer tests"""
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
-      {'testcase_name': 'branch beta',
-       'fn': 'limit_learning_rate',
-       'args': [tf.Variable(2, dtype=tf.float32),
-                tf.Variable(1, dtype=tf.float32)],
-       'result': tf.Variable(0.5, dtype=tf.float32),
-       'test_attr': 'learning_rate'},
-      {'testcase_name': 'branch gamma',
-       'fn': 'limit_learning_rate',
-       'args': [tf.Variable(1, dtype=tf.float32),
-                tf.Variable(1, dtype=tf.float32)],
-       'result': tf.Variable(1, dtype=tf.float32),
-       'test_attr': 'learning_rate'},
       {'testcase_name': 'getattr',
        'fn': '__getattr__',
        'args': ['dtype'],
@@ -202,8 +196,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       {'testcase_name': 'project_weights_to_r',
        'fn': 'project_weights_to_r',
        'args': ['dtype'],
-       'result': tf.float32,
-       'test_attr': None},
+       'result': None,
+       'test_attr': ''},
   ])
   def test_fn(self, fn, args, result, test_attr):
     """test that a fn of Bolton optimizer is working as expected.
@@ -218,14 +212,175 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
     tf.random.set_seed(1)
     loss = TestLoss(1, 1, 1)
-    private = opt.Bolton(TestOptimizer(), loss)
-    res = getattr(private, fn, None)(*args)
+    bolton = opt.Bolton(TestOptimizer(), loss)
+    model = TestModel(1)
+    model.layers[0].kernel = \
+      model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                          model.n_outputs))
+    bolton._is_init = True
+    bolton.layers = model.layers
+    bolton.epsilon = 2
+    bolton.noise_distribution = 'laplace'
+    bolton.n_outputs = 1
+    bolton.n_samples = 1
+    res = getattr(bolton, fn, None)(*args)
     if test_attr is not None:
-      res = getattr(private, test_attr, None)
+      res = getattr(bolton, test_attr, None)
     if hasattr(res, 'numpy') and hasattr(result, 'numpy'):  # both tensors/not
       res = res.numpy()
       result = result.numpy()
     self.assertEqual(res, result)
+
+  @test_util.run_all_in_graph_and_eager_modes
+  @parameterized.named_parameters([
+      {'testcase_name': '1 value project to r=1',
+       'r': 1,
+       'init_value': 2,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+      {'testcase_name': '2 value project to r=1',
+       'r': 1,
+       'init_value': 2,
+       'shape': (2,),
+       'n_out': 1,
+       'result': [[0.707107], [0.707107]]},
+      {'testcase_name': '1 value project to r=2',
+       'r': 2,
+       'init_value': 3,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[2]]},
+      {'testcase_name': 'no project',
+       'r': 2,
+       'init_value': 1,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+  ])
+  def test_project(self, r, shape, n_out, init_value, result):
+    """test that a fn of Bolton optimizer is working as expected.
+
+    Args:
+      fn: method of Optimizer to test
+      args: args to optimizer fn
+      result: the expected result
+      test_attr: None if the fn returns the test result. Otherwise, this is
+                the attribute of Bolton to check against result with.
+
+    """
+    tf.random.set_seed(1)
+    @tf.function
+    def project_fn(r):
+      loss = TestLoss(1, 1, r)
+      bolton = opt.Bolton(TestOptimizer(), loss)
+      model = TestModel(n_out, shape, init_value)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      bolton._is_init = True
+      bolton.layers = model.layers
+      bolton.epsilon = 2
+      bolton.noise_distribution = 'laplace'
+      bolton.n_outputs = 1
+      bolton.n_samples = 1
+      bolton.project_weights_to_r()
+      return _ops.convert_to_tensor_v2(bolton.layers[0].kernel, tf.float32)
+    res = project_fn(r)
+    self.assertAllClose(res, result)
+
+  @test_util.run_all_in_graph_and_eager_modes
+  @parameterized.named_parameters([
+      {'testcase_name': 'normal values',
+       'epsilon': 2,
+       'noise': 'laplace',
+       'class_weights': 1},
+  ])
+  def test_context_manager(self, noise, epsilon, class_weights):
+    """Tests the context manager functionality of the optimizer
+
+    Args:
+        noise: noise distribution to pick
+        epsilon: epsilon privacy parameter to use
+        class_weights: class_weights to use
+    """
+    @tf.function
+    def test_run():
+      loss = TestLoss(1, 1, 1)
+      bolton = opt.Bolton(TestOptimizer(), loss)
+      model = TestModel(1, (1,), 1)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      with bolton(noise, epsilon, model.layers, class_weights, 1, 1, 1) as _:
+        pass
+      return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
+    epsilon = test_run()
+    self.assertEqual(epsilon.numpy(), -1)
+
+  @parameterized.named_parameters([
+      {'testcase_name': 'invalid noise',
+       'epsilon': 1,
+       'noise': 'not_valid',
+       'err_msg': 'Detected noise distribution: not_valid not one of:'},
+      {'testcase_name': 'invalid epsilon',
+       'epsilon': -1,
+       'noise': 'laplace',
+       'err_msg': 'Detected epsilon: -1. Valid range is 0 < epsilon <inf'},
+  ])
+  def test_context_domains(self, noise, epsilon, err_msg):
+    """
+
+    Args:
+        noise: noise distribution to pick
+        epsilon: epsilon privacy parameter to use
+        err_msg: the expected error message
+
+    """
+
+    @tf.function
+    def test_run(noise, epsilon):
+      loss = TestLoss(1, 1, 1)
+      bolton = opt.Bolton(TestOptimizer(), loss)
+      model = TestModel(1, (1,), 1)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      with bolton(noise, epsilon, model.layers, 1, 1, 1, 1) as _:
+        pass
+    with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
+      test_run(noise, epsilon)
+
+  @parameterized.named_parameters([
+      {'testcase_name': 'fn: get_noise',
+       'fn': 'get_noise',
+       'args': [1, 1],
+       'err_msg': 'ust be called from within the optimizer\'s context'},
+  ])
+  def test_not_in_context(self, fn, args, err_msg):
+    """Tests that the expected functions raise errors when not in context.
+
+    Args:
+        fn: the function to test
+        args: the arguments for said function
+        err_msg: expected error message
+    """
+    @tf.function
+    def test_run(fn, args):
+      loss = TestLoss(1, 1, 1)
+      bolton = opt.Bolton(TestOptimizer(), loss)
+      model = TestModel(1, (1,), 1)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      getattr(bolton, fn)(*args)
+
+    with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
+      test_run(fn, args)
 
   @parameterized.named_parameters([
       {'testcase_name': 'fn: get_updates',
@@ -267,27 +422,33 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
     loss = TestLoss(1, 1, 1)
     optimizer = TestOptimizer()
-    optimizer = opt.Bolton(optimizer, loss)
-    model = TestModel(2)
+    bolton = opt.Bolton(optimizer, loss)
+    model = TestModel(3)
     model.compile(optimizer, loss)
-    model.layers[0].kernel_initializer(model.layer_input_shape)
-    print(model.layers[0].__dict__)
-    with optimizer('laplace', 2, model.layers, 1, 1, model.n_classes):
-      self.assertEqual(
-          getattr(optimizer, fn, lambda: 'fn not found')(*args),
-          'test'
-      )
+    model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+    model.layers[0].kernel = \
+      model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                          model.n_outputs))
+    bolton._is_init = True
+    bolton.layers = model.layers
+    bolton.epsilon = 2
+    bolton.noise_distribution = 'laplace'
+    bolton.n_outputs = 1
+    bolton.n_samples = 1
+    self.assertEqual(
+        getattr(bolton, fn, lambda: 'fn not found')(*args),
+        'test'
+    )
 
   @parameterized.named_parameters([
-      {'testcase_name': 'fn: limit_learning_rate',
-       'fn': 'limit_learning_rate',
-       'args': [1, 1, 1]},
       {'testcase_name': 'fn: project_weights_to_r',
        'fn': 'project_weights_to_r',
        'args': []},
       {'testcase_name': 'fn: get_noise',
        'fn': 'get_noise',
-       'args': [1, 1, 1, 1]},
+       'args': [1, 1]},
   ])
   def test_not_reroute_fn(self, fn, args):
     """Test that a fn that should not be rerouted to the internal optimizer is
@@ -297,11 +458,30 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       fn: fn to test
       args: arguments to that fn
     """
-    optimizer = TestOptimizer()
-    loss = TestLoss(1, 1, 1)
-    optimizer = opt.Bolton(optimizer, loss)
-    self.assertNotEqual(getattr(optimizer, fn, lambda: 'test')(*args),
-                        'test')
+    @tf.function
+    def test_run(fn, args):
+      loss = TestLoss(1, 1, 1)
+      bolton = opt.Bolton(TestOptimizer(), loss)
+      model = TestModel(1, (1,), 1)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      bolton._is_init = True
+      bolton.noise_distribution = 'laplace'
+      bolton.epsilon = 1
+      bolton.layers = model.layers
+      bolton.class_weights = 1
+      bolton.n_samples = 1
+      bolton.batch_size = 1
+      bolton.n_outputs = 1
+      res = getattr(bolton, fn, lambda: 'test')(*args)
+      if res != 'test':
+        res = 1
+      else:
+        res = 0
+      return _ops.convert_to_tensor_v2(res, dtype=tf.float32)
+    self.assertNotEqual(test_run(fn, args), 0)
 
   @parameterized.named_parameters([
       {'testcase_name': 'attr: _iterations',
@@ -323,8 +503,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
                      )
 
   @parameterized.named_parameters([
-    {'testcase_name': 'attr does not exist',
-     'attr': '_not_valid'}
+      {'testcase_name': 'attr does not exist',
+       'attr': '_not_valid'}
   ])
   def test_attribute_error(self, attr):
     """ test that attribute of internal optimizer is correctly rerouted to
@@ -339,6 +519,55 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     optimizer = opt.Bolton(internal_optimizer, loss)
     with self.assertRaises(AttributeError):
       getattr(optimizer, attr)
+
+class SchedulerTest(keras_parameterized.TestCase):
+  """GammaBeta Scheduler tests"""
+
+  @parameterized.named_parameters([
+      {'testcase_name': 'not in context',
+       'err_msg': 'Please initialize the GammaBetaDecreasingStep Learning Rate'
+                  ' Scheduler'
+       }
+  ])
+  def test_bad_call(self, err_msg):
+    """ test that attribute of internal optimizer is correctly rerouted to
+    the internal optimizer
+
+    Args:
+      attr: attribute to test
+      result: result after checking attribute
+    """
+    scheduler = opt.GammaBetaDecreasingStep()
+    with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
+      scheduler(1)
+
+  @parameterized.named_parameters([
+      {'testcase_name': 'step 1',
+       'step': 1,
+       'res': 0.5},
+      {'testcase_name': 'step 2',
+       'step': 2,
+       'res': 0.5},
+      {'testcase_name': 'step 3',
+       'step': 3,
+       'res': 0.333333333},
+  ])
+  def test_call(self, step, res):
+    """ test that attribute of internal optimizer is correctly rerouted to
+    the internal optimizer
+
+    Args:
+      attr: attribute to test
+      result: result after checking attribute
+    """
+    beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
+    gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)
+    scheduler = opt.GammaBetaDecreasingStep()
+    scheduler.initialize(beta, gamma)
+    step = _ops.convert_to_tensor_v2(step, dtype=tf.float32)
+    lr = scheduler(step)
+    self.assertAllClose(lr.numpy(), res)
+
 
 if __name__ == '__main__':
   test.main()

@@ -19,9 +19,74 @@ from __future__ import print_function
 
 import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import optimizer_v2
+from tensorflow.python.ops import math_ops
+from tensorflow.python import ops as _ops
 from privacy.bolton.loss import StrongConvexMixin
 
-_accepted_distributions = ['laplace']
+_accepted_distributions = ['laplace']  # implemented distributions for noising
+
+
+class GammaBetaDecreasingStep(
+    optimizer_v2.learning_rate_schedule.LearningRateSchedule
+):
+  """
+      Learning Rate Scheduler using the minimum of 1/beta and 1/(gamma * step)
+      at each step. A required step for privacy guarantees.
+  """
+  def __init__(self):
+    self.is_init = False
+    self.beta = None
+    self.gamma = None
+
+  def __call__(self, step):
+    """
+      returns the learning rate
+    Args:
+      step: the current iteration number
+    Returns:
+      decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
+      the Bolton privacy requirements.
+    """
+    if not self.is_init:
+      raise AttributeError('Please initialize the {0} Learning Rate Scheduler.'
+                           'This is performed automatically by using the '
+                           '{1} as a context manager, '
+                           'as desired'.format(self.__class__.__name__,
+                                               Bolton.__class__.__name__
+                                               )
+                           )
+    dtype = self.beta.dtype
+    one = tf.constant(1, dtype)
+    return tf.math.minimum(tf.math.reduce_min(one/self.beta),
+                           one/(self.gamma*math_ops.cast(step, dtype))
+                           )
+
+  def get_config(self):
+    """
+      config to setup the learning rate scheduler.
+    """
+    return {'beta': self.beta, 'gamma': self.gamma}
+
+  def initialize(self, beta, gamma):
+    """setup the learning rate scheduler with the beta and gamma values provided
+    by the loss function. Meant to be used with .fit as the loss params may
+    depend on values passed to fit.
+
+    Args:
+      beta: Smoothness value. See StrongConvexMixin
+      gamma: Strong Convexity parameter. See StrongConvexMixin.
+    """
+    self.is_init = True
+    self.beta = beta
+    self.gamma = gamma
+
+  def de_initialize(self):
+    """De initialize the scheduler after fitting, in case another fit call has
+    different loss parameters.
+    """
+    self.is_init = False
+    self.beta = None
+    self.gamma = None
 
 
 class Bolton(optimizer_v2.OptimizerV2):
@@ -31,11 +96,24 @@ class Bolton(optimizer_v2.OptimizerV2):
     passed, "Bolton" enables the bolton model to control the learning rate
     based on the strongly convex loss.
 
+    To use the Bolton method, you must:
+    1. instantiate it with an instantiated tf optimizer and StrongConvexLoss.
+    2. use it as a context manager around your .fit method internals.
+
+    This can be accomplished by the following:
+    optimizer = tf.optimizers.SGD()
+    loss = privacy.bolton.losses.StrongConvexBinaryCrossentropy()
+    bolton = Bolton(optimizer, loss)
+    with bolton(*args) as _:
+      model.fit()
+    The args required for the context manager can be found in the __call__
+    method.
+
     For more details on the strong convexity requirements, see:
     Bolt-on Differential Privacy for Scalable Stochastic Gradient
     Descent-based Analytics by Xi Wu et. al.
   """
-  def __init__(self,
+  def __init__(self,  # pylint: disable=super-init-not-called
                optimizer: optimizer_v2.OptimizerV2,
                loss: StrongConvexMixin,
                dtype=tf.float32,
@@ -45,10 +123,11 @@ class Bolton(optimizer_v2.OptimizerV2):
     Args:
         optimizer: Optimizer_v2 or subclass to be used as the optimizer
                     (wrapped).
+        loss: StrongConvexLoss function that the model is being compiled with.
     """
 
     if not isinstance(loss, StrongConvexMixin):
-      raise ValueError("loss function must be a Strongly Convex and therfore"
+      raise ValueError("loss function must be a Strongly Convex and therefore "
                        "extend the StrongConvexMixin.")
     self._private_attributes = ['_internal_optimizer',
                                 'dtype',
@@ -58,13 +137,19 @@ class Bolton(optimizer_v2.OptimizerV2):
                                 'class_weights',
                                 'input_dim',
                                 'n_samples',
-                                'n_classes',
+                                'n_outputs',
                                 'layers',
-                                '_model'
+                                'batch_size',
+                                '_is_init'
                                 ]
     self._internal_optimizer = optimizer
+    self.learning_rate = GammaBetaDecreasingStep()  # use the Bolton Learning
+    # rate scheduler, as required for privacy guarantees. This will still need
+    # to get values from the loss function near the time that .fit is called
+    # on the model (when this optimizer will be called as a context manager)
     self.dtype = dtype
     self.loss = loss
+    self._is_init = False
 
   def get_config(self):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
@@ -75,49 +160,44 @@ class Bolton(optimizer_v2.OptimizerV2):
     """helper method to normalize the weights to the R-ball.
 
     Args:
-        r: radius of "R-Ball". Scalar to normalize to.
         force: True to normalize regardless of previous weight values.
                 False to check if weights > R-ball and only normalize then.
 
     Returns:
 
     """
-    r = self.loss.radius()
+    radius = self.loss.radius()
     for layer in self.layers:
-      if tf.executing_eagerly():
-        weight_norm = tf.norm(layer.kernel, axis=0)
-        if force:
-          layer.kernel = layer.kernel / (weight_norm / r)
-        elif tf.reduce_sum(tf.cast(weight_norm > r, dtype=self.dtype)) > 0:
-          layer.kernel = layer.kernel / (weight_norm / r)
+      weight_norm = tf.norm(layer.kernel, axis=0)
+      if force:
+        layer.kernel = layer.kernel / (weight_norm / radius)
       else:
-        weight_norm = tf.norm(layer.kernel, axis=0)
-        if force:
-          layer.kernel = layer.kernel / (weight_norm / r)
-        else:
-          layer.kernel = tf.cond(
-              tf.reduce_sum(tf.cast(weight_norm > r, dtype=self.dtype)) > 0,
-              lambda: layer.kernel / (weight_norm / r),
-              lambda: layer.kernel
-          )
+        layer.kernel = tf.cond(
+            tf.reduce_sum(tf.cast(weight_norm > radius, dtype=self.dtype)) > 0,
+            lambda k=layer.kernel, w=weight_norm, r=radius: k / (w / r),  # pylint: disable=cell-var-from-loop
+            lambda k=layer.kernel: k  # pylint: disable=cell-var-from-loop
+        )
 
-  def get_noise(self, data_size, input_dim, output_dim, class_weight):
+  def get_noise(self, input_dim, output_dim):
     """Sample noise to be added to weights for privacy guarantee
 
     Args:
-        distribution: the distribution type to pull noise from
-        data_size: the number of samples
+      input_dim: the input dimensionality for the weights
+      output_dim the output dimensionality for the weights
 
     Returns: noise in shape of layer's weights to be added to the weights.
 
     """
+    if not self._is_init:
+      raise Exception('This method must be called from within the optimizer\'s '
+                      'context.')
     loss = self.loss
     distribution = self.noise_distribution.lower()
     if distribution == _accepted_distributions[0]:  # laplace
       per_class_epsilon = self.epsilon / (output_dim)
       l2_sensitivity = (2 *
-                        loss.lipchitz_constant(class_weight)) / \
-                       (loss.gamma() * data_size)
+                        loss.lipchitz_constant(self.class_weights)) / \
+                       (loss.gamma() * self.n_samples * self.batch_size)
       unit_vector = tf.random.normal(shape=(input_dim, output_dim),
                                      mean=0,
                                      seed=1,
@@ -139,28 +219,7 @@ class Bolton(optimizer_v2.OptimizerV2):
     raise NotImplementedError('Noise distribution: {0} is not '
                               'a valid distribution'.format(distribution))
 
-  def limit_learning_rate(self, beta, gamma):
-    """Implements learning rate limitation that is required by the bolton
-    method for sensitivity bounding of the strongly convex function.
-    Sets the learning rate to the min(1/beta, 1/(gamma*t))
-
-    Args:
-        is_eager: Whether the model is running in eager mode
-        beta: loss function beta-smoothness
-        gamma: loss function gamma-strongly convex
-
-    Returns: None
-
-    """
-    numerator = tf.constant(1, dtype=self.dtype)
-    t = tf.cast(self._iterations, self.dtype)
-    # will exist on the internal optimizer
-    if numerator / beta < numerator / (gamma * t):
-      self.learning_rate = numerator / beta
-    else:
-      self.learning_rate = numerator / (gamma * t)
-
-  def from_config(self, *args, **kwargs):
+  def from_config(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
     return self._internal_optimizer.from_config(*args, **kwargs)
@@ -176,21 +235,19 @@ class Bolton(optimizer_v2.OptimizerV2):
             from _internal_optimizer.
 
     """
-    if name == '_private_attributes':
-      return getattr(self, name)
-    elif name in self._private_attributes:
+    if name == '_private_attributes' or name in self._private_attributes:
       return getattr(self, name)
     optim = object.__getattribute__(self, '_internal_optimizer')
     try:
       return object.__getattribute__(optim, name)
     except AttributeError:
-      raise AttributeError("Neither '{0}' nor '{1}' object has attribute '{2}'"
-                           "".format(
-          self.__class__.__name__,
-          self._internal_optimizer.__class__.__name__,
-          name
-                                     )
-                           )
+      raise AttributeError(
+          "Neither '{0}' nor '{1}' object has attribute '{2}'"
+          "".format(self.__class__.__name__,
+                    self._internal_optimizer.__class__.__name__,
+                    name
+                    )
+          )
 
   def __setattr__(self, key, value):
     """ Set attribute to self instance if its the internal optimizer.
@@ -205,113 +262,110 @@ class Bolton(optimizer_v2.OptimizerV2):
     """
     if key == '_private_attributes':
       object.__setattr__(self, key, value)
-    elif key in key in self._private_attributes:
+    elif key in self._private_attributes:
       object.__setattr__(self, key, value)
     else:
       setattr(self._internal_optimizer, key, value)
 
-  def _resource_apply_dense(self, *args, **kwargs):
+  def _resource_apply_dense(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer._resource_apply_dense(*args, **kwargs)
+    return self._internal_optimizer._resource_apply_dense(*args, **kwargs)  # pylint: disable=protected-access
 
-  def _resource_apply_sparse(self, *args, **kwargs):
+  def _resource_apply_sparse(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    return self._internal_optimizer._resource_apply_sparse(*args, **kwargs)
+    return self._internal_optimizer._resource_apply_sparse(*args, **kwargs)  # pylint: disable=protected-access
 
   def get_updates(self, loss, params):
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    # self.layers = params
     out = self._internal_optimizer.get_updates(loss, params)
-    self.limit_learning_rate(self.loss.beta(self.class_weights),
-                             self.loss.gamma()
-                             )
     self.project_weights_to_r()
     return out
 
-  def apply_gradients(self, *args, **kwargs):
+  def apply_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    # grads_and_vars = kwargs.get('grads_and_vars', None)
-    # grads_and_vars = optimizer_v2._filter_grads(grads_and_vars)
-    # var_list = [v for (_, v) in grads_and_vars]
-    # self.layers = var_list
     out = self._internal_optimizer.apply_gradients(*args, **kwargs)
-    self.limit_learning_rate(self.loss.beta(self.class_weights),
-                             self.loss.gamma()
-                             )
     self.project_weights_to_r()
     return out
 
-  def minimize(self, *args, **kwargs):
+  def minimize(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    # self.layers = kwargs.get('var_list', None)
     out = self._internal_optimizer.minimize(*args, **kwargs)
-    self.limit_learning_rate(self.loss.beta(self.class_weights),
-                             self.loss.gamma()
-                             )
     self.project_weights_to_r()
     return out
 
-  def _compute_gradients(self, *args, **kwargs):
+  def _compute_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ,protected-access
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    # self.layers = kwargs.get('var_list', None)
-    return self._internal_optimizer._compute_gradients(*args, **kwargs)
+    return self._internal_optimizer._compute_gradients(*args, **kwargs)  # pylint: disable=protected-access
 
-  def get_gradients(self, *args, **kwargs):
+  def get_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer.
     """
-    # self.layers = kwargs.get('params', None)
     return self._internal_optimizer.get_gradients(*args, **kwargs)
 
   def __enter__(self):
-    noise_distribution = self.noise_distribution
-    epsilon = self.epsilon
-    class_weights = self.class_weights
-    n_samples = self.n_samples
-    if noise_distribution not in _accepted_distributions:
-      raise ValueError('Detected noise distribution: {0} not one of: {1} valid'
-                       'distributions'.format(noise_distribution,
-                                              _accepted_distributions))
-    self.noise_distribution = noise_distribution
-    self.epsilon = epsilon
-    self.class_weights = class_weights
-    self.n_samples = n_samples
+    """Context manager call at the beginning of with statement.
+
+    Returns:
+      self, to be used in context manager
+    """
+    self._is_init = True
     return self
 
   def __call__(self,
-               noise_distribution,
-               epsilon,
-               layers,
+               noise_distribution: str,
+               epsilon: float,
+               layers: list,
                class_weights,
                n_samples,
-               n_classes,
+               n_outputs,
+               batch_size
                ):
-    """
+    """Entry point from context. Accepts required values for bolton method and
+    stores them on the optimizer for use throughout fitting.
 
     Args:
       noise_distribution: the noise distribution to pick.
                           see _accepted_distributions and get_noise for
                           possible values.
       epsilon: privacy parameter. Lower gives more privacy but less utility.
-      class_weights: class_weights used
+      layers: list of Keras/Tensorflow layers. Can be found as model.layers
+      class_weights: class_weights used, which may either be a scalar or 1D
+                      tensor with dim == n_classes.
       n_samples number of rows/individual samples in the training set
-      n_classes: number of output classes
-      layers: list of Keras/Tensorflow layers.
+      n_outputs: number of output classes
+      batch_size: batch size used.
     """
     if epsilon <= 0:
       raise ValueError('Detected epsilon: {0}. '
                        'Valid range is 0 < epsilon <inf'.format(epsilon))
+    if noise_distribution not in _accepted_distributions:
+      raise ValueError('Detected noise distribution: {0} not one of: {1} valid'
+                       'distributions'.format(noise_distribution,
+                                              _accepted_distributions))
     self.noise_distribution = noise_distribution
-    self.epsilon = epsilon
-    self.class_weights = class_weights
-    self.n_samples = n_samples
-    self.n_classes = n_classes
+    self.learning_rate.initialize(self.loss.beta(class_weights),
+                                  self.loss.gamma()
+                                  )
+    self.epsilon = _ops.convert_to_tensor_v2(epsilon, dtype=self.dtype)
+    self.class_weights = _ops.convert_to_tensor_v2(class_weights,
+                                                   dtype=self.dtype
+                                                   )
+    self.n_samples = _ops.convert_to_tensor_v2(n_samples,
+                                               dtype=self.dtype
+                                               )
+    self.n_outputs = _ops.convert_to_tensor_v2(n_outputs,
+                                               dtype=self.dtype
+                                               )
     self.layers = layers
+    self.batch_size = _ops.convert_to_tensor_v2(batch_size,
+                                                dtype=self.dtype
+                                                )
     return self
 
   def __exit__(self, *args):
@@ -328,30 +382,21 @@ class Bolton(optimizer_v2.OptimizerV2):
 
 
     """
-    # for param in self.layers:
-    #   if param.name.find('kernel') != -1 or param.name.find('weight') != -1:
-    #     input_dim = param.numpy().shape[0]
-    #     print(param)
-    #     noise = -1 * self.get_noise(self.n_samples,
-    #                                 input_dim,
-    #                                 self.n_classes,
-    #                                 self.class_weights
-    #                                 )
-    #     print(tf.math.subtract(param, noise))
-    #     param.assign(tf.math.subtract(param, noise))
     self.project_weights_to_r(True)
     for layer in self.layers:
-      input_dim, output_dim = layer.kernel.shape
-      noise = self.get_noise(self.n_samples,
-                             input_dim,
+      input_dim = layer.kernel.shape[0]
+      output_dim = layer.units
+      noise = self.get_noise(input_dim,
                              output_dim,
-                             self.class_weights
                              )
       layer.kernel = tf.math.add(layer.kernel, noise)
     self.noise_distribution = None
+    self.learning_rate.de_initialize()
     self.epsilon = -1
+    self.batch_size = -1
     self.class_weights = None
     self.n_samples = None
     self.input_dim = None
-    self.n_classes = None
+    self.n_outputs = None
     self.layers = None
+    self._is_init = False
