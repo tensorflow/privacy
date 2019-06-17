@@ -58,7 +58,8 @@ class StrongConvexMixin:
     """Smoothness, beta
 
     Args:
-      class_weight: the class weights used.
+      class_weight: the class weights as scalar or 1d tensor, where its
+                    dimensionality is equal to the number of outputs.
 
     Returns: Beta
 
@@ -154,7 +155,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     """Compute loss
 
     Args:
-      y_true: Ground truth values. One
+      y_true: Ground truth values. One hot encoded using -1 and 1.
       y_pred: The predicted values.
 
     Returns:
@@ -211,7 +212,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
       this loss function to be strongly convex.
     :return:
     """
-    return L1L2(l2=self.reg_lambda)
+    return L1L2(l2=self.reg_lambda/2)
 
 
 class StrongConvexBinaryCrossentropy(
@@ -230,7 +231,6 @@ class StrongConvexBinaryCrossentropy(
                from_logits: bool = True,
                label_smoothing: float = 0,
                reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
-               name: str = 'binarycrossentropy',
                dtype=tf.float32):
     """
     Args:
@@ -239,7 +239,9 @@ class StrongConvexBinaryCrossentropy(
       radius_constant: constant defining the length of the radius
       reduction: reduction type to use. See super class
       label_smoothing: amount of smoothing to perform on labels
-                      relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x)
+                      relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x).
+                      Note, the impact of this parameter's effect on privacy
+                      is not known and thus the default should be used.
       name: Name of the loss instance
       dtype: tf datatype to use for tensor conversions.
     """
@@ -256,7 +258,7 @@ class StrongConvexBinaryCrossentropy(
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
     super(StrongConvexBinaryCrossentropy, self).__init__(
         reduction=reduction,
-        name=name,
+        name='binarycrossentropy',
         from_logits=from_logits,
         label_smoothing=label_smoothing,
     )
