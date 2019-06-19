@@ -25,13 +25,11 @@ from tensorflow.python.keras.regularizers import L1L2
 from tensorflow.python.keras.initializers import constant
 from tensorflow.python.keras import losses
 from tensorflow.python.keras.models import Model
-from tensorflow.python.framework import ops as _ops
 from tensorflow.python.framework import test_util
 from tensorflow.python import ops as _ops
 from absl.testing import parameterized
 from privacy.bolton.losses import StrongConvexMixin
 from privacy.bolton import optimizers as opt
-
 
 
 class TestModel(Model):
@@ -69,18 +67,6 @@ class TestModel(Model):
     )
 
 
-  # def call(self, inputs):
-  #   """Forward pass of network
-  #
-  #   Args:
-  #       inputs: inputs to neural network
-  #
-  #   Returns:
-  #
-  #   """
-  #   return self.output_layer(inputs)
-
-
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model"""
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
@@ -105,7 +91,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def beta(self, class_weight):
+  def beta(self, class_weight):  # pylint: disable=unused-argument
     """Beta smoothess
 
     Args:
@@ -116,7 +102,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def lipchitz_constant(self, class_weight):
+  def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
     """ L lipchitz continuous
 
     Args:
@@ -217,7 +203,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     model.layers[0].kernel = \
       model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                           model.n_outputs))
-    bolton._is_init = True
+    bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
     bolton.noise_distribution = 'laplace'
@@ -279,7 +265,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      bolton._is_init = True
+      bolton._is_init = True  # pylint: disable=protected-access
       bolton.layers = model.layers
       bolton.epsilon = 2
       bolton.noise_distribution = 'laplace'
@@ -431,7 +417,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     model.layers[0].kernel = \
       model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                           model.n_outputs))
-    bolton._is_init = True
+    bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
     bolton.noise_distribution = 'laplace'
@@ -467,7 +453,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      bolton._is_init = True
+      bolton._is_init = True  # pylint: disable=protected-access
       bolton.noise_distribution = 'laplace'
       bolton.epsilon = 1
       bolton.layers = model.layers

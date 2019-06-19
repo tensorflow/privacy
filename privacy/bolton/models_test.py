@@ -53,7 +53,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def beta(self, class_weight):
+  def beta(self, class_weight):  # pylint: disable=unused-argument
     """Beta smoothess
 
     Args:
@@ -64,7 +64,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
-  def lipchitz_constant(self, class_weight):
+  def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
     """ L lipchitz continuous
 
     Args:
