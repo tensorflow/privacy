@@ -41,3 +41,9 @@ else:
   from privacy.optimizers.dp_optimizer import DPAdamOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+
+  from privacy.bolton.models import BoltonModel
+  from privacy.bolton.optimizers import Bolton
+  from privacy.bolton.losses import StrongConvexMixin
+  from privacy.bolton.losses import StrongConvexBinaryCrossentropy
+  from privacy.bolton.losses import StrongConvexHuber
