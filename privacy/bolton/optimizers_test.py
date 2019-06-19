@@ -314,7 +314,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, model.layers, class_weights, 1, 1, 1) as _:
+      with bolton(noise, epsilon, model.layers, class_weights, 1, 1) as _:
         pass
       return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
     epsilon = test_run()
@@ -349,7 +349,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, model.layers, 1, 1, 1, 1) as _:
+      with bolton(noise, epsilon, model.layers, 1, 1, 1) as _:
         pass
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
       test_run(noise, epsilon)

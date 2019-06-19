@@ -137,7 +137,6 @@ class Bolton(optimizer_v2.OptimizerV2):
                                 'class_weights',
                                 'input_dim',
                                 'n_samples',
-                                'n_outputs',
                                 'layers',
                                 'batch_size',
                                 '_is_init'
@@ -166,6 +165,9 @@ class Bolton(optimizer_v2.OptimizerV2):
     Returns:
 
     """
+    if not self._is_init:
+      raise Exception('This method must be called from within the optimizer\'s '
+                      'context.')
     radius = self.loss.radius()
     for layer in self.layers:
       weight_norm = tf.norm(layer.kernel, axis=0)
@@ -323,7 +325,6 @@ class Bolton(optimizer_v2.OptimizerV2):
                layers: list,
                class_weights,
                n_samples,
-               n_outputs,
                batch_size
                ):
     """Entry point from context. Accepts required values for bolton method and
@@ -338,7 +339,6 @@ class Bolton(optimizer_v2.OptimizerV2):
       class_weights: class_weights used, which may either be a scalar or 1D
                       tensor with dim == n_classes.
       n_samples number of rows/individual samples in the training set
-      n_outputs: number of output classes
       batch_size: batch size used.
     """
     if epsilon <= 0:
@@ -352,20 +352,11 @@ class Bolton(optimizer_v2.OptimizerV2):
     self.learning_rate.initialize(self.loss.beta(class_weights),
                                   self.loss.gamma()
                                   )
-    self.epsilon = _ops.convert_to_tensor_v2(epsilon, dtype=self.dtype)
-    self.class_weights = _ops.convert_to_tensor_v2(class_weights,
-                                                   dtype=self.dtype
-                                                   )
-    self.n_samples = _ops.convert_to_tensor_v2(n_samples,
-                                               dtype=self.dtype
-                                               )
-    self.n_outputs = _ops.convert_to_tensor_v2(n_outputs,
-                                               dtype=self.dtype
-                                               )
+    self.epsilon = tf.constant(epsilon, dtype=self.dtype)
+    self.class_weights = tf.constant(class_weights, dtype=self.dtype)
+    self.n_samples = tf.constant(n_samples, dtype=self.dtype)
     self.layers = layers
-    self.batch_size = _ops.convert_to_tensor_v2(batch_size,
-                                                dtype=self.dtype
-                                                )
+    self.batch_size = tf.constant(batch_size, dtype=self.dtype)
     return self
 
   def __exit__(self, *args):
@@ -397,6 +388,5 @@ class Bolton(optimizer_v2.OptimizerV2):
     self.class_weights = None
     self.n_samples = None
     self.input_dim = None
-    self.n_outputs = None
     self.layers = None
     self._is_init = False

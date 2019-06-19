@@ -170,7 +170,6 @@ class BoltonModel(Model):
                         self.layers,
                         class_weight_,
                         data_size,
-                        self.n_outputs,
                         batch_size_,
                         ) as _:
       out = super(BoltonModel, self).fit(x=x,
@@ -223,7 +222,6 @@ class BoltonModel(Model):
                         self.layers,
                         class_weight,
                         data_size,
-                        self.n_outputs,
                         batch_size
                         ) as _:
       out = super(BoltonModel, self).fit_generator(

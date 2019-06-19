@@ -319,3 +319,281 @@ class StrongConvexBinaryCrossentropy(
     return L1L2(l2=self.reg_lambda/2)
 
 
+# class StrongConvexSparseCategoricalCrossentropy(
+#     losses.CategoricalCrossentropy,
+#     StrongConvexMixin
+# ):
+#   """
+#   Strong Convex version of CategoricalCrossentropy loss using l2 weight
+#   regularization.
+#   """
+#
+#   def __init__(self,
+#                reg_lambda: float,
+#                C: float,
+#                radius_constant: float,
+#                from_logits: bool = True,
+#                label_smoothing: float = 0,
+#                reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+#                name: str = 'binarycrossentropy',
+#                dtype=tf.float32):
+#     """
+#     Args:
+#       reg_lambda: Weight regularization constant
+#       C: Penalty parameter C of the loss term
+#       radius_constant: constant defining the length of the radius
+#       reduction: reduction type to use. See super class
+#       label_smoothing: amount of smoothing to perform on labels
+#                       relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x)
+#       name: Name of the loss instance
+#       dtype: tf datatype to use for tensor conversions.
+#     """
+#     if reg_lambda <= 0:
+#       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
+#     if C <= 0:
+#       raise ValueError('c: {0}, should be >= 0'.format(C))
+#     if radius_constant <= 0:
+#       raise ValueError('radius_constant: {0}, should be >= 0'.format(
+#         radius_constant
+#       ))
+#
+#     self.C = C
+#     self.dtype = dtype
+#     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
+#     super(StrongConvexSparseCategoricalCrossentropy, self).__init__(
+#         reduction=reduction,
+#         name=name,
+#         from_logits=from_logits,
+#         label_smoothing=label_smoothing,
+#     )
+#     self.radius_constant = radius_constant
+#
+#   def call(self, y_true, y_pred):
+#     """Compute loss
+#
+#         Args:
+#           y_true: Ground truth values.
+#           y_pred: The predicted values.
+#
+#         Returns:
+#           Loss values per sample.
+#       """
+#     loss = super()
+#     loss = loss * self.C
+#     return loss
+#
+#   def radius(self):
+#     """See super class.
+#     """
+#     return self.radius_constant / self.reg_lambda
+#
+#   def gamma(self):
+#     """See super class.
+#     """
+#     return self.reg_lambda
+#
+#   def beta(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda
+#
+#   def lipchitz_constant(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda * self.radius()
+#
+#   def kernel_regularizer(self):
+#     """
+#       l2 loss using reg_lambda as the l2 term (as desired). Required for
+#       this loss function to be strongly convex.
+#     :return:
+#     """
+#     return L1L2(l2=self.reg_lambda)
+#
+# class StrongConvexSparseCategoricalCrossentropy(
+#     losses.SparseCategoricalCrossentropy,
+#     StrongConvexMixin
+# ):
+#   """
+#   Strong Convex version of SparseCategoricalCrossentropy loss using l2 weight
+#   regularization.
+#   """
+#
+#   def __init__(self,
+#                reg_lambda: float,
+#                C: float,
+#                radius_constant: float,
+#                from_logits: bool = True,
+#                label_smoothing: float = 0,
+#                reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+#                name: str = 'binarycrossentropy',
+#                dtype=tf.float32):
+#     """
+#     Args:
+#       reg_lambda: Weight regularization constant
+#       C: Penalty parameter C of the loss term
+#       radius_constant: constant defining the length of the radius
+#       reduction: reduction type to use. See super class
+#       label_smoothing: amount of smoothing to perform on labels
+#                       relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x)
+#       name: Name of the loss instance
+#       dtype: tf datatype to use for tensor conversions.
+#     """
+#     if reg_lambda <= 0:
+#       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
+#     if C <= 0:
+#       raise ValueError('c: {0}, should be >= 0'.format(C))
+#     if radius_constant <= 0:
+#       raise ValueError('radius_constant: {0}, should be >= 0'.format(
+#         radius_constant
+#       ))
+#
+#     self.C = C
+#     self.dtype = dtype
+#     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
+#     super(StrongConvexHuber, self).__init__(reduction=reduction,
+#                                              name=name,
+#                                              from_logits=from_logits,
+#                                              label_smoothing=label_smoothing,
+#                                              )
+#     self.radius_constant = radius_constant
+#
+#   def call(self, y_true, y_pred):
+#     """Compute loss
+#
+#         Args:
+#           y_true: Ground truth values.
+#           y_pred: The predicted values.
+#
+#         Returns:
+#           Loss values per sample.
+#       """
+#     loss = super()
+#     loss = loss * self.C
+#     return loss
+#
+#   def radius(self):
+#     """See super class.
+#     """
+#     return self.radius_constant / self.reg_lambda
+#
+#   def gamma(self):
+#     """See super class.
+#     """
+#     return self.reg_lambda
+#
+#   def beta(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda
+#
+#   def lipchitz_constant(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda * self.radius()
+#
+#   def kernel_regularizer(self):
+#     """
+#       l2 loss using reg_lambda as the l2 term (as desired). Required for
+#       this loss function to be strongly convex.
+#     :return:
+#     """
+#     return L1L2(l2=self.reg_lambda)
+#
+#
+# class StrongConvexCategoricalCrossentropy(
+#     losses.CategoricalCrossentropy,
+#     StrongConvexMixin
+# ):
+#   """
+#   Strong Convex version of CategoricalCrossentropy loss using l2 weight
+#   regularization.
+#   """
+#
+#   def __init__(self,
+#                reg_lambda: float,
+#                C: float,
+#                radius_constant: float,
+#                from_logits: bool = True,
+#                label_smoothing: float = 0,
+#                reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+#                name: str = 'binarycrossentropy',
+#                dtype=tf.float32):
+#     """
+#     Args:
+#       reg_lambda: Weight regularization constant
+#       C: Penalty parameter C of the loss term
+#       radius_constant: constant defining the length of the radius
+#       reduction: reduction type to use. See super class
+#       label_smoothing: amount of smoothing to perform on labels
+#                       relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x)
+#       name: Name of the loss instance
+#       dtype: tf datatype to use for tensor conversions.
+#     """
+#     if reg_lambda <= 0:
+#       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
+#     if C <= 0:
+#       raise ValueError('c: {0}, should be >= 0'.format(C))
+#     if radius_constant <= 0:
+#       raise ValueError('radius_constant: {0}, should be >= 0'.format(
+#         radius_constant
+#       ))
+#
+#     self.C = C
+#     self.dtype = dtype
+#     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
+#     super(StrongConvexHuber, self).__init__(reduction=reduction,
+#                                              name=name,
+#                                              from_logits=from_logits,
+#                                              label_smoothing=label_smoothing,
+#                                              )
+#     self.radius_constant = radius_constant
+#
+#   def call(self, y_true, y_pred):
+#     """Compute loss
+#
+#         Args:
+#           y_true: Ground truth values.
+#           y_pred: The predicted values.
+#
+#         Returns:
+#           Loss values per sample.
+#       """
+#     loss = super()
+#     loss = loss * self.C
+#     return loss
+#
+#   def radius(self):
+#     """See super class.
+#     """
+#     return self.radius_constant / self.reg_lambda
+#
+#   def gamma(self):
+#     """See super class.
+#     """
+#     return self.reg_lambda
+#
+#   def beta(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda
+#
+#   def lipchitz_constant(self, class_weight):
+#     """See super class.
+#     """
+#     max_class_weight = self.max_class_weight(class_weight, self.dtype)
+#     return self.C * max_class_weight + self.reg_lambda * self.radius()
+#
+#   def kernel_regularizer(self):
+#     """
+#       l2 loss using reg_lambda as the l2 term (as desired). Required for
+#       this loss function to be strongly convex.
+#     :return:
+#     """
+#     return L1L2(l2=self.reg_lambda)
+
