@@ -20,8 +20,8 @@ import tensorflow as tf
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras import optimizers
 from tensorflow.python.framework import ops as _ops
-from privacy.bolton.loss import StrongConvexMixin
-from privacy.bolton.optimizer import Bolton
+from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolton.optimizers import Bolton
 
 
 class BoltonModel(Model):
@@ -142,7 +142,9 @@ class BoltonModel(Model):
 
     """
     if class_weight is None:
-      class_weight = self.calculate_class_weights(class_weight)
+      class_weight_ = self.calculate_class_weights(class_weight)
+    else:
+      class_weight_ = class_weight
     if n_samples is not None:
       data_size = n_samples
     elif hasattr(x, 'shape'):
@@ -160,10 +162,13 @@ class BoltonModel(Model):
     if batch_size_ is None:
       raise ValueError('batch_size: {0} is an '
                        'invalid value'.format(batch_size_))
+    if data_size is None:
+      raise ValueError('Could not infer the number of samples. Please pass '
+                       'this in using n_samples.')
     with self.optimizer(noise_distribution,
                         epsilon,
                         self.layers,
-                        class_weight,
+                        class_weight_,
                         data_size,
                         self.n_outputs,
                         batch_size_,

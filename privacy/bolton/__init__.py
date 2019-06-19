@@ -9,6 +9,7 @@ if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  from privacy.bolton.model import Bolton
-  from privacy.bolton.loss import StrongConvexHuber
-  from privacy.bolton.loss import StrongConvexBinaryCrossentropy
+  from privacy.bolton.models import BoltonModel
+  from privacy.bolton.optimizers import Bolton
+  from privacy.bolton.losses import StrongConvexHuber
+  from privacy.bolton.losses import StrongConvexBinaryCrossentropy

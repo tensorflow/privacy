@@ -21,7 +21,7 @@ import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 from tensorflow.python.ops import math_ops
 from tensorflow.python import ops as _ops
-from privacy.bolton.loss import StrongConvexMixin
+from privacy.bolton.losses import StrongConvexMixin
 
 _accepted_distributions = ['laplace']  # implemented distributions for noising
 

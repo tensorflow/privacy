@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for loss.py"""
+"""Unit testing for losses.py"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,9 +22,9 @@ from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.framework import test_util
 from tensorflow.python.keras.regularizers import L1L2
 from absl.testing import parameterized
-from privacy.bolton.loss import StrongConvexBinaryCrossentropy
-from privacy.bolton.loss import StrongConvexHuber
-from privacy.bolton.loss import StrongConvexMixin
+from privacy.bolton.losses import StrongConvexBinaryCrossentropy
+from privacy.bolton.losses import StrongConvexHuber
+from privacy.bolton.losses import StrongConvexMixin
 
 
 class StrongConvexMixinTests(keras_parameterized.TestCase):
@@ -355,7 +355,7 @@ class HuberTests(keras_parameterized.TestCase):
        'fn': 'kernel_regularizer',
        'init_args': [1, 1, 1, 1],
        'args': [],
-       'result': L1L2(l2=1),
+       'result': L1L2(l2=0.5),
        },
   ])
   def test_fns(self, init_args, fn, args, result):

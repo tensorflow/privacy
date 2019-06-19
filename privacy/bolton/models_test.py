@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for model.py"""
+"""Unit testing for models.py"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,9 +25,9 @@ from tensorflow.python.keras import losses
 from tensorflow.python.framework import ops as _ops
 from tensorflow.python.keras.regularizers import L1L2
 from absl.testing import parameterized
-from privacy.bolton import model
-from privacy.bolton.optimizer import Bolton
-from privacy.bolton.loss import StrongConvexMixin
+from privacy.bolton import models
+from privacy.bolton.optimizers import Bolton
+from privacy.bolton.losses import StrongConvexMixin
 
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model"""
@@ -130,8 +130,8 @@ class InitTests(keras_parameterized.TestCase):
         n_outputs: number of output neurons
     """
     # test valid domains for each variable
-    clf = model.BoltonModel(n_outputs)
-    self.assertIsInstance(clf, model.BoltonModel)
+    clf = models.BoltonModel(n_outputs)
+    self.assertIsInstance(clf, models.BoltonModel)
 
   @parameterized.named_parameters([
       {'testcase_name': 'invalid n_outputs',
@@ -146,7 +146,7 @@ class InitTests(keras_parameterized.TestCase):
     """
     # test invalid domains for each variable, especially noise
     with self.assertRaises(ValueError):
-      model.BoltonModel(n_outputs)
+      models.BoltonModel(n_outputs)
 
   @parameterized.named_parameters([
       {'testcase_name': 'string compile',
@@ -170,7 +170,7 @@ class InitTests(keras_parameterized.TestCase):
     """
     # test compilation of valid tf.optimizer and tf.loss
     with self.cached_session():
-      clf = model.BoltonModel(n_outputs)
+      clf = models.BoltonModel(n_outputs)
       clf.compile(optimizer, loss)
       self.assertEqual(clf.loss, loss)
 
@@ -197,7 +197,7 @@ class InitTests(keras_parameterized.TestCase):
     # test compilaton of invalid tf.optimizer and non instantiated loss.
     with self.cached_session():
       with self.assertRaises((ValueError, AttributeError)):
-        clf = model.BoltonModel(n_outputs)
+        clf = models.BoltonModel(n_outputs)
         clf.compile(optimizer, loss)
 
 
@@ -261,7 +261,7 @@ def _do_fit(n_samples,
 
   Returns: BoltonModel instsance
   """
-  clf = model.BoltonModel(n_outputs)
+  clf = models.BoltonModel(n_outputs)
   clf.compile(optimizer, loss)
   if generator:
     x = _cat_dataset(
@@ -355,7 +355,7 @@ class FitTests(keras_parameterized.TestCase):
     input_dim = 5
     batch_size = 1
     n_samples = 10
-    clf = model.BoltonModel(n_classes)
+    clf = models.BoltonModel(n_classes)
     clf.compile(optimizer, loss)
     x = _cat_dataset(
         n_samples,
@@ -441,7 +441,7 @@ class FitTests(keras_parameterized.TestCase):
       num_classes: number of outputs neurons
       result: expected result
     """
-    clf = model.BoltonModel(1, 1)
+    clf = models.BoltonModel(1, 1)
     expected = clf.calculate_class_weights(class_weights,
                                            class_counts,
                                            num_classes
@@ -508,7 +508,7 @@ class FitTests(keras_parameterized.TestCase):
         num_classes: number of outputs neurons
         result: expected result
       """
-    clf = model.BoltonModel(1, 1)
+    clf = models.BoltonModel(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
       clf.calculate_class_weights(class_weights,
                                   class_counts,

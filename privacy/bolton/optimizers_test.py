@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for optimizer.py"""
+"""Unit testing for optimizers.py"""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -29,8 +29,8 @@ from tensorflow.python.framework import ops as _ops
 from tensorflow.python.framework import test_util
 from tensorflow.python import ops as _ops
 from absl.testing import parameterized
-from privacy.bolton.loss import StrongConvexMixin
-from privacy.bolton import optimizer as opt
+from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolton import optimizers as opt
 
 
 
