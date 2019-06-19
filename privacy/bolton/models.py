@@ -60,7 +60,7 @@ class BoltonModel(Model):
     self._layers_instantiated = False
     self._dtype = dtype
 
-  def call(self, inputs, training=False):  # pylint: disable=arguments-differ
+  def call(self, inputs):  # pylint: disable=arguments-differ
     """Forward pass of network
 
     Args:
