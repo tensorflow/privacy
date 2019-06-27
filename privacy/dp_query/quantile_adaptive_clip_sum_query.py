@@ -144,12 +144,11 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         global_state.clipped_fraction_state)
     return self._SampleParams(sum_params, clipped_fraction_params)
 
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     """See base class."""
-    sum_state = self._sum_query.initial_sample_state(
-        global_state.sum_state, template)
+    sum_state = self._sum_query.initial_sample_state(template)
     clipped_fraction_state = self._clipped_fraction_query.initial_sample_state(
-        global_state.clipped_fraction_state, tf.constant(0.0))
+        tf.constant(0.0))
     return self._SampleState(sum_state, clipped_fraction_state)
 
   def preprocess_record(self, params, record):

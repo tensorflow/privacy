@@ -69,7 +69,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   def derive_sample_params(self, global_state):
     return global_state.l2_norm_clip
 
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     return nest.map_structure(
         dp_query.zeros_like, template)
 

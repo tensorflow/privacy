@@ -226,9 +226,9 @@ class QueryWithLedger(dp_query.DPQuery):
     """See base class."""
     return self._query.derive_sample_params(global_state)
 
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     """See base class."""
-    return self._query.initial_sample_state(global_state, template)
+    return self._query.initial_sample_state(template)
 
   def preprocess_record(self, params, record):
     """See base class."""

@@ -95,8 +95,7 @@ def make_optimizer_class(cls):
           self._num_microbatches = tf.shape(vector_loss)[0]
           if isinstance(self._dp_sum_query, privacy_ledger.QueryWithLedger):
             self._dp_sum_query.set_batch_size(self._num_microbatches)
-        sample_state = self._dp_sum_query.initial_sample_state(
-            self._global_state, var_list)
+        sample_state = self._dp_sum_query.initial_sample_state(var_list)
         microbatches_losses = tf.reshape(vector_loss,
                                          [self._num_microbatches, -1])
         sample_params = (
@@ -162,8 +161,7 @@ def make_optimizer_class(cls):
               tf.trainable_variables() + tf.get_collection(
                   tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
-        sample_state = self._dp_sum_query.initial_sample_state(
-            self._global_state, var_list)
+        sample_state = self._dp_sum_query.initial_sample_state(var_list)
 
         if self._unroll_microbatches:
           for idx in range(self._num_microbatches):
