@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,11 +26,9 @@ _accepted_distributions = ['laplace']  # implemented distributions for noising
 
 
 class GammaBetaDecreasingStep(
-    optimizer_v2.learning_rate_schedule.LearningRateSchedule
-):
-  """
-      Learning Rate Scheduler using the minimum of 1/beta and 1/(gamma * step)
-      at each step. A required step for privacy guarantees.
+    optimizer_v2.learning_rate_schedule.LearningRateSchedule):
+  """Computes LR as minimum of 1/beta and 1/(gamma * step) at each step.
+  A required step for privacy guarantees.
   """
   def __init__(self):
     self.is_init = False
@@ -38,8 +36,7 @@ class GammaBetaDecreasingStep(
     self.gamma = None
 
   def __call__(self, step):
-    """
-      returns the learning rate
+    """Computes and returns the learning rate.
     Args:
       step: the current iteration number
     Returns:
@@ -61,15 +58,14 @@ class GammaBetaDecreasingStep(
                            )
 
   def get_config(self):
-    """
-      config to setup the learning rate scheduler.
-    """
+    """Return config to setup the learning rate scheduler."""
     return {'beta': self.beta, 'gamma': self.gamma}
 
   def initialize(self, beta, gamma):
-    """setup the learning rate scheduler with the beta and gamma values provided
-    by the loss function. Meant to be used with .fit as the loss params may
-    depend on values passed to fit.
+    """Setups scheduler with beta and gamma values from the loss function.
+
+    Meant to be used with .fit as the loss params may depend on values passed to
+    fit.
 
     Args:
       beta: Smoothness value. See StrongConvexMixin
@@ -80,37 +76,36 @@ class GammaBetaDecreasingStep(
     self.gamma = gamma
 
   def de_initialize(self):
-    """De initialize the scheduler after fitting, in case another fit call has
-    different loss parameters.
-    """
+    """De initialize post fit, as another fit call may use other parameters."""
     self.is_init = False
     self.beta = None
     self.gamma = None
 
 
 class Bolton(optimizer_v2.OptimizerV2):
-  """
-    Bolton optimizer wraps another tf optimizer to be used
-    as the visible optimizer to the tf model. No matter the optimizer
-    passed, "Bolton" enables the bolton model to control the learning rate
-    based on the strongly convex loss.
+  """Wrap another tf optimizer with Bolton privacy protocol.
 
-    To use the Bolton method, you must:
-    1. instantiate it with an instantiated tf optimizer and StrongConvexLoss.
-    2. use it as a context manager around your .fit method internals.
+  Bolton optimizer wraps another tf optimizer to be used
+  as the visible optimizer to the tf model. No matter the optimizer
+  passed, "Bolton" enables the bolton model to control the learning rate
+  based on the strongly convex loss.
 
-    This can be accomplished by the following:
-    optimizer = tf.optimizers.SGD()
-    loss = privacy.bolton.losses.StrongConvexBinaryCrossentropy()
-    bolton = Bolton(optimizer, loss)
-    with bolton(*args) as _:
-      model.fit()
-    The args required for the context manager can be found in the __call__
-    method.
+  To use the Bolton method, you must:
+  1. instantiate it with an instantiated tf optimizer and StrongConvexLoss.
+  2. use it as a context manager around your .fit method internals.
 
-    For more details on the strong convexity requirements, see:
-    Bolt-on Differential Privacy for Scalable Stochastic Gradient
-    Descent-based Analytics by Xi Wu et. al.
+  This can be accomplished by the following:
+  optimizer = tf.optimizers.SGD()
+  loss = privacy.bolton.losses.StrongConvexBinaryCrossentropy()
+  bolton = Bolton(optimizer, loss)
+  with bolton(*args) as _:
+    model.fit()
+  The args required for the context manager can be found in the __call__
+  method.
+
+  For more details on the strong convexity requirements, see:
+  Bolt-on Differential Privacy for Scalable Stochastic Gradient
+  Descent-based Analytics by Xi Wu et. al.
   """
   def __init__(self,  # pylint: disable=super-init-not-called
                optimizer: optimizer_v2.OptimizerV2,
@@ -120,9 +115,9 @@ class Bolton(optimizer_v2.OptimizerV2):
     """Constructor.
 
     Args:
-        optimizer: Optimizer_v2 or subclass to be used as the optimizer
-                    (wrapped).
-        loss: StrongConvexLoss function that the model is being compiled with.
+      optimizer: Optimizer_v2 or subclass to be used as the optimizer
+        (wrapped).
+      loss: StrongConvexLoss function that the model is being compiled with.
     """
 
     if not isinstance(loss, StrongConvexMixin):
@@ -150,19 +145,15 @@ class Bolton(optimizer_v2.OptimizerV2):
     self._is_init = False
 
   def get_config(self):
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer.get_config()
 
   def project_weights_to_r(self, force=False):
-    """helper method to normalize the weights to the R-ball.
+    """Normalize the weights to the R-ball.
 
     Args:
-        force: True to normalize regardless of previous weight values.
-                False to check if weights > R-ball and only normalize then.
-
-    Returns:
-
+      force: True to normalize regardless of previous weight values.
+        False to check if weights > R-ball and only normalize then.
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -186,8 +177,8 @@ class Bolton(optimizer_v2.OptimizerV2):
       input_dim: the input dimensionality for the weights
       output_dim the output dimensionality for the weights
 
-    Returns: noise in shape of layer's weights to be added to the weights.
-
+    Returns:
+      Noise in shape of layer's weights to be added to the weights.
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -221,8 +212,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                               'a valid distribution'.format(distribution))
 
   def from_config(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer.from_config(*args, **kwargs)
 
   def __getattr__(self, name):
@@ -230,11 +220,10 @@ class Bolton(optimizer_v2.OptimizerV2):
     from the _internal_optimizer instance.
 
     Args:
-        name:
+      name:
 
     Returns: attribute from Bolton if specified to come from self, else
-            from _internal_optimizer.
-
+      from _internal_optimizer.
     """
     if name == '_private_attributes' or name in self._private_attributes:
       return getattr(self, name)
@@ -255,11 +244,8 @@ class Bolton(optimizer_v2.OptimizerV2):
     Reroute everything else to the _internal_optimizer.
 
     Args:
-        key: attribute name
-        value: attribute value
-
-    Returns:
-
+      key: attribute name
+      value: attribute value
     """
     if key == '_private_attributes':
       object.__setattr__(self, key, value)
@@ -269,44 +255,37 @@ class Bolton(optimizer_v2.OptimizerV2):
       setattr(self._internal_optimizer, key, value)
 
   def _resource_apply_dense(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer._resource_apply_dense(*args, **kwargs)  # pylint: disable=protected-access
 
   def _resource_apply_sparse(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer._resource_apply_sparse(*args, **kwargs)  # pylint: disable=protected-access
 
   def get_updates(self, loss, params):
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     out = self._internal_optimizer.get_updates(loss, params)
     self.project_weights_to_r()
     return out
 
   def apply_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     out = self._internal_optimizer.apply_gradients(*args, **kwargs)
     self.project_weights_to_r()
     return out
 
   def minimize(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     out = self._internal_optimizer.minimize(*args, **kwargs)
     self.project_weights_to_r()
     return out
 
   def _compute_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ,protected-access
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer._compute_gradients(*args, **kwargs)  # pylint: disable=protected-access
 
   def get_gradients(self, *args, **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to _internal_optimizer. See super/_internal_optimizer.
-    """
+    """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
     return self._internal_optimizer.get_gradients(*args, **kwargs)
 
   def __enter__(self):
@@ -326,8 +305,8 @@ class Bolton(optimizer_v2.OptimizerV2):
                n_samples,
                batch_size
                ):
-    """Entry point from context. Accepts required values for bolton method and
-    stores them on the optimizer for use throughout fitting.
+    """Accepts required values for bolton method from context entry point.
+    Stores them on the optimizer for use throughout fitting.
 
     Args:
       noise_distribution: the noise distribution to pick.
@@ -360,17 +339,15 @@ class Bolton(optimizer_v2.OptimizerV2):
 
   def __exit__(self, *args):
     """Exit call from with statement.
-        used to
+    used to
 
-        1.reset the model and fit parameters passed to the optimizer
-          to enable the Bolton Privacy guarantees. These are reset to ensure
-          that any future calls to fit with the same instance of the optimizer
-          will properly error out.
+    1.reset the model and fit parameters passed to the optimizer
+      to enable the Bolton Privacy guarantees. These are reset to ensure
+      that any future calls to fit with the same instance of the optimizer
+      will properly error out.
 
-        2.call post-fit methods normalizing/projecting the model weights and
-          adding noise to the weights.
-
-
+    2.call post-fit methods normalizing/projecting the model weights and
+      adding noise to the weights.
     """
     self.project_weights_to_r(True)
     for layer in self.layers:

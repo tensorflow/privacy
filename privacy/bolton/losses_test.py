@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,6 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from contextlib import contextmanager
+from io import StringIO
+import sys
 import tensorflow as tf
 from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.framework import test_util
@@ -25,6 +28,18 @@ from absl.testing import parameterized
 from privacy.bolton.losses import StrongConvexBinaryCrossentropy
 from privacy.bolton.losses import StrongConvexHuber
 from privacy.bolton.losses import StrongConvexMixin
+
+
+@contextmanager
+def captured_output():
+  """Capture std_out and std_err within context."""
+  new_out, new_err = StringIO(), StringIO()
+  old_out, old_err = sys.stdout, sys.stderr
+  try:
+    sys.stdout, sys.stderr = new_out, new_err
+    yield sys.stdout, sys.stderr
+  finally:
+    sys.stdout, sys.stderr = old_out, old_err
 
 
 class StrongConvexMixinTests(keras_parameterized.TestCase):
@@ -72,7 +87,7 @@ class StrongConvexMixinTests(keras_parameterized.TestCase):
 
 
 class BinaryCrossesntropyTests(keras_parameterized.TestCase):
-  """tests for BinaryCrossesntropy StrongConvex loss"""
+  """tests for BinaryCrossesntropy StrongConvex loss."""
 
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
@@ -82,7 +97,8 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        },  # pylint: disable=invalid-name
   ])
   def test_init_params(self, reg_lambda, C, radius_constant):
-    """Test initialization for given arguments
+    """Test initialization for given arguments.
+
     Args:
       reg_lambda: initialization value for reg_lambda arg
       C: initialization value for C arg
@@ -111,6 +127,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   ])
   def test_bad_init_params(self, reg_lambda, C, radius_constant):
     """Test invalid domain for given params. Should return ValueError
+
     Args:
       reg_lambda: initialization value for reg_lambda arg
       C: initialization value for C arg
@@ -146,6 +163,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   ])
   def test_calculation(self, logits, y_true, result):
     """Test the call method to ensure it returns the correct value
+
     Args:
       logits: unscaled output of model
       y_true: label
@@ -185,6 +203,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   ])
   def test_fns(self, init_args, fn, args, result):
     """Test that fn of BinaryCrossentropy loss returns the correct result
+
     Args:
       init_args: init values for loss instance
       fn: the fn to test
@@ -201,6 +220,29 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
       result = result.l2
     self.assertEqual(expected, result)
 
+  @parameterized.named_parameters([
+      {'testcase_name': 'label_smoothing',
+       'init_args': [1, 1, 1, True, 0.1],
+       'fn': None,
+       'args': None,
+       'print_res': 'The impact of label smoothing on privacy is unknown.'
+       },
+  ])
+  def test_prints(self, init_args, fn, args, print_res):
+    """Test logger warning from StrongConvexBinaryCrossentropy.
+
+    Args:
+      init_args: arguments to init the object with.
+      fn: function to test
+      args: arguments to above function
+      print_res: print result that should have been printed.
+    """
+    with captured_output() as (out, err):  # pylint: disable=unused-variable
+      loss = StrongConvexBinaryCrossentropy(*init_args)
+      if fn is not None:
+        getattr(loss, fn, lambda *arguments: print('error'))(*args)
+    self.assertRegexMatch(err.getvalue().strip(), [print_res])
+
 
 class HuberTests(keras_parameterized.TestCase):
   """tests for BinaryCrossesntropy StrongConvex loss"""
@@ -215,6 +257,7 @@ class HuberTests(keras_parameterized.TestCase):
   ])
   def test_init_params(self, reg_lambda, c, radius_constant, delta):
     """Test initialization for given arguments
+
     Args:
       reg_lambda: initialization value for reg_lambda arg
       C: initialization value for C arg
@@ -244,7 +287,7 @@ class HuberTests(keras_parameterized.TestCase):
        'delta': 1
        },
       {'testcase_name': 'negative delta',
-       'reg_lambda': -1,
+       'reg_lambda': 1,
        'c': 1,
        'radius_constant': 1,
        'delta': -1
@@ -252,10 +295,12 @@ class HuberTests(keras_parameterized.TestCase):
   ])
   def test_bad_init_params(self, reg_lambda, c, radius_constant, delta):
     """Test invalid domain for given params. Should return ValueError
+
     Args:
       reg_lambda: initialization value for reg_lambda arg
       C: initialization value for C arg
       radius_constant: initialization value for radius_constant arg
+      delta: the delta parameter for the huber loss
     """
     # test valid domains for each variable
     with self.assertRaises(ValueError):
@@ -321,6 +366,7 @@ class HuberTests(keras_parameterized.TestCase):
   ])
   def test_calculation(self, logits, y_true, delta, result):
     """Test the call method to ensure it returns the correct value
+
     Args:
       logits: unscaled output of model
       y_true: label
@@ -360,6 +406,7 @@ class HuberTests(keras_parameterized.TestCase):
   ])
   def test_fns(self, init_args, fn, args, result):
     """Test that fn of BinaryCrossentropy loss returns the correct result
+
     Args:
       init_args: init values for loss instance
       fn: the fn to test

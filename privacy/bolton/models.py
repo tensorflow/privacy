@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,8 +25,11 @@ from privacy.bolton.optimizers import Bolton
 
 
 class BoltonModel(Model):
-  """
-  Bolton episilon-delta model
+  """Bolton episilon-delta differential privacy model.
+
+  The privacy guarantees are dependent on the noise that is sampled. Please
+  see the paper linked below for more details.
+
   Uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
   2. Projects weights to R after each batch
@@ -121,8 +124,9 @@ class BoltonModel(Model):
           noise_distribution='laplace',
           steps_per_epoch=None,
           **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to super fit with additional Bolton delta-epsilon privacy
-    requirements implemented. Note, inputs must be normalized s.t. ||x|| < 1
+    """Reroutes to super fit with  Bolton delta-epsilon privacy requirements.
+
+    Note, inputs must be normalized s.t. ||x|| < 1.
     Requirements are as follows:
         1. Adds noise to weights after training (output perturbation).
         2. Projects weights to R after each batch
@@ -139,7 +143,6 @@ class BoltonModel(Model):
                       whose dim == n_classes.
 
         See the super method for descriptions on the rest of the arguments.
-
     """
     if class_weight is None:
       class_weight_ = self.calculate_class_weights(class_weight)
@@ -237,8 +240,8 @@ class BoltonModel(Model):
                               class_counts=None,
                               num_classes=None
                               ):
-    """
-        Calculates class weighting to be used in training. Can be on
+    """Calculates class weighting to be used in training.
+
     Args:
         class_weights: str specifying type, array giving weights, or None.
         class_counts: If class_weights is not None, then an array of
@@ -246,7 +249,6 @@ class BoltonModel(Model):
         num_classes: If class_weights is not None, then the number of
                         classes.
     Returns: class_weights as 1D tensor, to be passed to model's fit method.
-
     """
     # Value checking
     class_keys = ['balanced']
