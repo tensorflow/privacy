@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,8 +33,7 @@ from privacy.bolton import optimizers as opt
 
 
 class TestModel(Model):
-  """
-  Bolton episilon-delta model
+  """Bolton episilon-delta model.
   Uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
   2. Projects weights to R after each batch
@@ -47,14 +46,15 @@ class TestModel(Model):
   """
 
   def __init__(self, n_outputs=2, input_shape=(16,), init_value=2):
-    """
+    """Constructor.
+
     Args:
-        n_outputs: number of output neurons
-        epsilon: level of privacy guarantee
-        noise_distribution: distribution to pull weight perturbations from
-        weights_initializer: initializer for weights
-        seed: random seed to use
-        dtype: data type to use for tensors
+      n_outputs: number of output neurons
+      epsilon: level of privacy guarantee
+      noise_distribution: distribution to pull weight perturbations from
+      weights_initializer: initializer for weights
+      seed: random seed to use
+      dtype: data type to use for tensors
     """
     super(TestModel, self).__init__(name='bolton', dynamic=False)
     self.n_outputs = n_outputs
@@ -76,40 +76,36 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     self.radius_constant = radius_constant
 
   def radius(self):
-    """Radius of R-Ball (value to normalize weights to after each batch)
+    """Radius, R, of the hypothesis space W.
+    W is a convex set that forms the hypothesis space.
 
     Returns: radius
-
     """
     return _ops.convert_to_tensor_v2(self.radius_constant, dtype=tf.float32)
 
   def gamma(self):
-    """ Gamma strongly convex
-
-    Returns: gamma
-
-    """
+    """Returns strongly convex parameter, gamma."""
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
   def beta(self, class_weight):  # pylint: disable=unused-argument
-    """Beta smoothess
+    """Smoothness, beta.
 
     Args:
-      class_weight: the class weights used.
+      class_weight: the class weights as scalar or 1d tensor, where its
+        dimensionality is equal to the number of outputs.
 
-    Returns: Beta
-
+    Returns:
+      Beta
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
   def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
-    """ L lipchitz continuous
+    """Lipchitz constant, L.
 
     Args:
       class_weight: class weights used
 
     Returns: L
-
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -121,11 +117,25 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     )
 
   def max_class_weight(self, class_weight, dtype=tf.float32):
+    """the maximum weighting in class weights (max value) as a scalar tensor
+
+    Args:
+      class_weight: class weights used
+      dtype: the data type for tensor conversions.
+
+    Returns:
+      maximum class weighting as tensor scalar
+    """
     if class_weight is None:
       return 1
     raise NotImplementedError('')
 
   def kernel_regularizer(self):
+    """Returns the kernel_regularizer to be used.
+
+    Any subclass should override this method if they want a kernel_regularizer
+    (if required for the loss function to be StronglyConvex.
+    """
     return L1L2(l2=self.reg_lambda)
 
 

@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,40 +38,36 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     self.radius_constant = radius_constant
 
   def radius(self):
-    """Radius of R-Ball (value to normalize weights to after each batch)
+    """Radius, R, of the hypothesis space W.
+    W is a convex set that forms the hypothesis space.
 
     Returns: radius
-
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
   def gamma(self):
-    """ Gamma strongly convex
-
-    Returns: gamma
-
-    """
+    """Returns strongly convex parameter, gamma."""
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
   def beta(self, class_weight):  # pylint: disable=unused-argument
-    """Beta smoothess
+    """Smoothness, beta.
 
     Args:
-      class_weight: the class weights used.
+      class_weight: the class weights as scalar or 1d tensor, where its
+        dimensionality is equal to the number of outputs.
 
-    Returns: Beta
-
+    Returns:
+      Beta
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
   def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
-    """ L lipchitz continuous
+    """Lipchitz constant, L.
 
     Args:
       class_weight: class weights used
 
     Returns: L
-
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -83,11 +79,25 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     )
 
   def max_class_weight(self, class_weight):
+    """the maximum weighting in class weights (max value) as a scalar tensor
+
+    Args:
+      class_weight: class weights used
+      dtype: the data type for tensor conversions.
+
+    Returns:
+      maximum class weighting as tensor scalar
+    """
     if class_weight is None:
       return 1
     raise ValueError('')
 
   def kernel_regularizer(self):
+    """Returns the kernel_regularizer to be used.
+
+    Any subclass should override this method if they want a kernel_regularizer
+    (if required for the loss function to be StronglyConvex.
+    """
     return L1L2(l2=self.reg_lambda)
 
 
@@ -113,7 +123,7 @@ class TestOptimizer(OptimizerV2):
 
 
 class InitTests(keras_parameterized.TestCase):
-  """tests for keras model initialization"""
+  """Tests for keras model initialization."""
 
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
@@ -124,7 +134,7 @@ class InitTests(keras_parameterized.TestCase):
        },
   ])
   def test_init_params(self, n_outputs):
-    """test initialization of BoltonModel
+    """Test initialization of BoltonModel.
 
     Args:
         n_outputs: number of output neurons
@@ -243,8 +253,7 @@ def _do_fit(n_samples,
             optimizer,
             loss,
             distribution='laplace'):
-  """Helper to instantiate necessary components for fitting and perform a model
-  fit.
+  """Instantiate necessary components for fitting and perform a model fit.
 
   Args:
       n_samples: number of samples in dataset
