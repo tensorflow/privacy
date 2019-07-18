@@ -32,7 +32,7 @@ from privacy.bolton.losses import StrongConvexMixin
 from privacy.bolton import optimizers as opt
 
 
-class TestModel(Model):
+class TestModel(Model):  # pylint: disable=abstract-method
   """Bolton episilon-delta model.
   Uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).

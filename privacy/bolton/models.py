@@ -24,7 +24,7 @@ from privacy.bolton.losses import StrongConvexMixin
 from privacy.bolton.optimizers import Bolton
 
 
-class BoltonModel(Model):
+class BoltonModel(Model):  # pylint: disable=abstract-method
   """Bolton episilon-delta differential privacy model.
 
   The privacy guarantees are dependent on the noise that is sampled. Please
