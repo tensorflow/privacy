@@ -38,7 +38,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
 
   For more details on the strong convexity requirements, see:
   Bolt-on Differential Privacy for Scalable Stochastic Gradient
-  Descent-based Analytics by Xi Wu et. al.
+  Descent-based Analytics by Xi Wu et al.
   """
 
   def __init__(self,
