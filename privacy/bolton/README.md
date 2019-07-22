@@ -1,6 +1,6 @@
-# Bolton Module
+# Bolton SubPpckage
 
-This module contains source code for the Bolton method. This method is a subset
+This package contains source code for the Bolton method. This method is a subset
 of methods used in the ensuring privacy in machine learning that leverages
 additional assumptions to provide a new way of approaching the privacy 
 guarantees.
@@ -30,12 +30,12 @@ and no noising.
 
 ## Tutorials
 
-This module has a tutorial that can be found in the root tutorials directory, 
+This package has a tutorial that can be found in the root tutorials directory, 
 under boton_tutorial.py.
 
 ## Contribution
 
-This module was initially contributed by Georgian Partners with the hope of 
+This package was initially contributed by Georgian Partners with the hope of 
 growing the tensorflow/privacy library. There are several rich use cases for 
 delta-epsilon privacy in machine learning, some of which can be explored here:
 https://medium.com/apache-mxnet/epsilon-differential-privacy-for-machine-learning-using-mxnet-a4270fe3865e
