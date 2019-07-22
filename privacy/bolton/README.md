@@ -1,4 +1,4 @@
-# Bolton SubPpckage
+# Bolton Subpackage
 
 This package contains source code for the Bolton method. This method is a subset
 of methods used in the ensuring privacy in machine learning that leverages
