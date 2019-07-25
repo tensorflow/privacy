@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tutorial for bolton module, the model and the optimizer."""
+from __future__ import print_function
 import tensorflow as tf  # pylint: disable=wrong-import-position
 from privacy.bolton import losses  # pylint: disable=wrong-import-position
 from privacy.bolton import models  # pylint: disable=wrong-import-position
@@ -116,7 +117,7 @@ try:
            noise_distribution=noise_distribution,
            verbose=0)
 except ValueError as e:
-  print e
+  print(e)
 # -------
 # And now, re running with the parameter set.
 # -------
