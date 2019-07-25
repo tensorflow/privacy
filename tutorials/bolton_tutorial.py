@@ -11,14 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tutorial for bolton module, the model and the optimizer."""
-import sys
-
-sys.path.append('..')
 import tensorflow as tf  # pylint: disable=wrong-import-position
 from privacy.bolton import losses  # pylint: disable=wrong-import-position
 from privacy.bolton import models  # pylint: disable=wrong-import-position
+from privacy.bolton.optimizers import Bolton  # pylint: disable=wrong-import-position
 # -------
 # First, we will create a binary classification dataset with a single output
 # dimension. The samples for each label are repeated data points at different
@@ -59,9 +56,9 @@ loss = losses.StrongConvexBinaryCrossentropy(reg_lambda, C, radius_constant)
 # For simplicity, we pick all parameters of the StrongConvexBinaryCrossentropy
 # to be 1; these are all tunable and their impact can be read in losses.
 # StrongConvexBinaryCrossentropy.We then compile the model with the chosen
-# optimizer and loss, which will automatically wrap the chosen optimizer with the
-# Bolton Optimizer, ensuring the required components function as required for
-# privacy guarantees.
+# optimizer and loss, which will automatically wrap the chosen optimizer with
+# the Bolton Optimizer, ensuring the required components function as required
+# for privacy guarantees.
 # -------
 bolt.compile(optimizer, loss)
 # -------
@@ -69,13 +66,13 @@ bolt.compile(optimizer, loss)
 # the dataset and model.These parameters are:
 # 1. the class_weights used
 # 2. the number of samples in the dataset
-# 3. the batch size which the model will try to infer, if possible.  If not, you
-# will be required to pass these explicitly to the fit method.
+# 3. the batch size which the model will try to infer, if possible.  If not,
+# you will be required to pass these explicitly to the fit method.
 #
 # As well, there are two privacy parameters than can be altered:
 # 1. epsilon, a float
-# 2. noise_distribution, a valid string indicating the distriution to use (must be
-# implemented)
+# 2. noise_distribution, a valid string indicating the distriution to use (must
+# be implemented)
 #
 # The BoltonModel offers a helper method,.calculate_class_weight to aid in
 # class_weight calculation.
@@ -117,8 +114,7 @@ try:
            batch_size=batch_size,
            n_samples=n_samples,
            noise_distribution=noise_distribution,
-           verbose=0
-           )
+           verbose=0)
 except ValueError as e:
   print(e)
 # -------
@@ -131,8 +127,7 @@ bolt.fit(generator,
          batch_size=batch_size,
          n_samples=n_samples,
          noise_distribution=noise_distribution,
-         verbose=0
-         )
+         verbose=0)
 # -------
 # You don't have to use the bolton model to use the Bolton method.
 # There are only a few requirements:
@@ -140,16 +135,18 @@ bolt.fit(generator,
 # 2. instantiate the optimizer and use it as a context around the fit operation.
 # -------
 # -------------------- Part 2, using the Optimizer
-from privacy.bolton.optimizers import Bolton  # pylint: disable=wrong-import-position
+
 # -------
 # Here, we create our own model and setup the Bolton optimizer.
 # -------
+
+
 class TestModel(tf.keras.Model):  # pylint: disable=abstract-method
+
   def __init__(self, reg_layer, number_of_outputs=1):
     super(TestModel, self).__init__(name='test')
     self.output_layer = tf.keras.layers.Dense(number_of_outputs,
-                                              kernel_regularizer=reg_layer
-                                              )
+                                              kernel_regularizer=reg_layer)
 
   def call(self, inputs):  # pylint: disable=arguments-differ
     return self.output_layer(inputs)

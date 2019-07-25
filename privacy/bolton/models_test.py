@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for models.py"""
+"""Unit testing for models."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -29,8 +29,10 @@ from privacy.bolton import models
 from privacy.bolton.optimizers import Bolton
 from privacy.bolton.losses import StrongConvexMixin
 
+
 class TestLoss(losses.Loss, StrongConvexMixin):
-  """Test loss function for testing Bolton model"""
+  """Test loss function for testing Bolton model."""
+
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
@@ -103,6 +105,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
 class TestOptimizer(OptimizerV2):
   """Test optimizer used for testing Bolton model"""
+
   def __init__(self):
     super(TestOptimizer, self).__init__('test')
 
@@ -128,10 +131,10 @@ class InitTests(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
        'n_outputs': 1,
-       },
+      },
       {'testcase_name': 'many outputs',
        'n_outputs': 100,
-       },
+      },
   ])
   def test_init_params(self, n_outputs):
     """Test initialization of BoltonModel.
@@ -146,7 +149,7 @@ class InitTests(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'invalid n_outputs',
        'n_outputs': -1,
-       },
+      },
   ])
   def test_bad_init_params(self, n_outputs):
     """test bad initializations of BoltonModel that should raise errors
@@ -163,12 +166,12 @@ class InitTests(keras_parameterized.TestCase):
        'n_outputs': 1,
        'loss': TestLoss(1, 1, 1),
        'optimizer': 'adam',
-       },
+      },
       {'testcase_name': 'test compile',
        'n_outputs': 100,
        'loss': TestLoss(1, 1, 1),
        'optimizer': TestOptimizer(),
-       },
+      },
   ])
   def test_compile(self, n_outputs, loss, optimizer):
     """test compilation of BoltonModel
@@ -189,12 +192,12 @@ class InitTests(keras_parameterized.TestCase):
        'n_outputs': 1,
        'loss': losses.BinaryCrossentropy(),
        'optimizer': 'adam',
-       },
+      },
       {'testcase_name': 'Not valid optimizer',
        'n_outputs': 1,
        'loss': TestLoss(1, 1, 1),
        'optimizer': 'ada',
-       }
+      }
   ])
   def test_bad_compile(self, n_outputs, loss, optimizer):
     """test bad compilations of BoltonModel that should raise errors
@@ -293,8 +296,7 @@ def _do_fit(n_samples,
           batch_size=batch_size,
           n_samples=n_samples,
           noise_distribution=distribution,
-          epsilon=epsilon
-          )
+          epsilon=epsilon)
   return clf
 
 
@@ -306,19 +308,19 @@ class FitTests(keras_parameterized.TestCase):
       {'testcase_name': 'iterator fit',
        'generator': False,
        'reset_n_samples': True,
-       },
+      },
       {'testcase_name': 'iterator fit no samples',
        'generator': False,
        'reset_n_samples': True,
-       },
+      },
       {'testcase_name': 'generator fit',
        'generator': True,
        'reset_n_samples': False,
-       },
+      },
       {'testcase_name': 'with callbacks',
        'generator': True,
        'reset_n_samples': False,
-       },
+      },
   ])
   def test_fit(self, generator, reset_n_samples):
     """Tests fitting of BoltonModel
@@ -350,7 +352,7 @@ class FitTests(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'generator fit',
        'generator': True,
-       },
+      },
   ])
   def test_fit_gen(self, generator):
     """Tests the fit_generator method of BoltonModel
@@ -382,12 +384,12 @@ class FitTests(keras_parameterized.TestCase):
        'generator': True,
        'reset_n_samples': True,
        'distribution': 'laplace'
-       },
+      },
       {'testcase_name': 'invalid distribution',
        'generator': True,
        'reset_n_samples': True,
        'distribution': 'not_valid'
-       },
+      },
   ])
   def test_bad_fit(self, generator, reset_n_samples, distribution):
     """Tests fitting with invalid parameters, which should raise an error
@@ -453,8 +455,7 @@ class FitTests(keras_parameterized.TestCase):
     clf = models.BoltonModel(1, 1)
     expected = clf.calculate_class_weights(class_weights,
                                            class_counts,
-                                           num_classes
-                                           )
+                                           num_classes)
 
     if hasattr(expected, 'numpy'):
       expected = expected.numpy()
@@ -467,13 +468,13 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': 'not_valid',
        'class_counts': 1,
        'num_classes': 1,
-       'err_msg': "Detected string class_weights with value: not_valid"},
+       'err_msg': 'Detected string class_weights with value: not_valid'},
       {'testcase_name': 'no class counts',
        'class_weights': 'balanced',
        'class_counts': None,
        'num_classes': 1,
-       'err_msg': "Class counts must be provided if "
-                  "using class_weights=balanced"},
+       'err_msg': 'Class counts must be provided if '
+                  'using class_weights=balanced'},
       {'testcase_name': 'no num classes',
        'class_weights': 'balanced',
        'class_counts': [1],
@@ -489,8 +490,8 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': [1],
        'class_counts': None,
        'num_classes': None,
-       'err_msg': "You must pass a value for num_classes if "
-                  "creating an array of class_weights"},
+       'err_msg': 'You must pass a value for num_classes if '
+                  'creating an array of class_weights'},
       {'testcase_name': 'class counts array, improper shape',
        'class_weights': [[1], [1]],
        'class_counts': None,
@@ -500,14 +501,13 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': [1, 1, 1],
        'class_counts': None,
        'num_classes': 2,
-       'err_msg': "Detected array length:"},
+       'err_msg': 'Detected array length:'},
   ])
   def test_class_errors(self,
                         class_weights,
                         class_counts,
                         num_classes,
-                        err_msg
-                        ):
+                        err_msg):
     """Tests the BOltonModel calculate_class_weights method with invalid params
         which should raise the expected errors.
 
@@ -521,8 +521,7 @@ class FitTests(keras_parameterized.TestCase):
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
       clf.calculate_class_weights(class_weights,
                                   class_counts,
-                                  num_classes
-                                  )
+                                  num_classes)
 
 
 if __name__ == '__main__':

@@ -11,15 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Bolton model for bolton method of differentially private ML"""
+"""Bolton model for bolton method of differentially private ML."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import tensorflow as tf
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras import optimizers
 from tensorflow.python.framework import ops as _ops
+from tensorflow.python.keras import optimizers
+from tensorflow.python.keras.models import Model
 from privacy.bolton.losses import StrongConvexMixin
 from privacy.bolton.optimizers import Bolton
 
@@ -44,9 +44,8 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
   def __init__(self,
                n_outputs,
                seed=1,
-               dtype=tf.float32
-               ):
-    """ private constructor.
+               dtype=tf.float32):
+    """Private constructor.
 
     Args:
         n_outputs: number of output classes to predict.
@@ -64,7 +63,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     self._dtype = dtype
 
   def call(self, inputs):  # pylint: disable=arguments-differ
-    """Forward pass of network
+    """Forward pass of network.
 
     Args:
         inputs: inputs to neural network
@@ -111,8 +110,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                                      weighted_metrics=weighted_metrics,
                                      target_tensors=target_tensors,
                                      distribute=distribute,
-                                     **kwargs
-                                     )
+                                     **kwargs)
 
   def fit(self,
           x=None,
@@ -158,8 +156,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       data_size = None
     batch_size_ = self._validate_or_infer_batch_size(batch_size,
                                                      steps_per_epoch,
-                                                     x
-                                                     )
+                                                     x)
     # inferring batch_size to be passed to optimizer. batch_size must remain its
     # initial value when passed to super().fit()
     if batch_size_ is None:
@@ -173,15 +170,13 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                         self.layers,
                         class_weight_,
                         data_size,
-                        batch_size_,
-                        ) as _:
+                        batch_size_) as _:
       out = super(BoltonModel, self).fit(x=x,
                                          y=y,
                                          batch_size=batch_size,
                                          class_weight=class_weight,
                                          steps_per_epoch=steps_per_epoch,
-                                         **kwargs
-                                         )
+                                         **kwargs)
     return out
 
   def fit_generator(self,
@@ -191,8 +186,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                     epsilon=2,
                     n_samples=None,
                     steps_per_epoch=None,
-                    **kwargs
-                    ):  # pylint: disable=arguments-differ
+                    **kwargs):  # pylint: disable=arguments-differ
     """
         This method is the same as fit except for when the passed dataset
         is a generator. See super method and fit for more details.
@@ -218,28 +212,24 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       data_size = None
     batch_size = self._validate_or_infer_batch_size(None,
                                                     steps_per_epoch,
-                                                    generator
-                                                    )
+                                                    generator)
     with self.optimizer(noise_distribution,
                         epsilon,
                         self.layers,
                         class_weight,
                         data_size,
-                        batch_size
-                        ) as _:
+                        batch_size) as _:
       out = super(BoltonModel, self).fit_generator(
           generator,
           class_weight=class_weight,
           steps_per_epoch=steps_per_epoch,
-          **kwargs
-      )
+          **kwargs)
     return out
 
   def calculate_class_weights(self,
                               class_weights=None,
                               class_counts=None,
-                              num_classes=None
-                              ):
+                              num_classes=None):
     """Calculates class weighting to be used in training.
 
     Args:
@@ -283,10 +273,8 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     elif is_string and class_weights == 'balanced':
       num_samples = sum(class_counts)
       weighted_counts = tf.dtypes.cast(tf.math.multiply(num_classes,
-                                                        class_counts,
-                                                        ),
-                                       self._dtype
-                                       )
+                                                        class_counts),
+                                       self._dtype)
       class_weights = tf.Variable(num_samples, dtype=self._dtype) / \
                       tf.Variable(weighted_counts, dtype=self._dtype)
     else:
@@ -298,7 +286,5 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         raise ValueError(
             "Detected array length: {0} instead of: {1}".format(
                 class_weights.shape[0],
-                num_classes
-            )
-        )
+                num_classes))
     return class_weights

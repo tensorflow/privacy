@@ -11,29 +11,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for optimizers.py"""
+"""Unit testing for optimizers."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.python.platform import test
-from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras.regularizers import L1L2
-from tensorflow.python.keras.initializers import constant
-from tensorflow.python.keras import losses
-from tensorflow.python.keras.models import Model
-from tensorflow.python.framework import test_util
-from tensorflow.python import ops as _ops
 from absl.testing import parameterized
-from privacy.bolton.losses import StrongConvexMixin
+import tensorflow as tf
+from tensorflow.python import ops as _ops
+from tensorflow.python.framework import test_util
+from tensorflow.python.keras import keras_parameterized
+from tensorflow.python.keras import losses
+from tensorflow.python.keras.initializers import constant
+from tensorflow.python.keras.models import Model
+from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+from tensorflow.python.keras.regularizers import L1L2
+from tensorflow.python.platform import test
 from privacy.bolton import optimizers as opt
+from privacy.bolton.losses import StrongConvexMixin
 
 
 class TestModel(Model):  # pylint: disable=abstract-method
   """Bolton episilon-delta model.
+
   Uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
   2. Projects weights to R after each batch
@@ -68,7 +69,8 @@ class TestModel(Model):  # pylint: disable=abstract-method
 
 
 class TestLoss(losses.Loss, StrongConvexMixin):
-  """Test loss function for testing Bolton model"""
+  """Test loss function for testing Bolton model."""
+
   def __init__(self, reg_lambda, C, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
@@ -77,6 +79,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
   def radius(self):
     """Radius, R, of the hypothesis space W.
+
     W is a convex set that forms the hypothesis space.
 
     Returns: radius
@@ -117,7 +120,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     )
 
   def max_class_weight(self, class_weight, dtype=tf.float32):
-    """the maximum weighting in class weights (max value) as a scalar tensor
+    """the maximum weighting in class weights (max value) as a scalar tensor.
 
     Args:
       class_weight: class weights used
@@ -141,6 +144,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
 class TestOptimizer(OptimizerV2):
   """Optimizer used for testing the Bolton optimizer"""
+
   def __init__(self):
     super(TestOptimizer, self).__init__('test')
     self.not_private = 'test'
@@ -180,8 +184,9 @@ class TestOptimizer(OptimizerV2):
   def limit_learning_rate(self):
     return 'test'
 
+
 class BoltonOptimizerTest(keras_parameterized.TestCase):
-  """Bolton Optimizer tests"""
+  """Bolton Optimizer tests."""
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
       {'testcase_name': 'getattr',
@@ -195,6 +200,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'result': None,
        'test_attr': ''},
   ])
+
   def test_fn(self, fn, args, result, test_attr):
     """test that a fn of Bolton optimizer is working as expected.
 
@@ -294,7 +300,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'class_weights': 1},
   ])
   def test_context_manager(self, noise, epsilon, class_weights):
-    """Tests the context manager functionality of the optimizer
+    """Tests the context manager functionality of the optimizer.
 
     Args:
         noise: noise distribution to pick
@@ -327,7 +333,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'err_msg': 'Detected epsilon: -1. Valid range is 0 < epsilon <inf'},
   ])
   def test_context_domains(self, noise, epsilon, err_msg):
-    """
+    """Tests the context domains.
 
     Args:
         noise: noise distribution to pick
@@ -408,7 +414,9 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'args': [1, 1]},
   ])
   def test_rerouted_function(self, fn, args):
-    """ tests that a method of the internal optimizer is correctly routed from
+    """Tests rerouted function.
+
+    Tests that a method of the internal optimizer is correctly routed from
     the Bolton instance to the internal optimizer instance (TestOptimizer,
     here).
 
@@ -495,15 +503,14 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     internal_optimizer = TestOptimizer()
     optimizer = opt.Bolton(internal_optimizer, loss)
     self.assertEqual(getattr(optimizer, attr),
-                     getattr(internal_optimizer, attr)
-                     )
+                     getattr(internal_optimizer, attr))
 
   @parameterized.named_parameters([
       {'testcase_name': 'attr does not exist',
        'attr': '_not_valid'}
   ])
   def test_attribute_error(self, attr):
-    """ test that attribute of internal optimizer is correctly rerouted to
+    """Test that attribute of internal optimizer is correctly rerouted to
     the internal optimizer
 
     Args:
@@ -516,6 +523,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     with self.assertRaises(AttributeError):
       getattr(optimizer, attr)
 
+
 class SchedulerTest(keras_parameterized.TestCase):
   """GammaBeta Scheduler tests"""
 
@@ -523,7 +531,7 @@ class SchedulerTest(keras_parameterized.TestCase):
       {'testcase_name': 'not in context',
        'err_msg': 'Please initialize the GammaBetaDecreasingStep Learning Rate'
                   ' Scheduler'
-       }
+      }
   ])
   def test_bad_call(self, err_msg):
     """ test that attribute of internal optimizer is correctly rerouted to

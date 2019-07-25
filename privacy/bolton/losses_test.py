@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for losses.py"""
+"""Unit testing for losses."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -20,11 +20,11 @@ from __future__ import print_function
 from contextlib import contextmanager
 from io import StringIO
 import sys
-import tensorflow as tf
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.framework import test_util
-from tensorflow.python.keras.regularizers import L1L2
 from absl.testing import parameterized
+import tensorflow as tf
+from tensorflow.python.framework import test_util
+from tensorflow.python.keras import keras_parameterized
+from tensorflow.python.keras.regularizers import L1L2
 from privacy.bolton.losses import StrongConvexBinaryCrossentropy
 from privacy.bolton.losses import StrongConvexHuber
 from privacy.bolton.losses import StrongConvexMixin
@@ -43,7 +43,7 @@ def captured_output():
 
 
 class StrongConvexMixinTests(keras_parameterized.TestCase):
-  """Tests for the StrongConvexMixin"""
+  """Tests for the StrongConvexMixin."""
   @parameterized.named_parameters([
       {'testcase_name': 'beta not implemented',
        'fn': 'beta',
@@ -58,6 +58,7 @@ class StrongConvexMixinTests(keras_parameterized.TestCase):
        'fn': 'radius',
        'args': []},
   ])
+
   def test_not_implemented(self, fn, args):
     """Test that the given fn's are not implemented on the mixin.
 
@@ -75,7 +76,7 @@ class StrongConvexMixinTests(keras_parameterized.TestCase):
        'args': []},
   ])
   def test_return_none(self, fn, args):
-    """Test that fn of Mixin returns None
+    """Test that fn of Mixin returns None.
 
     Args:
       fn: fn of Mixin to test
@@ -94,7 +95,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'reg_lambda': 1,
        'C': 1,
        'radius_constant': 1
-       },  # pylint: disable=invalid-name
+      },  # pylint: disable=invalid-name
   ])
   def test_init_params(self, reg_lambda, C, radius_constant):
     """Test initialization for given arguments.
@@ -113,20 +114,20 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'reg_lambda': 1,
        'C': -1,
        'radius_constant': 1
-       },
+      },
       {'testcase_name': 'negative radius',
        'reg_lambda': 1,
        'C': 1,
        'radius_constant': -1
-       },
+      },
       {'testcase_name': 'negative lambda',
        'reg_lambda': -1,
        'C': 1,
        'radius_constant': 1
-       },  # pylint: disable=invalid-name
+      },  # pylint: disable=invalid-name
   ])
   def test_bad_init_params(self, reg_lambda, C, radius_constant):
-    """Test invalid domain for given params. Should return ValueError
+    """Test invalid domain for given params. Should return ValueError.
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
@@ -149,20 +150,20 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'logits': [-10000],
        'y_true': [1],
        'result': 10000,
-       },
+      },
       {'testcase_name': 'positivee gradient positive logits',
        'logits': [10000],
        'y_true': [0],
        'result': 10000,
-       },
+      },
       {'testcase_name': 'both negative',
        'logits': [-10000],
        'y_true': [0],
        'result': 0
-       },
+      },
   ])
   def test_calculation(self, logits, y_true, result):
-    """Test the call method to ensure it returns the correct value
+    """Test the call method to ensure it returns the correct value.
 
     Args:
       logits: unscaled output of model
@@ -181,28 +182,28 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'fn': 'beta',
        'args': [1],
        'result': tf.constant(2, dtype=tf.float32)
-       },
+      },
       {'testcase_name': 'gamma',
        'fn': 'gamma',
        'init_args': [1, 1, 1],
        'args': [],
        'result': tf.constant(1, dtype=tf.float32),
-       },
+      },
       {'testcase_name': 'lipchitz constant',
        'fn': 'lipchitz_constant',
        'init_args': [1, 1, 1],
        'args': [1],
        'result': tf.constant(2, dtype=tf.float32),
-       },
+      },
       {'testcase_name': 'kernel regularizer',
        'fn': 'kernel_regularizer',
        'init_args': [1, 1, 1],
        'args': [],
        'result': L1L2(l2=0.5),
-       },
+      },
   ])
   def test_fns(self, init_args, fn, args, result):
-    """Test that fn of BinaryCrossentropy loss returns the correct result
+    """Test that fn of BinaryCrossentropy loss returns the correct result.
 
     Args:
       init_args: init values for loss instance
@@ -226,7 +227,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
        'fn': None,
        'args': None,
        'print_res': 'The impact of label smoothing on privacy is unknown.'
-       },
+      },
   ])
   def test_prints(self, init_args, fn, args, print_res):
     """Test logger warning from StrongConvexBinaryCrossentropy.
@@ -245,7 +246,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
 
 
 class HuberTests(keras_parameterized.TestCase):
-  """tests for BinaryCrossesntropy StrongConvex loss"""
+  """tests for BinaryCrossesntropy StrongConvex loss."""
 
   @parameterized.named_parameters([
       {'testcase_name': 'normal',
@@ -253,10 +254,10 @@ class HuberTests(keras_parameterized.TestCase):
        'c': 1,
        'radius_constant': 1,
        'delta': 1,
-       },
+      },
   ])
   def test_init_params(self, reg_lambda, c, radius_constant, delta):
-    """Test initialization for given arguments
+    """Test initialization for given arguments.
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
@@ -273,25 +274,25 @@ class HuberTests(keras_parameterized.TestCase):
        'c': -1,
        'radius_constant': 1,
        'delta': 1
-       },
+      },
       {'testcase_name': 'negative radius',
        'reg_lambda': 1,
        'c': 1,
        'radius_constant': -1,
        'delta': 1
-       },
+      },
       {'testcase_name': 'negative lambda',
        'reg_lambda': -1,
        'c': 1,
        'radius_constant': 1,
        'delta': 1
-       },
+      },
       {'testcase_name': 'negative delta',
        'reg_lambda': 1,
        'c': 1,
        'radius_constant': 1,
        'delta': -1
-       },
+      },
   ])
   def test_bad_init_params(self, reg_lambda, c, radius_constant, delta):
     """Test invalid domain for given params. Should return ValueError
@@ -320,49 +321,49 @@ class HuberTests(keras_parameterized.TestCase):
        'y_true': 1,
        'delta': 1,
        'result': 0.01*0.25,
-       },
+      },
       {'testcase_name': 'delta=1,y_true=1 1-z< h decision boundary',
        'logits': 0.1,
        'y_true': 1,
        'delta': 1,
        'result': 1.9**2 * 0.25,
-       },
+      },
       {'testcase_name': 'delta=1,y_true=1 z < 1-h decision boundary',
        'logits': -0.1,
        'y_true': 1,
        'delta': 1,
        'result': 1.1,
-       },
+      },
       {'testcase_name': 'delta=2,y_true=1 z>1+h decision boundary',
        'logits': 3.1,
        'y_true': 1,
        'delta': 2,
        'result': 0,
-       },
+      },
       {'testcase_name': 'delta=2,y_true=1 z<1+h decision boundary',
        'logits': 2.9,
        'y_true': 1,
        'delta': 2,
        'result': 0.01*0.125,
-       },
+      },
       {'testcase_name': 'delta=2,y_true=1 1-z < h decision boundary',
        'logits': 1.1,
        'y_true': 1,
        'delta': 2,
        'result': 1.9**2 * 0.125,
-       },
+      },
       {'testcase_name': 'delta=2,y_true=1 z < 1-h decision boundary',
        'logits': -1.1,
        'y_true': 1,
        'delta': 2,
        'result': 2.1,
-       },
+      },
       {'testcase_name': 'delta=1,y_true=-1 z>1+h decision boundary',
        'logits': -2.1,
        'y_true': -1,
        'delta': 1,
        'result': 0,
-       },
+      },
   ])
   def test_calculation(self, logits, y_true, delta, result):
     """Test the call method to ensure it returns the correct value
@@ -384,25 +385,25 @@ class HuberTests(keras_parameterized.TestCase):
        'fn': 'beta',
        'args': [1],
        'result': tf.Variable(1.5, dtype=tf.float32)
-       },
+      },
       {'testcase_name': 'gamma',
        'fn': 'gamma',
        'init_args': [1, 1, 1, 1],
        'args': [],
        'result': tf.Variable(1, dtype=tf.float32),
-       },
+      },
       {'testcase_name': 'lipchitz constant',
        'fn': 'lipchitz_constant',
        'init_args': [1, 1, 1, 1],
        'args': [1],
        'result': tf.Variable(2, dtype=tf.float32),
-       },
+      },
       {'testcase_name': 'kernel regularizer',
        'fn': 'kernel_regularizer',
        'init_args': [1, 1, 1, 1],
        'args': [],
        'result': L1L2(l2=0.5),
-       },
+      },
   ])
   def test_fns(self, init_args, fn, args, result):
     """Test that fn of BinaryCrossentropy loss returns the correct result
