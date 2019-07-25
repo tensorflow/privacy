@@ -263,12 +263,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_project(self, r, shape, n_out, init_value, result):
     """test that a fn of Bolton optimizer is working as expected.
 
-    Args:
-      fn: method of Optimizer to test
-      args: args to optimizer fn
-      result: the expected result
-      test_attr: None if the fn returns the test result. Otherwise, this is
-                the attribute of Bolton to check against result with.
+      Missing args:
 
     """
     tf.random.set_seed(1)
@@ -455,12 +450,14 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'args': [1, 1]},
   ])
   def test_not_reroute_fn(self, fn, args):
-    """Test that a fn that should not be rerouted to the internal optimizer is
-    in face not rerouted.
+    """Test function is not rerouted.
+    
+      Test that a fn that should not be rerouted to the internal optimizer is
+      in fact not rerouted.
 
-    Args:
-      fn: fn to test
-      args: arguments to that fn
+      Args:
+        fn: fn to test
+        args: arguments to that fn
     """
     @tf.function
     def test_run(fn, args):
@@ -492,12 +489,13 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'attr': '_iterations'}
   ])
   def test_reroute_attr(self, attr):
-    """ test that attribute of internal optimizer is correctly rerouted to
-    the internal optimizer
+    """Test a function is rerouted.
+    
+      Test that attribute of internal optimizer is correctly rerouted to the
+      internal optimizer.
 
-    Args:
-      attr: attribute to test
-      result: result after checking attribute
+      Args:
+        attr: attribute to test
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
@@ -510,12 +508,13 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'attr': '_not_valid'}
   ])
   def test_attribute_error(self, attr):
-    """Test that attribute of internal optimizer is correctly rerouted to
-    the internal optimizer
+    """Test rerouting of attributes.
+    
+      Test that attribute of internal optimizer is correctly rerouted to the
+      internal optimizer
 
-    Args:
-      attr: attribute to test
-      result: result after checking attribute
+      Args:
+        attr: attribute to test
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
@@ -537,9 +536,7 @@ class SchedulerTest(keras_parameterized.TestCase):
     """ test that attribute of internal optimizer is correctly rerouted to
     the internal optimizer
 
-    Args:
-      attr: attribute to test
-      result: result after checking attribute
+    Missing args
     """
     scheduler = opt.GammaBetaDecreasingStep()
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -557,12 +554,12 @@ class SchedulerTest(keras_parameterized.TestCase):
        'res': 0.333333333},
   ])
   def test_call(self, step, res):
-    """ test that attribute of internal optimizer is correctly rerouted to
-    the internal optimizer
+    """Test call.
+    
+      Test that attribute of internal optimizer is correctly rerouted to the
+      internal optimizer
 
-    Args:
-      attr: attribute to test
-      result: result after checking attribute
+      Missing Args:
     """
     beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
     gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)

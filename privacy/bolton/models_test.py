@@ -17,17 +17,16 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
-import tensorflow as tf
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
-from tensorflow.python.keras import losses
-from tensorflow.python.framework import ops as _ops
-from tensorflow.python.keras.regularizers import L1L2
 from absl.testing import parameterized
+import tensorflow as tf
+from tensorflow.python.framework import ops as _ops
+from tensorflow.python.keras import keras_parameterized
+from tensorflow.python.keras import losses
+from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+from tensorflow.python.keras.regularizers import L1L2
 from privacy.bolton import models
-from privacy.bolton.optimizers import Bolton
 from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolton.optimizers import Bolton
 
 
 class TestLoss(losses.Loss, StrongConvexMixin):
@@ -41,9 +40,11 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
   def radius(self):
     """Radius, R, of the hypothesis space W.
+
     W is a convex set that forms the hypothesis space.
 
-    Returns: radius
+    Returns: 
+      radius
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -69,7 +70,8 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     Args:
       class_weight: class weights used
 
-    Returns: L
+    Returns: 
+      L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -81,11 +83,10 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     )
 
   def max_class_weight(self, class_weight):
-    """the maximum weighting in class weights (max value) as a scalar tensor
+    """the maximum weighting in class weights (max value) as a scalar tensor.
 
     Args:
       class_weight: class weights used
-      dtype: the data type for tensor conversions.
 
     Returns:
       maximum class weighting as tensor scalar
@@ -104,7 +105,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
 
 class TestOptimizer(OptimizerV2):
-  """Test optimizer used for testing Bolton model"""
+  """Test optimizer used for testing Bolton model."""
 
   def __init__(self):
     super(TestOptimizer, self).__init__('test')
@@ -152,7 +153,7 @@ class InitTests(keras_parameterized.TestCase):
       },
   ])
   def test_bad_init_params(self, n_outputs):
-    """test bad initializations of BoltonModel that should raise errors
+    """test bad initializations of BoltonModel that should raise errors.
 
     Args:
         n_outputs: number of output neurons
@@ -174,12 +175,12 @@ class InitTests(keras_parameterized.TestCase):
       },
   ])
   def test_compile(self, n_outputs, loss, optimizer):
-    """test compilation of BoltonModel
+    """test compilation of BoltonModel.
 
     Args:
-        n_outputs: number of output neurons
-        loss: instantiated TestLoss instance
-        optimizer: instanced TestOptimizer instance
+      n_outputs: number of output neurons
+      loss: instantiated TestLoss instance
+      optimizer: instanced TestOptimizer instance
     """
     # test compilation of valid tf.optimizer and tf.loss
     with self.cached_session():
@@ -200,12 +201,12 @@ class InitTests(keras_parameterized.TestCase):
       }
   ])
   def test_bad_compile(self, n_outputs, loss, optimizer):
-    """test bad compilations of BoltonModel that should raise errors
+    """test bad compilations of BoltonModel that should raise errors.
 
       Args:
-          n_outputs: number of output neurons
-          loss: instantiated TestLoss instance
-          optimizer: instanced TestOptimizer instance
+        n_outputs: number of output neurons
+        loss: instantiated TestLoss instance
+        optimizer: instanced TestOptimizer instance
       """
     # test compilaton of invalid tf.optimizer and non instantiated loss.
     with self.cached_session():
@@ -215,17 +216,18 @@ class InitTests(keras_parameterized.TestCase):
 
 
 def _cat_dataset(n_samples, input_dim, n_classes, generator=False):
-  """
-      Creates a categorically encoded dataset (y is categorical).
-      returns the specified dataset either as a static array or as a generator.
-      Will have evenly split samples across each output class.
-      Each output class will be a different point in the input space.
+  """Creates a categorically encoded dataset.
+
+    Creates a categorically encoded dataset (y is categorical).
+    returns the specified dataset either as a static array or as a generator.
+    Will have evenly split samples across each output class.
+    Each output class will be a different point in the input space.
 
     Args:
-        n_samples: number of rows
-        input_dim: input dimensionality
-        n_classes: output dimensionality
-        generator: False for array, True for generator
+      n_samples: number of rows
+      input_dim: input dimensionality
+      n_classes: output dimensionality
+      generator: False for array, True for generator
     Returns:
       X as (n_samples, input_dim), Y as (n_samples, n_outputs)
     """
@@ -245,6 +247,7 @@ def _cat_dataset(n_samples, input_dim, n_classes, generator=False):
     )
     return dataset
   return x_set, y_set
+
 
 def _do_fit(n_samples,
             input_dim,
@@ -301,7 +304,7 @@ def _do_fit(n_samples,
 
 
 class FitTests(keras_parameterized.TestCase):
-  """Test cases for keras model fitting"""
+  """Test cases for keras model fitting."""
 
   # @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
@@ -323,7 +326,7 @@ class FitTests(keras_parameterized.TestCase):
       },
   ])
   def test_fit(self, generator, reset_n_samples):
-    """Tests fitting of BoltonModel
+    """Tests fitting of BoltonModel.
 
     Args:
         generator: True for generator test, False for iterator test.
@@ -355,7 +358,7 @@ class FitTests(keras_parameterized.TestCase):
       },
   ])
   def test_fit_gen(self, generator):
-    """Tests the fit_generator method of BoltonModel
+    """Tests the fit_generator method of BoltonModel.
 
     Args:
       generator: True to test with a generator dataset
@@ -392,7 +395,7 @@ class FitTests(keras_parameterized.TestCase):
       },
   ])
   def test_bad_fit(self, generator, reset_n_samples, distribution):
-    """Tests fitting with invalid parameters, which should raise an error
+    """Tests fitting with invalid parameters, which should raise an error.
 
     Args:
         generator: True to test with generator, False is iterator
@@ -442,9 +445,8 @@ class FitTests(keras_parameterized.TestCase):
                            class_weights,
                            class_counts,
                            num_classes,
-                           result
-                           ):
-    """Tests the BOltonModel calculate_class_weights method
+                           result):
+    """Tests the BOltonModel calculate_class_weights method.
 
     Args:
       class_weights: the class_weights to use
@@ -496,26 +498,28 @@ class FitTests(keras_parameterized.TestCase):
        'class_weights': [[1], [1]],
        'class_counts': None,
        'num_classes': 2,
-       'err_msg': "Detected class_weights shape"},
+       'err_msg': 'Detected class_weights shape'},
       {'testcase_name': 'class counts array, wrong number classes',
        'class_weights': [1, 1, 1],
        'class_counts': None,
        'num_classes': 2,
        'err_msg': 'Detected array length:'},
   ])
+
   def test_class_errors(self,
                         class_weights,
                         class_counts,
                         num_classes,
                         err_msg):
-    """Tests the BOltonModel calculate_class_weights method with invalid params
-        which should raise the expected errors.
+    """Tests the BOltonModel calculate_class_weights method.
+    
+      This test passes invalid params which should raise the expected errors.
 
       Args:
         class_weights: the class_weights to use
         class_counts: count of number of samples for each class
         num_classes: number of outputs neurons
-        result: expected result
+        err_msg:
       """
     clf = models.BoltonModel(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method

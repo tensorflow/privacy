@@ -261,8 +261,9 @@ class HuberTests(keras_parameterized.TestCase):
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
-      C: initialization value for C arg
+      c: initialization value for C arg
       radius_constant: initialization value for radius_constant arg
+      delta: the delta parameter for the huber loss
     """
     # test valid domains for each variable
     loss = StrongConvexHuber(reg_lambda, c, radius_constant, delta)
@@ -295,11 +296,11 @@ class HuberTests(keras_parameterized.TestCase):
       },
   ])
   def test_bad_init_params(self, reg_lambda, c, radius_constant, delta):
-    """Test invalid domain for given params. Should return ValueError
+    """Test invalid domain for given params. Should return ValueError.
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
-      C: initialization value for C arg
+      c: initialization value for C arg
       radius_constant: initialization value for radius_constant arg
       delta: the delta parameter for the huber loss
     """
@@ -406,7 +407,7 @@ class HuberTests(keras_parameterized.TestCase):
       },
   ])
   def test_fns(self, init_args, fn, args, result):
-    """Test that fn of BinaryCrossentropy loss returns the correct result
+    """Test that fn of BinaryCrossentropy loss returns the correct result.
 
     Args:
       init_args: init values for loss instance

@@ -108,8 +108,8 @@ class Bolton(optimizer_v2.OptimizerV2):
   Descent-based Analytics by Xi Wu et. al.
   """
   def __init__(self,  # pylint: disable=super-init-not-called
-               optimizer: optimizer_v2.OptimizerV2,
-               loss: StrongConvexMixin,
+               optimizer,
+               loss,
                dtype=tf.float32,
                ):
     """Constructor.

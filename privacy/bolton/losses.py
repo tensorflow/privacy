@@ -102,11 +102,11 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
   """Strong Convex version of Huber loss using l2 weight regularization."""
 
   def __init__(self,
-               reg_lambda: float,
-               C: float,
-               radius_constant: float,
-               delta: float,
-               reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+               reg_lambda,
+               C,
+               radius_constant,
+               delta,
+               reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
                dtype=tf.float32):
     """Constructor.
 

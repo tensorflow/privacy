@@ -86,10 +86,12 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
               **kwargs):  # pylint: disable=arguments-differ
     """See super class. Default optimizer used in Bolton method is SGD.
 
+      Missing args.
+
     """
     if not isinstance(loss, StrongConvexMixin):
-      raise ValueError("loss function must be a Strongly Convex and therefore "
-                       "extend the StrongConvexMixin.")
+      raise ValueError('loss function must be a Strongly Convex and therefore '
+                       'extend the StrongConvexMixin.')
     if not self._layers_instantiated:  # compile may be called multiple times
       # for instance, if the input/outputs are not defined until fit.
       self.output_layer = tf.keras.layers.Dense(
@@ -150,7 +152,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       data_size = n_samples
     elif hasattr(x, 'shape'):
       data_size = x.shape[0]
-    elif hasattr(x, "__len__"):
+    elif hasattr(x, '__len__'):
       data_size = len(x)
     else:
       data_size = None
@@ -187,10 +189,12 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                     n_samples=None,
                     steps_per_epoch=None,
                     **kwargs):  # pylint: disable=arguments-differ
-    """
-        This method is the same as fit except for when the passed dataset
-        is a generator. See super method and fit for more details.
-    Args:
+    """Fit with a generator..
+    
+      This method is the same as fit except for when the passed dataset
+      is a generator. See super method and fit for more details.
+    
+      Args:
         n_samples: number of individual samples in x
         noise_distribution: the distribution to get noise from.
         epsilon: privacy parameter, which trades off utility and privacy. See
@@ -206,7 +210,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       data_size = n_samples
     elif hasattr(generator, 'shape'):
       data_size = generator.shape[0]
-    elif hasattr(generator, "__len__"):
+    elif hasattr(generator, '__len__'):
       data_size = len(generator)
     else:
       data_size = None
@@ -232,13 +236,14 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                               num_classes=None):
     """Calculates class weighting to be used in training.
 
-    Args:
+      Args:
         class_weights: str specifying type, array giving weights, or None.
         class_counts: If class_weights is not None, then an array of
                       the number of samples for each class
         num_classes: If class_weights is not None, then the number of
                         classes.
-    Returns: class_weights as 1D tensor, to be passed to model's fit method.
+      Returns: 
+        class_weights as 1D tensor, to be passed to model's fit method.
     """
     # Value checking
     class_keys = ['balanced']
@@ -246,14 +251,14 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     if isinstance(class_weights, str):
       is_string = True
       if class_weights not in class_keys:
-        raise ValueError("Detected string class_weights with "
-                         "value: {0}, which is not one of {1}."
-                         "Please select a valid class_weight type"
-                         "or pass an array".format(class_weights,
+        raise ValueError('Detected string class_weights with '
+                         'value: {0}, which is not one of {1}.'
+                         'Please select a valid class_weight type'
+                         'or pass an array'.format(class_weights,
                                                    class_keys))
       if class_counts is None:
-        raise ValueError("Class counts must be provided if using "
-                         "class_weights=%s" % class_weights)
+        raise ValueError('Class counts must be provided if using '
+                         'class_weights=%s' % class_weights)
       class_counts_shape = tf.Variable(class_counts,
                                        trainable=False,
                                        dtype=self._dtype).shape
@@ -261,12 +266,12 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         raise ValueError('class counts must be a 1D array.'
                          'Detected: {0}'.format(class_counts_shape))
       if num_classes is None:
-        raise ValueError("num_classes must be provided if using "
-                         "class_weights=%s" % class_weights)
+        raise ValueError('num_classes must be provided if using '
+                         'class_weights=%s' % class_weights)
     elif class_weights is not None:
       if num_classes is None:
-        raise ValueError("You must pass a value for num_classes if "
-                         "creating an array of class_weights")
+        raise ValueError('You must pass a value for num_classes if '
+                         'creating an array of class_weights')
     # performing class weight calculation
     if class_weights is None:
       class_weights = 1
@@ -280,11 +285,11 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     else:
       class_weights = _ops.convert_to_tensor_v2(class_weights)
       if len(class_weights.shape) != 1:
-        raise ValueError("Detected class_weights shape: {0} instead of "
-                         "1D array".format(class_weights.shape))
+        raise ValueError('Detected class_weights shape: {0} instead of '
+                         '1D array'.format(class_weights.shape))
       if class_weights.shape[0] != num_classes:
         raise ValueError(
-            "Detected array length: {0} instead of: {1}".format(
+            'Detected array length: {0} instead of: {1}'.format(
                 class_weights.shape[0],
                 num_classes))
     return class_weights

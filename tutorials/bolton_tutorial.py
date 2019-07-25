@@ -116,7 +116,7 @@ try:
            noise_distribution=noise_distribution,
            verbose=0)
 except ValueError as e:
-  print(e)
+  print e
 # -------
 # And now, re running with the parameter set.
 # -------
