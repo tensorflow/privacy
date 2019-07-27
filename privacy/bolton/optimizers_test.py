@@ -263,7 +263,12 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_project(self, r, shape, n_out, init_value, result):
     """test that a fn of Bolton optimizer is working as expected.
 
-      Missing args:
+      Args:
+        r: Radius value for StrongConvex loss function.
+        shape: input_dimensionality
+        n_out: output dimensionality
+        init_value: the initial value for 'constant' kernel initializer
+        result: the expected output after projection.fFF
 
     """
     tf.random.set_seed(1)
@@ -536,7 +541,8 @@ class SchedulerTest(keras_parameterized.TestCase):
     """ test that attribute of internal optimizer is correctly rerouted to
     the internal optimizer
 
-    Missing args
+      Args:
+        err_msg: The expected error message from the scheduler bad call.
     """
     scheduler = opt.GammaBetaDecreasingStep()
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -559,7 +565,9 @@ class SchedulerTest(keras_parameterized.TestCase):
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
-      Missing Args:
+      Args:
+        step: step number to 'GammaBetaDecreasingStep' 'Scheduler'.
+        res: expected result from call to 'GammaBetaDecreasingStep' 'Scheduler'.
     """
     beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
     gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)
