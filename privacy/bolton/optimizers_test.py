@@ -209,7 +209,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       args: args to optimizer fn
       result: the expected result
       test_attr: None if the fn returns the test result. Otherwise, this is
-                the attribute of Bolton to check against result with.
+        the attribute of Bolton to check against result with.
 
     """
     tf.random.set_seed(1)
@@ -303,9 +303,9 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """Tests the context manager functionality of the optimizer.
 
     Args:
-        noise: noise distribution to pick
-        epsilon: epsilon privacy parameter to use
-        class_weights: class_weights to use
+      noise: noise distribution to pick
+      epsilon: epsilon privacy parameter to use
+      class_weights: class_weights to use
     """
     @tf.function
     def test_run():
@@ -336,9 +336,9 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """Tests the context domains.
 
     Args:
-        noise: noise distribution to pick
-        epsilon: epsilon privacy parameter to use
-        err_msg: the expected error message
+      noise: noise distribution to pick
+      epsilon: epsilon privacy parameter to use
+      err_msg: the expected error message
 
     """
 
@@ -456,7 +456,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_not_reroute_fn(self, fn, args):
     """Test function is not rerouted.
-    
+
       Test that a fn that should not be rerouted to the internal optimizer is
       in fact not rerouted.
 
@@ -495,7 +495,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_reroute_attr(self, attr):
     """Test a function is rerouted.
-    
+
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer.
 
@@ -514,7 +514,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_attribute_error(self, attr):
     """Test rerouting of attributes.
-    
+
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
@@ -561,7 +561,7 @@ class SchedulerTest(keras_parameterized.TestCase):
   ])
   def test_call(self, step, res):
     """Test call.
-    
+
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 

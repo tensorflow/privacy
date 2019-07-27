@@ -43,7 +43,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
     W is a convex set that forms the hypothesis space.
 
-    Returns: 
+    Returns:
       radius
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
@@ -70,7 +70,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     Args:
       class_weight: class weights used
 
-    Returns: 
+    Returns:
       L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
@@ -175,12 +175,12 @@ class InitTests(keras_parameterized.TestCase):
       },
   ])
   def test_compile(self, n_outputs, loss, optimizer):
-    """test compilation of BoltonModel.
+    """Test compilation of BoltonModel.
 
     Args:
       n_outputs: number of output neurons
       loss: instantiated TestLoss instance
-      optimizer: instanced TestOptimizer instance
+      optimizer: instantiated TestOptimizer instance
     """
     # test compilation of valid tf.optimizer and tf.loss
     with self.cached_session():
@@ -206,7 +206,7 @@ class InitTests(keras_parameterized.TestCase):
       Args:
         n_outputs: number of output neurons
         loss: instantiated TestLoss instance
-        optimizer: instanced TestOptimizer instance
+        optimizer: instantiated TestOptimizer instance
       """
     # test compilaton of invalid tf.optimizer and non instantiated loss.
     with self.cached_session():
@@ -262,17 +262,17 @@ def _do_fit(n_samples,
   """Instantiate necessary components for fitting and perform a model fit.
 
   Args:
-      n_samples: number of samples in dataset
-      input_dim: the sample dimensionality
-      n_outputs: number of output neurons
-      epsilon: privacy parameter
-      generator: True to create a generator, False to use an iterator
-      batch_size: batch_size to use
-      reset_n_samples: True to set _samples to None prior to fitting.
-                        False does nothing
-      optimizer: instance of TestOptimizer
-      loss: instance of TestLoss
-      distribution: distribution to get noise from.
+    n_samples: number of samples in dataset
+    input_dim: the sample dimensionality
+    n_outputs: number of output neurons
+    epsilon: privacy parameter
+    generator: True to create a generator, False to use an iterator
+    batch_size: batch_size to use
+    reset_n_samples: True to set _samples to None prior to fitting.
+                      False does nothing
+    optimizer: instance of TestOptimizer
+    loss: instance of TestLoss
+    distribution: distribution to get noise from.
 
   Returns: BoltonModel instsance
   """
@@ -329,8 +329,8 @@ class FitTests(keras_parameterized.TestCase):
     """Tests fitting of BoltonModel.
 
     Args:
-        generator: True for generator test, False for iterator test.
-        reset_n_samples: True to reset the n_samples to None, False does nothing
+      generator: True for generator test, False for iterator test.
+      reset_n_samples: True to reset the n_samples to None, False does nothing
     """
     loss = TestLoss(1, 1, 1)
     optimizer = Bolton(TestOptimizer(), loss)
@@ -398,10 +398,10 @@ class FitTests(keras_parameterized.TestCase):
     """Tests fitting with invalid parameters, which should raise an error.
 
     Args:
-        generator: True to test with generator, False is iterator
-        reset_n_samples: True to reset the n_samples param to None prior to
-                          passing it to fit
-        distribution: distribution to get noise from.
+      generator: True to test with generator, False is iterator
+      reset_n_samples: True to reset the n_samples param to None prior to
+        passing it to fit
+      distribution: distribution to get noise from.
     """
     with self.assertRaises(ValueError):
       loss = TestLoss(1, 1, 1)
@@ -505,21 +505,20 @@ class FitTests(keras_parameterized.TestCase):
        'num_classes': 2,
        'err_msg': 'Detected array length:'},
   ])
-
   def test_class_errors(self,
                         class_weights,
                         class_counts,
                         num_classes,
                         err_msg):
     """Tests the BOltonModel calculate_class_weights method.
-    
+
       This test passes invalid params which should raise the expected errors.
 
       Args:
-        class_weights: the class_weights to use
-        class_counts: count of number of samples for each class
-        num_classes: number of outputs neurons
-        err_msg:
+        class_weights: the class_weights to use.
+        class_counts: count of number of samples for each class.
+        num_classes: number of outputs neurons.
+        err_msg: The expected error message.
       """
     clf = models.BoltonModel(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method

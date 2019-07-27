@@ -180,20 +180,20 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                     n_samples=None,
                     steps_per_epoch=None,
                     **kwargs):  # pylint: disable=arguments-differ
-    """Fit with a generator..
-    
+    """Fit with a generator.
+
       This method is the same as fit except for when the passed dataset
       is a generator. See super method and fit for more details.
-    
-      Args:
-        n_samples: number of individual samples in x
-        noise_distribution: the distribution to get noise from.
-        epsilon: privacy parameter, which trades off utility and privacy. See
-                  Bolton paper for more description.
-        class_weight: the class weights to be used. Can be a scalar or 1D tensor
-                      whose dim == n_classes.
 
-        See the super method for descriptions on the rest of the arguments.
+    Args:
+      n_samples: number of individual samples in x
+      noise_distribution: the distribution to get noise from.
+      epsilon: privacy parameter, which trades off utility and privacy. See
+                Bolton paper for more description.
+      class_weight: the class weights to be used. Can be a scalar or 1D tensor
+                    whose dim == n_classes.
+
+      See the super method for descriptions on the rest of the arguments.
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)
@@ -227,14 +227,14 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                               num_classes=None):
     """Calculates class weighting to be used in training.
 
-      Args:
-        class_weights: str specifying type, array giving weights, or None.
-        class_counts: If class_weights is not None, then an array of
-                      the number of samples for each class
-        num_classes: If class_weights is not None, then the number of
-                        classes.
-      Returns: 
-        class_weights as 1D tensor, to be passed to model's fit method.
+    Args:
+      class_weights: str specifying type, array giving weights, or None.
+      class_counts: If class_weights is not None, then an array of
+                    the number of samples for each class
+      num_classes: If class_weights is not None, then the number of
+                      classes.
+    Returns:
+      class_weights as 1D tensor, to be passed to model's fit method.
     """
     # Value checking
     class_keys = ['balanced']

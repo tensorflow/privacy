@@ -310,12 +310,11 @@ class Bolton(optimizer_v2.OptimizerV2):
 
     Args:
       noise_distribution: the noise distribution to pick.
-                          see _accepted_distributions and get_noise for
-                          possible values.
+        see _accepted_distributions and get_noise for possible values.
       epsilon: privacy parameter. Lower gives more privacy but less utility.
       layers: list of Keras/Tensorflow layers. Can be found as model.layers
       class_weights: class_weights used, which may either be a scalar or 1D
-                      tensor with dim == n_classes.
+        tensor with dim == n_classes.
       n_samples number of rows/individual samples in the training set
       batch_size: batch size used.
     """
