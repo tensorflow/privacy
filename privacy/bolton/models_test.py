@@ -32,10 +32,10 @@ from privacy.bolton.optimizers import Bolton
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model."""
 
-  def __init__(self, reg_lambda, C_arg, radius_constant, name='test'):
+  def __init__(self, reg_lambda, c_arg, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C_arg  # pylint: disable=invalid-name
+    self.C = c_arg  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
@@ -506,6 +506,7 @@ class FitTests(keras_parameterized.TestCase):
        'num_classes': 2,
        'err_msg': 'Detected array length:'},
   ])
+
   def test_class_errors(self,
                         class_weights,
                         class_counts,

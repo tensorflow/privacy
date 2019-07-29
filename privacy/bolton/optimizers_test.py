@@ -68,10 +68,10 @@ class TestModel(Model):  # pylint: disable=abstract-method
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model."""
 
-  def __init__(self, reg_lambda, C_arg, radius_constant, name='test'):
+  def __init__(self, reg_lambda, c_arg, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C_arg  # pylint: disable=invalid-name
+    self.C = c_arg  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
@@ -80,7 +80,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
       W is a convex set that forms the hypothesis space.
 
       Returns:
-        radius
+        a tensor
     """
     return _ops.convert_to_tensor_v2(self.radius_constant, dtype=tf.float32)
 
@@ -107,7 +107,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
         class_weight: class weights used
 
       Returns:
-        L
+        constant L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 

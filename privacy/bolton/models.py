@@ -125,17 +125,21 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         4. Use a strongly convex loss function (see compile)
       See super implementation for more details.
 
-    Args:
-      x:
-      y:
-      batch_size:
-      class_weight: the class weights to be used. Can be a scalar or 1D tensor
-                    whose dim == n_classes.
-      n_samples: the number of individual samples in x.
-      epsilon: privacy parameter, which trades off between utility an privacy.
-                See the bolton paper for more description.
-      noise_distribution: the distribution to pull noise from.
-      steps_per_epoch:
+      Args:
+        x:
+        y:
+        batch_size:
+        class_weight: the class weights to be used. Can be a scalar or 1D tensor
+                      whose dim == n_classes.
+        n_samples: the number of individual samples in x.
+        epsilon: privacy parameter, which trades off between utility an privacy.
+                  See the bolton paper for more description.
+        noise_distribution: the distribution to pull noise from.
+        steps_per_epoch:
+        kwargs: kwargs to keras Model.fit. See super.
+
+      Returns:
+        output
     """
     if class_weight is None:
       class_weight_ = self.calculate_class_weights(class_weight)

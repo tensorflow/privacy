@@ -11,21 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Loss functions for bolton method"""
+"""Loss functions for bolton method."""
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
 import tensorflow as tf
-from tensorflow.python.keras import losses
-from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.framework import ops as _ops
+from tensorflow.python.keras import losses
 from tensorflow.python.keras.regularizers import L1L2
+from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.platform import tf_logging as logging
 
 
 class StrongConvexMixin:
-  """
+  """Strong Convex Mixin base class.
+
   Strong Convex Mixin base class for any loss function that will be used with
   Bolton model. Subclasses must be strongly convex and implement the
   associated constants. They must also conform to the requirements of tf losses
@@ -85,7 +87,7 @@ class StrongConvexMixin:
     return None
 
   def max_class_weight(self, class_weight, dtype):
-    """the maximum weighting in class weights (max value) as a scalar tensor
+    """The maximum weighting in class weights (max value) as a scalar tensor.
 
     Args:
       class_weight: class weights used
@@ -103,7 +105,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
 
   def __init__(self,
                reg_lambda,
-               C,
+               c_arg,
                radius_constant,
                delta,
                reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
@@ -117,31 +119,30 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
       delta: delta value in huber loss.  When to switch from quadratic to
         absolute deviation.
       reduction: reduction type to use. See super class
-      name: Name of the loss instance
       dtype: tf datatype to use for tensor conversions.
 
     Returns:
       Loss values per sample.
     """
-    if C <= 0:
-      raise ValueError('c: {0}, should be >= 0'.format(C))
+    if c_arg <= 0:
+      raise ValueError("c: {0}, should be >= 0".format(c_arg))
     if reg_lambda <= 0:
       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
     if radius_constant <= 0:
-      raise ValueError('radius_constant: {0}, should be >= 0'.format(
+      raise ValueError("radius_constant: {0}, should be >= 0".format(
           radius_constant
       ))
     if delta <= 0:
-      raise ValueError('delta: {0}, should be >= 0'.format(
+      raise ValueError("delta: {0}, should be >= 0".format(
           delta
       ))
-    self.C = C  # pylint: disable=invalid-name
+    self.C = c_arg  # pylint: disable=invalid-name
     self.delta = delta
     self.radius_constant = radius_constant
     self.dtype = dtype
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
     super(StrongConvexHuber, self).__init__(
-        name='strongconvexhuber',
+        name="strongconvexhuber",
         reduction=reduction,
     )
 
@@ -179,7 +180,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     max_class_weight = self.max_class_weight(class_weight, self.dtype)
     delta = _ops.convert_to_tensor_v2(self.delta,
                                       dtype=self.dtype
-                                      )
+                                     )
     return self.C * max_class_weight / (delta *
                                         tf.constant(2, dtype=self.dtype)) + \
            self.reg_lambda
@@ -213,53 +214,53 @@ class StrongConvexBinaryCrossentropy(
 
   def __init__(self,
                reg_lambda,
-               C,
+               c_arg,
                radius_constant,
                from_logits=True,
                label_smoothing=0,
                reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
                dtype=tf.float32):
-    """
+    """StrongConvexBinaryCrossentropy class.
+
     Args:
       reg_lambda: Weight regularization constant
-      C: Penalty parameter C of the loss term
+      c_arg: Penalty parameter C of the loss term
       radius_constant: constant defining the length of the radius
-      reduction: reduction type to use. See super class
       from_logits: True if the input are unscaled logits. False if they are
         already scaled.
       label_smoothing: amount of smoothing to perform on labels
         relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x). Note, the
         impact of this parameter's effect on privacy is not known and thus the
         default should be used.
-      name: Name of the loss instance
+      reduction: reduction type to use. See super class
       dtype: tf datatype to use for tensor conversions.
     """
     if label_smoothing != 0:
-      logging.warning('The impact of label smoothing on privacy is unknown. '
-                      'Use label smoothing at your own risk as it may not '
-                      'guarantee privacy.')
+      logging.warning("The impact of label smoothing on privacy is unknown. "
+                      "Use label smoothing at your own risk as it may not "
+                      "guarantee privacy.")
 
     if reg_lambda <= 0:
       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
-    if C <= 0:
-      raise ValueError('c: {0}, should be >= 0'.format(C))
+    if c_arg <= 0:
+      raise ValueError("c: {0}, should be >= 0".format(c_arg))
     if radius_constant <= 0:
-      raise ValueError('radius_constant: {0}, should be >= 0'.format(
+      raise ValueError("radius_constant: {0}, should be >= 0".format(
           radius_constant
       ))
     self.dtype = dtype
-    self.C = C  # pylint: disable=invalid-name
+    self.C = c_arg  # pylint: disable=invalid-name
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
     super(StrongConvexBinaryCrossentropy, self).__init__(
         reduction=reduction,
-        name='strongconvexbinarycrossentropy',
+        name="strongconvexbinarycrossentropy",
         from_logits=from_logits,
         label_smoothing=label_smoothing,
     )
     self.radius_constant = radius_constant
 
   def call(self, y_true, y_pred):
-    """Computes loss
+    """Computes loss.
 
       Args:
         y_true: Ground truth values.
