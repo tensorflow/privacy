@@ -203,10 +203,10 @@ class InitTests(keras_parameterized.TestCase):
   def test_bad_compile(self, n_outputs, loss, optimizer):
     """test bad compilations of BoltonModel that should raise errors.
 
-      Args:
-        n_outputs: number of output neurons
-        loss: instantiated TestLoss instance
-        optimizer: instantiated TestOptimizer instance
+    Args:
+      n_outputs: number of output neurons
+      loss: instantiated TestLoss instance
+      optimizer: instantiated TestOptimizer instance
     """
     # test compilaton of invalid tf.optimizer and non instantiated loss.
     with self.cached_session():
@@ -218,19 +218,19 @@ class InitTests(keras_parameterized.TestCase):
 def _cat_dataset(n_samples, input_dim, n_classes, generator=False):
   """Creates a categorically encoded dataset.
 
-    Creates a categorically encoded dataset (y is categorical).
-    returns the specified dataset either as a static array or as a generator.
-    Will have evenly split samples across each output class.
-    Each output class will be a different point in the input space.
+  Creates a categorically encoded dataset (y is categorical).
+  returns the specified dataset either as a static array or as a generator.
+  Will have evenly split samples across each output class.
+  Each output class will be a different point in the input space.
 
-    Args:
-      n_samples: number of rows
-      input_dim: input dimensionality
-      n_classes: output dimensionality
-      generator: False for array, True for generator
+  Args:
+    n_samples: number of rows
+    input_dim: input dimensionality
+    n_classes: output dimensionality
+    generator: False for array, True for generator
 
-    Returns:
-      X as (n_samples, input_dim), Y as (n_samples, n_outputs)
+  Returns:
+    X as (n_samples, input_dim), Y as (n_samples, n_outputs)
   """
   x_stack = []
   y_stack = []
@@ -514,13 +514,13 @@ class FitTests(keras_parameterized.TestCase):
                         err_msg):
     """Tests the BOltonModel calculate_class_weights method.
 
-      This test passes invalid params which should raise the expected errors.
+    This test passes invalid params which should raise the expected errors.
 
-      Args:
-        class_weights: the class_weights to use.
-        class_counts: count of number of samples for each class.
-        num_classes: number of outputs neurons.
-        err_msg: The expected error message.
+    Args:
+      class_weights: the class_weights to use.
+      class_counts: count of number of samples for each class.
+      num_classes: number of outputs neurons.
+      err_msg: The expected error message.
     """
     clf = models.BoltonModel(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method

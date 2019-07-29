@@ -119,11 +119,11 @@ class Bolton(optimizer_v2.OptimizerV2):
               ):
     """Constructor.
 
-      Args:
-        optimizer: Optimizer_v2 or subclass to be used as the optimizer
-          (wrapped).
-        loss: StrongConvexLoss function that the model is being compiled with.
-        dtype: dtype
+    Args:
+      optimizer: Optimizer_v2 or subclass to be used as the optimizer
+        (wrapped).
+      loss: StrongConvexLoss function that the model is being compiled with.
+      dtype: dtype
     """
 
     if not isinstance(loss, StrongConvexMixin):
@@ -182,15 +182,15 @@ class Bolton(optimizer_v2.OptimizerV2):
   def get_noise(self, input_dim, output_dim):
     """Sample noise to be added to weights for privacy guarantee.
 
-      Args:
-        input_dim: the input dimensionality for the weights
-        output_dim the output dimensionality for the weights
+    Args:
+      input_dim: the input dimensionality for the weights
+      output_dim the output dimensionality for the weights
 
-      Returns:
-        Noise in shape of layer's weights to be added to the weights.
+    Returns:
+      Noise in shape of layer's weights to be added to the weights.
 
-      Raises:
-        Exception:
+    Raises:
+      Exception:
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -228,7 +228,9 @@ class Bolton(optimizer_v2.OptimizerV2):
     return self._internal_optimizer.from_config(*args, **kwargs)
 
   def __getattr__(self, name):
-    """return _internal_optimizer off self instance, and everything else
+    """Get attr.
+
+    return _internal_optimizer off self instance, and everything else
     from the _internal_optimizer instance.
 
     Args:
@@ -253,6 +255,7 @@ class Bolton(optimizer_v2.OptimizerV2):
 
   def __setattr__(self, key, value):
     """ Set attribute to self instance if its the internal optimizer.
+
     Reroute everything else to the _internal_optimizer.
 
     Args:
@@ -318,6 +321,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                batch_size
               ):
     """Accepts required values for bolton method from context entry point.
+
     Stores them on the optimizer for use throughout fitting.
 
     Args:
@@ -327,7 +331,7 @@ class Bolton(optimizer_v2.OptimizerV2):
       layers: list of Keras/Tensorflow layers. Can be found as model.layers
       class_weights: class_weights used, which may either be a scalar or 1D
         tensor with dim == n_classes.
-      n_samples number of rows/individual samples in the training set
+      n_samples: number of rows/individual samples in the training set
       batch_size: batch size used.
     """
     if epsilon <= 0:

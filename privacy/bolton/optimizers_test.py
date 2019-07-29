@@ -77,10 +77,10 @@ class TestLoss(losses.Loss, StrongConvexMixin):
   def radius(self):
     """Radius, R, of the hypothesis space W.
 
-      W is a convex set that forms the hypothesis space.
+    W is a convex set that forms the hypothesis space.
 
-      Returns:
-        a tensor
+    Returns:
+      a tensor
     """
     return _ops.convert_to_tensor_v2(self.radius_constant, dtype=tf.float32)
 
@@ -103,11 +103,11 @@ class TestLoss(losses.Loss, StrongConvexMixin):
   def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
     """Lipchitz constant, L.
 
-      Args:
-        class_weight: class weights used
+    Args:
+      class_weight: class weights used
 
-      Returns:
-        constant L
+    Returns:
+      constant L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -262,12 +262,12 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_project(self, r, shape, n_out, init_value, result):
     """test that a fn of Bolton optimizer is working as expected.
 
-      Args:
-        r: Radius value for StrongConvex loss function.
-        shape: input_dimensionality
-        n_out: output dimensionality
-        init_value: the initial value for 'constant' kernel initializer
-        result: the expected output after projection.
+    Args:
+      r: Radius value for StrongConvex loss function.
+      shape: input_dimensionality
+      n_out: output dimensionality
+      init_value: the initial value for 'constant' kernel initializer
+      result: the expected output after projection.
     """
     tf.random.set_seed(1)
     @tf.function
@@ -455,12 +455,12 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_not_reroute_fn(self, fn, args):
     """Test function is not rerouted.
 
-      Test that a fn that should not be rerouted to the internal optimizer is
-      in fact not rerouted.
+    Test that a fn that should not be rerouted to the internal optimizer is
+    in fact not rerouted.
 
-      Args:
-        fn: fn to test
-        args: arguments to that fn
+    Args:
+      fn: fn to test
+      args: arguments to that fn
     """
     @tf.function
     def test_run(fn, args):
@@ -494,11 +494,11 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_reroute_attr(self, attr):
     """Test a function is rerouted.
 
-      Test that attribute of internal optimizer is correctly rerouted to the
-      internal optimizer.
+    Test that attribute of internal optimizer is correctly rerouted to the
+    internal optimizer.
 
-      Args:
-        attr: attribute to test
+    Args:
+      attr: attribute to test
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
@@ -513,11 +513,11 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_attribute_error(self, attr):
     """Test rerouting of attributes.
 
-      Test that attribute of internal optimizer is correctly rerouted to the
-      internal optimizer
+    Test that attribute of internal optimizer is correctly rerouted to the
+    internal optimizer
 
-      Args:
-        attr: attribute to test
+    Args:
+      attr: attribute to test
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
@@ -538,8 +538,8 @@ class SchedulerTest(keras_parameterized.TestCase):
   def test_bad_call(self, err_msg):
     """Test attribute of internal opt correctly rerouted to the internal opt.
 
-      Args:
-        err_msg: The expected error message from the scheduler bad call.
+    Args:
+      err_msg: The expected error message from the scheduler bad call.
     """
     scheduler = opt.GammaBetaDecreasingStep()
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -558,12 +558,13 @@ class SchedulerTest(keras_parameterized.TestCase):
   ])
   def test_call(self, step, res):
     """Test call.
-      Test that attribute of internal optimizer is correctly rerouted to the
-      internal optimizer
 
-      Args:
-        step: step number to 'GammaBetaDecreasingStep' 'Scheduler'.
-        res: expected result from call to 'GammaBetaDecreasingStep' 'Scheduler'.
+    Test that attribute of internal optimizer is correctly rerouted to the
+    internal optimizer
+
+    Args:
+      step: step number to 'GammaBetaDecreasingStep' 'Scheduler'.
+      res: expected result from call to 'GammaBetaDecreasingStep' 'Scheduler'.
     """
     beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
     gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)
