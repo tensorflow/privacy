@@ -23,7 +23,7 @@ if LooseVersion(tf.__version__) < LooseVersion("2.0.0"):
 if hasattr(sys, "skip_tf_privacy_import"):  # Useful for standalone scripts.
   pass
 else:
-  from privacy.bolton.models import BoltonModel  # pylint: disable=import-not-at-top
-  from privacy.bolton.optimizers import Bolton  # pylint: disable=import-not-at-top
-  from privacy.bolton.losses import StrongConvexHuber  # pylint: disable=import-not-at-top
-  from privacy.bolton.losses import StrongConvexBinaryCrossentropy  # pylint: disable=import-not-at-top
+  from privacy.bolton.models import BoltonModel  # pylint: disable=g-import-not-at-top
+  from privacy.bolton.optimizers import Bolton  # pylint: disable=g-import-not-at-top
+  from privacy.bolton.losses import StrongConvexHuber  # pylint: disable=g-import-not-at-top
+  from privacy.bolton.losses import StrongConvexBinaryCrossentropy  # pylint: disable=g-import-not-at-top

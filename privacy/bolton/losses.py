@@ -25,7 +25,7 @@ from tensorflow.python.keras.utils import losses_utils
 from tensorflow.python.platform import tf_logging as logging
 
 
-class StrongConvexMixin:
+class StrongConvexMixin:  # pylint: disable=old-style-class
   """Strong Convex Mixin base class.
 
   Strong Convex Mixin base class for any loss function that will be used with
