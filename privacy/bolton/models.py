@@ -86,7 +86,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       loss: The loss function to use. Must be a StrongConvex loss (extend the
         StrongConvexMixin).
       kernel_initializer: The kernel initializer to use for the single layer.
-      kwargs: kwargs to keras Model.compile. See super.
+      **kwargs: kwargs to keras Model.compile. See super.
     """
     if not isinstance(loss, StrongConvexMixin):
       raise ValueError('loss function must be a Strongly Convex and therefore '
@@ -136,7 +136,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                 See the bolton paper for more description.
       noise_distribution: the distribution to pull noise from.
       steps_per_epoch:
-      kwargs: kwargs to keras Model.fit. See super.
+      **kwargs: kwargs to keras Model.fit. See super.
 
     Returns:
       output
@@ -201,6 +201,9 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       n_samples: number of individual samples in x
       steps_per_epoch:
       **kwargs: **kwargs
+
+    Returns:
+      output
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)
