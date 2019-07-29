@@ -40,12 +40,12 @@ class GammaBetaDecreasingStep(
   def __call__(self, step):
     """Computes and returns the learning rate.
 
-      Args:
-        step: the current iteration number
+    Args:
+      step: the current iteration number
 
-      Returns:
-        decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
-        the Bolton privacy requirements.
+    Returns:
+      decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
+      the Bolton privacy requirements.
     """
     if not self.is_init:
       raise AttributeError('Please initialize the {0} Learning Rate Scheduler.'
