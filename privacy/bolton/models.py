@@ -76,17 +76,12 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
   def compile(self,
               optimizer,
               loss,
-              metrics=None,
-              loss_weights=None,
-              sample_weight_mode=None,
-              weighted_metrics=None,
-              target_tensors=None,
-              distribute=None,
               kernel_initializer=tf.initializers.GlorotUniform,
               **kwargs):  # pylint: disable=arguments-differ
     """See super class. Default optimizer used in Bolton method is SGD.
 
       Args:
+<<<<<<< HEAD
         optimizer:
         loss:
         metrics:
@@ -96,6 +91,14 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         target_tensors:
         distribute:
         kernel_initializer:
+=======
+        optimizer: The optimizer to use. This will be automatically wrapped
+          with the Bolton Optimizer.
+        loss: The loss function to use. Must be a StrongConvex loss (extend the
+          StrongConvexMixin).
+        kernel_initializer: The kernel initializer to use for the single layer.
+        kwargs: kwargs to keras Model.compile. See super.
+>>>>>>> 71c4a11eb9ad66a78fb13428987366887ea20beb
     """
     if not isinstance(loss, StrongConvexMixin):
       raise ValueError('loss function must be a Strongly Convex and therefore '
@@ -112,15 +115,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       optimizer = optimizers.get(optimizer)
       optimizer = Bolton(optimizer, loss)
 
-    super(BoltonModel, self).compile(optimizer,
-                                     loss=loss,
-                                     metrics=metrics,
-                                     loss_weights=loss_weights,
-                                     sample_weight_mode=sample_weight_mode,
-                                     weighted_metrics=weighted_metrics,
-                                     target_tensors=target_tensors,
-                                     distribute=distribute,
-                                     **kwargs)
+    super(BoltonModel, self).compile(optimizer, loss=loss, **kwargs)
 
   def fit(self,
           x=None,
@@ -142,6 +137,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         4. Use a strongly convex loss function (see compile)
       See super implementation for more details.
 
+<<<<<<< HEAD
       Args:
         n_samples: the number of individual samples in x.
         epsilon: privacy parameter, which trades off between utility an privacy.
@@ -149,8 +145,17 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         noise_distribution: the distribution to pull noise from.
         class_weight: the class weights to be used. Can be a scalar or 1D tensor
                       whose dim == n_classes.
+=======
+    Args:
+      n_samples: the number of individual samples in x.
+      epsilon: privacy parameter, which trades off between utility an privacy.
+                See the bolton paper for more description.
+      noise_distribution: the distribution to pull noise from.
+      class_weight: the class weights to be used. Can be a scalar or 1D tensor
+                    whose dim == n_classes.
+>>>>>>> 71c4a11eb9ad66a78fb13428987366887ea20beb
 
-        See the super method for descriptions on the rest of the arguments.
+      See the super method for descriptions on the rest of the arguments.
     """
     if class_weight is None:
       class_weight_ = self.calculate_class_weights(class_weight)
@@ -201,6 +206,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
 
       This method is the same as fit except for when the passed dataset
       is a generator. See super method and fit for more details.
+<<<<<<< HEAD
  
       Args:
         generator:
@@ -211,6 +217,18 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                   Bolton paper for more description.
         n_samples: number of individual samples in x
         steps_per_epoch:
+=======
+
+    Args:
+      n_samples: number of individual samples in x
+      noise_distribution: the distribution to get noise from.
+      epsilon: privacy parameter, which trades off utility and privacy. See
+                Bolton paper for more description.
+      class_weight: the class weights to be used. Can be a scalar or 1D tensor
+                    whose dim == n_classes.
+
+      See the super method for descriptions on the rest of the arguments.
+>>>>>>> 71c4a11eb9ad66a78fb13428987366887ea20beb
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)
@@ -244,6 +262,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                               num_classes=None):
     """Calculates class weighting to be used in training.
 
+<<<<<<< HEAD
       Args:
         class_weights: str specifying type, array giving weights, or None.
         class_counts: If class_weights is not None, then an array of
@@ -252,6 +271,16 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                         classes.
       Returns:
         class_weights as 1D tensor, to be passed to model's fit method.
+=======
+    Args:
+      class_weights: str specifying type, array giving weights, or None.
+      class_counts: If class_weights is not None, then an array of
+                    the number of samples for each class
+      num_classes: If class_weights is not None, then the number of
+                      classes.
+    Returns:
+      class_weights as 1D tensor, to be passed to model's fit method.
+>>>>>>> 71c4a11eb9ad66a78fb13428987366887ea20beb
     """
     # Value checking
     class_keys = ['balanced']

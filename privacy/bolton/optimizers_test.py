@@ -208,7 +208,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       args: args to optimizer fn
       result: the expected result
       test_attr: None if the fn returns the test result. Otherwise, this is
-                the attribute of Bolton to check against result with.
+        the attribute of Bolton to check against result with.
 
     """
     tf.random.set_seed(1)
@@ -263,11 +263,11 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """test that a fn of Bolton optimizer is working as expected.
 
       Args:
-        r:
-        shape:
-        n_out:
-        init_value:
-        result:
+        r: Radius value for StrongConvex loss function.
+        shape: input_dimensionality
+        n_out: output dimensionality
+        init_value: the initial value for 'constant' kernel initializer
+        result: the expected output after projection.
     """
     tf.random.set_seed(1)
     @tf.function
@@ -301,9 +301,9 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """Tests the context manager functionality of the optimizer.
 
     Args:
-        noise: noise distribution to pick
-        epsilon: epsilon privacy parameter to use
-        class_weights: class_weights to use
+      noise: noise distribution to pick
+      epsilon: epsilon privacy parameter to use
+      class_weights: class_weights to use
     """
     @tf.function
     def test_run():
@@ -334,9 +334,9 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """Tests the context domains.
 
     Args:
-        noise: noise distribution to pick
-        epsilon: epsilon privacy parameter to use
-        err_msg: the expected error message
+      noise: noise distribution to pick
+      epsilon: epsilon privacy parameter to use
+      err_msg: the expected error message
 
     """
 
@@ -454,7 +454,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_not_reroute_fn(self, fn, args):
     """Test function is not rerouted.
- 
+
       Test that a fn that should not be rerouted to the internal optimizer is
       in fact not rerouted.
 
@@ -493,7 +493,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_reroute_attr(self, attr):
     """Test a function is rerouted.
- 
+
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer.
 
@@ -512,7 +512,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_attribute_error(self, attr):
     """Test rerouting of attributes.
- 
+
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
@@ -539,7 +539,7 @@ class SchedulerTest(keras_parameterized.TestCase):
     """Test attribute of internal opt correctly rerouted to the internal opt.
 
       Args:
-        err_msg:
+        err_msg: The expected error message from the scheduler bad call.
     """
     scheduler = opt.GammaBetaDecreasingStep()
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -558,13 +558,12 @@ class SchedulerTest(keras_parameterized.TestCase):
   ])
   def test_call(self, step, res):
     """Test call.
- 
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
       Args:
-        step:
-        res:
+        step: step number to 'GammaBetaDecreasingStep' 'Scheduler'.
+        res: expected result from call to 'GammaBetaDecreasingStep' 'Scheduler'.
     """
     beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
     gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)

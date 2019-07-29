@@ -56,7 +56,7 @@ class StrongConvexMixin:
 
     Args:
       class_weight: the class weights as scalar or 1d tensor, where its
-                    dimensionality is equal to the number of outputs.
+        dimensionality is equal to the number of outputs.
 
     Returns:
       Beta
@@ -115,7 +115,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
       C: Penalty parameter C of the loss term
       radius_constant: constant defining the length of the radius
       delta: delta value in huber loss.  When to switch from quadratic to
-            absolute deviation.
+        absolute deviation.
       reduction: reduction type to use. See super class
       name: Name of the loss instance
       dtype: tf datatype to use for tensor conversions.

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tutorial for bolton module, the model and the optimizer."""
+from __future__ import absolute_import
+from __future__ import division
 from __future__ import print_function
 import tensorflow as tf  # pylint: disable=wrong-import-position
 from privacy.bolton import losses  # pylint: disable=wrong-import-position
