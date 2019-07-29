@@ -369,11 +369,11 @@ class HuberTests(keras_parameterized.TestCase):
   def test_calculation(self, logits, y_true, delta, result):
     """Test the call method to ensure it returns the correct value.
 
-      Args:
-        logits: unscaled output of model
-        y_true: label
-        delta:
-        result: correct loss calculation value
+    Args:
+      logits: unscaled output of model
+      y_true: label
+      delta:
+      result: correct loss calculation value
     """
     logits = tf.Variable(logits, False, dtype=tf.float32)
     y_true = tf.Variable(y_true, False, dtype=tf.float32)

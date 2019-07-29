@@ -184,7 +184,7 @@ class Bolton(optimizer_v2.OptimizerV2):
 
     Args:
       input_dim: the input dimensionality for the weights
-      output_dim the output dimensionality for the weights
+      output_dim: the output dimensionality for the weights
 
     Returns:
       Noise in shape of layer's weights to be added to the weights.
@@ -236,7 +236,8 @@ class Bolton(optimizer_v2.OptimizerV2):
     Args:
       name:
 
-    Returns: attribute from Bolton if specified to come from self, else
+    Returns:
+      attribute from Bolton if specified to come from self, else
       from _internal_optimizer.
     """
     if name == '_private_attributes' or name in self._private_attributes:
@@ -254,7 +255,7 @@ class Bolton(optimizer_v2.OptimizerV2):
           )
 
   def __setattr__(self, key, value):
-    """ Set attribute to self instance if its the internal optimizer.
+    """Set attribute to self instance if its the internal optimizer.
 
     Reroute everything else to the _internal_optimizer.
 
@@ -333,6 +334,9 @@ class Bolton(optimizer_v2.OptimizerV2):
         tensor with dim == n_classes.
       n_samples: number of rows/individual samples in the training set
       batch_size: batch size used.
+
+    Returns:
+      self
     """
     if epsilon <= 0:
       raise ValueError('Detected epsilon: {0}. '
@@ -354,8 +358,8 @@ class Bolton(optimizer_v2.OptimizerV2):
 
   def __exit__(self, *args):
     """Exit call from with statement.
-    used to
 
+    Used to:
     1.reset the model and fit parameters passed to the optimizer
       to enable the Bolton Privacy guarantees. These are reset to ensure
       that any future calls to fit with the same instance of the optimizer
@@ -363,6 +367,9 @@ class Bolton(optimizer_v2.OptimizerV2):
 
     2.call post-fit methods normalizing/projecting the model weights and
       adding noise to the weights.
+
+    Args:
+      *args: *args
     """
     self.project_weights_to_r(True)
     for layer in self.layers:

@@ -80,13 +80,13 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
               **kwargs):  # pylint: disable=arguments-differ
     """See super class. Default optimizer used in Bolton method is SGD.
 
-      Args:
-        optimizer: The optimizer to use. This will be automatically wrapped
-          with the Bolton Optimizer.
-        loss: The loss function to use. Must be a StrongConvex loss (extend the
-          StrongConvexMixin).
-        kernel_initializer: The kernel initializer to use for the single layer.
-        kwargs: kwargs to keras Model.compile. See super.
+    Args:
+      optimizer: The optimizer to use. This will be automatically wrapped
+        with the Bolton Optimizer.
+      loss: The loss function to use. Must be a StrongConvex loss (extend the
+        StrongConvexMixin).
+      kernel_initializer: The kernel initializer to use for the single layer.
+      kwargs: kwargs to keras Model.compile. See super.
     """
     if not isinstance(loss, StrongConvexMixin):
       raise ValueError('loss function must be a Strongly Convex and therefore '
@@ -200,6 +200,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                 Bolton paper for more description.
       n_samples: number of individual samples in x
       steps_per_epoch:
+      **kwargs: **kwargs
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)

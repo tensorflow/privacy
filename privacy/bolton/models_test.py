@@ -275,7 +275,8 @@ def _do_fit(n_samples,
     loss: instance of TestLoss
     distribution: distribution to get noise from.
 
-  Returns: BoltonModel instsance
+  Returns:
+    BoltonModel instsance
   """
   clf = models.BoltonModel(n_outputs)
   clf.compile(optimizer, loss)

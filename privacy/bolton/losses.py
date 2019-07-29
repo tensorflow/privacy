@@ -40,6 +40,7 @@ class StrongConvexMixin:
 
   def radius(self):
     """Radius, R, of the hypothesis space W.
+
     W is a convex set that forms the hypothesis space.
 
     Returns:
@@ -114,7 +115,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
 
     Args:
       reg_lambda: Weight regularization constant
-      C: Penalty parameter C of the loss term
+      c_arg: Penalty parameter C of the loss term
       radius_constant: constant defining the length of the radius
       delta: delta value in huber loss.  When to switch from quadratic to
         absolute deviation.
@@ -147,7 +148,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     )
 
   def call(self, y_true, y_pred):
-    """Computes loss
+    """Computes loss.
 
     Args:
       y_true: Ground truth values. One hot encoded using -1 and 1.
@@ -262,13 +263,13 @@ class StrongConvexBinaryCrossentropy(
   def call(self, y_true, y_pred):
     """Computes loss.
 
-      Args:
-        y_true: Ground truth values.
-        y_pred: The predicted values.
+    Args:
+      y_true: Ground truth values.
+      y_pred: The predicted values.
 
-      Returns:
-        Loss values per sample.
-      """
+    Returns:
+      Loss values per sample.
+    """
     loss = super(StrongConvexBinaryCrossentropy, self).call(y_true, y_pred)
     loss = loss * self.C
     return loss
