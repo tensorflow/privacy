@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Bolton Optimizer for bolton method"""
+"""Bolton Optimizer for bolton method."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -28,8 +28,10 @@ _accepted_distributions = ['laplace']  # implemented distributions for noising
 class GammaBetaDecreasingStep(
     optimizer_v2.learning_rate_schedule.LearningRateSchedule):
   """Computes LR as minimum of 1/beta and 1/(gamma * step) at each step.
-  A required step for privacy guarantees.
+
+  This is a required step for privacy guarantees.
   """
+
   def __init__(self):
     self.is_init = False
     self.beta = None
@@ -37,11 +39,13 @@ class GammaBetaDecreasingStep(
 
   def __call__(self, step):
     """Computes and returns the learning rate.
-    Args:
-      step: the current iteration number
-    Returns:
-      decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
-      the Bolton privacy requirements.
+
+      Args:
+        step: the current iteration number
+
+      Returns:
+        decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
+        the Bolton privacy requirements.
     """
     if not self.is_init:
       raise AttributeError('Please initialize the {0} Learning Rate Scheduler.'
@@ -49,13 +53,13 @@ class GammaBetaDecreasingStep(
                            '{1} as a context manager, '
                            'as desired'.format(self.__class__.__name__,
                                                Bolton.__class__.__name__
-                                               )
-                           )
+                                              )
+                          )
     dtype = self.beta.dtype
     one = tf.constant(1, dtype)
     return tf.math.minimum(tf.math.reduce_min(one/self.beta),
                            one/(self.gamma*math_ops.cast(step, dtype))
-                           )
+                          )
 
   def get_config(self):
     """Return config to setup the learning rate scheduler."""
@@ -107,22 +111,24 @@ class Bolton(optimizer_v2.OptimizerV2):
   Bolt-on Differential Privacy for Scalable Stochastic Gradient
   Descent-based Analytics by Xi Wu et. al.
   """
+
   def __init__(self,  # pylint: disable=super-init-not-called
                optimizer,
                loss,
                dtype=tf.float32,
-               ):
+              ):
     """Constructor.
 
-    Args:
-      optimizer: Optimizer_v2 or subclass to be used as the optimizer
-        (wrapped).
-      loss: StrongConvexLoss function that the model is being compiled with.
+      Args:
+        optimizer: Optimizer_v2 or subclass to be used as the optimizer
+          (wrapped).
+        loss: StrongConvexLoss function that the model is being compiled with.
+        dtype: dtype
     """
 
     if not isinstance(loss, StrongConvexMixin):
-      raise ValueError("loss function must be a Strongly Convex and therefore "
-                       "extend the StrongConvexMixin.")
+      raise ValueError('loss function must be a Strongly Convex and therefore '
+                       'extend the StrongConvexMixin.')
     self._private_attributes = ['_internal_optimizer',
                                 'dtype',
                                 'noise_distribution',
@@ -134,7 +140,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                                 'layers',
                                 'batch_size',
                                 '_is_init'
-                                ]
+                               ]
     self._internal_optimizer = optimizer
     self.learning_rate = GammaBetaDecreasingStep()  # use the Bolton Learning
     # rate scheduler, as required for privacy guarantees. This will still need
@@ -154,6 +160,9 @@ class Bolton(optimizer_v2.OptimizerV2):
     Args:
       force: True to normalize regardless of previous weight values.
         False to check if weights > R-ball and only normalize then.
+
+    Raises:
+      Exception:
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -171,14 +180,17 @@ class Bolton(optimizer_v2.OptimizerV2):
         )
 
   def get_noise(self, input_dim, output_dim):
-    """Sample noise to be added to weights for privacy guarantee
+    """Sample noise to be added to weights for privacy guarantee.
 
-    Args:
-      input_dim: the input dimensionality for the weights
-      output_dim the output dimensionality for the weights
+      Args:
+        input_dim: the input dimensionality for the weights
+        output_dim the output dimensionality for the weights
 
-    Returns:
-      Noise in shape of layer's weights to be added to the weights.
+      Returns:
+        Noise in shape of layer's weights to be added to the weights.
+
+      Raises:
+        Exception:
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -206,7 +218,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                               beta=1 / beta,
                               seed=1,
                               dtype=self.dtype
-                              )
+                             )
       return unit_vector * gamma
     raise NotImplementedError('Noise distribution: {0} is not '
                               'a valid distribution'.format(distribution))
@@ -236,7 +248,7 @@ class Bolton(optimizer_v2.OptimizerV2):
           "".format(self.__class__.__name__,
                     self._internal_optimizer.__class__.__name__,
                     name
-                    )
+                   )
           )
 
   def __setattr__(self, key, value):
@@ -304,7 +316,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                class_weights,
                n_samples,
                batch_size
-               ):
+              ):
     """Accepts required values for bolton method from context entry point.
     Stores them on the optimizer for use throughout fitting.
 
@@ -328,7 +340,7 @@ class Bolton(optimizer_v2.OptimizerV2):
     self.noise_distribution = noise_distribution
     self.learning_rate.initialize(self.loss.beta(class_weights),
                                   self.loss.gamma()
-                                  )
+                                 )
     self.epsilon = tf.constant(epsilon, dtype=self.dtype)
     self.class_weights = tf.constant(class_weights, dtype=self.dtype)
     self.n_samples = tf.constant(n_samples, dtype=self.dtype)
@@ -354,7 +366,7 @@ class Bolton(optimizer_v2.OptimizerV2):
       output_dim = layer.units
       noise = self.get_noise(input_dim,
                              output_dim,
-                             )
+                            )
       layer.kernel = tf.math.add(layer.kernel, noise)
     self.noise_distribution = None
     self.learning_rate.de_initialize()
