@@ -32,10 +32,10 @@ from privacy.bolton.optimizers import Bolton
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model."""
 
-  def __init__(self, reg_lambda, C, radius_constant, name='test'):
+  def __init__(self, reg_lambda, C_arg, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C  # pylint: disable=invalid-name
+    self.C = C_arg  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
@@ -43,7 +43,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
     W is a convex set that forms the hypothesis space.
 
-    Returns: 
+    Returns:
       radius
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
@@ -70,7 +70,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
     Args:
       class_weight: class weights used
 
-    Returns: 
+    Returns:
       L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
@@ -207,7 +207,7 @@ class InitTests(keras_parameterized.TestCase):
         n_outputs: number of output neurons
         loss: instantiated TestLoss instance
         optimizer: instanced TestOptimizer instance
-      """
+    """
     # test compilaton of invalid tf.optimizer and non instantiated loss.
     with self.cached_session():
       with self.assertRaises((ValueError, AttributeError)):
@@ -228,9 +228,10 @@ def _cat_dataset(n_samples, input_dim, n_classes, generator=False):
       input_dim: input dimensionality
       n_classes: output dimensionality
       generator: False for array, True for generator
+
     Returns:
       X as (n_samples, input_dim), Y as (n_samples, n_outputs)
-    """
+  """
   x_stack = []
   y_stack = []
   for i_class in range(n_classes):
@@ -512,7 +513,7 @@ class FitTests(keras_parameterized.TestCase):
                         num_classes,
                         err_msg):
     """Tests the BOltonModel calculate_class_weights method.
-    
+ 
       This test passes invalid params which should raise the expected errors.
 
       Args:
@@ -520,7 +521,7 @@ class FitTests(keras_parameterized.TestCase):
         class_counts: count of number of samples for each class
         num_classes: number of outputs neurons
         err_msg:
-      """
+    """
     clf = models.BoltonModel(1, 1)
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
       clf.calculate_class_weights(class_weights,

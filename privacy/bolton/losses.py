@@ -212,12 +212,12 @@ class StrongConvexBinaryCrossentropy(
   """Strongly Convex BinaryCrossentropy loss using l2 weight regularization."""
 
   def __init__(self,
-               reg_lambda: float,
-               C: float,
-               radius_constant: float,
-               from_logits: bool = True,
-               label_smoothing: float = 0,
-               reduction: str = losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+               reg_lambda,
+               C,
+               radius_constant,
+               from_logits=True,
+               label_smoothing=0,
+               reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
                dtype=tf.float32):
     """
     Args:

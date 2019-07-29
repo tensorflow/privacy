@@ -86,8 +86,16 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
               **kwargs):  # pylint: disable=arguments-differ
     """See super class. Default optimizer used in Bolton method is SGD.
 
-      Missing args.
-
+      Args:
+        optimizer:
+        loss:
+        metrics:
+        loss_weights:
+        sample_weight_mode:
+        weighted_metrics:
+        target_tensors:
+        distribute:
+        kernel_initializer:
     """
     if not isinstance(loss, StrongConvexMixin):
       raise ValueError('loss function must be a Strongly Convex and therefore '
@@ -126,15 +134,15 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
           **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to super fit with  Bolton delta-epsilon privacy requirements.
 
-    Note, inputs must be normalized s.t. ||x|| < 1.
-    Requirements are as follows:
+      Note, inputs must be normalized s.t. ||x|| < 1.
+      Requirements are as follows:
         1. Adds noise to weights after training (output perturbation).
         2. Projects weights to R after each batch
         3. Limits learning rate
         4. Use a strongly convex loss function (see compile)
-    See super implementation for more details.
+      See super implementation for more details.
 
-    Args:
+      Args:
         n_samples: the number of individual samples in x.
         epsilon: privacy parameter, which trades off between utility an privacy.
                   See the bolton paper for more description.
@@ -189,20 +197,20 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                     n_samples=None,
                     steps_per_epoch=None,
                     **kwargs):  # pylint: disable=arguments-differ
-    """Fit with a generator..
-    
+    """Fit with a generator.
+
       This method is the same as fit except for when the passed dataset
       is a generator. See super method and fit for more details.
-    
+ 
       Args:
-        n_samples: number of individual samples in x
+        generator:
+        class_weight: the class weights to be used. Can be a scalar or 1D tensor
+                      whose dim == n_classes.
         noise_distribution: the distribution to get noise from.
         epsilon: privacy parameter, which trades off utility and privacy. See
                   Bolton paper for more description.
-        class_weight: the class weights to be used. Can be a scalar or 1D tensor
-                      whose dim == n_classes.
-
-        See the super method for descriptions on the rest of the arguments.
+        n_samples: number of individual samples in x
+        steps_per_epoch:
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)
@@ -242,7 +250,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                       the number of samples for each class
         num_classes: If class_weights is not None, then the number of
                         classes.
-      Returns: 
+      Returns:
         class_weights as 1D tensor, to be passed to model's fit method.
     """
     # Value checking

@@ -51,11 +51,8 @@ class TestModel(Model):  # pylint: disable=abstract-method
 
     Args:
       n_outputs: number of output neurons
-      epsilon: level of privacy guarantee
-      noise_distribution: distribution to pull weight perturbations from
-      weights_initializer: initializer for weights
-      seed: random seed to use
-      dtype: data type to use for tensors
+      input_shape:
+      init_value:
     """
     super(TestModel, self).__init__(name='bolton', dynamic=False)
     self.n_outputs = n_outputs
@@ -71,18 +68,19 @@ class TestModel(Model):  # pylint: disable=abstract-method
 class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing Bolton model."""
 
-  def __init__(self, reg_lambda, C, radius_constant, name='test'):
+  def __init__(self, reg_lambda, C_arg, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
     self.reg_lambda = reg_lambda
-    self.C = C  # pylint: disable=invalid-name
+    self.C = C_arg  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
 
   def radius(self):
     """Radius, R, of the hypothesis space W.
 
-    W is a convex set that forms the hypothesis space.
+      W is a convex set that forms the hypothesis space.
 
-    Returns: radius
+      Returns:
+        radius
     """
     return _ops.convert_to_tensor_v2(self.radius_constant, dtype=tf.float32)
 
@@ -105,10 +103,11 @@ class TestLoss(losses.Loss, StrongConvexMixin):
   def lipchitz_constant(self, class_weight):  # pylint: disable=unused-argument
     """Lipchitz constant, L.
 
-    Args:
-      class_weight: class weights used
+      Args:
+        class_weight: class weights used
 
-    Returns: L
+      Returns:
+        L
     """
     return _ops.convert_to_tensor_v2(1, dtype=tf.float32)
 
@@ -143,7 +142,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
 
 class TestOptimizer(OptimizerV2):
-  """Optimizer used for testing the Bolton optimizer"""
+  """Optimizer used for testing the Bolton optimizer."""
 
   def __init__(self):
     super(TestOptimizer, self).__init__('test')
@@ -263,8 +262,12 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   def test_project(self, r, shape, n_out, init_value, result):
     """test that a fn of Bolton optimizer is working as expected.
 
-      Missing args:
-
+      Args:
+        r:
+        shape:
+        n_out:
+        init_value:
+        result:
     """
     tf.random.set_seed(1)
     @tf.function
@@ -451,7 +454,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_not_reroute_fn(self, fn, args):
     """Test function is not rerouted.
-    
+ 
       Test that a fn that should not be rerouted to the internal optimizer is
       in fact not rerouted.
 
@@ -490,7 +493,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_reroute_attr(self, attr):
     """Test a function is rerouted.
-    
+ 
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer.
 
@@ -509,7 +512,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
   def test_attribute_error(self, attr):
     """Test rerouting of attributes.
-    
+ 
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
@@ -524,7 +527,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
 
 
 class SchedulerTest(keras_parameterized.TestCase):
-  """GammaBeta Scheduler tests"""
+  """GammaBeta Scheduler tests."""
 
   @parameterized.named_parameters([
       {'testcase_name': 'not in context',
@@ -533,10 +536,10 @@ class SchedulerTest(keras_parameterized.TestCase):
       }
   ])
   def test_bad_call(self, err_msg):
-    """ test that attribute of internal optimizer is correctly rerouted to
-    the internal optimizer
+    """Test attribute of internal opt correctly rerouted to the internal opt.
 
-    Missing args
+      Args:
+        err_msg:
     """
     scheduler = opt.GammaBetaDecreasingStep()
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -555,11 +558,13 @@ class SchedulerTest(keras_parameterized.TestCase):
   ])
   def test_call(self, step, res):
     """Test call.
-    
+ 
       Test that attribute of internal optimizer is correctly rerouted to the
       internal optimizer
 
-      Missing Args:
+      Args:
+        step:
+        res:
     """
     beta = _ops.convert_to_tensor_v2(2, dtype=tf.float32)
     gamma = _ops.convert_to_tensor_v2(1, dtype=tf.float32)

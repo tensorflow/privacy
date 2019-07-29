@@ -298,9 +298,9 @@ class Bolton(optimizer_v2.OptimizerV2):
     return self
 
   def __call__(self,
-               noise_distribution: str,
-               epsilon: float,
-               layers: list,
+               noise_distribution,
+               epsilon,
+               layers,
                class_weights,
                n_samples,
                batch_size
