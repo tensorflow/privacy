@@ -33,7 +33,7 @@ from privacy.bolton.losses import StrongConvexMixin
 
 
 class TestModel(Model):  # pylint: disable=abstract-method
-  """Bolton episilon-delta model.
+  """BoltOn episilon-delta model.
 
   Uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
@@ -66,7 +66,7 @@ class TestModel(Model):  # pylint: disable=abstract-method
 
 
 class TestLoss(losses.Loss, StrongConvexMixin):
-  """Test loss function for testing Bolton model."""
+  """Test loss function for testing BoltOn model."""
 
   def __init__(self, reg_lambda, c_arg, radius_constant, name='test'):
     super(TestLoss, self).__init__(name=name)
@@ -142,7 +142,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
 
 
 class TestOptimizer(OptimizerV2):
-  """Optimizer used for testing the Bolton optimizer."""
+  """Optimizer used for testing the BoltOn optimizer."""
 
   def __init__(self):
     super(TestOptimizer, self).__init__('test')
@@ -185,7 +185,7 @@ class TestOptimizer(OptimizerV2):
 
 
 class BoltonOptimizerTest(keras_parameterized.TestCase):
-  """Bolton Optimizer tests."""
+  """BoltOn Optimizer tests."""
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
       {'testcase_name': 'getattr',
@@ -201,19 +201,19 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   ])
 
   def test_fn(self, fn, args, result, test_attr):
-    """test that a fn of Bolton optimizer is working as expected.
+    """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
       fn: method of Optimizer to test
       args: args to optimizer fn
       result: the expected result
       test_attr: None if the fn returns the test result. Otherwise, this is
-        the attribute of Bolton to check against result with.
+        the attribute of BoltOn to check against result with.
 
     """
     tf.random.set_seed(1)
     loss = TestLoss(1, 1, 1)
-    bolton = opt.Bolton(TestOptimizer(), loss)
+    bolton = opt.BoltOn(TestOptimizer(), loss)
     model = TestModel(1)
     model.layers[0].kernel = \
       model.layers[0].kernel_initializer((model.layer_input_shape[0],
@@ -260,7 +260,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'result': [[1]]},
   ])
   def test_project(self, r, shape, n_out, init_value, result):
-    """test that a fn of Bolton optimizer is working as expected.
+    """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
       r: Radius value for StrongConvex loss function.
@@ -273,7 +273,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     @tf.function
     def project_fn(r):
       loss = TestLoss(1, 1, r)
-      bolton = opt.Bolton(TestOptimizer(), loss)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(n_out, shape, init_value)
       model.compile(bolton, loss)
       model.layers[0].kernel = \
@@ -308,7 +308,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     @tf.function
     def test_run():
       loss = TestLoss(1, 1, 1)
-      bolton = opt.Bolton(TestOptimizer(), loss)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
       model.layers[0].kernel = \
@@ -343,7 +343,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     @tf.function
     def test_run(noise, epsilon):
       loss = TestLoss(1, 1, 1)
-      bolton = opt.Bolton(TestOptimizer(), loss)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
       model.layers[0].kernel = \
@@ -371,7 +371,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     @tf.function
     def test_run(fn, args):
       loss = TestLoss(1, 1, 1)
-      bolton = opt.Bolton(TestOptimizer(), loss)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
       model.layers[0].kernel = \
@@ -415,7 +415,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """Tests rerouted function.
 
     Tests that a method of the internal optimizer is correctly routed from
-    the Bolton instance to the internal optimizer instance (TestOptimizer,
+    the BoltOn instance to the internal optimizer instance (TestOptimizer,
     here).
 
     Args:
@@ -424,7 +424,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
     loss = TestLoss(1, 1, 1)
     optimizer = TestOptimizer()
-    bolton = opt.Bolton(optimizer, loss)
+    bolton = opt.BoltOn(optimizer, loss)
     model = TestModel(3)
     model.compile(optimizer, loss)
     model.layers[0].kernel = \
@@ -465,7 +465,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     @tf.function
     def test_run(fn, args):
       loss = TestLoss(1, 1, 1)
-      bolton = opt.Bolton(TestOptimizer(), loss)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
       model.layers[0].kernel = \
@@ -502,7 +502,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
-    optimizer = opt.Bolton(internal_optimizer, loss)
+    optimizer = opt.BoltOn(internal_optimizer, loss)
     self.assertEqual(getattr(optimizer, attr),
                      getattr(internal_optimizer, attr))
 
@@ -521,7 +521,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
     loss = TestLoss(1, 1, 1)
     internal_optimizer = TestOptimizer()
-    optimizer = opt.Bolton(internal_optimizer, loss)
+    optimizer = opt.BoltOn(internal_optimizer, loss)
     with self.assertRaises(AttributeError):
       getattr(optimizer, attr)
 

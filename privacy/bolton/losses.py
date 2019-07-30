@@ -29,7 +29,7 @@ class StrongConvexMixin:  # pylint: disable=old-style-class
   """Strong Convex Mixin base class.
 
   Strong Convex Mixin base class for any loss function that will be used with
-  Bolton model. Subclasses must be strongly convex and implement the
+  BoltOn model. Subclasses must be strongly convex and implement the
   associated constants. They must also conform to the requirements of tf losses
   (see super class).
 

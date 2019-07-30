@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Bolton model for bolton method of differentially private ML."""
+"""BoltOn model for bolton method of differentially private ML."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -21,11 +21,11 @@ from tensorflow.python.framework import ops as _ops
 from tensorflow.python.keras import optimizers
 from tensorflow.python.keras.models import Model
 from privacy.bolton.losses import StrongConvexMixin
-from privacy.bolton.optimizers import Bolton
+from privacy.bolton.optimizers import BoltOn
 
 
-class BoltonModel(Model):  # pylint: disable=abstract-method
-  """Bolton episilon-delta differential privacy model.
+class BoltOnModel(Model):  # pylint: disable=abstract-method
+  """BoltOn episilon-delta differential privacy model.
 
   The privacy guarantees are dependent on the noise that is sampled. Please
   see the paper linked below for more details.
@@ -52,7 +52,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         seed: random seed to use
         dtype: data type to use for tensors
     """
-    super(BoltonModel, self).__init__(name='bolton', dynamic=False)
+    super(BoltOnModel, self).__init__(name='bolton', dynamic=False)
     if n_outputs <= 0:
       raise ValueError('n_outputs = {0} is not valid. Must be > 0.'.format(
           n_outputs
@@ -69,6 +69,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
         inputs: inputs to neural network
 
     Returns:
+      Output logits for the given inputs.
 
     """
     return self.output_layer(inputs)
@@ -78,11 +79,11 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
               loss,
               kernel_initializer=tf.initializers.GlorotUniform,
               **kwargs):  # pylint: disable=arguments-differ
-    """See super class. Default optimizer used in Bolton method is SGD.
+    """See super class. Default optimizer used in BoltOn method is SGD.
 
     Args:
       optimizer: The optimizer to use. This will be automatically wrapped
-        with the Bolton Optimizer.
+        with the BoltOn Optimizer.
       loss: The loss function to use. Must be a StrongConvex loss (extend the
         StrongConvexMixin).
       kernel_initializer: The kernel initializer to use for the single layer.
@@ -99,11 +100,11 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
           kernel_initializer=kernel_initializer(),
       )
       self._layers_instantiated = True
-    if not isinstance(optimizer, Bolton):
+    if not isinstance(optimizer, BoltOn):
       optimizer = optimizers.get(optimizer)
-      optimizer = Bolton(optimizer, loss)
+      optimizer = BoltOn(optimizer, loss)
 
-    super(BoltonModel, self).compile(optimizer, loss=loss, **kwargs)
+    super(BoltOnModel, self).compile(optimizer, loss=loss, **kwargs)
 
   def fit(self,
           x=None,
@@ -115,7 +116,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
           noise_distribution='laplace',
           steps_per_epoch=None,
           **kwargs):  # pylint: disable=arguments-differ
-    """Reroutes to super fit with  Bolton delta-epsilon privacy requirements.
+    """Reroutes to super fit with  BoltOn delta-epsilon privacy requirements.
 
     Note, inputs must be normalized s.t. ||x|| < 1.
     Requirements are as follows:
@@ -126,9 +127,9 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     See super implementation for more details.
 
     Args:
-      x:
-      y:
-      batch_size:
+      x: Inputs to fit on, see super.
+      y: Labels to fit on, see super.
+      batch_size: The batch size to use for training, see super.
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       n_samples: the number of individual samples in x.
@@ -139,7 +140,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
       **kwargs: kwargs to keras Model.fit. See super.
 
     Returns:
-      output
+      Output from super fit method.
     """
     if class_weight is None:
       class_weight_ = self.calculate_class_weights(class_weight)
@@ -170,7 +171,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                         class_weight_,
                         data_size,
                         batch_size_) as _:
-      out = super(BoltonModel, self).fit(x=x,
+      out = super(BoltOnModel, self).fit(x=x,
                                          y=y,
                                          batch_size=batch_size,
                                          class_weight=class_weight,
@@ -192,18 +193,18 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
     is a generator. See super method and fit for more details.
 
     Args:
-      generator:
+      generator: Inputs generator following Tensorflow guidelines, see super.
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       noise_distribution: the distribution to get noise from.
       epsilon: privacy parameter, which trades off utility and privacy. See
-                Bolton paper for more description.
+                BoltOn paper for more description.
       n_samples: number of individual samples in x
-      steps_per_epoch:
+      steps_per_epoch: Number of steps per training epoch, see super.
       **kwargs: **kwargs
 
     Returns:
-      output
+      Output from super fit_generator method.
     """
     if class_weight is None:
       class_weight = self.calculate_class_weights(class_weight)
@@ -224,7 +225,7 @@ class BoltonModel(Model):  # pylint: disable=abstract-method
                         class_weight,
                         data_size,
                         batch_size) as _:
-      out = super(BoltonModel, self).fit_generator(
+      out = super(BoltOnModel, self).fit_generator(
           generator,
           class_weight=class_weight,
           steps_per_epoch=steps_per_epoch,

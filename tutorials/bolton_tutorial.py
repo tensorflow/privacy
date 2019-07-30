@@ -18,7 +18,7 @@ from __future__ import print_function
 import tensorflow as tf  # pylint: disable=wrong-import-position
 from privacy.bolton import losses  # pylint: disable=wrong-import-position
 from privacy.bolton import models  # pylint: disable=wrong-import-position
-from privacy.bolton.optimizers import Bolton  # pylint: disable=wrong-import-position
+from privacy.bolton.optimizers import BoltOn  # pylint: disable=wrong-import-position
 # -------
 # First, we will create a binary classification dataset with a single output
 # dimension. The samples for each label are repeated data points at different
@@ -39,12 +39,12 @@ generator = tf.data.Dataset.from_tensor_slices((x, y))
 generator = generator.batch(10)
 generator = generator.shuffle(10)
 # -------
-# First, we will explore using the pre - built BoltonModel, which is a thin
+# First, we will explore using the pre - built BoltOnModel, which is a thin
 # wrapper around a Keras Model using a single - layer neural network.
-# It automatically uses the Bolton Optimizer which encompasses all the logic
-# required for the Bolton Differential Privacy method.
+# It automatically uses the BoltOn Optimizer which encompasses all the logic
+# required for the BoltOn Differential Privacy method.
 # -------
-bolt = models.BoltonModel(n_outputs)  # tell the model how many outputs we have.
+bolt = models.BoltOnModel(n_outputs)  # tell the model how many outputs we have.
 # -------
 # Now, we will pick our optimizer and Strongly Convex Loss function. The loss
 # must extend from StrongConvexMixin and implement the associated methods.Some
@@ -60,7 +60,7 @@ loss = losses.StrongConvexBinaryCrossentropy(reg_lambda, C, radius_constant)
 # to be 1; these are all tunable and their impact can be read in losses.
 # StrongConvexBinaryCrossentropy.We then compile the model with the chosen
 # optimizer and loss, which will automatically wrap the chosen optimizer with
-# the Bolton Optimizer, ensuring the required components function as required
+# the BoltOn Optimizer, ensuring the required components function as required
 # for privacy guarantees.
 # -------
 bolt.compile(optimizer, loss)
@@ -77,7 +77,7 @@ bolt.compile(optimizer, loss)
 # 2. noise_distribution, a valid string indicating the distriution to use (must
 # be implemented)
 #
-# The BoltonModel offers a helper method,.calculate_class_weight to aid in
+# The BoltOnModel offers a helper method,.calculate_class_weight to aid in
 # class_weight calculation.
 # required parameters
 # -------
@@ -132,7 +132,7 @@ bolt.fit(generator,
          noise_distribution=noise_distribution,
          verbose=0)
 # -------
-# You don't have to use the bolton model to use the Bolton method.
+# You don't have to use the bolton model to use the BoltOn method.
 # There are only a few requirements:
 # 1. make sure any requirements from the loss are implemented in the model.
 # 2. instantiate the optimizer and use it as a context around the fit operation.
@@ -140,7 +140,7 @@ bolt.fit(generator,
 # -------------------- Part 2, using the Optimizer
 
 # -------
-# Here, we create our own model and setup the Bolton optimizer.
+# Here, we create our own model and setup the BoltOn optimizer.
 # -------
 
 
@@ -157,7 +157,7 @@ class TestModel(tf.keras.Model):  # pylint: disable=abstract-method
 
 optimizer = tf.optimizers.SGD()
 loss = losses.StrongConvexBinaryCrossentropy(reg_lambda, C, radius_constant)
-optimizer = Bolton(optimizer, loss)
+optimizer = BoltOn(optimizer, loss)
 # -------
 # Now, we instantiate our model and check for 1. Since our loss requires L2
 # regularization over the kernel, we will pass it to the model.
@@ -166,7 +166,7 @@ n_outputs = 1  # parameter for model and optimizer context.
 test_model = TestModel(loss.kernel_regularizer(), n_outputs)
 test_model.compile(optimizer, loss)
 # -------
-# We comply with 2., and use the Bolton Optimizer as a context around the fit
+# We comply with 2., and use the BoltOn Optimizer as a context around the fit
 # method.
 # -------
 # parameters for context

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Bolton Method for privacy."""
+"""BoltOn Method for privacy."""
 import sys
 from distutils.version import LooseVersion
 import tensorflow as tf
@@ -23,7 +23,7 @@ if LooseVersion(tf.__version__) < LooseVersion("2.0.0"):
 if hasattr(sys, "skip_tf_privacy_import"):  # Useful for standalone scripts.
   pass
 else:
-  from privacy.bolton.models import BoltonModel  # pylint: disable=g-import-not-at-top
-  from privacy.bolton.optimizers import Bolton  # pylint: disable=g-import-not-at-top
+  from privacy.bolton.models import BoltOnModel  # pylint: disable=g-import-not-at-top
+  from privacy.bolton.optimizers import BoltOn  # pylint: disable=g-import-not-at-top
   from privacy.bolton.losses import StrongConvexHuber  # pylint: disable=g-import-not-at-top
   from privacy.bolton.losses import StrongConvexBinaryCrossentropy  # pylint: disable=g-import-not-at-top

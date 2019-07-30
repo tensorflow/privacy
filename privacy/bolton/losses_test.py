@@ -372,7 +372,7 @@ class HuberTests(keras_parameterized.TestCase):
     Args:
       logits: unscaled output of model
       y_true: label
-      delta:
+      delta: delta value for StrongConvexHuber loss.
       result: correct loss calculation value
     """
     logits = tf.Variable(logits, False, dtype=tf.float32)

@@ -1,25 +1,26 @@
-# Bolton Subpackage
+# BoltOn Subpackage
 
-This package contains source code for the Bolton method. This method is a subset
-of methods used in the ensuring privacy in machine learning that leverages
-additional assumptions to provide a new way of approaching the privacy
+This package contains source code for the BoltOn method, a particular 
+differential-privacy (DP) technique that uses output perturbations and leverages 
+additional assumptions to provide a new way of approaching the privacy 
 guarantees.
 
-## Bolton Description
+## BoltOn Description
 
 This method uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
-  2. Projects weights to R after each batch
+  2. Projects weights to R, the radius of the hypothesis space, 
+      after each batch. This value is configurable by the user.
   3. Limits learning rate
   4. Use a strongly convex loss function (see compile)
 
 For more details on the strong convexity requirements, see:
 Bolt-on Differential Privacy for Scalable Stochastic Gradient
-Descent-based Analytics by Xi Wu et al.
+Descent-based Analytics by Xi Wu et al. at https://arxiv.org/pdf/1606.04722.pdf
 
-## Why Bolton?
+## Why BoltOn?
 
-The major difference for the Bolton method is that it injects noise post model
+The major difference for the BoltOn method is that it injects noise post model
 convergence, rather than noising gradients or weights during training. This
 approach requires some additional constraints listed in the Description.
 Should the use-case and model satisfy these constraints, this is another

@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Bolton Optimizer for bolton method."""
+"""BoltOn Optimizer for bolton method."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -45,15 +45,15 @@ class GammaBetaDecreasingStep(
 
     Returns:
       decayed learning rate to minimum of 1/beta and 1/(gamma * step) as per
-      the Bolton privacy requirements.
+      the BoltOn privacy requirements.
     """
     if not self.is_init:
       raise AttributeError('Please initialize the {0} Learning Rate Scheduler.'
                            'This is performed automatically by using the '
                            '{1} as a context manager, '
                            'as desired'.format(self.__class__.__name__,
-                                               Bolton.__class__.__name__
-                                              )
+                                               BoltOn.__class__.__name__
+                                               )
                           )
     dtype = self.beta.dtype
     one = tf.constant(1, dtype)
@@ -86,22 +86,22 @@ class GammaBetaDecreasingStep(
     self.gamma = None
 
 
-class Bolton(optimizer_v2.OptimizerV2):
-  """Wrap another tf optimizer with Bolton privacy protocol.
+class BoltOn(optimizer_v2.OptimizerV2):
+  """Wrap another tf optimizer with BoltOn privacy protocol.
 
-  Bolton optimizer wraps another tf optimizer to be used
+  BoltOn optimizer wraps another tf optimizer to be used
   as the visible optimizer to the tf model. No matter the optimizer
-  passed, "Bolton" enables the bolton model to control the learning rate
+  passed, "BoltOn" enables the bolton model to control the learning rate
   based on the strongly convex loss.
 
-  To use the Bolton method, you must:
+  To use the BoltOn method, you must:
   1. instantiate it with an instantiated tf optimizer and StrongConvexLoss.
   2. use it as a context manager around your .fit method internals.
 
   This can be accomplished by the following:
   optimizer = tf.optimizers.SGD()
   loss = privacy.bolton.losses.StrongConvexBinaryCrossentropy()
-  bolton = Bolton(optimizer, loss)
+  bolton = BoltOn(optimizer, loss)
   with bolton(*args) as _:
     model.fit()
   The args required for the context manager can be found in the __call__
@@ -142,7 +142,7 @@ class Bolton(optimizer_v2.OptimizerV2):
                                 '_is_init'
                                ]
     self._internal_optimizer = optimizer
-    self.learning_rate = GammaBetaDecreasingStep()  # use the Bolton Learning
+    self.learning_rate = GammaBetaDecreasingStep()  # use the BoltOn Learning
     # rate scheduler, as required for privacy guarantees. This will still need
     # to get values from the loss function near the time that .fit is called
     # on the model (when this optimizer will be called as a context manager)
@@ -162,7 +162,7 @@ class Bolton(optimizer_v2.OptimizerV2):
         False to check if weights > R-ball and only normalize then.
 
     Raises:
-      Exception:
+      Exception: If not called from inside this optimizer context.
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -190,7 +190,7 @@ class Bolton(optimizer_v2.OptimizerV2):
       Noise in shape of layer's weights to be added to the weights.
 
     Raises:
-      Exception:
+      Exception: If not called from inside this optimizer's context.
     """
     if not self._is_init:
       raise Exception('This method must be called from within the optimizer\'s '
@@ -234,10 +234,10 @@ class Bolton(optimizer_v2.OptimizerV2):
     from the _internal_optimizer instance.
 
     Args:
-      name:
+      name: Name of attribute to get from this or aggregate optimizer.
 
     Returns:
-      attribute from Bolton if specified to come from self, else
+      attribute from BoltOn if specified to come from self, else
       from _internal_optimizer.
     """
     if name == '_private_attributes' or name in self._private_attributes:
@@ -336,7 +336,7 @@ class Bolton(optimizer_v2.OptimizerV2):
       batch_size: batch size used.
 
     Returns:
-      self
+      self, to be used by the __enter__ method for context.
     """
     if epsilon <= 0:
       raise ValueError('Detected epsilon: {0}. '
@@ -361,7 +361,7 @@ class Bolton(optimizer_v2.OptimizerV2):
 
     Used to:
     1.reset the model and fit parameters passed to the optimizer
-      to enable the Bolton Privacy guarantees. These are reset to ensure
+      to enable the BoltOn Privacy guarantees. These are reset to ensure
       that any future calls to fit with the same instance of the optimizer
       will properly error out.
 
@@ -369,7 +369,7 @@ class Bolton(optimizer_v2.OptimizerV2):
       adding noise to the weights.
 
     Args:
-      *args: *args
+      *args: encompasses the type, value, and traceback values which are unused.
     """
     self.project_weights_to_r(True)
     for layer in self.layers:
