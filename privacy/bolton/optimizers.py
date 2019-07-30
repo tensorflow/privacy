@@ -53,7 +53,7 @@ class GammaBetaDecreasingStep(
                            '{1} as a context manager, '
                            'as desired'.format(self.__class__.__name__,
                                                BoltOn.__class__.__name__
-                                               )
+                                              )
                           )
     dtype = self.beta.dtype
     one = tf.constant(1, dtype)
