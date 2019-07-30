@@ -1,15 +1,15 @@
 # BoltOn Subpackage
 
-This package contains source code for the BoltOn method, a particular 
-differential-privacy (DP) technique that uses output perturbations and leverages 
-additional assumptions to provide a new way of approaching the privacy 
-guarantees.
+This package contains source code for the BoltOn method, a particular
+differential-privacy (DP) technique that uses output perturbations and
+leverages additional assumptions to provide a new way of approaching the
+privacy guarantees.
 
 ## BoltOn Description
 
 This method uses 4 key steps to achieve privacy guarantees:
   1. Adds noise to weights after training (output perturbation).
-  2. Projects weights to R, the radius of the hypothesis space, 
+  2. Projects weights to R, the radius of the hypothesis space,
       after each batch. This value is configurable by the user.
   3. Limits learning rate
   4. Use a strongly convex loss function (see compile)
