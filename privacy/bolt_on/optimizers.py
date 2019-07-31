@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""BoltOn Optimizer for bolton method."""
+"""BoltOn Optimizer for Bolt-on method."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -91,7 +91,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
 
   BoltOn optimizer wraps another tf optimizer to be used
   as the visible optimizer to the tf model. No matter the optimizer
-  passed, "BoltOn" enables the bolton model to control the learning rate
+  passed, "BoltOn" enables the bolt-on model to control the learning rate
   based on the strongly convex loss.
 
   To use the BoltOn method, you must:
@@ -100,7 +100,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
 
   This can be accomplished by the following:
   optimizer = tf.optimizers.SGD()
-  loss = privacy.bolton.losses.StrongConvexBinaryCrossentropy()
+  loss = privacy.bolt_on.losses.StrongConvexBinaryCrossentropy()
   bolton = BoltOn(optimizer, loss)
   with bolton(*args) as _:
     model.fit()

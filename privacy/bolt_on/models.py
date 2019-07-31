@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""BoltOn model for bolton method of differentially private ML."""
+"""BoltOn model for Bolt-on method of differentially private ML."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -134,7 +134,7 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
                     whose dim == n_classes.
       n_samples: the number of individual samples in x.
       epsilon: privacy parameter, which trades off between utility an privacy.
-                See the bolton paper for more description.
+                See the bolt-on paper for more description.
       noise_distribution: the distribution to pull noise from.
       steps_per_epoch:
       **kwargs: kwargs to keras Model.fit. See super.

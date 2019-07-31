@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tutorial for bolton module, the model and the optimizer."""
+"""Tutorial for bolt_on module, the model and the optimizer."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -48,7 +48,7 @@ bolt = models.BoltOnModel(n_outputs)  # tell the model how many outputs we have.
 # -------
 # Now, we will pick our optimizer and Strongly Convex Loss function. The loss
 # must extend from StrongConvexMixin and implement the associated methods.Some
-# existing loss functions are pre - implemented in bolton.loss
+# existing loss functions are pre - implemented in bolt_on.loss
 # -------
 optimizer = tf.optimizers.SGD()
 reg_lambda = 1
@@ -132,7 +132,7 @@ bolt.fit(generator,
          noise_distribution=noise_distribution,
          verbose=0)
 # -------
-# You don't have to use the bolton model to use the BoltOn method.
+# You don't have to use the BoltOn model to use the BoltOn method.
 # There are only a few requirements:
 # 1. make sure any requirements from the loss are implemented in the model.
 # 2. instantiate the optimizer and use it as a context around the fit operation.
