@@ -20,7 +20,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 from tensorflow.python.ops import math_ops
-from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolt_on.losses import StrongConvexMixin
 
 _accepted_distributions = ['laplace']  # implemented distributions for noising
 

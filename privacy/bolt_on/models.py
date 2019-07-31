@@ -20,8 +20,8 @@ import tensorflow as tf
 from tensorflow.python.framework import ops as _ops
 from tensorflow.python.keras import optimizers
 from tensorflow.python.keras.models import Model
-from privacy.bolton.losses import StrongConvexMixin
-from privacy.bolton.optimizers import BoltOn
+from privacy.bolt_on.losses import StrongConvexMixin
+from privacy.bolt_on.optimizers import BoltOn
 
 
 class BoltOnModel(Model):  # pylint: disable=abstract-method

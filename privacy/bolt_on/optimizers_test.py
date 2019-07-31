@@ -28,8 +28,8 @@ from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
 from tensorflow.python.keras.regularizers import L1L2
 from tensorflow.python.platform import test
-from privacy.bolton import optimizers as opt
-from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolt_on import optimizers as opt
+from privacy.bolt_on.losses import StrongConvexMixin
 
 
 class TestModel(Model):  # pylint: disable=abstract-method

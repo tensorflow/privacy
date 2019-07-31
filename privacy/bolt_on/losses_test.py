@@ -25,9 +25,9 @@ import tensorflow as tf
 from tensorflow.python.framework import test_util
 from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.keras.regularizers import L1L2
-from privacy.bolton.losses import StrongConvexBinaryCrossentropy
-from privacy.bolton.losses import StrongConvexHuber
-from privacy.bolton.losses import StrongConvexMixin
+from privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
+from privacy.bolt_on.losses import StrongConvexHuber
+from privacy.bolt_on.losses import StrongConvexMixin
 
 
 @contextmanager

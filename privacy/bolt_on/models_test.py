@@ -24,9 +24,9 @@ from tensorflow.python.keras import keras_parameterized
 from tensorflow.python.keras import losses
 from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
 from tensorflow.python.keras.regularizers import L1L2
-from privacy.bolton import models
-from privacy.bolton.losses import StrongConvexMixin
-from privacy.bolton.optimizers import BoltOn
+from privacy.bolt_on import models
+from privacy.bolt_on.losses import StrongConvexMixin
+from privacy.bolt_on.optimizers import BoltOn
 
 
 class TestLoss(losses.Loss, StrongConvexMixin):
