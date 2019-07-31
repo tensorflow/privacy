@@ -12,7 +12,7 @@ This method uses 4 key steps to achieve privacy guarantees:
   2. Projects weights to R, the radius of the hypothesis space,
       after each batch. This value is configurable by the user.
   3. Limits learning rate
-  4. Use a strongly convex loss function (see compile)
+  4. Uses a strongly convex loss function (see compile)
 
 For more details on the strong convexity requirements, see:
 Bolt-on Differential Privacy for Scalable Stochastic Gradient
