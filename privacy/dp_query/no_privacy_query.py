@@ -45,12 +45,10 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
   Accumulates vectors and normalizes by the total number of accumulated vectors.
   """
 
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     """See base class."""
-    return (
-        super(NoPrivacyAverageQuery, self).initial_sample_state(
-            global_state, template),
-        tf.constant(0.0))
+    return (super(NoPrivacyAverageQuery, self).initial_sample_state(template),
+            tf.constant(0.0))
 
   def preprocess_record(self, params, record, weight=1):
     """Multiplies record by weight."""

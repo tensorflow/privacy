@@ -57,6 +57,10 @@ GitHub pull requests. To speed the code review process, we ask that:
     your pull requests. In most cases this can be done by running `autopep8 -i
     --indent-size 2 <file>` on the files you have edited.
 
+*   You should also check your code with pylint and TensorFlow's pylint
+    [configuration file](https://raw.githubusercontent.com/tensorflow/tensorflow/master/tensorflow/tools/ci_build/pylintrc)
+    by running `pylint --rcfile=/path/to/the/tf/rcfile <edited file.py>`.
+
 *   When making your first pull request, you
     [sign the Google CLA](https://cla.developers.google.com/clas)
 

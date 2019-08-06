@@ -38,7 +38,7 @@ def run_query(query, records, global_state=None, weights=None):
   if not global_state:
     global_state = query.initial_global_state()
   params = query.derive_sample_params(global_state)
-  sample_state = query.initial_sample_state(global_state, next(iter(records)))
+  sample_state = query.initial_sample_state(next(iter(records)))
   if weights is None:
     for record in records:
       sample_state = query.accumulate_record(params, sample_state, record)

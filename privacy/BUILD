@@ -9,6 +9,7 @@ py_library(
     srcs = ["__init__.py"],
     deps = [
         "//third_party/py/tensorflow_privacy/privacy/analysis:privacy_ledger",
+        "//third_party/py/tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//third_party/py/tensorflow_privacy/privacy/dp_query",
         "//third_party/py/tensorflow_privacy/privacy/dp_query:gaussian_query",
         "//third_party/py/tensorflow_privacy/privacy/dp_query:nested_query",

@@ -68,11 +68,10 @@ class NormalizedQuery(dp_query.DPQuery):
     """See base class."""
     return self._numerator.derive_sample_params(global_state.numerator_state)
 
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     """See base class."""
     # NormalizedQuery has no sample state beyond the numerator state.
-    return self._numerator.initial_sample_state(
-        global_state.numerator_state, template)
+    return self._numerator.initial_sample_state(template)
 
   def preprocess_record(self, params, record):
     return self._numerator.preprocess_record(params, record)

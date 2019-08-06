@@ -26,6 +26,7 @@ py_test(
     name = "gaussian_query_test",
     size = "small",
     srcs = ["gaussian_query_test.py"],
+    python_version = "PY2",
     deps = [
         ":gaussian_query",
         ":test_utils",
@@ -50,6 +51,7 @@ py_test(
     name = "no_privacy_query_test",
     size = "small",
     srcs = ["no_privacy_query_test.py"],
+    python_version = "PY2",
     deps = [
         ":no_privacy_query",
         ":test_utils",
@@ -72,6 +74,7 @@ py_test(
     name = "normalized_query_test",
     size = "small",
     srcs = ["normalized_query_test.py"],
+    python_version = "PY2",
     deps = [
         ":gaussian_query",
         ":normalized_query",
@@ -94,6 +97,7 @@ py_test(
     name = "nested_query_test",
     size = "small",
     srcs = ["nested_query_test.py"],
+    python_version = "PY2",
     deps = [
         ":gaussian_query",
         ":nested_query",
@@ -119,6 +123,7 @@ py_library(
 py_test(
     name = "quantile_adaptive_clip_sum_query_test",
     srcs = ["quantile_adaptive_clip_sum_query_test.py"],
+    python_version = "PY2",
     deps = [
         ":quantile_adaptive_clip_sum_query",
         ":test_utils",

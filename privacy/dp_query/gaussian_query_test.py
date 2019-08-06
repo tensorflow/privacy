@@ -99,7 +99,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       query = gaussian_query.GaussianSumQuery(l2_norm_clip=10.0, stddev=1.0)
       global_state = query.initial_global_state()
       params = query.derive_sample_params(global_state)
-      sample_state = query.initial_sample_state(global_state, records[0])
+      sample_state = query.initial_sample_state(records[0])
       for record in records:
         sample_state = query.accumulate_record(params, sample_state, record)
       return sample_state
