@@ -157,6 +157,8 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
     batch_size_ = self._validate_or_infer_batch_size(batch_size,
                                                      steps_per_epoch,
                                                      x)
+    if batch_size_ is None:
+      batch_size_ = 32
     # inferring batch_size to be passed to optimizer. batch_size must remain its
     # initial value when passed to super().fit()
     if batch_size_ is None:
@@ -219,6 +221,8 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
     batch_size = self._validate_or_infer_batch_size(None,
                                                     steps_per_epoch,
                                                     generator)
+    if batch_size is None:
+      batch_size = 32
     with self.optimizer(noise_distribution,
                         epsilon,
                         self.layers,
