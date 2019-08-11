@@ -121,7 +121,7 @@ def main(unused_argv):
     optimizer = DPGradientDescentGaussianOptimizer(
         l2_norm_clip=FLAGS.l2_norm_clip,
         noise_multiplier=FLAGS.noise_multiplier,
-        num_microbatches=FLAGS.num_microbatches,
+        num_microbatches=FLAGS.microbatches,
         learning_rate=FLAGS.learning_rate,
         unroll_microbatches=True)
     # Compute vector of per-example loss rather than its mean over a minibatch.
