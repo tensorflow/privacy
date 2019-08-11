@@ -88,11 +88,10 @@ class DPQuery(object):
     return ()
 
   @abc.abstractmethod
-  def initial_sample_state(self, global_state, template):
+  def initial_sample_state(self, template):
     """Returns an initial state to use for the next sample.
 
     Args:
-      global_state: The current global state.
       template: A nested structure of tensors, TensorSpecs, or numpy arrays used
         as a template to create the initial sample state. It is assumed that the
         leaves of the structure are python scalars or some type that has
@@ -216,8 +215,7 @@ def zeros_like(arg):
 class SumAggregationDPQuery(DPQuery):
   """Base class for DPQueries that aggregate via sum."""
 
-  def initial_sample_state(self, global_state, template):
-    del global_state  # unused.
+  def initial_sample_state(self, template):
     return nest.map_structure(zeros_like, template)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):

@@ -13,6 +13,10 @@
 # limitations under the License.
 """TensorFlow Privacy library."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import sys
 
 # pylint: disable=g-import-not-at-top
@@ -41,3 +45,12 @@ else:
   from privacy.optimizers.dp_optimizer import DPAdamOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+
+  try:
+    from privacy.bolt_on.models import BoltOnModel
+    from privacy.bolt_on.optimizers import BoltOn
+    from privacy.bolt_on.losses import StrongConvexMixin
+    from privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
+    from privacy.bolt_on.losses import StrongConvexHuber
+  except ImportError:
+    print('module `bolt_on` was not found in this version of TF Privacy')
