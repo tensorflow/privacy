@@ -243,7 +243,14 @@ def _compute_rdp(q, sigma, alpha):
 
 
 def compute_rdp(q, noise_multiplier, steps, orders):
-  """Compute RDP of the Sampled Gaussian Mechanism.
+  """Compute RDP of the Sampled Gaussian Mechanism under Poisson sampling.
+
+  This function applies to the following schemes:
+  1. Poisson sampling: Each data point is selected with probability q independently.
+  2. ``Add / Remove one data point'' version of Differential Privacy.
+
+  Reference: Theorem 8 of http://proceedings.mlr.press/v97/zhu19c/zhu19c.pdf
+  Zhu and Wang. "Poission Subsampled Rényi Differential Privacy." In ICML 2019.
 
   Args:
     q: The sampling rate.
@@ -262,6 +269,113 @@ def compute_rdp(q, noise_multiplier, steps, orders):
                     for order in orders])
 
   return rdp * steps
+
+
+def compute_rdp_sample_without_replacement(q, noise_multiplier, steps, orders):
+  """Compute RDP of the Sampled Gaussian Mechanism using sampling without replacement.
+
+  This function applies to the following schemes:
+  1. Sampling without replacement: Sample a uniformly random subset of size m = q*n.
+  2. ``Replace one data point'' version of differential privacy, i.e., n is considered public
+      information.
+
+  Reference: Theorem 9 of https://arxiv.org/pdf/1808.00087.pdf
+  - Wang, Balle, Kasiviswanathan. "Subsampled Renyi Differential Privacy and Analytical Moments
+  Accountant." AISTATS'2019.
+
+  A strengthened version -- Theorem 27 -- applies subsampled-Gaussian mechanism. An implementation
+  is available at https://github.com/yuxiangw/autodp
+
+
+  Args:
+    q: The sampling proportion =  m / n.  Assume m is an integer <= n.
+    noise_multiplier: The ratio of the standard deviation of the Gaussian noise
+        to the l2-sensitivity of the function to which it is added.
+    steps: The number of steps.
+    orders: An array (or a scalar) of RDP orders.
+
+  Returns:
+    The RDPs at all orders, can be np.inf.
+  """
+  if np.isscalar(orders):
+    rdp = _compute_rdp_sample_without_replacement_scalar(q, noise_multiplier, orders)
+  else:
+    rdp = np.array([_compute_rdp_sample_without_replacement_scalar(q, noise_multiplier, order)
+                    for order in orders])
+
+  return rdp * steps
+
+
+def _compute_rdp_sample_without_replacement_scalar(q, sigma, alpha):
+  """Compute RDP of the Sampled Gaussian mechanism at order alpha.
+
+  Args:
+    q: The sampling proportion =  m / n.  Assume m is an integer <= n.
+    sigma: The std of the additive Gaussian noise.
+    alpha: The order at which RDP is computed.
+
+  Returns:
+    RDP at alpha, can be np.inf.
+  """
+  assert (q <= 1) and (q >= 0) and (alpha >= 2)
+
+  if q == 0:
+    return 0
+
+  if q == 1.:
+    return alpha / (2 * sigma**2)
+
+  if np.isinf(alpha):
+    return np.inf
+
+  if isinstance(alpha, six.integer_types):
+    return _compute_rdp_sample_without_replacement_int(q, sigma, alpha) / (alpha - 1)
+  else:
+    # When alpha not an integer, we apply Corollary 10 of [WBK19] to interpolate the
+    # CGF and obtain an upper bound
+    alpha_f = math.floor(alpha)
+    alpha_c = math.ceil(alpha)
+
+    x = _compute_rdp_sample_without_replacement_int(q, sigma, alpha_f)
+    y = _compute_rdp_sample_without_replacement_int(q, sigma, alpha_c)
+    t = alpha - alpha_f
+    return ((1-t) * x + t * y) / (alpha-1)
+
+
+
+def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
+  """Compute log(A_alpha) for integer alpha. 0 < q < 1, under subsampling without replacement.
+
+    Args:
+    q:  The sampling proportion =  m / n.  Assume m is an integer <= n.
+    sigma: The std of the additive Gaussian noise.
+    alpha: The order at which RDP is computed.
+
+  Returns:
+    RDP at alpha, can be np.inf.
+
+  """
+
+  assert isinstance(alpha, six.integer_types)
+
+  # Initialize with 1 in the log space.
+  log_a = 0
+
+  for i in range(2, alpha+1):
+    if i == 2:
+      log_coef_i = math.log(special.binom(alpha, i)) + i * math.log(q)
+
+      tmp1 = math.log(4) + _log_sub(2 / (2 * (sigma**2)), 0)
+      tmp2 = 2 / (2 * (sigma**2)) + math.log(2)
+
+      s = log_coef_i + min(tmp1, tmp2)
+    elif i > 2:
+      log_coef_i = math.log(special.binom(alpha, i)) + i * math.log(q)
+      s = log_coef_i + (i*i-i) / (2 * (sigma**2)) + math.log(2)
+
+    log_a = _log_add(log_a, s)
+
+  return float(log_a)
 
 
 def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
