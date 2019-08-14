@@ -28,78 +28,43 @@ else:
   nest = tf.nest
 
 
-class NoPrivacySumQuery(dp_query.DPQuery):
+class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for a sum query with no privacy.
 
   Accumulates vectors without clipping or adding noise.
   """
-
-  def initial_global_state(self):
-    """Returns the initial global state for the NoPrivacySumQuery."""
-    return None
-
-  def derive_sample_params(self, global_state):
-    """See base class."""
-    del global_state  # unused.
-    return None
-
-  def initial_sample_state(self, global_state, tensors):
-    """See base class."""
-    del global_state  # unused.
-    return nest.map_structure(tf.zeros_like, tensors)
-
-  def accumulate_record(self, params, sample_state, record, weight=1):
-    """See base class. Optional argument for weighted sum queries."""
-    del params  # unused.
-
-    def add_weighted(state_tensor, record_tensor):
-      return tf.add(state_tensor, weight * record_tensor)
-
-    return nest.map_structure(add_weighted, sample_state, record)
 
   def get_noised_result(self, sample_state, global_state):
     """See base class."""
     return sample_state, global_state
 
 
-class NoPrivacyAverageQuery(dp_query.DPQuery):
+class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for an average query with no privacy.
 
   Accumulates vectors and normalizes by the total number of accumulated vectors.
   """
 
-  def __init__(self):
-    """Initializes the NoPrivacyAverageQuery."""
-    self._numerator = NoPrivacySumQuery()
-
-  def initial_global_state(self):
-    """Returns the initial global state for the NoPrivacyAverageQuery."""
-    return self._numerator.initial_global_state()
-
-  def derive_sample_params(self, global_state):
+  def initial_sample_state(self, template):
     """See base class."""
-    del global_state  # unused.
-    return None
+    return (super(NoPrivacyAverageQuery, self).initial_sample_state(template),
+            tf.constant(0.0))
 
-  def initial_sample_state(self, global_state, tensors):
-    """See base class."""
-    return self._numerator.initial_sample_state(global_state, tensors), 0.0
+  def preprocess_record(self, params, record, weight=1):
+    """Multiplies record by weight."""
+    weighted_record = nest.map_structure(lambda t: weight * t, record)
+    return (weighted_record, tf.cast(weight, tf.float32))
 
   def accumulate_record(self, params, sample_state, record, weight=1):
-    """See base class. Optional argument for weighted average queries."""
-    sum_sample_state, denominator = sample_state
-    return (
-        self._numerator.accumulate_record(
-            params, sum_sample_state, record, weight),
-        tf.add(denominator, weight))
+    """Accumulates record, multiplying by weight."""
+    weighted_record = nest.map_structure(lambda t: weight * t, record)
+    return self.accumulate_preprocessed_record(
+        sample_state, (weighted_record, tf.cast(weight, tf.float32)))
 
   def get_noised_result(self, sample_state, global_state):
     """See base class."""
-    sum_sample_state, denominator = sample_state
-    exact_sum, new_global_state = self._numerator.get_noised_result(
-        sum_sample_state, global_state)
+    sum_state, denominator = sample_state
 
-    def normalize(v):
-      return tf.truediv(v, denominator)
-
-    return nest.map_structure(normalize, exact_sum), new_global_state
+    return (
+        nest.map_structure(lambda t: t / denominator, sum_state),
+        global_state)

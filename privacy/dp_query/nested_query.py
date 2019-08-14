@@ -56,52 +56,42 @@ class NestedQuery(dp_query.DPQuery):
     """
     self._queries = queries
 
-  def _map_to_queries(self, fn, *inputs):
+  def _map_to_queries(self, fn, *inputs, **kwargs):
     def caller(query, *args):
-      return getattr(query, fn)(*args)
+      return getattr(query, fn)(*args, **kwargs)
     return nest.map_structure_up_to(
         self._queries, caller, self._queries, *inputs)
 
+  def set_ledger(self, ledger):
+    self._map_to_queries('set_ledger', ledger=ledger)
+
   def initial_global_state(self):
-    """Returns the initial global state for the NestedQuery."""
+    """See base class."""
     return self._map_to_queries('initial_global_state')
 
   def derive_sample_params(self, global_state):
-    """Given the global state, derives parameters to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-
-    Returns:
-      Parameters to use to process records in the next sample.
-    """
+    """See base class."""
     return self._map_to_queries('derive_sample_params', global_state)
 
-  def initial_sample_state(self, global_state, tensors):
-    """Returns an initial state to use for the next sample.
+  def initial_sample_state(self, template):
+    """See base class."""
+    return self._map_to_queries('initial_sample_state', template)
 
-    Args:
-      global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
+  def preprocess_record(self, params, record):
+    """See base class."""
+    return self._map_to_queries('preprocess_record', params, record)
 
-    Returns: An initial sample state.
-    """
-    return self._map_to_queries('initial_sample_state', global_state, tensors)
-
-  def accumulate_record(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
-
-    Args:
-      params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
-
-    Returns:
-      The updated sample state.
-    """
+  def accumulate_preprocessed_record(
+      self, sample_state, preprocessed_record):
+    """See base class."""
     return self._map_to_queries(
-        'accumulate_record', params, sample_state, record)
+        'accumulate_preprocessed_record',
+        sample_state,
+        preprocessed_record)
+
+  def merge_sample_states(self, sample_state_1, sample_state_2):
+    return self._map_to_queries(
+        'merge_sample_states', sample_state_1, sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
     """Gets query result after all records of sample have been accumulated.

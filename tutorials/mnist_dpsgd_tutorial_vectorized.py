@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2019, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Training a CNN on MNIST with differentially private SGD optimizer."""
+"""Training a CNN on MNIST with vectorized DP-SGD optimizer."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -26,17 +26,10 @@ from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
-from privacy.analysis import privacy_ledger
-from privacy.analysis.rdp_accountant import compute_rdp_from_ledger
+from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.optimizers import dp_optimizer
+from privacy.optimizers import dp_optimizer_vectorized
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
-
-FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -45,33 +38,38 @@ flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
 flags.DEFINE_float('noise_multiplier', 1.1,
                    'Ratio of the standard deviation to the clipping norm')
 flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-flags.DEFINE_integer('batch_size', 256, 'Batch size')
+flags.DEFINE_integer('batch_size', 200, 'Batch size')
 flags.DEFINE_integer('epochs', 60, 'Number of epochs')
 flags.DEFINE_integer(
-    'microbatches', 256, 'Number of microbatches '
+    'microbatches', 200, 'Number of microbatches '
     '(must evenly divide batch_size)')
 flags.DEFINE_string('model_dir', None, 'Model directory')
 
 
-class EpsilonPrintingTrainingHook(tf.estimator.SessionRunHook):
-  """Training hook to print current value of epsilon after an epoch."""
+FLAGS = flags.FLAGS
 
-  def __init__(self, ledger):
-    """Initalizes the EpsilonPrintingTrainingHook.
 
-    Args:
-      ledger: The privacy ledger.
-    """
-    self._samples, self._queries = ledger.get_unformatted_ledger()
+NUM_TRAIN_EXAMPLES = 60000
 
-  def end(self, session):
-    orders = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
-    samples = session.run(self._samples)
-    queries = session.run(self._queries)
-    formatted_ledger = privacy_ledger.format_ledger(samples, queries)
-    rdp = compute_rdp_from_ledger(formatted_ledger, orders)
-    eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
-    print('For delta=1e-5, the current epsilon is: %.2f' % eps)
+
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+else:
+  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+
+
+def compute_epsilon(steps):
+  """Computes epsilon value for given hyperparameters."""
+  if FLAGS.noise_multiplier == 0.0:
+    return float('inf')
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  sampling_probability = FLAGS.batch_size / NUM_TRAIN_EXAMPLES
+  rdp = compute_rdp(q=sampling_probability,
+                    noise_multiplier=FLAGS.noise_multiplier,
+                    steps=steps,
+                    orders=orders)
+  # Delta is set to approximate 1 / (number of training points).
+  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
 
 def cnn_model_fn(features, labels, mode):
@@ -103,27 +101,18 @@ def cnn_model_fn(features, labels, mode):
   if mode == tf.estimator.ModeKeys.TRAIN:
 
     if FLAGS.dpsgd:
-      ledger = privacy_ledger.PrivacyLedger(
-          population_size=60000,
-          selection_probability=(FLAGS.batch_size / 60000))
-
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
       # tf.train.Optimizer should be wrappable in differentially private
       # counterparts by calling dp_optimizer.optimizer_from_args().
-      optimizer = dp_optimizer.DPGradientDescentGaussianOptimizer(
+      optimizer = dp_optimizer_vectorized.VectorizedDPSGD(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
           num_microbatches=FLAGS.microbatches,
-          ledger=ledger,
           learning_rate=FLAGS.learning_rate)
-      training_hooks = [
-          EpsilonPrintingTrainingHook(ledger)
-      ]
       opt_loss = vector_loss
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
-      training_hooks = []
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
@@ -133,8 +122,7 @@ def cnn_model_fn(features, labels, mode):
     # minimized is opt_loss defined above and passed to optimizer.minimize().
     return tf.estimator.EstimatorSpec(mode=mode,
                                       loss=scalar_loss,
-                                      train_op=train_op,
-                                      training_hooks=training_hooks)
+                                      train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
@@ -198,7 +186,7 @@ def main(unused_argv):
       shuffle=False)
 
   # Training loop.
-  steps_per_epoch = 60000 // FLAGS.batch_size
+  steps_per_epoch = NUM_TRAIN_EXAMPLES // FLAGS.batch_size
   for epoch in range(1, FLAGS.epochs + 1):
     # Train the model for one epoch.
     mnist_classifier.train(input_fn=train_input_fn, steps=steps_per_epoch)
@@ -207,6 +195,13 @@ def main(unused_argv):
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     test_accuracy = eval_results['accuracy']
     print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
+
+    # Compute the privacy budget expended.
+    if FLAGS.dpsgd:
+      eps = compute_epsilon(epoch * NUM_TRAIN_EXAMPLES // FLAGS.batch_size)
+      print('For delta=1e-5, the current epsilon is: %.2f' % eps)
+    else:
+      print('Trained with vanilla non-private SGD optimizer')
 
 if __name__ == '__main__':
   app.run(main)

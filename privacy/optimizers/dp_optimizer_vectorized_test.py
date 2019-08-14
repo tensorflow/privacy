@@ -22,9 +22,10 @@ import mock
 import numpy as np
 import tensorflow as tf
 
-from privacy.analysis import privacy_ledger
-from privacy.dp_query import gaussian_query
-from privacy.optimizers import dp_optimizer
+from privacy.optimizers import dp_optimizer_vectorized
+from privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagrad
+from privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdam
+from privacy.optimizers.dp_optimizer_vectorized import VectorizedDPSGD
 
 
 class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
@@ -35,29 +36,23 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   # Parameters for testing: optimizer, num_microbatches, expected answer.
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer.DPGradientDescentOptimizer, 1,
-       [-2.5, -2.5]),
-      ('DPGradientDescent 2', dp_optimizer.DPGradientDescentOptimizer, 2,
-       [-2.5, -2.5]),
-      ('DPGradientDescent 4', dp_optimizer.DPGradientDescentOptimizer, 4,
-       [-2.5, -2.5]),
-      ('DPAdagrad 1', dp_optimizer.DPAdagradOptimizer, 1, [-2.5, -2.5]),
-      ('DPAdagrad 2', dp_optimizer.DPAdagradOptimizer, 2, [-2.5, -2.5]),
-      ('DPAdagrad 4', dp_optimizer.DPAdagradOptimizer, 4, [-2.5, -2.5]),
-      ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-2.5, -2.5]),
-      ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
-      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]))
+      ('DPGradientDescent 1', VectorizedDPSGD, 1, [-2.5, -2.5]),
+      ('DPGradientDescent 2', VectorizedDPSGD, 2, [-2.5, -2.5]),
+      ('DPGradientDescent 4', VectorizedDPSGD, 4, [-2.5, -2.5]),
+      ('DPAdagrad 1', VectorizedDPAdagrad, 1, [-2.5, -2.5]),
+      ('DPAdagrad 2', VectorizedDPAdagrad, 2, [-2.5, -2.5]),
+      ('DPAdagrad 4', VectorizedDPAdagrad, 4, [-2.5, -2.5]),
+      ('DPAdam 1', VectorizedDPAdam, 1, [-2.5, -2.5]),
+      ('DPAdam 2', VectorizedDPAdam, 2, [-2.5, -2.5]),
+      ('DPAdam 4', VectorizedDPAdam, 4, [-2.5, -2.5]))
   def testBaseline(self, cls, num_microbatches, expected_answer):
     with self.cached_session() as sess:
       var0 = tf.Variable([1.0, 2.0])
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
-      dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(
-          dp_sum_query, 1e6, num_microbatches / 1e6)
-
       opt = cls(
-          dp_sum_query,
+          l2_norm_clip=1.0e9,
+          noise_multiplier=0.0,
           num_microbatches=num_microbatches,
           learning_rate=2.0)
 
@@ -72,18 +67,18 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllCloseAccordingToType(expected_answer, grads_and_vars[0][0])
 
   @parameterized.named_parameters(
-      ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
-      ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPGradientDescent', VectorizedDPSGD),
+      ('DPAdagrad', VectorizedDPAdagrad),
+      ('DPAdam', VectorizedDPAdam))
   def testClippingNorm(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0, 0.0])
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
-      dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
-
-      opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
+      opt = cls(l2_norm_clip=1.0,
+                noise_multiplier=0.,
+                num_microbatches=1,
+                learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -95,18 +90,18 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllCloseAccordingToType([-0.6, -0.8], grads_and_vars[0][0])
 
   @parameterized.named_parameters(
-      ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
-      ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPGradientDescent', VectorizedDPSGD),
+      ('DPAdagrad', VectorizedDPAdagrad),
+      ('DPAdam', VectorizedDPAdam))
   def testNoiseMultiplier(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])
       data0 = tf.Variable([[0.0]])
 
-      dp_sum_query = gaussian_query.GaussianSumQuery(4.0, 8.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
-
-      opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
+      opt = cls(l2_norm_clip=4.0,
+                noise_multiplier=8.0,
+                num_microbatches=1,
+                learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -119,7 +114,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         grads.append(grads_and_vars[0][0])
 
       # Test standard deviation is close to l2_norm_clip * noise_multiplier.
-      self.assertNear(np.std(grads), 2.0 * 4.0, 0.5)
+      self.assertNear(np.std(grads), 4.0 * 8.0, 0.5)
 
   @mock.patch.object(tf, 'logging')
   def testComputeGradientsOverrideWarning(self, mock_logging):
@@ -129,7 +124,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       def compute_gradients(self):
         return 0
 
-    dp_optimizer.make_optimizer_class(SimpleOptimizer)
+    dp_optimizer_vectorized.make_vectorized_optimizer_class(SimpleOptimizer)
     mock_logging.warning.assert_called_once_with(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
@@ -145,10 +140,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       vector_loss = tf.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(vector_loss)
-      dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
-      optimizer = dp_optimizer.DPGradientDescentOptimizer(
-          dp_sum_query,
+      optimizer = VectorizedDPSGD(
+          l2_norm_clip=1.0,
+          noise_multiplier=0.,
           num_microbatches=1,
           learning_rate=1.0)
       global_step = tf.train.get_global_step()
@@ -178,40 +172,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         atol=1.0)
 
   @parameterized.named_parameters(
-      ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
-      ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
-  def testUnrollMicrobatches(self, cls):
-    with self.cached_session() as sess:
-      var0 = tf.Variable([1.0, 2.0])
-      data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
-
-      num_microbatches = 4
-
-      dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(
-          dp_sum_query, 1e6, num_microbatches / 1e6)
-
-      opt = cls(
-          dp_sum_query,
-          num_microbatches=num_microbatches,
-          learning_rate=2.0,
-          unroll_microbatches=True)
-
-      self.evaluate(tf.global_variables_initializer())
-      # Fetch params to validate initial values
-      self.assertAllClose([1.0, 2.0], self.evaluate(var0))
-
-      # Expected gradient is sum of differences divided by number of
-      # microbatches.
-      gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
-      grads_and_vars = sess.run(gradient_op)
-      self.assertAllCloseAccordingToType([-2.5, -2.5], grads_and_vars[0][0])
-
-  @parameterized.named_parameters(
-      ('DPGradientDescent', dp_optimizer.DPGradientDescentGaussianOptimizer),
-      ('DPAdagrad', dp_optimizer.DPAdagradGaussianOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamGaussianOptimizer))
+      ('DPGradientDescent', VectorizedDPSGD),
+      ('DPAdagrad', VectorizedDPAdagrad),
+      ('DPAdam', VectorizedDPAdam))
   def testDPGaussianOptimizerClass(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])

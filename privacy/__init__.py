@@ -13,6 +13,10 @@
 # limitations under the License.
 """TensorFlow Privacy library."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import sys
 
 # pylint: disable=g-import-not-at-top
@@ -20,7 +24,6 @@ import sys
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  from privacy.analysis.privacy_ledger import DummyLedger
   from privacy.analysis.privacy_ledger import GaussianSumQueryEntry
   from privacy.analysis.privacy_ledger import PrivacyLedger
   from privacy.analysis.privacy_ledger import QueryWithLedger
@@ -33,6 +36,8 @@ else:
   from privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery
   from privacy.dp_query.no_privacy_query import NoPrivacySumQuery
   from privacy.dp_query.normalized_query import NormalizedQuery
+  from privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipSumQuery
+  from privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipAverageQuery
 
   from privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
   from privacy.optimizers.dp_optimizer import DPAdagradOptimizer
@@ -40,3 +45,12 @@ else:
   from privacy.optimizers.dp_optimizer import DPAdamOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
   from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+
+  try:
+    from privacy.bolt_on.models import BoltOnModel
+    from privacy.bolt_on.optimizers import BoltOn
+    from privacy.bolt_on.losses import StrongConvexMixin
+    from privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
+    from privacy.bolt_on.losses import StrongConvexHuber
+  except ImportError:
+    print('module `bolt_on` was not found in this version of TF Privacy')

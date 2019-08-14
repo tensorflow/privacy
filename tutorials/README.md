@@ -20,6 +20,10 @@ Here is a list of all the tutorials included:
 * `mnist_dpsgd_tutorial_keras.py`: learn a convolutional neural network on MNIST
   with differential privacy using tf.Keras.
 
+* `mnist_lr_tutorial.py`: learn a differentially private logistic regression
+  model on MNIST. The model illustrates application of the
+  "amplification-by-iteration" analysis (https://arxiv.org/abs/1808.06651).
+
 The rest of this README describes the different parameters used to configure
 DP-SGD as well as expected outputs for the `mnist_dpsgd_tutorial.py` tutorial.
 

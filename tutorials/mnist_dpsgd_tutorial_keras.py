@@ -17,33 +17,52 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from absl import app
+from absl import flags
+
+from distutils.version import LooseVersion
+
 import numpy as np
 import tensorflow as tf
 
 from privacy.analysis.rdp_accountant import compute_rdp
 from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.dp_query.gaussian_query import GaussianAverageQuery
-from privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+from privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
-# Compatibility with tf 1 and 2 APIs
-try:
+if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-except:  # pylint: disable=bare-except
+else:
   GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
 
-tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                        'train with vanilla SGD.')
-tf.flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
-tf.flags.DEFINE_float('noise_multiplier', 1.1,
-                      'Ratio of the standard deviation to the clipping norm')
-tf.flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
-tf.flags.DEFINE_integer('batch_size', 250, 'Batch size')
-tf.flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-tf.flags.DEFINE_integer('microbatches', 250, 'Number of microbatches '
-                        '(must evenly divide batch_size)')
-tf.flags.DEFINE_string('model_dir', None, 'Model directory')
+flags.DEFINE_boolean(
+    'dpsgd', True, 'If True, train with DP-SGD. If False, '
+    'train with vanilla SGD.')
+flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
+flags.DEFINE_float('noise_multiplier', 1.1,
+                   'Ratio of the standard deviation to the clipping norm')
+flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
+flags.DEFINE_integer('batch_size', 250, 'Batch size')
+flags.DEFINE_integer('epochs', 60, 'Number of epochs')
+flags.DEFINE_integer(
+    'microbatches', 250, 'Number of microbatches '
+    '(must evenly divide batch_size)')
+flags.DEFINE_string('model_dir', None, 'Model directory')
 
-FLAGS = tf.flags.FLAGS
+FLAGS = flags.FLAGS
+
+
+def compute_epsilon(steps):
+  """Computes epsilon value for given hyperparameters."""
+  if FLAGS.noise_multiplier == 0.0:
+    return float('inf')
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  sampling_probability = FLAGS.batch_size / 60000
+  rdp = compute_rdp(q=sampling_probability,
+                    noise_multiplier=FLAGS.noise_multiplier,
+                    steps=steps,
+                    orders=orders)
+  # Delta is set to 1e-5 because MNIST has 60000 training points.
+  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
 
 def load_mnist():
@@ -74,7 +93,7 @@ def load_mnist():
 
 def main(unused_argv):
   tf.logging.set_verbosity(tf.logging.INFO)
-  if FLAGS.batch_size % FLAGS.microbatches != 0:
+  if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Load training and test data.
@@ -99,15 +118,11 @@ def main(unused_argv):
   ])
 
   if FLAGS.dpsgd:
-    dp_average_query = GaussianAverageQuery(
-        FLAGS.l2_norm_clip,
-        FLAGS.l2_norm_clip * FLAGS.noise_multiplier,
-        FLAGS.microbatches)
-    optimizer = DPGradientDescentOptimizer(
-        dp_average_query,
-        FLAGS.microbatches,
-        learning_rate=FLAGS.learning_rate,
-        unroll_microbatches=True)
+    optimizer = DPGradientDescentGaussianOptimizer(
+        l2_norm_clip=FLAGS.l2_norm_clip,
+        noise_multiplier=FLAGS.noise_multiplier,
+        num_microbatches=FLAGS.microbatches,
+        learning_rate=FLAGS.learning_rate)
     # Compute vector of per-example loss rather than its mean over a minibatch.
     loss = tf.keras.losses.CategoricalCrossentropy(
         from_logits=True, reduction=tf.losses.Reduction.NONE)
@@ -125,17 +140,11 @@ def main(unused_argv):
             batch_size=FLAGS.batch_size)
 
   # Compute the privacy budget expended.
-  if FLAGS.noise_multiplier == 0.0:
+  if FLAGS.dpsgd:
+    eps = compute_epsilon(FLAGS.epochs * 60000 // FLAGS.batch_size)
+    print('For delta=1e-5, the current epsilon is: %.2f' % eps)
+  else:
     print('Trained with vanilla non-private SGD optimizer')
-  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=(FLAGS.epochs * 60000 // FLAGS.batch_size),
-                    orders=orders)
-  # Delta is set to 1e-5 because MNIST has 60000 training points.
-  eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
-  print('For delta=1e-5, the current epsilon is: %.2f' % eps)
 
 if __name__ == '__main__':
-  tf.app.run()
+  app.run(main)

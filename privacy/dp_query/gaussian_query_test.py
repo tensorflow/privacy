@@ -91,6 +91,32 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       result_stddev = np.std(noised_sums)
       self.assertNear(result_stddev, stddev, 0.1)
 
+  def test_gaussian_sum_merge(self):
+    records1 = [tf.constant([2.0, 0.0]), tf.constant([-1.0, 1.0])]
+    records2 = [tf.constant([3.0, 5.0]), tf.constant([-1.0, 4.0])]
+
+    def get_sample_state(records):
+      query = gaussian_query.GaussianSumQuery(l2_norm_clip=10.0, stddev=1.0)
+      global_state = query.initial_global_state()
+      params = query.derive_sample_params(global_state)
+      sample_state = query.initial_sample_state(records[0])
+      for record in records:
+        sample_state = query.accumulate_record(params, sample_state, record)
+      return sample_state
+
+    sample_state_1 = get_sample_state(records1)
+    sample_state_2 = get_sample_state(records2)
+
+    merged = gaussian_query.GaussianSumQuery(10.0, 1.0).merge_sample_states(
+        sample_state_1,
+        sample_state_2)
+
+    with self.cached_session() as sess:
+      result = sess.run(merged)
+
+    expected = [3.0, 10.0]
+    self.assertAllClose(result, expected)
+
   def test_gaussian_average_no_noise(self):
     with self.cached_session() as sess:
       record1 = tf.constant([5.0, 0.0])   # Clipped to [3.0, 0.0].

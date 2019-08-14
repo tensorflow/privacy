@@ -421,7 +421,7 @@ def compute_rdp_from_ledger(ledger, orders):
   Returns:
     RDP at all orders, can be np.inf.
   """
-  total_rdp = 0
+  total_rdp = np.zeros_like(orders, dtype=float)
   for sample in ledger:
     # Compute equivalent z from l2_clip_bounds and noise stddevs in sample.
     # See https://arxiv.org/pdf/1812.06210.pdf for derivation of this formula.
@@ -430,21 +430,3 @@ def compute_rdp_from_ledger(ledger, orders):
     total_rdp += compute_rdp(
         sample.selection_probability, effective_z, 1, orders)
   return total_rdp
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

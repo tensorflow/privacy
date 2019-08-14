@@ -19,6 +19,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
+
 from distutils.version import LooseVersion
 import tensorflow as tf
 
@@ -31,106 +33,86 @@ else:
   nest = tf.nest
 
 
-class GaussianSumQuery(dp_query.DPQuery):
+class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for Gaussian sum queries.
 
   Accumulates clipped vectors, then adds Gaussian noise to the sum.
   """
 
-  def __init__(self, l2_norm_clip, stddev, ledger=None):
+  # pylint: disable=invalid-name
+  _GlobalState = collections.namedtuple(
+      '_GlobalState', ['l2_norm_clip', 'stddev'])
+
+  def __init__(self, l2_norm_clip, stddev):
     """Initializes the GaussianSumQuery.
 
     Args:
       l2_norm_clip: The clipping norm to apply to the global norm of each
         record.
       stddev: The stddev of the noise added to the sum.
-      ledger: The privacy ledger to which queries should be recorded.
     """
-    self._l2_norm_clip = tf.to_float(l2_norm_clip)
-    self._stddev = tf.to_float(stddev)
+    self._l2_norm_clip = l2_norm_clip
+    self._stddev = stddev
+    self._ledger = None
+
+  def set_ledger(self, ledger):
     self._ledger = ledger
 
+  def make_global_state(self, l2_norm_clip, stddev):
+    """Creates a global state from the given parameters."""
+    return self._GlobalState(tf.cast(l2_norm_clip, tf.float32),
+                             tf.cast(stddev, tf.float32))
+
   def initial_global_state(self):
-    """Returns the initial global state for the GaussianSumQuery."""
-    return None
+    return self.make_global_state(self._l2_norm_clip, self._stddev)
 
   def derive_sample_params(self, global_state):
-    """Given the global state, derives parameters to use for the next sample.
+    return global_state.l2_norm_clip
 
-    Args:
-      global_state: The current global state.
+  def initial_sample_state(self, template):
+    return nest.map_structure(
+        dp_query.zeros_like, template)
 
-    Returns:
-      Parameters to use to process records in the next sample.
-    """
-    return self._l2_norm_clip
-
-  def initial_sample_state(self, global_state, tensors):
-    """Returns an initial state to use for the next sample.
-
-    Args:
-      global_state: The current global state.
-      tensors: A structure of tensors used as a template to create the initial
-        sample state.
-
-    Returns: An initial sample state.
-    """
-    if self._ledger:
-      dependencies = [
-          self._ledger.record_sum_query(self._l2_norm_clip, self._stddev)
-      ]
-    else:
-      dependencies = []
-    with tf.control_dependencies(dependencies):
-      return nest.map_structure(tf.zeros_like, tensors)
-
-  def accumulate_record_impl(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
+  def preprocess_record_impl(self, params, record):
+    """Clips the l2 norm, returning the clipped record and the l2 norm.
 
     Args:
       params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
+      record: The record to be processed.
 
     Returns:
-      A tuple containing the updated sample state and the global norm.
+      A tuple (preprocessed_records, l2_norm) where `preprocessed_records` is
+        the structure of preprocessed tensors, and l2_norm is the total l2 norm
+        before clipping.
     """
     l2_norm_clip = params
     record_as_list = nest.flatten(record)
     clipped_as_list, norm = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
-    clipped = nest.pack_sequence_as(record, clipped_as_list)
-    return nest.map_structure(tf.add, sample_state, clipped), norm
+    return nest.pack_sequence_as(record, clipped_as_list), norm
 
-  def accumulate_record(self, params, sample_state, record):
-    """Accumulates a single record into the sample state.
-
-    Args:
-      params: The parameters for the sample.
-      sample_state: The current sample state.
-      record: The record to accumulate.
-
-    Returns:
-      The updated sample state.
-    """
-    new_sample_state, _ = self.accumulate_record_impl(
-        params, sample_state, record)
-    return new_sample_state
+  def preprocess_record(self, params, record):
+    preprocessed_record, _ = self.preprocess_record_impl(params, record)
+    return preprocessed_record
 
   def get_noised_result(self, sample_state, global_state):
-    """Gets noised sum after all records of sample have been accumulated.
+    """See base class."""
+    if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
+      def add_noise(v):
+        return v + tf.random_normal(tf.shape(v), stddev=global_state.stddev)
+    else:
+      random_normal = tf.random_normal_initializer(stddev=global_state.stddev)
+      def add_noise(v):
+        return v + random_normal(tf.shape(v))
 
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (estimate, new_global_state) where "estimate" is the estimated
-      sum of the records and "new_global_state" is the updated global state.
-    """
-    def add_noise(v):
-      return v + tf.random_normal(tf.shape(v), stddev=self._stddev)
-
-    return nest.map_structure(add_noise, sample_state), global_state
+    if self._ledger:
+      dependencies = [
+          self._ledger.record_sum_query(
+              global_state.l2_norm_clip, global_state.stddev)
+      ]
+    else:
+      dependencies = []
+    with tf.control_dependencies(dependencies):
+      return nest.map_structure(add_noise, sample_state), global_state
 
 
 class GaussianAverageQuery(normalized_query.NormalizedQuery):
@@ -147,8 +129,7 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
   def __init__(self,
                l2_norm_clip,
                sum_stddev,
-               denominator,
-               ledger=None):
+               denominator):
     """Initializes the GaussianAverageQuery.
 
     Args:
@@ -158,8 +139,7 @@ class GaussianAverageQuery(normalized_query.NormalizedQuery):
         normalization).
       denominator: The normalization constant (applied after noise is added to
         the sum).
-      ledger: The privacy ledger to which queries should be recorded.
     """
     super(GaussianAverageQuery, self).__init__(
-        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev, ledger),
-        denominator=tf.to_float(denominator))
+        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev),
+        denominator=denominator)
