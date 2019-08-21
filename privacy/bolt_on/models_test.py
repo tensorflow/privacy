@@ -227,8 +227,8 @@ def _cat_dataset(n_samples, input_dim, n_classes, batch_size, generator=False):
     n_samples: number of rows
     input_dim: input dimensionality
     n_classes: output dimensionality
+    batch_size: The desired batch_size
     generator: False for array, True for generator
-    batch_size: The desired batch_size.
 
   Returns:
     X as (n_samples, input_dim), Y as (n_samples, n_outputs)
