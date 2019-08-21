@@ -42,6 +42,14 @@ delta-epsilon privacy in machine learning, some of which can be explored here:
 https://medium.com/apache-mxnet/epsilon-differential-privacy-for-machine-learning-using-mxnet-a4270fe3865e
 https://arxiv.org/pdf/1811.04911.pdf
 
+## Stability
+
+As we are pegged on tensorflow2.0.0, this package may encounter stability
+issues in the ongoing development of this package.
+
+We are aware of issues in model fitting using the BoltOnModel and are actively
+working towards solving these issues.
+
 ## Contacts
 
 In addition to the maintainers of tensorflow/privacy listed in the root
