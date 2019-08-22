@@ -134,7 +134,8 @@ def load_data():
           'using a substitute dataset from the tensorflow_datasets module.')
     train_dataset = tfds.load(name='lm1b/subwords8k',
                               split=tfds.Split.TRAIN,
-                              batch_size=NB_TRAIN)
+                              batch_size=NB_TRAIN,
+                              shuffle_files=True)
     test_dataset = tfds.load(name='lm1b/subwords8k',
                              split=tfds.Split.TEST,
                              batch_size=10000)
