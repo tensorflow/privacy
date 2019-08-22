@@ -227,8 +227,8 @@ def _cat_dataset(n_samples, input_dim, n_classes, batch_size, generator=False):
     n_samples: number of rows
     input_dim: input dimensionality
     n_classes: output dimensionality
+    batch_size: The desired batch_size
     generator: False for array, True for generator
-    batch_size: The desired batch_size.
 
   Returns:
     X as (n_samples, input_dim), Y as (n_samples, n_outputs)
@@ -294,6 +294,12 @@ def _do_fit(n_samples,
     # x = x.batch(batch_size)
     x = x.shuffle(n_samples//2)
     batch_size = None
+    if reset_n_samples:
+      n_samples = None
+    clf.fit_generator(x,
+                      n_samples=n_samples,
+                      noise_distribution=distribution,
+                      epsilon=epsilon)
   else:
     x, y = _cat_dataset(
         n_samples,
@@ -301,15 +307,14 @@ def _do_fit(n_samples,
         n_outputs,
         batch_size,
         generator=generator)
-  if reset_n_samples:
-    n_samples = None
-
-  clf.fit(x,
-          y,
-          batch_size=batch_size,
-          n_samples=n_samples,
-          noise_distribution=distribution,
-          epsilon=epsilon)
+    if reset_n_samples:
+      n_samples = None
+    clf.fit(x,
+            y,
+            batch_size=batch_size,
+            n_samples=n_samples,
+            noise_distribution=distribution,
+            epsilon=epsilon)
   return clf
 
 

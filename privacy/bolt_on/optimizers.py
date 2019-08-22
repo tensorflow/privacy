@@ -139,8 +139,8 @@ class BoltOn(optimizer_v2.OptimizerV2):
                                 'n_samples',
                                 'layers',
                                 'batch_size',
-                                '_is_init'
-                               ]
+                                '_is_init',
+                                ]
     self._internal_optimizer = optimizer
     self.learning_rate = GammaBetaDecreasingStep()  # use the BoltOn Learning
     # rate scheduler, as required for privacy guarantees. This will still need
@@ -250,8 +250,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
           "Neither '{0}' nor '{1}' object has attribute '{2}'"
           "".format(self.__class__.__name__,
                     self._internal_optimizer.__class__.__name__,
-                    name
-                   )
+                    name)
           )
 
   def __setattr__(self, key, value):
@@ -319,8 +318,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
                layers,
                class_weights,
                n_samples,
-               batch_size
-              ):
+               batch_size):
     """Accepts required values for bolton method from context entry point.
 
     Stores them on the optimizer for use throughout fitting.
@@ -347,8 +345,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
                                               _accepted_distributions))
     self.noise_distribution = noise_distribution
     self.learning_rate.initialize(self.loss.beta(class_weights),
-                                  self.loss.gamma()
-                                 )
+                                  self.loss.gamma())
     self.epsilon = tf.constant(epsilon, dtype=self.dtype)
     self.class_weights = tf.constant(class_weights, dtype=self.dtype)
     self.n_samples = tf.constant(n_samples, dtype=self.dtype)
