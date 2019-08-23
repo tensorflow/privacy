@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import unittest
 from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow.python import ops as _ops
@@ -270,7 +271,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       result: the expected output after projection.
     """
     tf.random.set_seed(1)
-    @tf.function
     def project_fn(r):
       loss = TestLoss(1, 1, r)
       bolton = opt.BoltOn(TestOptimizer(), loss)
@@ -358,7 +358,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       {'testcase_name': 'fn: get_noise',
        'fn': 'get_noise',
        'args': [1, 1],
-       'err_msg': 'ust be called from within the optimizer\'s context'},
+       'err_msg': 'This method must be called from within the '
+                  'optimizer\'s context'},
   ])
   def test_not_in_context(self, fn, args, err_msg):
     """Tests that the expected functions raise errors when not in context.
@@ -368,7 +369,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
         args: the arguments for said function
         err_msg: expected error message
     """
-    @tf.function
     def test_run(fn, args):
       loss = TestLoss(1, 1, 1)
       bolton = opt.BoltOn(TestOptimizer(), loss)
@@ -462,7 +462,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       fn: fn to test
       args: arguments to that fn
     """
-    @tf.function
     def test_run(fn, args):
       loss = TestLoss(1, 1, 1)
       bolton = opt.BoltOn(TestOptimizer(), loss)
@@ -577,3 +576,4 @@ class SchedulerTest(keras_parameterized.TestCase):
 
 if __name__ == '__main__':
   test.main()
+  unittest.main()

@@ -42,6 +42,16 @@ delta-epsilon privacy in machine learning, some of which can be explored here:
 https://medium.com/apache-mxnet/epsilon-differential-privacy-for-machine-learning-using-mxnet-a4270fe3865e
 https://arxiv.org/pdf/1811.04911.pdf
 
+## Stability
+
+As we are pegged on tensorflow2.0, this package may encounter stability
+issues in the ongoing development of tensorflow2.0.
+
+This sub-package is currently stable for 2.0.0a0, 2.0.0b0, and 2.0.0.b1 If you
+would like to use this subpackage, please do use one of these versions as we
+cannot guarantee it will work for all latest releases. If you do find issues,
+feel free to raise an issue to the contributors listed below.
+
 ## Contacts
 
 In addition to the maintainers of tensorflow/privacy listed in the root

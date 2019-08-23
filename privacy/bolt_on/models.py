@@ -217,9 +217,11 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
     elif hasattr(generator, '__len__'):
       data_size = len(generator)
     else:
-      data_size = None
-    batch_size = self._validate_or_infer_batch_size(None,
-                                                    steps_per_epoch,
+      raise ValueError('The number of samples could not be determined. '
+                       'Please make sure that if you are using a generator'
+                       'to call this method directly with n_samples kwarg '
+                       'passed.')
+    batch_size = self._validate_or_infer_batch_size(None, steps_per_epoch,
                                                     generator)
     if batch_size is None:
       batch_size = 32
