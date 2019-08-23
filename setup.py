@@ -11,10 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""TensorFlow Privacy library setup file for pip."""
 from setuptools import find_packages
 from setuptools import setup
 
-setup(name='privacy',
+setup(name='tensorflow_privacy',
       version='0.0.1',
       url='https://github.com/tensorflow/privacy',
       license='Apache-2.0',
