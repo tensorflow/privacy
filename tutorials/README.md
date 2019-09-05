@@ -76,6 +76,9 @@ compute the privacy guarantee) are:
 * `noise_multiplier` : The noise_multiplier from your parameters above.
 * `steps` : The number of global steps taken.
 
+A detailed writeup of the theory behind the computation of epsilon and delta
+is available at https://arxiv.org/abs/1908.10530.
+
 ## Expected Output
 
 When the `mnist_dpsgd_tutorial.py` script is run with the default parameters,
