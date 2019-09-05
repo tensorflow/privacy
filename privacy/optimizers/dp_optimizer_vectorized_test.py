@@ -109,7 +109,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
       gradient_op = opt.compute_gradients(self._loss(data0, var0), [var0])
       grads = []
-      for _ in range(1000):
+      for _ in range(5000):
         grads_and_vars = sess.run(gradient_op)
         grads.append(grads_and_vars[0][0])
 
