@@ -86,16 +86,36 @@ batch_size = None  # default, if it cannot be inferred, specify this
 n_samples = None  # default, if it cannot be iferred, specify this
 # privacy parameters
 epsilon = 2
+delta = 0.1
 noise_distribution = 'laplace'
 
 bolt.fit(x,
          y,
          epsilon=epsilon,
+         delta = delta,
          class_weight=class_weight,
          batch_size=batch_size,
          n_samples=n_samples,
          noise_distribution=noise_distribution,
          epochs=2)
+
+# -------
+# Run the optimization with a different noise distribution (i.e. gaussian)
+# -------
+epsilon = 0.1
+delta = 0.1
+noise_distribution = 'gaussian'
+
+bolt.fit(x,
+         y,
+         epsilon=epsilon,
+         delta = delta,
+         class_weight=class_weight,
+         batch_size=batch_size,
+         n_samples=n_samples,
+         noise_distribution=noise_distribution,
+         epochs=2)
+
 # -------
 # We may also train a generator object, or try different optimizers and loss
 # functions. Below, we will see that we must pass the number of samples as the
@@ -109,10 +129,12 @@ batch_size = None  # default, if it cannot be inferred, specify this
 n_samples = None  # default, if it cannot be iferred, specify this
 # privacy parameters
 epsilon = 2
+delta = 0.1
 noise_distribution = 'laplace'
 try:
   bolt.fit(generator,
            epsilon=epsilon,
+           delta=delta,
            class_weight=class_weight,
            batch_size=batch_size,
            n_samples=n_samples,
@@ -126,10 +148,14 @@ except ValueError as e:
 n_samples = 20
 bolt.fit_generator(generator,
                    epsilon=epsilon,
+                   delta=delta,
                    class_weight=class_weight,
                    n_samples=n_samples,
                    noise_distribution=noise_distribution,
                    verbose=0)
+
+
+
 # -------
 # You don't have to use the BoltOn model to use the BoltOn method.
 # There are only a few requirements:
@@ -179,6 +205,7 @@ batch_size = 5
 with optimizer(
     noise_distribution=noise_distribution,
     epsilon=epsilon,
+    delta=delta,
     layers=test_model.layers,
     class_weights=class_weights,
     n_samples=n_samples,
