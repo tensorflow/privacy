@@ -220,7 +220,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
-    bolton.delta = 0.1
     bolton.noise_distribution = 'laplace'
     bolton.n_outputs = 1
     bolton.n_samples = 1
@@ -281,7 +280,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.layers = model.layers
       bolton.epsilon = 2
-      bolton.delta = 0.1
       bolton.noise_distribution = 'laplace'
       bolton.n_outputs = 1
       bolton.n_samples = 1
@@ -294,16 +292,15 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'normal values',
        'epsilon': 2,
-       'delta':0.1,
        'noise': 'laplace',
        'class_weights': 1},
   ])
-  def test_context_manager(self, noise, epsilon, delta, class_weights):
+  def test_context_manager(self, noise, epsilon, class_weights):
     """Tests the context manager functionality of the optimizer.
 
     Args:
       noise: noise distribution to pick
-      epsilon, delta: epsilon, delta privacy parameter to use
+      epsilon: epsilon privacy parameter to use
       class_weights: class_weights to use
     """
     @tf.function
@@ -315,7 +312,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, delta, model.layers, class_weights, 1, 1) as _:
+      with bolton(noise, epsilon, model.layers, class_weights, 1, 1) as _:
         pass
       return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
     epsilon = test_run()
@@ -324,26 +321,14 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'invalid noise',
        'epsilon': 1,
-       'delta': 0.1,
        'noise': 'not_valid',
        'err_msg': 'Detected noise distribution: not_valid not one of:'},
       {'testcase_name': 'invalid epsilon',
        'epsilon': -1,
-       'delta': 0.1,
        'noise': 'laplace',
        'err_msg': 'Detected epsilon: -1. Valid range is 0 < epsilon <inf'},
-      {'testcase_name': 'invalid epsilon for delta',
-       'epsilon': 1,
-       'delta': 0.1,
-       'noise': 'gaussian',
-       'err_msg': 'Detected epsilon: 1. Valid range for gaussian noise is 0 < epsilon < 1'},
-      {'testcase_name': 'invalid delta',
-       'epsilon': 0.1,
-       'delta': 1,
-       'noise': 'gaussian',
-       'err_msg': 'Detected delta: 1. Valid range for gaussian noise is 0 < delta < 1'},
   ])
-  def test_context_domains(self, noise, epsilon, delta, err_msg):
+  def test_context_domains(self, noise, epsilon, err_msg):
     """Tests the context domains.
 
     Args:
@@ -354,7 +339,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
 
     @tf.function
-    def test_run(noise, epsilon, delta):
+    def test_run(noise, epsilon):
       loss = TestLoss(1, 1, 1)
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
@@ -362,10 +347,10 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, delta, model.layers, 1, 1, 1) as _:
+      with bolton(noise, epsilon, model.layers, 1, 1, 1) as _:
         pass
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
-      test_run(noise, epsilon, delta)
+      test_run(noise, epsilon)
 
   @parameterized.named_parameters([
       {'testcase_name': 'fn: get_noise',
@@ -449,7 +434,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
-    bolton.delta = 0.1
     bolton.noise_distribution = 'laplace'
     bolton.n_outputs = 1
     bolton.n_samples = 1
@@ -487,7 +471,6 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.noise_distribution = 'laplace'
       bolton.epsilon = 1
-      bolton.delta = 0.1
       bolton.layers = model.layers
       bolton.class_weights = 1
       bolton.n_samples = 1

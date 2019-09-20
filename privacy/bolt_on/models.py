@@ -113,7 +113,6 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
           class_weight=None,
           n_samples=None,
           epsilon=2,
-          delta=0.1,
           noise_distribution='laplace',
           steps_per_epoch=None,
           **kwargs):  # pylint: disable=arguments-differ
@@ -134,7 +133,7 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       n_samples: the number of individual samples in x.
-      epsilon, delta: privacy parameters, which trades off between utility an privacy.
+      epsilon: privacy parameter, which trades off between utility an privacy.
                 See the bolt-on paper for more description.
       noise_distribution: the distribution to pull noise from.
       steps_per_epoch:
@@ -170,7 +169,6 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
                        'this in using n_samples.')
     with self.optimizer(noise_distribution,
                         epsilon,
-                        delta,
                         self.layers,
                         class_weight_,
                         data_size,
@@ -188,7 +186,6 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
                     class_weight=None,
                     noise_distribution='laplace',
                     epsilon=2,
-                    delta=0.1,
                     n_samples=None,
                     steps_per_epoch=None,
                     **kwargs):  # pylint: disable=arguments-differ
@@ -202,7 +199,7 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       noise_distribution: the distribution to get noise from.
-      epsilon, delta: privacy parameter, which trades off utility and privacy. See
+      epsilon: privacy parameter, which trades off utility and privacy. See
                 BoltOn paper for more description.
       n_samples: number of individual samples in x
       steps_per_epoch: Number of steps per training epoch, see super.
@@ -231,7 +228,6 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
       batch_size = 32
     with self.optimizer(noise_distribution,
                         epsilon,
-                        delta,
                         self.layers,
                         class_weight,
                         data_size,
