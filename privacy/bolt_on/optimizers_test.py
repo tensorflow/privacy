@@ -294,7 +294,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'normal values',
        'epsilon': 2,
-       'delta':0.1,
+       'delta': 0.1,
        'noise': 'laplace',
        'class_weights': 1},
   ])
@@ -315,7 +315,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, delta, model.layers, class_weights, 1, 1) as _:
+      with bolton(noise, epsilon, delta,
+                  model.layers, class_weights, 1, 1) as _:
         pass
       return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
     epsilon = test_run()
@@ -336,12 +337,14 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'epsilon': 1,
        'delta': 0.1,
        'noise': 'gaussian',
-       'err_msg': 'Detected epsilon: 1. Valid range for gaussian noise is 0 < epsilon < 1'},
+       'err_msg': 'Detected epsilon: 1. Valid range for gaussian noise is '
+                  '0 < epsilon < 1'},
       {'testcase_name': 'invalid delta',
        'epsilon': 0.1,
        'delta': 1,
        'noise': 'gaussian',
-       'err_msg': 'Detected delta: 1. Valid range for gaussian noise is 0 < delta < 1'},
+       'err_msg': 'Detected delta: 1. Valid range for gaussian noise is '
+                  '0 < delta < 1'},
   ])
   def test_context_domains(self, noise, epsilon, delta, err_msg):
     """Tests the context domains.

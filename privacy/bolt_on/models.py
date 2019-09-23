@@ -134,8 +134,8 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       n_samples: the number of individual samples in x.
-      epsilon, delta: privacy parameters, which trades off between utility an privacy.
-                See the bolt-on paper for more description.
+      epsilon, delta: privacy parameter, which trades off utility and privacy.
+                      See the bolt-on paper for more description.
       noise_distribution: the distribution to pull noise from.
       steps_per_epoch:
       **kwargs: kwargs to keras Model.fit. See super.
@@ -202,8 +202,8 @@ class BoltOnModel(Model):  # pylint: disable=abstract-method
       class_weight: the class weights to be used. Can be a scalar or 1D tensor
                     whose dim == n_classes.
       noise_distribution: the distribution to get noise from.
-      epsilon, delta: privacy parameter, which trades off utility and privacy. See
-                BoltOn paper for more description.
+      epsilon, delta: privacy parameter, which trades off utility and privacy.
+                      See BoltOn paper for more description.
       n_samples: number of individual samples in x
       steps_per_epoch: Number of steps per training epoch, see super.
       **kwargs: **kwargs

@@ -224,13 +224,13 @@ class BoltOn(optimizer_v2.OptimizerV2):
                              )
       return unit_vector * gamma
     if distribution == _accepted_distributions[1]:  # gaussian
-      per_class_epsilon = self.epsilon / (output_dim)
-      sigma = l2_sensitivity/per_class_epsilon * tf.math.sqrt(2*tf.math.log(1.25/self.delta))
+      sigma = l2_sensitivity/per_class_epsilon * \
+              tf.math.sqrt(2*tf.math.log(1.25/self.delta))
       noise_vector = tf.random.normal(shape=([output_dim]),
-                                      mean = 0,
-                                      seed = 1,
-                                      stddev = sigma,
-                                      dtype = self.dtype
+                                      mean=0,
+                                      seed=1,
+                                      stddev=sigma,
+                                      dtype=self.dtype
                                       )
       return noise_vector
 
@@ -359,12 +359,14 @@ class BoltOn(optimizer_v2.OptimizerV2):
                        'distributions'.format(noise_distribution,
                                               _accepted_distributions))
     if noise_distribution == _accepted_distributions[1]: #gaussian
-        if epsilon >= 1:
-            raise ValueError('Detected epsilon: {0}. '
-                             'Valid range for gaussian noise is 0 < epsilon < 1'.format(epsilon))
-        if delta <= 0 or delta >= 1:
-            raise ValueError('Detected delta: {0}. '
-                             'Valid range for gaussian noise is 0 < delta < 1'.format(delta))
+      if epsilon >= 1:
+        raise ValueError('Detected epsilon: {0}. '
+                         'Valid range for gaussian noise is '
+                         '0 < epsilon < 1'.format(epsilon))
+      if delta <= 0 or delta >= 1:
+        raise ValueError('Detected delta: {0}. '
+                         'Valid range for gaussian noise is '
+                         '0 < delta < 1'.format(delta))
 
     self.noise_distribution = noise_distribution
     self.learning_rate.initialize(self.loss.beta(class_weights),
