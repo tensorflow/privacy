@@ -30,7 +30,6 @@ from privacy.bolt_on.losses import StrongConvexCategoricalCrossentropy
 from privacy.bolt_on.losses import StrongConvexHuber
 from privacy.bolt_on.losses import StrongConvexMixin
 
-
 @contextmanager
 def captured_output():
   """Capture std_out and std_err within context."""
@@ -41,7 +40,9 @@ def captured_output():
     yield sys.stdout, sys.stderr
   finally:
     sys.stdout, sys.stderr = old_out, old_err
-
+    # must close new_out and new_err in order to re-initialize
+    new_out.close()
+    new_err.close()
 
 class StrongConvexMixinTests(keras_parameterized.TestCase):
   """Tests for the StrongConvexMixin."""
@@ -236,7 +237,7 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
       loss = StrongConvexBinaryCrossentropy(*init_args)
       if fn is not None:
         getattr(loss, fn, lambda *arguments: print('error'))(*args)
-    self.assertRegexMatch(out.getvalue().strip(), [print_res])
+      self.assertRegexMatch(err.getvalue().strip(), [print_res])
 
 class CategoricalCrossesntropyTests(keras_parameterized.TestCase):
   """tests for CategoricalCrossesntropy StrongConvex loss."""
@@ -291,23 +292,23 @@ class CategoricalCrossesntropyTests(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       # [] for compatibility with tensorflow loss calculation
       {'testcase_name': 'both positive',
-       'logits': [10000, 0],
-       'y_true': [1, 0],
+       'logits': [[10000, 0]],
+       'y_true': [[1, 0]],
        'result': 0,
       },
-      {'testcase_name': 'positive gradient negative logits',
-       'logits': [-10000, 0],
-       'y_true': [1, 0],
+      {'testcase_name': 'negative gradient positive logits',
+       'logits': [[-10000, 0]],
+       'y_true': [[1, 0]],
        'result': 10000,
       },
-      {'testcase_name': 'positive gradient positive logits',
-       'logits': [10000, 0],
-       'y_true': [0, 1],
+      {'testcase_name': 'positive gradient negative logits',
+       'logits': [[10000, 0]],
+       'y_true': [[0, 1]],
        'result': 10000,
       },
       {'testcase_name': 'both negative',
-       'logits': [-10000, 0],
-       'y_true': [0, 1],
+       'logits': [[-10000, 0]],
+       'y_true': [[0, 1]],
        'result': 0
       },
   ])
@@ -388,7 +389,7 @@ class CategoricalCrossesntropyTests(keras_parameterized.TestCase):
       loss = StrongConvexCategoricalCrossentropy(*init_args)
       if fn is not None:
         getattr(loss, fn, lambda *arguments: print('error'))(*args)
-    self.assertRegexMatch(out.getvalue().strip(), [print_res])
+      self.assertRegexMatch(err.getvalue().strip(), [print_res])
 
 class HuberTests(keras_parameterized.TestCase):
   """tests for CategoricalCrossesntropy StrongConvex loss."""

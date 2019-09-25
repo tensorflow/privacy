@@ -22,6 +22,7 @@ from tensorflow.python.framework import ops as _ops
 from tensorflow.python.keras import losses
 from tensorflow.python.keras.regularizers import L1L2
 from tensorflow.python.keras.utils import losses_utils
+from absl import logging
 
 class StrongConvexMixin:  # pylint: disable=old-style-class
   """Strong Convex Mixin base class.
@@ -235,9 +236,9 @@ class StrongConvexBinaryCrossentropy(
       dtype: tf datatype to use for tensor conversions.
     """
     if label_smoothing != 0:
-      print("WARNING: The impact of label smoothing on privacy is unknown. "
-            "Use label smoothing at your own risk as it may not "
-            "guarantee privacy.")
+      logging.warning("WARNING: The impact of label smoothing on privacy is unknown. "
+                      "Use label smoothing at your own risk as it may not "
+                      "guarantee privacy.")
 
     if reg_lambda <= 0:
       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
@@ -332,9 +333,10 @@ class StrongConvexCategoricalCrossentropy(
     """
 
     if label_smoothing != 0:
-      print("WARNING: The impact of label smoothing on privacy is unknown."
-            "Use label smoothing at your own risk as it may not "
-            "guarantee privacy.")
+      import sys
+      logging.warning("WARNING: The impact of label smoothing on privacy is unknown."
+                      "Use label smoothing at your own risk as it may not "
+                      "guarantee privacy.")
 
     if reg_lambda <= 0:
       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
