@@ -191,15 +191,29 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       {'testcase_name': 'getattr',
        'fn': '__getattr__',
        'args': ['dtype'],
+       'noise': 'laplace',
        'result': tf.float32,
        'test_attr': None},
       {'testcase_name': 'project_weights_to_r',
        'fn': 'project_weights_to_r',
        'args': ['dtype'],
+       'noise': 'laplace',
+       'result': None,
+       'test_attr': ''},
+      {'testcase_name': 'getattr_g',
+       'fn': '__getattr__',
+       'args': ['dtype'],
+       'noise': 'gaussian',
+       'result': tf.float32,
+       'test_attr': None},
+      {'testcase_name': 'project_weights_to_r_g',
+       'fn': 'project_weights_to_r',
+       'args': ['dtype'],
+       'noise': 'gaussian',
        'result': None,
        'test_attr': ''},
   ])
-  def test_fn(self, fn, args, result, test_attr):
+  def test_fn(self, fn, args, noise, result, test_attr):
     """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
@@ -221,7 +235,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton.layers = model.layers
     bolton.epsilon = 2
     bolton.delta = 0.1
-    bolton.noise_distribution = 'laplace'
+    bolton.noise_distribution = noise
     bolton.n_outputs = 1
     bolton.n_samples = 1
     res = getattr(bolton, fn, None)(*args)
@@ -259,7 +273,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'n_out': 1,
        'result': [[1]]},
   ])
-  def test_project(self, r, shape, n_out, init_value, result):
+  def test_project_laplace(self, r, shape, n_out, init_value, result):
     """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
@@ -292,10 +306,73 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
 
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
+      {'testcase_name': '1 value project to r=1 _g',
+       'r': 1,
+       'init_value': 2,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+      {'testcase_name': '2 value project to r=1 _g',
+       'r': 1,
+       'init_value': 2,
+       'shape': (2,),
+       'n_out': 1,
+       'result': [[0.707107], [0.707107]]},
+      {'testcase_name': '1 value project to r=2 _g',
+       'r': 2,
+       'init_value': 3,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[2]]},
+      {'testcase_name': 'no project _g',
+       'r': 2,
+       'init_value': 1,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+  ])
+  def test_project_gaussian(self, r, shape, n_out, init_value, result):
+    """test that a fn of BoltOn optimizer is working as expected.
+
+    Args:
+      r: Radius value for StrongConvex loss function.
+      shape: input_dimensionality
+      n_out: output dimensionality
+      init_value: the initial value for 'constant' kernel initializer
+      result: the expected output after projection.
+    """
+    tf.random.set_seed(1)
+    def project_fn(r):
+      loss = TestLoss(1, 1, r)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
+      model = TestModel(n_out, shape, init_value)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      bolton._is_init = True  # pylint: disable=protected-access
+      bolton.layers = model.layers
+      bolton.epsilon = 0.1
+      bolton.delta = 0.1
+      bolton.noise_distribution = 'gaussian'
+      bolton.n_outputs = 1
+      bolton.n_samples = 1
+      bolton.project_weights_to_r()
+      return _ops.convert_to_tensor_v2(bolton.layers[0].kernel, tf.float32)
+    res = project_fn(r)
+    self.assertAllClose(res, result)
+
+  @test_util.run_all_in_graph_and_eager_modes
+  @parameterized.named_parameters([
       {'testcase_name': 'normal values',
        'epsilon': 2,
        'delta': 0.1,
        'noise': 'laplace',
+       'class_weights': 1},
+      {'testcase_name': 'normal values _g',
+       'epsilon': 0.1,
+       'delta': 0.1,
+       'noise': 'gaussian',
        'class_weights': 1},
   ])
   def test_context_manager(self, noise, epsilon, delta, class_weights):

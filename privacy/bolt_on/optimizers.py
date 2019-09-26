@@ -223,7 +223,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
                               dtype=self.dtype
                              )
       return unit_vector * gamma
-    if distribution == _accepted_distributions[1]:  # gaussian
+    elif distribution == _accepted_distributions[1]:  # gaussian
       sigma = l2_sensitivity/per_class_epsilon * \
               tf.math.sqrt(2*tf.math.log(1.25/self.delta))
       noise_vector = tf.random.normal(shape=([output_dim]),
@@ -234,8 +234,9 @@ class BoltOn(optimizer_v2.OptimizerV2):
                                       )
       return noise_vector
 
-    raise NotImplementedError('Noise distribution: {0} is not '
-                              'a valid distribution'.format(distribution))
+    else:
+      raise NotImplementedError('Noise distribution: {0} is not '
+                                'a valid distribution'.format(distribution))
 
   def from_config(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer."""

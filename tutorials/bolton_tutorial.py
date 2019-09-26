@@ -212,3 +212,19 @@ with optimizer(
     batch_size=batch_size
 ) as _:
   test_model.fit(x, y, batch_size=batch_size, epochs=2)
+
+# test with gaussian noise
+noise_distribution = 'gaussian'
+epsilon = 0.1
+delta = 0.1
+
+with optimizer(
+    noise_distribution=noise_distribution,
+    epsilon=epsilon,
+    delta=delta,
+    layers=test_model.layers,
+    class_weights=class_weights,
+    n_samples=n_samples,
+    batch_size=batch_size
+) as _:
+  test_model.fit(x, y, batch_size=batch_size, epochs=2)
