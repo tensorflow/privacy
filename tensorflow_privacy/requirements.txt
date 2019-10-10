@@ -1,3 +1,0 @@
-tensorflow>=1.13
-mpmath
-scipy>=0.17
