@@ -53,4 +53,5 @@ else:
     from privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
     from privacy.bolt_on.losses import StrongConvexHuber
   except ImportError:
-    print('module `bolt_on` was not found in this version of TF Privacy')
+    # module `bolt_on` not yet available in this version of TF Privacy
+    pass
