@@ -44,10 +44,10 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_datasets as tfds
 
-from privacy.analysis import privacy_ledger
-from privacy.analysis.rdp_accountant import compute_rdp
-from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.optimizers import dp_optimizer
+from tensorflow_privacy.privacy.analysis import privacy_ledger
+from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
+from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '

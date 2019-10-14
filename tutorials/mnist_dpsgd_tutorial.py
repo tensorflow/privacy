@@ -26,10 +26,10 @@ from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
-from privacy.analysis import privacy_ledger
-from privacy.analysis.rdp_accountant import compute_rdp_from_ledger
-from privacy.analysis.rdp_accountant import get_privacy_spent
-from privacy.optimizers import dp_optimizer
+from tensorflow_privacy.privacy.analysis import privacy_ledger
+from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_from_ledger
+from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
   GradientDescentOptimizer = tf.train.GradientDescentOptimizer
