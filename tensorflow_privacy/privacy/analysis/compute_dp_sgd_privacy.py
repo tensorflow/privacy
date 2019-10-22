@@ -52,11 +52,6 @@ flags.DEFINE_float('noise_multiplier', None, 'Noise multiplier for DP-SGD')
 flags.DEFINE_float('epochs', None, 'Number of epochs (may be fractional)')
 flags.DEFINE_float('delta', 1e-6, 'Target delta')
 
-flags.mark_flag_as_required('N')
-flags.mark_flag_as_required('batch_size')
-flags.mark_flag_as_required('noise_multiplier')
-flags.mark_flag_as_required('epochs')
-
 
 def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
   """Compute and print results of DP-SGD analysis."""
@@ -79,18 +74,30 @@ def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
     print('The privacy estimate is likely to be improved by expanding '
           'the set of orders.')
 
+  return eps, opt_order
+
+
+def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
+  """Compute epsilon based on the given hyperparameters."""
+  q = batch_size / n  # q - the sampling ratio.
+  if q > 1:
+    raise app.UsageError('n must be larger than the batch size.')
+  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
+            list(range(5, 64)) + [128, 256, 512])
+  steps = int(math.ceil(epochs * n / batch_size))
+
+  return apply_dp_sgd_analysis(q, noise_multiplier, steps, orders, delta)
+
 
 def main(argv):
   del argv  # argv is not used.
 
-  q = FLAGS.batch_size / FLAGS.N  # q - the sampling ratio.
-  if q > 1:
-    raise app.UsageError('N must be larger than the batch size.')
-  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
-            list(range(5, 64)) + [128, 256, 512])
-  steps = int(math.ceil(FLAGS.epochs * FLAGS.N / FLAGS.batch_size))
-
-  apply_dp_sgd_analysis(q, FLAGS.noise_multiplier, steps, orders, FLAGS.delta)
+  assert FLAGS.N is not None, 'Flag N is missing.'
+  assert FLAGS.batch_size is not None, 'Flag batch_size is missing.'
+  assert FLAGS.noise_multiplier is not None, 'Flag noise_multiplier is missing.'
+  assert FLAGS.epochs is not None, 'Flag epochs is missing.'
+  compute_dp_sgd_privacy(FLAGS.N, FLAGS.batch_size, FLAGS.noise_multiplier,
+                         FLAGS.epochs, FLAGS.delta)
 
 
 if __name__ == '__main__':
