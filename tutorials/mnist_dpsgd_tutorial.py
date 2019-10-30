@@ -21,8 +21,6 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 
-from distutils.version import LooseVersion
-
 import numpy as np
 import tensorflow as tf
 
@@ -31,10 +29,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_from_
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
 FLAGS = flags.FLAGS
 
@@ -97,7 +92,7 @@ def cnn_model_fn(features, labels, mode):
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
       labels=labels, logits=logits)
   # Define mean of loss across minibatch (for reporting through tf.Estimator).
-  scalar_loss = tf.reduce_mean(vector_loss)
+  scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
 
   # Configure the training op (for TRAIN mode).
   if mode == tf.estimator.ModeKeys.TRAIN:
@@ -125,7 +120,7 @@ def cnn_model_fn(features, labels, mode):
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       training_hooks = []
       opt_loss = scalar_loss
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     # In the following, we pass the mean of the loss (scalar_loss) rather than
     # the vector_loss because tf.estimator requires a scalar loss. This is only
@@ -140,7 +135,7 @@ def cnn_model_fn(features, labels, mode):
   elif mode == tf.estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.metrics.accuracy(
+            tf.compat.v1.metrics.accuracy(
                 labels=labels,
                 predictions=tf.argmax(input=logits, axis=1))
     }
@@ -173,7 +168,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
@@ -185,13 +180,13 @@ def main(unused_argv):
                                             model_dir=FLAGS.model_dir)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': train_data},
       y=train_labels,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': test_data},
       y=test_labels,
       num_epochs=1,

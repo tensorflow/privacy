@@ -25,7 +25,7 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import nested_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 class PrivacyLedgerTest(tf.test.TestCase):
@@ -63,8 +63,8 @@ class PrivacyLedgerTest(tf.test.TestCase):
         query, population_size, selection_probability)
 
     # First sample.
-    tf.assign(population_size, 10)
-    tf.assign(selection_probability, 0.1)
+    tf.compat.v1.assign(population_size, 10)
+    tf.compat.v1.assign(selection_probability, 0.1)
     test_utils.run_query(query, [record1, record2])
 
     expected_queries = [[10.0, 0.0]]
@@ -75,8 +75,8 @@ class PrivacyLedgerTest(tf.test.TestCase):
     self.assertAllClose(sample_1.queries, expected_queries)
 
     # Second sample.
-    tf.assign(population_size, 20)
-    tf.assign(selection_probability, 0.2)
+    tf.compat.v1.assign(population_size, 20)
+    tf.compat.v1.assign(selection_probability, 0.2)
     test_utils.run_query(query, [record1, record2])
 
     formatted = query.ledger.get_formatted_ledger_eager()
@@ -106,8 +106,8 @@ class PrivacyLedgerTest(tf.test.TestCase):
     record2 = [5.0, [1.0, 2.0]]
 
     # First sample.
-    tf.assign(population_size, 10)
-    tf.assign(selection_probability, 0.1)
+    tf.compat.v1.assign(population_size, 10)
+    tf.compat.v1.assign(selection_probability, 0.1)
     test_utils.run_query(query, [record1, record2])
 
     expected_queries = [[4.0, 2.0], [5.0, 1.0]]
@@ -118,8 +118,8 @@ class PrivacyLedgerTest(tf.test.TestCase):
     self.assertAllClose(sorted(sample_1.queries), sorted(expected_queries))
 
     # Second sample.
-    tf.assign(population_size, 20)
-    tf.assign(selection_probability, 0.2)
+    tf.compat.v1.assign(population_size, 20)
+    tf.compat.v1.assign(selection_probability, 0.2)
     test_utils.run_query(query, [record1, record2])
 
     formatted = query.ledger.get_formatted_ledger_eager()

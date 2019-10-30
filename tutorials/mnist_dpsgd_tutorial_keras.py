@@ -19,8 +19,7 @@ from __future__ import print_function
 
 from absl import app
 from absl import flags
-
-from distutils.version import LooseVersion
+from absl import logging
 
 import numpy as np
 import tensorflow as tf
@@ -29,10 +28,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -92,7 +88,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logging.set_verbosity(logging.INFO)
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
@@ -125,7 +121,7 @@ def main(unused_argv):
         learning_rate=FLAGS.learning_rate)
     # Compute vector of per-example loss rather than its mean over a minibatch.
     loss = tf.keras.losses.CategoricalCrossentropy(
-        from_logits=True, reduction=tf.losses.Reduction.NONE)
+        from_logits=True, reduction=tf.compat.v1.losses.Reduction.NONE)
   else:
     optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
     loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)

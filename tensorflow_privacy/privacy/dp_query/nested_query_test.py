@@ -20,7 +20,6 @@ from __future__ import print_function
 
 
 from absl.testing import parameterized
-from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
@@ -28,10 +27,6 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import nested_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 _basic_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
 
@@ -127,7 +122,7 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       noised_averages = []
       for _ in range(1000):
-        noised_averages.append(nest.flatten(sess.run(query_result)))
+        noised_averages.append(tf.nest.flatten(sess.run(query_result)))
 
       result_stddev = np.std(noised_averages, 0)
       avg_stddev = sum_stddev / denominator

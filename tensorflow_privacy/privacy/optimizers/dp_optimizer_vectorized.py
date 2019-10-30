@@ -17,33 +17,22 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from distutils.version import LooseVersion
+from absl import logging
+
 import tensorflow as tf
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-  AdagradOptimizer = tf.train.AdagradOptimizer
-  AdamOptimizer = tf.train.AdamOptimizer
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-  parent_code = tf.train.Optimizer.compute_gradients.__code__
-  GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
-else:
-  nest = tf.nest
-  AdagradOptimizer = tf.optimizers.Adagrad
-  AdamOptimizer = tf.optimizers.Adam
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
-  parent_code = tf.optimizers.Optimizer._compute_gradients.__code__  # pylint: disable=protected-access
-  GATE_OP = None  # pylint: disable=invalid-name
+AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
+AdamOptimizer = tf.compat.v1.train.AdamOptimizer
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+parent_code = tf.compat.v1.train.Optimizer.compute_gradients.__code__
+GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
 
 
 def make_vectorized_optimizer_class(cls):
   """Constructs a vectorized DP optimizer class from an existing one."""
-  if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-    child_code = cls.compute_gradients.__code__
-  else:
-    child_code = cls._compute_gradients.__code__  # pylint: disable=protected-access
+  child_code = cls.compute_gradients.__code__
   if child_code is not parent_code:
-    tf.logging.warning(
+    logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
         'make_optimizer_class() does not interfere with overridden version.',
@@ -89,7 +78,7 @@ def make_vectorized_optimizer_class(cls):
         if gradient_tape:
           raise ValueError('When in graph mode, a tape should not be passed.')
 
-        batch_size = tf.shape(loss)[0]
+        batch_size = tf.shape(input=loss)[0]
         if self._num_microbatches is None:
           self._num_microbatches = batch_size
 
@@ -101,12 +90,12 @@ def make_vectorized_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.trainable_variables() + tf.get_collection(
-                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.compat.v1.trainable_variables() + tf.compat.v1.get_collection(
+                  tf.compat.v1.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         def process_microbatch(microbatch_loss):
           """Compute clipped grads for one microbatch."""
-          microbatch_loss = tf.reduce_mean(microbatch_loss)
+          microbatch_loss = tf.reduce_mean(input_tensor=microbatch_loss)
           grads, _ = zip(*super(DPOptimizerClass, self).compute_gradients(
               microbatch_loss,
               var_list,
@@ -122,26 +111,28 @@ def make_vectorized_optimizer_class(cls):
           # Here, we use TF primitives rather than the built-in
           # tf.clip_by_global_norm() so that operations can be vectorized
           # across microbatches.
-          grads_flat = nest.flatten(grads_list)
-          squared_l2_norms = [tf.reduce_sum(tf.square(g)) for g in grads_flat]
+          grads_flat = tf.nest.flatten(grads_list)
+          squared_l2_norms = [
+              tf.reduce_sum(input_tensor=tf.square(g)) for g in grads_flat
+          ]
           global_norm = tf.sqrt(tf.add_n(squared_l2_norms))
           div = tf.maximum(global_norm / self._l2_norm_clip, 1.)
           clipped_flat = [g / div for g in grads_flat]
-          clipped_grads = nest.pack_sequence_as(grads_list, clipped_flat)
+          clipped_grads = tf.nest.pack_sequence_as(grads_list, clipped_flat)
           return clipped_grads
 
         clipped_grads = tf.vectorized_map(process_microbatch, microbatch_losses)
 
         def reduce_noise_normalize_batch(stacked_grads):
-          summed_grads = tf.reduce_sum(stacked_grads, axis=0)
+          summed_grads = tf.reduce_sum(input_tensor=stacked_grads, axis=0)
           noise_stddev = self._l2_norm_clip * self._noise_multiplier
-          noise = tf.random.normal(tf.shape(summed_grads),
-                                   stddev=noise_stddev)
+          noise = tf.random.normal(
+              tf.shape(input=summed_grads), stddev=noise_stddev)
           noised_grads = summed_grads + noise
           return noised_grads / tf.cast(self._num_microbatches, tf.float32)
 
-        final_grads = nest.map_structure(reduce_noise_normalize_batch,
-                                         clipped_grads)
+        final_grads = tf.nest.map_structure(reduce_noise_normalize_batch,
+                                            clipped_grads)
 
         return list(zip(final_grads, var_list))
 

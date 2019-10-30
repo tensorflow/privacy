@@ -27,11 +27,6 @@ import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import normalized_query
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
-
 
 class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for Gaussian sum queries.
@@ -70,7 +65,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     return global_state.l2_norm_clip
 
   def initial_sample_state(self, template):
-    return nest.map_structure(
+    return tf.nest.map_structure(
         dp_query.zeros_like, template)
 
   def preprocess_record_impl(self, params, record):
@@ -86,9 +81,9 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
         before clipping.
     """
     l2_norm_clip = params
-    record_as_list = nest.flatten(record)
+    record_as_list = tf.nest.flatten(record)
     clipped_as_list, norm = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
-    return nest.pack_sequence_as(record, clipped_as_list), norm
+    return tf.nest.pack_sequence_as(record, clipped_as_list), norm
 
   def preprocess_record(self, params, record):
     preprocessed_record, _ = self.preprocess_record_impl(params, record)
@@ -98,11 +93,14 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     """See base class."""
     if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
       def add_noise(v):
-        return v + tf.random_normal(tf.shape(v), stddev=global_state.stddev)
+        return v + tf.random.normal(
+            tf.shape(input=v), stddev=global_state.stddev)
     else:
-      random_normal = tf.random_normal_initializer(stddev=global_state.stddev)
+      random_normal = tf.compat.v1.random_normal_initializer(
+          stddev=global_state.stddev)
+
       def add_noise(v):
-        return v + random_normal(tf.shape(v))
+        return v + random_normal(tf.shape(input=v))
 
     if self._ledger:
       dependencies = [
@@ -112,7 +110,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     else:
       dependencies = []
     with tf.control_dependencies(dependencies):
-      return nest.map_structure(add_noise, sample_state), global_state
+      return tf.nest.map_structure(add_noise, sample_state), global_state
 
 
 class GaussianAverageQuery(normalized_query.NormalizedQuery):

@@ -50,10 +50,10 @@ class TensorBuffer(object):
       raise ValueError('Shape cannot be scalar.')
     shape = [capacity] + shape
 
-    with tf.variable_scope(self._name):
+    with tf.compat.v1.variable_scope(self._name):
       # We need to use a placeholder as the initial value to allow resizing.
-      self._buffer = tf.Variable(
-          initial_value=tf.placeholder_with_default(
+      self._buffer = tf.compat.v1.Variable(
+          initial_value=tf.compat.v1.placeholder_with_default(
               tf.zeros(shape, dtype), shape=None),
           trainable=False,
           name='buffer',
@@ -82,38 +82,39 @@ class TensorBuffer(object):
       padding = tf.zeros_like(self._buffer, self._buffer.dtype)
       new_buffer = tf.concat([self._buffer, padding], axis=0)
       if tf.executing_eagerly():
-        with tf.variable_scope(self._name, reuse=True):
-          self._buffer = tf.get_variable(
+        with tf.compat.v1.variable_scope(self._name, reuse=True):
+          self._buffer = tf.compat.v1.get_variable(
               name='buffer',
               dtype=self._dtype,
               initializer=new_buffer,
               trainable=False)
-          return self._buffer, tf.assign(self._capacity,
-                                         tf.multiply(self._capacity, 2))
+          return self._buffer, tf.compat.v1.assign(
+              self._capacity, tf.multiply(self._capacity, 2))
       else:
-        return tf.assign(
+        return tf.compat.v1.assign(
             self._buffer, new_buffer,
-            validate_shape=False), tf.assign(self._capacity,
-                                             tf.multiply(self._capacity, 2))
+            validate_shape=False), tf.compat.v1.assign(
+                self._capacity, tf.multiply(self._capacity, 2))
 
     update_buffer, update_capacity = tf.cond(
-        tf.equal(self._current_size, self._capacity),
-        _double_capacity, lambda: (self._buffer, self._capacity))
+        pred=tf.equal(self._current_size, self._capacity),
+        true_fn=_double_capacity,
+        false_fn=lambda: (self._buffer, self._capacity))
 
     with tf.control_dependencies([update_buffer, update_capacity]):
       with tf.control_dependencies([
-          tf.assert_less(
+          tf.compat.v1.assert_less(
               self._current_size,
               self._capacity,
               message='Appending past end of TensorBuffer.'),
-          tf.assert_equal(
-              tf.shape(value),
-              tf.shape(self._buffer)[1:],
+          tf.compat.v1.assert_equal(
+              tf.shape(input=value),
+              tf.shape(input=self._buffer)[1:],
               message='Appending value of inconsistent shape.')
       ]):
         with tf.control_dependencies(
-            [tf.assign(self._buffer[self._current_size, :], value)]):
-          return tf.assign_add(self._current_size, 1)
+            [tf.compat.v1.assign(self._buffer[self._current_size, :], value)]):
+          return tf.compat.v1.assign_add(self._current_size, 1)
 
   @property
   def values(self):

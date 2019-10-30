@@ -47,13 +47,8 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-from distutils.version import LooseVersion
 
 import tensorflow as tf
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 
 class DPQuery(object):
@@ -206,7 +201,7 @@ class DPQuery(object):
 def zeros_like(arg):
   """A `zeros_like` function that also works for `tf.TensorSpec`s."""
   try:
-    arg = tf.convert_to_tensor(arg)
+    arg = tf.convert_to_tensor(value=arg)
   except TypeError:
     pass
   return tf.zeros(arg.shape, arg.dtype)
@@ -216,10 +211,10 @@ class SumAggregationDPQuery(DPQuery):
   """Base class for DPQueries that aggregate via sum."""
 
   def initial_sample_state(self, template):
-    return nest.map_structure(zeros_like, template)
+    return tf.nest.map_structure(zeros_like, template)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
-    return nest.map_structure(tf.add, sample_state, preprocessed_record)
+    return tf.nest.map_structure(tf.add, sample_state, preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
-    return nest.map_structure(tf.add, sample_state_1, sample_state_2)
+    return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)

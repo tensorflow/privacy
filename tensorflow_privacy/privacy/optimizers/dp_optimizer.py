@@ -17,30 +17,21 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from distutils.version import LooseVersion
+from absl import logging
+
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
-
 
 def make_optimizer_class(cls):
   """Constructs a DP optimizer class from an existing one."""
-  if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-    parent_code = tf.train.Optimizer.compute_gradients.__code__
-    child_code = cls.compute_gradients.__code__
-    GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
-  else:
-    parent_code = tf.optimizers.Optimizer._compute_gradients.__code__  # pylint: disable=protected-access
-    child_code = cls._compute_gradients.__code__  # pylint: disable=protected-access
-    GATE_OP = None  # pylint: disable=invalid-name
+  parent_code = tf.compat.v1.train.Optimizer.compute_gradients.__code__
+  child_code = cls.compute_gradients.__code__
+  GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
   if child_code is not parent_code:
-    tf.logging.warning(
+    logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
         'make_optimizer_class() does not interfere with overridden version.',
@@ -92,7 +83,7 @@ def make_optimizer_class(cls):
 
         vector_loss = loss()
         if self._num_microbatches is None:
-          self._num_microbatches = tf.shape(vector_loss)[0]
+          self._num_microbatches = tf.shape(input=vector_loss)[0]
         sample_state = self._dp_sum_query.initial_sample_state(var_list)
         microbatches_losses = tf.reshape(vector_loss,
                                          [self._num_microbatches, -1])
@@ -101,7 +92,8 @@ def make_optimizer_class(cls):
 
         def process_microbatch(i, sample_state):
           """Process one microbatch (record) with privacy helper."""
-          microbatch_loss = tf.reduce_mean(tf.gather(microbatches_losses, [i]))
+          microbatch_loss = tf.reduce_mean(
+              input_tensor=tf.gather(microbatches_losses, [i]))
           grads = gradient_tape.gradient(microbatch_loss, var_list)
           sample_state = self._dp_sum_query.accumulate_record(
               sample_params, sample_state, grads)
@@ -117,7 +109,7 @@ def make_optimizer_class(cls):
         def normalize(v):
           return v / tf.cast(self._num_microbatches, tf.float32)
 
-        final_grads = nest.map_structure(normalize, grad_sums)
+        final_grads = tf.nest.map_structure(normalize, grad_sums)
 
         grads_and_vars = list(zip(final_grads, var_list))
         return grads_and_vars
@@ -132,7 +124,7 @@ def make_optimizer_class(cls):
         # although that still wouldn't be quite correct because it would be
         # sampling from the dataset without replacement.
         if self._num_microbatches is None:
-          self._num_microbatches = tf.shape(loss)[0]
+          self._num_microbatches = tf.shape(input=loss)[0]
 
         microbatches_losses = tf.reshape(loss, [self._num_microbatches, -1])
         sample_params = (
@@ -141,8 +133,8 @@ def make_optimizer_class(cls):
         def process_microbatch(i, sample_state):
           """Process one microbatch (record) with privacy helper."""
           grads, _ = zip(*super(cls, self).compute_gradients(
-              tf.reduce_mean(tf.gather(microbatches_losses,
-                                       [i])), var_list, gate_gradients,
+              tf.reduce_mean(input_tensor=tf.gather(
+                  microbatches_losses, [i])), var_list, gate_gradients,
               aggregation_method, colocate_gradients_with_ops, grad_loss))
           grads_list = [
               g if g is not None else tf.zeros_like(v)
@@ -154,8 +146,8 @@ def make_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.trainable_variables() + tf.get_collection(
-                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.compat.v1.trainable_variables() + tf.compat.v1.get_collection(
+                  tf.compat.v1.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         sample_state = self._dp_sum_query.initial_sample_state(var_list)
 
@@ -169,7 +161,8 @@ def make_optimizer_class(cls):
           cond_fn = lambda i, _: tf.less(i, self._num_microbatches)
           body_fn = lambda i, state: [tf.add(i, 1), process_microbatch(i, state)]  # pylint: disable=line-too-long
           idx = tf.constant(0)
-          _, sample_state = tf.while_loop(cond_fn, body_fn, [idx, sample_state])
+          _, sample_state = tf.while_loop(
+              cond=cond_fn, body=body_fn, loop_vars=[idx, sample_state])
 
         grad_sums, self._global_state = (
             self._dp_sum_query.get_noised_result(
@@ -178,7 +171,7 @@ def make_optimizer_class(cls):
         def normalize(v):
           return tf.truediv(v, tf.cast(self._num_microbatches, tf.float32))
 
-        final_grads = nest.map_structure(normalize, grad_sums)
+        final_grads = tf.nest.map_structure(normalize, grad_sums)
 
         return list(zip(final_grads, var_list))
 
@@ -220,14 +213,9 @@ def make_gaussian_optimizer_class(cls):
 
   return DPGaussianOptimizerClass
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  AdagradOptimizer = tf.train.AdagradOptimizer
-  AdamOptimizer = tf.train.AdamOptimizer
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  AdagradOptimizer = tf.optimizers.Adagrad
-  AdamOptimizer = tf.optimizers.Adam
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
+AdamOptimizer = tf.compat.v1.train.AdamOptimizer
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
 DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(AdamOptimizer)

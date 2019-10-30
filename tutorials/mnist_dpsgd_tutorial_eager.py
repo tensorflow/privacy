@@ -19,8 +19,6 @@ from __future__ import print_function
 from absl import app
 from absl import flags
 
-from distutils.version import LooseVersion
-
 import numpy as np
 import tensorflow as tf
 
@@ -28,11 +26,8 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-  tf.enable_eager_execution()
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+tf.compat.v1.enable_eager_execution()
 
 flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
                      'train with vanilla SGD.')
@@ -124,7 +119,7 @@ def main(_):
               labels=labels, logits=logits)  # pylint: disable=undefined-loop-variable,cell-var-from-loop
           # If training without privacy, the loss is a scalar not a vector.
           if not FLAGS.dpsgd:
-            loss = tf.reduce_mean(loss)
+            loss = tf.reduce_mean(input_tensor=loss)
           return loss
 
         if FLAGS.dpsgd:
@@ -138,7 +133,7 @@ def main(_):
     # Evaluate the model and print results
     for (_, (images, labels)) in enumerate(eval_dataset.take(-1)):
       logits = mnist_model(images, training=False)
-      correct_preds = tf.equal(tf.argmax(logits, axis=1), labels)
+      correct_preds = tf.equal(tf.argmax(input=logits, axis=1), labels)
     test_accuracy = np.mean(correct_preds.numpy())
     print('Test accuracy after epoch %d is: %.3f' % (epoch, test_accuracy))
 

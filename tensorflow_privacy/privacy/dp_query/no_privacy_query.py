@@ -17,15 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from distutils.version import LooseVersion
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 
 class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
@@ -52,12 +46,12 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
 
   def preprocess_record(self, params, record, weight=1):
     """Multiplies record by weight."""
-    weighted_record = nest.map_structure(lambda t: weight * t, record)
+    weighted_record = tf.nest.map_structure(lambda t: weight * t, record)
     return (weighted_record, tf.cast(weight, tf.float32))
 
   def accumulate_record(self, params, sample_state, record, weight=1):
     """Accumulates record, multiplying by weight."""
-    weighted_record = nest.map_structure(lambda t: weight * t, record)
+    weighted_record = tf.nest.map_structure(lambda t: weight * t, record)
     return self.accumulate_preprocessed_record(
         sample_state, (weighted_record, tf.cast(weight, tf.float32)))
 
@@ -65,6 +59,5 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     """See base class."""
     sum_state, denominator = sample_state
 
-    return (
-        nest.map_structure(lambda t: t / denominator, sum_state),
-        global_state)
+    return (tf.nest.map_structure(lambda t: t / denominator,
+                                  sum_state), global_state)

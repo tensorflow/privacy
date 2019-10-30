@@ -19,17 +19,11 @@ from __future__ import print_function
 
 import collections
 
-from distutils.version import LooseVersion
 import numpy as np
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.analysis import tensor_buffer
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 SampleEntry = collections.namedtuple(  # pylint: disable=invalid-name
     'SampleEntry', ['population_size', 'selection_probability', 'queries'])
@@ -83,7 +77,7 @@ class PrivacyLedger(object):
     if tf.executing_eagerly():
       if tf.equal(selection_probability, 0):
         raise ValueError('Selection probability cannot be 0.')
-      init_capacity = tf.cast(tf.ceil(1 / selection_probability), tf.int32)
+      init_capacity = tf.cast(tf.math.ceil(1 / selection_probability), tf.int32)
     else:
       if selection_probability == 0:
         raise ValueError('Selection probability cannot be 0.')
@@ -102,12 +96,7 @@ class PrivacyLedger(object):
         initial_value=0.0, trainable=False, name='sample_count')
     self._query_count = tf.Variable(
         initial_value=0.0, trainable=False, name='query_count')
-    try:
-      # Newer versions of TF
-      self._cs = tf.CriticalSection()
-    except AttributeError:
-      # Older versions of TF
-      self._cs = tf.contrib.framework.CriticalSection()
+    self._cs = tf.CriticalSection()
 
   def record_sum_query(self, l2_norm_bound, noise_stddev):
     """Records that a query was issued.
@@ -122,7 +111,7 @@ class PrivacyLedger(object):
 
     def _do_record_query():
       with tf.control_dependencies(
-          [tf.assign(self._query_count, self._query_count + 1)]):
+          [tf.compat.v1.assign(self._query_count, self._query_count + 1)]):
         return self._query_buffer.append(
             [self._sample_count, l2_norm_bound, noise_stddev])
 
@@ -131,14 +120,14 @@ class PrivacyLedger(object):
   def finalize_sample(self):
     """Finalizes sample and records sample ledger entry."""
     with tf.control_dependencies([
-        tf.assign(self._sample_var, [
+        tf.compat.v1.assign(self._sample_var, [
             self._population_size, self._selection_probability,
             self._query_count
         ])
     ]):
       with tf.control_dependencies([
-          tf.assign(self._sample_count, self._sample_count + 1),
-          tf.assign(self._query_count, 0)
+          tf.compat.v1.assign(self._sample_count, self._sample_count + 1),
+          tf.compat.v1.assign(self._query_count, 0)
       ]):
         return self._sample_buffer.append(self._sample_var)
 
@@ -246,12 +235,12 @@ class QueryWithLedger(dp_query.DPQuery):
   def get_noised_result(self, sample_state, global_state):
     """Ensures sample is recorded to the ledger and returns noised result."""
     # Ensure sample_state is fully aggregated before calling get_noised_result.
-    with tf.control_dependencies(nest.flatten(sample_state)):
+    with tf.control_dependencies(tf.nest.flatten(sample_state)):
       result, new_global_state = self._query.get_noised_result(
           sample_state, global_state)
     # Ensure inner queries have recorded before finalizing.
-    with tf.control_dependencies(nest.flatten(result)):
+    with tf.control_dependencies(tf.nest.flatten(result)):
       finalize = self._ledger.finalize_sample()
     # Ensure finalizing happens.
     with tf.control_dependencies([finalize]):
-      return nest.map_structure(tf.identity, result), new_global_state
+      return tf.nest.map_structure(tf.identity, result), new_global_state

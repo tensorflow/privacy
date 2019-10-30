@@ -21,15 +21,9 @@ from __future__ import print_function
 
 import collections
 
-from distutils.version import LooseVersion
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 
 class NormalizedQuery(dp_query.DPQuery):
@@ -89,7 +83,7 @@ class NormalizedQuery(dp_query.DPQuery):
     def normalize(v):
       return tf.truediv(v, global_state.denominator)
 
-    return (nest.map_structure(normalize, noised_sum),
+    return (tf.nest.map_structure(normalize, noised_sum),
             self._GlobalState(new_sum_global_state, global_state.denominator))
 
   def merge_sample_states(self, sample_state_1, sample_state_2):

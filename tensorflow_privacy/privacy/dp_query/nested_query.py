@@ -19,15 +19,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from distutils.version import LooseVersion
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  nest = tf.contrib.framework.nest
-else:
-  nest = tf.nest
 
 
 class NestedQuery(dp_query.DPQuery):
@@ -59,7 +53,8 @@ class NestedQuery(dp_query.DPQuery):
   def _map_to_queries(self, fn, *inputs, **kwargs):
     def caller(query, *args):
       return getattr(query, fn)(*args, **kwargs)
-    return nest.map_structure_up_to(
+
+    return tf.contrib.framework.nest.map_structure_up_to(
         self._queries, caller, self._queries, *inputs)
 
   def set_ledger(self, ledger):
@@ -110,7 +105,7 @@ class NestedQuery(dp_query.DPQuery):
         'get_noised_result', sample_state, global_state)
 
     flat_estimates, flat_new_global_states = zip(
-        *nest.flatten_up_to(self._queries, estimates_and_new_global_states))
-    return (
-        nest.pack_sequence_as(self._queries, flat_estimates),
-        nest.pack_sequence_as(self._queries, flat_new_global_states))
+        *tf.contrib.framework.nest.flatten_up_to(
+            self._queries, estimates_and_new_global_states))
+    return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
+            tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
