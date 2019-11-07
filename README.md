@@ -14,7 +14,7 @@ issues currently open.
 ### Dependencies
 
 This library uses [TensorFlow](https://www.tensorflow.org/) to define machine
-learning models. Therefore, installing TensorFlow (>= 1.13) is a pre-requisite.
+learning models. Therefore, installing TensorFlow (>= 1.14) is a pre-requisite.
 You can find instructions [here](https://www.tensorflow.org/install/). For
 better performance, it is also recommended to install TensorFlow with GPU
 support (detailed instructions on how to do this are available in the TensorFlow

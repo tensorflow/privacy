@@ -16,9 +16,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 import tensorflow as tf  # pylint: disable=wrong-import-position
-from privacy.bolt_on import losses  # pylint: disable=wrong-import-position
-from privacy.bolt_on import models  # pylint: disable=wrong-import-position
-from privacy.bolt_on.optimizers import BoltOn  # pylint: disable=wrong-import-position
+from tensorflow_privacy.privacy.bolt_on import losses  # pylint: disable=wrong-import-position
+from tensorflow_privacy.privacy.bolt_on import models  # pylint: disable=wrong-import-position
+from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn  # pylint: disable=wrong-import-position
 # -------
 # First, we will create a binary classification dataset with a single output
 # dimension. The samples for each label are repeated data points at different
