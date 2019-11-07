@@ -192,16 +192,30 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       {'testcase_name': 'getattr',
        'fn': '__getattr__',
        'args': ['dtype'],
+       'noise': 'laplace',
        'result': tf.float32,
        'test_attr': None},
       {'testcase_name': 'project_weights_to_r',
        'fn': 'project_weights_to_r',
        'args': ['dtype'],
+       'noise': 'laplace',
+       'result': None,
+       'test_attr': ''},
+      {'testcase_name': 'getattr_g',
+       'fn': '__getattr__',
+       'args': ['dtype'],
+       'noise': 'gaussian',
+       'result': tf.float32,
+       'test_attr': None},
+      {'testcase_name': 'project_weights_to_r_g',
+       'fn': 'project_weights_to_r',
+       'args': ['dtype'],
+       'noise': 'gaussian',
        'result': None,
        'test_attr': ''},
   ])
 
-  def test_fn(self, fn, args, result, test_attr):
+  def test_fn(self, fn, args, noise, result, test_attr):
     """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
@@ -222,7 +236,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
-    bolton.noise_distribution = 'laplace'
+    bolton.delta = 0.1
+    bolton.noise_distribution = noise
     bolton.n_outputs = 1
     bolton.n_samples = 1
     res = getattr(bolton, fn, None)(*args)
@@ -260,7 +275,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
        'n_out': 1,
        'result': [[1]]},
   ])
-  def test_project(self, r, shape, n_out, init_value, result):
+  def test_project_laplace(self, r, shape, n_out, init_value, result):
     """test that a fn of BoltOn optimizer is working as expected.
 
     Args:
@@ -282,7 +297,66 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.layers = model.layers
       bolton.epsilon = 2
+      bolton.delta = 0.1
       bolton.noise_distribution = 'laplace'
+      bolton.n_outputs = 1
+      bolton.n_samples = 1
+      bolton.project_weights_to_r()
+      return _ops.convert_to_tensor_v2(bolton.layers[0].kernel, tf.float32)
+    res = project_fn(r)
+    self.assertAllClose(res, result)
+
+  @test_util.run_all_in_graph_and_eager_modes
+  @parameterized.named_parameters([
+      {'testcase_name': '1 value project to r=1 _g',
+       'r': 1,
+       'init_value': 2,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+      {'testcase_name': '2 value project to r=1 _g',
+       'r': 1,
+       'init_value': 2,
+       'shape': (2,),
+       'n_out': 1,
+       'result': [[0.707107], [0.707107]]},
+      {'testcase_name': '1 value project to r=2 _g',
+       'r': 2,
+       'init_value': 3,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[2]]},
+      {'testcase_name': 'no project _g',
+       'r': 2,
+       'init_value': 1,
+       'shape': (1,),
+       'n_out': 1,
+       'result': [[1]]},
+  ])
+  def test_project_gaussian(self, r, shape, n_out, init_value, result):
+    """test that a fn of BoltOn optimizer is working as expected.
+
+    Args:
+      r: Radius value for StrongConvex loss function.
+      shape: input_dimensionality
+      n_out: output dimensionality
+      init_value: the initial value for 'constant' kernel initializer
+      result: the expected output after projection.
+    """
+    tf.random.set_seed(1)
+    def project_fn(r):
+      loss = TestLoss(1, 1, r)
+      bolton = opt.BoltOn(TestOptimizer(), loss)
+      model = TestModel(n_out, shape, init_value)
+      model.compile(bolton, loss)
+      model.layers[0].kernel = \
+        model.layers[0].kernel_initializer((model.layer_input_shape[0],
+                                            model.n_outputs))
+      bolton._is_init = True  # pylint: disable=protected-access
+      bolton.layers = model.layers
+      bolton.epsilon = 0.1
+      bolton.delta = 0.1
+      bolton.noise_distribution = 'gaussian'
       bolton.n_outputs = 1
       bolton.n_samples = 1
       bolton.project_weights_to_r()
@@ -294,15 +368,21 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'normal values',
        'epsilon': 2,
+       'delta': 0.1,
        'noise': 'laplace',
        'class_weights': 1},
+      {'testcase_name': 'normal values _g',
+       'epsilon': 0.1,
+       'delta': 0.1,
+       'noise': 'gaussian',
+       'class_weights': 1},
   ])
-  def test_context_manager(self, noise, epsilon, class_weights):
+  def test_context_manager(self, noise, epsilon, delta, class_weights):
     """Tests the context manager functionality of the optimizer.
 
     Args:
       noise: noise distribution to pick
-      epsilon: epsilon privacy parameter to use
+      epsilon, delta: epsilon, delta privacy parameter to use
       class_weights: class_weights to use
     """
     @tf.function
@@ -314,7 +394,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, model.layers, class_weights, 1, 1) as _:
+      with bolton(noise, epsilon, delta,
+                  model.layers, class_weights, 1, 1) as _:
         pass
       return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
     epsilon = test_run()
@@ -323,14 +404,28 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
   @parameterized.named_parameters([
       {'testcase_name': 'invalid noise',
        'epsilon': 1,
+       'delta': 0.1,
        'noise': 'not_valid',
        'err_msg': 'Detected noise distribution: not_valid not one of:'},
       {'testcase_name': 'invalid epsilon',
        'epsilon': -1,
+       'delta': 0.1,
        'noise': 'laplace',
        'err_msg': 'Detected epsilon: -1. Valid range is 0 < epsilon <inf'},
+      {'testcase_name': 'invalid epsilon for delta',
+       'epsilon': 1,
+       'delta': 0.1,
+       'noise': 'gaussian',
+       'err_msg': 'Detected epsilon: 1. Valid range for gaussian noise is '
+                  '0 < epsilon < 1'},
+      {'testcase_name': 'invalid delta',
+       'epsilon': 0.1,
+       'delta': 1,
+       'noise': 'gaussian',
+       'err_msg': 'Detected delta: 1. Valid range for gaussian noise is '
+                  '0 < delta < 1'},
   ])
-  def test_context_domains(self, noise, epsilon, err_msg):
+  def test_context_domains(self, noise, epsilon, delta, err_msg):
     """Tests the context domains.
 
     Args:
@@ -341,7 +436,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     """
 
     @tf.function
-    def test_run(noise, epsilon):
+    def test_run(noise, epsilon, delta):
       loss = TestLoss(1, 1, 1)
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
@@ -349,10 +444,10 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       model.layers[0].kernel = \
         model.layers[0].kernel_initializer((model.layer_input_shape[0],
                                             model.n_outputs))
-      with bolton(noise, epsilon, model.layers, 1, 1, 1) as _:
+      with bolton(noise, epsilon, delta, model.layers, 1, 1, 1) as _:
         pass
     with self.assertRaisesRegexp(ValueError, err_msg):  # pylint: disable=deprecated-method
-      test_run(noise, epsilon)
+      test_run(noise, epsilon, delta)
 
   @parameterized.named_parameters([
       {'testcase_name': 'fn: get_noise',
@@ -436,6 +531,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
+    bolton.delta = 0.1
     bolton.noise_distribution = 'laplace'
     bolton.n_outputs = 1
     bolton.n_samples = 1
@@ -473,6 +569,7 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.noise_distribution = 'laplace'
       bolton.epsilon = 1
+      bolton.delta = 0.1
       bolton.layers = model.layers
       bolton.class_weights = 1
       bolton.n_samples = 1
