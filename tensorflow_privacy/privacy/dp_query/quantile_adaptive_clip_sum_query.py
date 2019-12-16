@@ -66,7 +66,8 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
       target_unclipped_quantile,
       learning_rate,
       clipped_count_stddev,
-      expected_num_records):
+      expected_num_records,
+      geometric_update=False):
     """Initializes the QuantileAdaptiveClipSumQuery.
 
     Args:
@@ -84,6 +85,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         should be about 0.5 for reasonable privacy.
       expected_num_records: The expected number of records per round, used to
         estimate the clipped count quantile.
+      geometric_update: If True, use geometric updating of clip.
     """
     self._initial_l2_norm_clip = initial_l2_norm_clip
     self._noise_multiplier = noise_multiplier
@@ -106,6 +108,8 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
         l2_norm_clip=0.5,
         sum_stddev=clipped_count_stddev,
         denominator=expected_num_records)
+
+    self._geometric_update = geometric_update
 
   def set_ledger(self, ledger):
     """See base class."""
@@ -214,8 +218,12 @@ class QuantileAdaptiveClipSumQuery(dp_query.DPQuery):
     # the true quantile matches the target.
     loss_grad = unclipped_quantile - global_state.target_unclipped_quantile
 
-    new_l2_norm_clip = gs.l2_norm_clip - global_state.learning_rate * loss_grad
-    new_l2_norm_clip = tf.maximum(0.0, new_l2_norm_clip)
+    update = global_state.learning_rate * loss_grad
+
+    if self._geometric_update:
+      new_l2_norm_clip = gs.l2_norm_clip * tf.math.exp(-update)
+    else:
+      new_l2_norm_clip = tf.math.maximum(0.0, gs.l2_norm_clip - update)
 
     new_sum_stddev = new_l2_norm_clip * global_state.noise_multiplier
     new_sum_query_global_state = self._sum_query.make_global_state(

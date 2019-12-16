@@ -127,6 +127,7 @@ py_test(
     deps = [
         ":quantile_adaptive_clip_sum_query",
         ":test_utils",
+        "//third_party/py/absl/testing:parameterized",
         "//third_party/py/numpy",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/analysis:privacy_ledger",
