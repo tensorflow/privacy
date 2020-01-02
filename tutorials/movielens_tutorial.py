@@ -30,7 +30,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-from privacy_accountants import *
+from GDprivacy_accountants import *
 
 #### FLAGS
 tf.flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '

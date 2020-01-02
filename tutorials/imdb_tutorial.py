@@ -27,7 +27,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-from privacy_accountants import *
+from GDprivacy_accountants import *
 
 from keras.preprocessing import sequence
 #### FLAGS
