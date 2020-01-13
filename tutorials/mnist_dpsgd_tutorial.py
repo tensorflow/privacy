@@ -60,11 +60,21 @@ class EpsilonPrintingTrainingHook(tf.estimator.SessionRunHook):
     self._samples, self._queries = ledger.get_unformatted_ledger()
 
   def end(self, session):
+
+    # Any RDP order (for order > 1) corresponds to one epsilon value. We
+    # enumerate through a few orders and pick the one that gives lowest epsilon.
+    # The variable orders may be extended for different use cases. Usually, the
+    # search is set to be finer-grained for small orders and coarser-grained for
+    # larger orders.
     orders = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
     samples = session.run(self._samples)
     queries = session.run(self._queries)
     formatted_ledger = privacy_ledger.format_ledger(samples, queries)
     rdp = compute_rdp_from_ledger(formatted_ledger, orders)
+
+    # It is recommended that delta is o(1/dataset_size). In the case of MNIST,
+    # dataset_size is 60000, so we set delta to be 1e-5. For larger datasets,
+    # delta should be set smaller.
     eps = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
     print('For delta=1e-5, the current epsilon is: %.2f' % eps)
 
