@@ -88,8 +88,8 @@ py_library(
     srcs = ["nested_query.py"],
     deps = [
         ":dp_query",
-        "//third_party/py/distutils",
         "//third_party/py/tensorflow",
+        "//third_party/py/tree",
     ],
 )
 
