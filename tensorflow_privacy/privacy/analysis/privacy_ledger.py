@@ -20,7 +20,7 @@ from __future__ import print_function
 import collections
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.analysis import tensor_buffer
 from tensorflow_privacy.privacy.dp_query import dp_query

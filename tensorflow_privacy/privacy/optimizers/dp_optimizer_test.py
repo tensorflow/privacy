@@ -20,7 +20,7 @@ from __future__ import print_function
 from absl.testing import parameterized
 import mock
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import gaussian_query

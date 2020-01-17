@@ -17,9 +17,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.python.keras.optimizer_v2 import optimizer_v2
-from tensorflow.python.ops import math_ops
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python.keras.optimizer_v2 import optimizer_v2
+from tensorflow.compat.v1.python.ops import math_ops
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
 
 _accepted_distributions = ['laplace']  # implemented distributions for noising

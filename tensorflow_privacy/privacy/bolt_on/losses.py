@@ -17,12 +17,12 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import tensorflow as tf
-from tensorflow.python.framework import ops as _ops
-from tensorflow.python.keras import losses
-from tensorflow.python.keras.regularizers import L1L2
-from tensorflow.python.keras.utils import losses_utils
-from tensorflow.python.platform import tf_logging as logging
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python.framework import ops as _ops
+from tensorflow.compat.v1.python.keras import losses
+from tensorflow.compat.v1.python.keras.regularizers import L1L2
+from tensorflow.compat.v1.python.keras.utils import losses_utils
+from tensorflow.compat.v1.python.platform import tf_logging as logging
 
 
 class StrongConvexMixin:  # pylint: disable=old-style-class

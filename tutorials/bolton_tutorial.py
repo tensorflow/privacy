@@ -15,7 +15,7 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import tensorflow as tf  # pylint: disable=wrong-import-position
+import tensorflow.compat.v1 as tf  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on import losses  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on import models  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn  # pylint: disable=wrong-import-position

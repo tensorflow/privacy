@@ -19,16 +19,16 @@ from __future__ import print_function
 
 import unittest
 from absl.testing import parameterized
-import tensorflow as tf
-from tensorflow.python import ops as _ops
-from tensorflow.python.framework import test_util
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras import losses
-from tensorflow.python.keras.initializers import constant
-from tensorflow.python.keras.models import Model
-from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
-from tensorflow.python.keras.regularizers import L1L2
-from tensorflow.python.platform import test
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python import ops as _ops
+from tensorflow.compat.v1.python.framework import test_util
+from tensorflow.compat.v1.python.keras import keras_parameterized
+from tensorflow.compat.v1.python.keras import losses
+from tensorflow.compat.v1.python.keras.initializers import constant
+from tensorflow.compat.v1.python.keras.models import Model
+from tensorflow.compat.v1.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+from tensorflow.compat.v1.python.keras.regularizers import L1L2
+from tensorflow.compat.v1.python.platform import test
 from tensorflow_privacy.privacy.bolt_on import optimizers as opt
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
 

@@ -14,7 +14,7 @@
 """BoltOn Method for privacy."""
 import sys
 from distutils.version import LooseVersion
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 if LooseVersion(tf.__version__) < LooseVersion("2.0.0"):
   raise ImportError("Please upgrade your version "

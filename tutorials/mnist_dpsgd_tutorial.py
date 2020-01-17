@@ -22,7 +22,7 @@ from absl import app
 from absl import flags
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_from_ledger

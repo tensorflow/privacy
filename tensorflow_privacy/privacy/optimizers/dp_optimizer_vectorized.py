@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from absl import logging
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
 AdamOptimizer = tf.compat.v1.train.AdamOptimizer

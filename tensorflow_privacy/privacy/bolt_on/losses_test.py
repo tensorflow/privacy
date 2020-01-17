@@ -21,10 +21,10 @@ from contextlib import contextmanager  # pylint: disable=g-importing-member
 from io import StringIO  # pylint: disable=g-importing-member
 import sys
 from absl.testing import parameterized
-import tensorflow as tf
-from tensorflow.python.framework import test_util
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras.regularizers import L1L2
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python.framework import test_util
+from tensorflow.compat.v1.python.keras import keras_parameterized
+from tensorflow.compat.v1.python.keras.regularizers import L1L2
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexHuber
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin

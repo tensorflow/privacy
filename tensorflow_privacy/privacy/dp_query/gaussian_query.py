@@ -22,7 +22,7 @@ from __future__ import print_function
 import collections
 
 from distutils.version import LooseVersion
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import normalized_query

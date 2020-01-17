@@ -18,12 +18,12 @@ from __future__ import division
 from __future__ import print_function
 
 from absl.testing import parameterized
-import tensorflow as tf
-from tensorflow.python.framework import ops as _ops
-from tensorflow.python.keras import keras_parameterized
-from tensorflow.python.keras import losses
-from tensorflow.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
-from tensorflow.python.keras.regularizers import L1L2
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python.framework import ops as _ops
+from tensorflow.compat.v1.python.keras import keras_parameterized
+from tensorflow.compat.v1.python.keras import losses
+from tensorflow.compat.v1.python.keras.optimizer_v2.optimizer_v2 import OptimizerV2
+from tensorflow.compat.v1.python.keras.regularizers import L1L2
 from tensorflow_privacy.privacy.bolt_on import models
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
 from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn

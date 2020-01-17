@@ -16,10 +16,10 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-import tensorflow as tf
-from tensorflow.python.framework import ops as _ops
-from tensorflow.python.keras import optimizers
-from tensorflow.python.keras.models import Model
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1.python.framework import ops as _ops
+from tensorflow.compat.v1.python.keras import optimizers
+from tensorflow.compat.v1.python.keras.models import Model
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
 from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn
 
