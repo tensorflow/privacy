@@ -22,7 +22,7 @@ from tensorflow.python.keras.optimizer_v2 import optimizer_v2
 from tensorflow.python.ops import math_ops
 from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
 
-_accepted_distributions = ['laplace']  # implemented distributions for noising
+_accepted_distributions = ['laplace', 'gaussian']  # implemented distributions for noising
 
 
 class GammaBetaDecreasingStep(
@@ -134,6 +134,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
         'dtype',
         'noise_distribution',
         'epsilon',
+        'delta',
         'loss',
         'class_weights',
         'input_dim',
@@ -198,11 +199,13 @@ class BoltOn(optimizer_v2.OptimizerV2):
                       'context.')
     loss = self.loss
     distribution = self.noise_distribution.lower()
+
+    per_class_epsilon = self.epsilon / (output_dim)
+    l2_sensitivity = (2 *
+                      loss.lipchitz_constant(self.class_weights)) / \
+                     (loss.gamma() * self.n_samples * self.batch_size)
+
     if distribution == _accepted_distributions[0]:  # laplace
-      per_class_epsilon = self.epsilon / (output_dim)
-      l2_sensitivity = (2 *
-                        loss.lipchitz_constant(self.class_weights)) / \
-                       (loss.gamma() * self.n_samples * self.batch_size)
       unit_vector = tf.random.normal(shape=(input_dim, output_dim),
                                      mean=0,
                                      seed=1,
@@ -221,8 +224,20 @@ class BoltOn(optimizer_v2.OptimizerV2):
                               dtype=self.dtype
                              )
       return unit_vector * gamma
-    raise NotImplementedError('Noise distribution: {0} is not '
-                              'a valid distribution'.format(distribution))
+    elif distribution == _accepted_distributions[1]:  # gaussian
+      sigma = l2_sensitivity/per_class_epsilon * \
+              tf.math.sqrt(2*tf.math.log(1.25/self.delta))
+      noise_vector = tf.random.normal(shape=([output_dim]),
+                                      mean=0,
+                                      seed=1,
+                                      stddev=sigma,
+                                      dtype=self.dtype
+                                      )
+      return noise_vector
+
+    else:
+      raise NotImplementedError('Noise distribution: {0} is not '
+                                'a valid distribution'.format(distribution))
 
   def from_config(self, *args, **kwargs):  # pylint: disable=arguments-differ
     """Reroutes to _internal_optimizer. See super/_internal_optimizer."""
@@ -316,6 +331,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
   def __call__(self,
                noise_distribution,
                epsilon,
+               delta,
                layers,
                class_weights,
                n_samples,
@@ -344,10 +360,21 @@ class BoltOn(optimizer_v2.OptimizerV2):
       raise ValueError('Detected noise distribution: {0} not one of: {1} valid'
                        'distributions'.format(noise_distribution,
                                               _accepted_distributions))
+    if noise_distribution == _accepted_distributions[1]: #gaussian
+      if epsilon >= 1:
+        raise ValueError('Detected epsilon: {0}. '
+                         'Valid range for gaussian noise is '
+                         '0 < epsilon < 1'.format(epsilon))
+      if delta <= 0 or delta >= 1:
+        raise ValueError('Detected delta: {0}. '
+                         'Valid range for gaussian noise is '
+                         '0 < delta < 1'.format(delta))
+
     self.noise_distribution = noise_distribution
     self.learning_rate.initialize(self.loss.beta(class_weights),
                                   self.loss.gamma())
     self.epsilon = tf.constant(epsilon, dtype=self.dtype)
+    self.delta = tf.constant(delta, dtype=self.dtype)
     self.class_weights = tf.constant(class_weights, dtype=self.dtype)
     self.n_samples = tf.constant(n_samples, dtype=self.dtype)
     self.layers = layers
@@ -380,6 +407,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
     self.noise_distribution = None
     self.learning_rate.de_initialize()
     self.epsilon = -1
+    self.delta = -1
     self.batch_size = -1
     self.class_weights = None
     self.n_samples = None

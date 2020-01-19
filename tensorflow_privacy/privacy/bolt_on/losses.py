@@ -22,8 +22,7 @@ from tensorflow.python.framework import ops as _ops
 from tensorflow.python.keras import losses
 from tensorflow.python.keras.regularizers import L1L2
 from tensorflow.python.keras.utils import losses_utils
-from tensorflow.python.platform import tf_logging as logging
-
+from absl import logging
 
 class StrongConvexMixin:  # pylint: disable=old-style-class
   """Strong Convex Mixin base class.
@@ -237,7 +236,7 @@ class StrongConvexBinaryCrossentropy(
       dtype: tf datatype to use for tensor conversions.
     """
     if label_smoothing != 0:
-      logging.warning("The impact of label smoothing on privacy is unknown. "
+      logging.warning("WARNING: The impact of label smoothing on privacy is unknown. "
                       "Use label smoothing at your own risk as it may not "
                       "guarantee privacy.")
 
@@ -302,3 +301,107 @@ class StrongConvexBinaryCrossentropy(
       set to half the 0.5 * reg_lambda.
     """
     return L1L2(l2=self.reg_lambda/2)
+
+class StrongConvexCategoricalCrossentropy(
+    losses.CategoricalCrossentropy,
+    StrongConvexMixin
+):
+  """Strongly Convex CategoricalCrossentropy with softmax layer loss using l2 weight regularization."""
+
+  def __init__(self,
+               reg_lambda,
+               c_arg,
+               radius_constant,
+               from_logits=True,
+               label_smoothing=0,
+               reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
+               dtype=tf.float32):
+    """StrongConvexCategoricalCrossentropy class.
+
+    Args:
+      reg_lambda: Weight regularization constant
+      c_arg: Penalty parameter C of the loss term
+      radius_constant: constant defining the length of the radius
+      from_logits: True if the input are unscaled logits. False if they are
+        already scaled.
+      label_smoothing: amount of smoothing to perform on labels
+        relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x). Note, the
+        impact of this parameter's effect on privacy is not known and thus the
+        default should be used.
+      reduction: reduction type to use. See super class
+      dtype: tf datatype to use for tensor conversions.
+    """
+
+    if label_smoothing != 0:
+      import sys
+      logging.warning("WARNING: The impact of label smoothing on privacy is unknown."
+                      "Use label smoothing at your own risk as it may not "
+                      "guarantee privacy.")
+
+    if reg_lambda <= 0:
+      raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
+    if c_arg <= 0:
+      raise ValueError("c: {0}, should be >= 0".format(c_arg))
+    if radius_constant <= 0:
+      raise ValueError("radius_constant: {0}, should be >= 0".format(
+          radius_constant
+      ))
+    self.dtype = dtype
+    self.C = c_arg  # pylint: disable=invalid-name
+    self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
+    super(StrongConvexCategoricalCrossentropy, self).__init__(
+        reduction=reduction,
+        name="strongconvexcategoricalcrossentropy",
+        from_logits=from_logits,
+        label_smoothing=label_smoothing,
+    )
+    self.radius_constant = radius_constant
+
+
+  def call(self, y_true, y_pred):
+    """Computes loss.
+
+    Args:
+      y_true: Ground truth values.
+      y_pred: The predicted values.
+
+    Returns:
+      Loss values per sample.
+    """
+    loss = super(StrongConvexCategoricalCrossentropy, self).call(y_true, y_pred)
+    loss = loss * self.C
+    return loss
+
+
+  def radius(self):
+    """See super class."""
+    return self.radius_constant / self.reg_lambda
+
+
+  def gamma(self):
+    """See super class."""
+    return self.reg_lambda
+
+
+  def beta(self, class_weight):
+    """See super class."""
+    max_class_weight = self.max_class_weight(class_weight, self.dtype)
+    return self.C * max_class_weight + self.reg_lambda
+
+
+  def lipchitz_constant(self, class_weight):
+    """See super class."""
+    max_class_weight = self.max_class_weight(class_weight, self.dtype)
+    return self.C * max_class_weight + self.reg_lambda * self.radius()
+
+
+  def kernel_regularizer(self):
+    """Return l2 loss using 0.5*reg_lambda as the l2 term (as desired).
+
+    L2 regularization is required for this loss function to be strongly convex.
+
+    Returns:
+      The L2 regularizer layer for this loss function, with regularizer constant
+      set to half the 0.5 * reg_lambda.
+    """
+    return L1L2(l2=self.reg_lambda / 2)
