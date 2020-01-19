@@ -13,7 +13,7 @@
 # limitations under the License.
 # =============================================================================
 
-"""Training a deep NN on IMDB reviews with differentially private Adam optimizer."""
+"""Training a one-layer NN on Adult data with differentially private SGD optimizer."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -24,41 +24,33 @@ from absl import flags
 
 import numpy as np
 import tensorflow as tf
-from keras.preprocessing import sequence
+import pandas as pd
+from sklearn.model_selection import KFold
 
-#from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-#from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+# from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
+# from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 from tensorflow_privacy.privacy.analysis.gdp_accountant import *
 
-
 #### FLAGS
 FLAGS = flags.FLAGS
-flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                     'train with vanilla SGD.')
-flags.DEFINE_float('learning_rate', 0.02, 'Learning rate for training')
-flags.DEFINE_float('noise_multiplier', 0.56,
+flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD.'
+                     'If False, train with vanilla SGD.')
+flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
+flags.DEFINE_float('noise_multiplier', 0.55,
                    'Ratio of the standard deviation to the clipping norm')
 flags.DEFINE_float('l2_norm_clip', 1, 'Clipping norm')
-flags.DEFINE_integer('epochs', 25, 'Number of epochs')
+flags.DEFINE_integer('epochs', 20, 'Number of epochs')
 flags.DEFINE_integer('max_mu', 2, 'GDP upper limit')
 flags.DEFINE_string('model_dir', None, 'Model directory')
 
-
-microbatches = 512
-
-max_features = 10000
-# cut texts after this number of words (among top max_features most common words)
-maxlen = 256
-
+microbatches = 256
 
 def nn_model_fn(features, labels, mode):
-    '''Define NN architecture using tf.keras.layers.'''
-    input_layer = tf.reshape(features['x'], [-1, maxlen])
-    y = tf.keras.layers.Embedding(max_features, 16).apply(input_layer)
-    y = tf.keras.layers.GlobalAveragePooling1D().apply(y)
-    y = tf.keras.layers.Dense(16, activation='relu').apply(y)
+    ''' Define CNN architecture using tf.keras.layers.'''
+    input_layer = tf.reshape(features['x'], [-1, 123])
+    y = tf.keras.layers.Dense(16, activation='relu').apply(input_layer)
     logits = tf.keras.layers.Dense(2).apply(y)
 
     # Calculate loss as a vector (to support microbatches in DP-SGD).
@@ -74,17 +66,16 @@ def nn_model_fn(features, labels, mode):
             # available in dp_optimizer. Most optimizers inheriting from
             # tf.train.Optimizer should be wrappable in differentially private
             # counterparts by calling dp_optimizer.optimizer_from_args().
-            optimizer = dp_optimizer.DPAdamGaussianOptimizer(
+            optimizer = dp_optimizer.DPGradientDescentGaussianOptimizer(
                 l2_norm_clip=FLAGS.l2_norm_clip,
                 noise_multiplier=FLAGS.noise_multiplier,
                 num_microbatches=microbatches,
                 learning_rate=FLAGS.learning_rate)
             opt_loss = vector_loss
         else:
-            optimizer = tf.compat.v1.train.AdamOptimizer(
+            optimizer = tf.compat.v1.train.GradientDescentOptimizer(
                 learning_rate=FLAGS.learning_rate)
             opt_loss = scalar_loss
-
         global_step = tf.compat.v1.train.get_global_step()
         train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
         # In the following, we pass the mean of the loss (scalar_loss) rather than
@@ -106,30 +97,37 @@ def nn_model_fn(features, labels, mode):
         return tf.estimator.EstimatorSpec(mode=mode,
                                           loss=scalar_loss,
                                           eval_metric_ops=eval_metric_ops)
+
     return None
 
 
+def load_adult():
+    """Loads ADULT a2a as in LIBSVM and preprocesses to combine training and validation data."""
+    # https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary.html
 
-def load_imdb():
-    '''Load IMDB movie reviews data'''
-    (train_data, train_labels), (test_data, test_labels) = \
-    tf.keras.datasets.imdb.load_data(num_words=max_features)
+    X = pd.read_csv("adult.csv")
+    kf = KFold(n_splits=10)
+    for train_index, test_index in kf.split(X):
+        train, test = X.iloc[train_index, :], X.iloc[test_index, :]
+    train_data = train.iloc[:, range(X.shape[1]-1)].values.astype('float32')
+    test_data = test.iloc[:, range(X.shape[1]-1)].values.astype('float32')
 
-    train_data = sequence.pad_sequences(train_data, maxlen=maxlen).astype('float32')
-    test_data = sequence.pad_sequences(test_data, maxlen=maxlen).astype('float32')
+    train_labels = (train.iloc[:, X.shape[1]-1] == 1).astype('int32').values
+    test_labels = (test.iloc[:, X.shape[1]-1] == 1).astype('int32').values
+
     return train_data, train_labels, test_data, test_labels
 
 
 def main(unused_argv):
     '''main'''
-    tf.compat.v1.logging.set_verbosity(3)
+    tf.compat.v1.logging.set_verbosity(0)
 
     # Load training and test data.
-    train_data, train_labels, test_data, test_labels = load_imdb()
+    train_data, train_labels, test_data, test_labels = load_adult()
 
     # Instantiate the tf.Estimator.
-    imdb_classifier = tf.estimator.Estimator(model_fn=nn_model_fn,
-                                             model_dir=FLAGS.model_dir)
+    adult_classifier = tf.compat.v1.estimator.Estimator(model_fn=nn_model_fn,
+                                                        model_dir=FLAGS.model_dir)
 
     # Create tf.Estimator input functions for the training and test data.
     eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
@@ -139,13 +137,12 @@ def main(unused_argv):
         shuffle=False)
 
     # Training loop.
-    steps_per_epoch = 25000 // 512
+    steps_per_epoch = 29305 // 256
     test_accuracy_list = []
-
     for epoch in range(1, FLAGS.epochs + 1):
         for step in range(steps_per_epoch):
-            whether = np.random.random_sample(25000) > (1-512/25000)
-            subsampling = [i for i in np.arange(25000) if whether[i]]
+            whether = np.random.random_sample(29305) > (1-256/29305)
+            subsampling = [i for i in np.arange(29305) if whether[i]]
             global microbatches
             microbatches = len(subsampling)
 
@@ -154,20 +151,20 @@ def main(unused_argv):
                 y=train_labels[subsampling],
                 batch_size=len(subsampling),
                 num_epochs=1,
-                shuffle=False)
+                shuffle=True)
             # Train the model for one step.
-            imdb_classifier.train(input_fn=train_input_fn, steps=1)
+            adult_classifier.train(input_fn=train_input_fn, steps=1)
 
         # Evaluate the model and print results
-        eval_results = imdb_classifier.evaluate(input_fn=eval_input_fn)
+        eval_results = adult_classifier.evaluate(input_fn=eval_input_fn)
         test_accuracy = eval_results['accuracy']
         test_accuracy_list.append(test_accuracy)
         print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
 
         # Compute the privacy budget expended so far.
         if FLAGS.dpsgd:
-            eps = compute_eps_Poisson(epoch, FLAGS.noise_multiplier, 25000, 512, 1e-5)
-            mu = compute_mu_Poisson(epoch, FLAGS.noise_multiplier, 25000, 512)
+            eps = compute_eps_Poisson(epoch, FLAGS.noise_multiplier, 29305, 256, 1e-5)
+            mu = compute_mu_Poisson(epoch, FLAGS.noise_multiplier, 29305, 256)
             print('For delta=1e-5, the current epsilon is: %.2f' % eps)
             print('For delta=1e-5, the current mu is: %.2f' % mu)
 
