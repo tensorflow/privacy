@@ -44,7 +44,7 @@ flags.DEFINE_integer('epochs', 25, 'Number of epochs')
 flags.DEFINE_integer('max_mu', 2, 'GDP upper limit')
 flags.DEFINE_string('model_dir', None, 'Model directory')
 
-
+sampling_batch = 10000
 microbatches = 10000
 num_examples = 800167
 
@@ -171,11 +171,11 @@ def main(unused_argv):
         shuffle=False)
 
     # Training loop.
-    steps_per_epoch = num_examples // microbatches
+    steps_per_epoch = num_examples // sampling_batch
     test_accuracy_list = []
     for epoch in range(1, FLAGS.epochs + 1):
         for step in range(steps_per_epoch):
-            whether = np.random.random_sample(num_examples) > (1-microbatches/num_examples)
+            whether = np.random.random_sample(num_examples) > (1-sampling_batch/num_examples)
             subsampling = [i for i in np.arange(num_examples) if whether[i]]
             global microbatches
             microbatches = len(subsampling)
@@ -197,8 +197,8 @@ def main(unused_argv):
 
         # Compute the privacy budget expended so far.
         if FLAGS.dpsgd:
-            eps = compute_eps_poisson(epoch, FLAGS.noise_multiplier, num_examples, microbatches, 1e-6)
-            mu = compute_mu_poisson(epoch, FLAGS.noise_multiplier, num_examples, microbatches)
+            eps = compute_eps_poisson(epoch, FLAGS.noise_multiplier, num_examples, sampling_batch, 1e-6)
+            mu = compute_mu_poisson(epoch, FLAGS.noise_multiplier, num_examples, sampling_batch)
             print('For delta=1e-6, the current epsilon is: %.2f' % eps)
             print('For delta=1e-6, the current mu is: %.2f' % mu)
 
