@@ -27,8 +27,6 @@ import tensorflow as tf
 import pandas as pd
 from sklearn.model_selection import KFold
 
-# from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-# from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 from tensorflow_privacy.privacy.analysis.gdp_accountant import *
@@ -46,9 +44,10 @@ flags.DEFINE_integer('max_mu', 2, 'GDP upper limit')
 flags.DEFINE_string('model_dir', None, 'Model directory')
 
 microbatches = 256
+num_examples = 29305
 
 def nn_model_fn(features, labels, mode):
-    ''' Define CNN architecture using tf.keras.layers.'''
+    '''Define CNN architecture using tf.keras.layers.'''
     input_layer = tf.reshape(features['x'], [-1, 123])
     y = tf.keras.layers.Dense(16, activation='relu').apply(input_layer)
     logits = tf.keras.layers.Dense(2).apply(y)
@@ -137,12 +136,12 @@ def main(unused_argv):
         shuffle=False)
 
     # Training loop.
-    steps_per_epoch = 29305 // 256
+    steps_per_epoch = num_examples // microbatches
     test_accuracy_list = []
     for epoch in range(1, FLAGS.epochs + 1):
         for step in range(steps_per_epoch):
-            whether = np.random.random_sample(29305) > (1-256/29305)
-            subsampling = [i for i in np.arange(29305) if whether[i]]
+            whether = np.random.random_sample(num_examples) > (1-microbatches/num_examples)
+            subsampling = [i for i in np.arange(num_examples) if whether[i]]
             global microbatches
             microbatches = len(subsampling)
 
@@ -163,8 +162,8 @@ def main(unused_argv):
 
         # Compute the privacy budget expended so far.
         if FLAGS.dpsgd:
-            eps = compute_eps_Poisson(epoch, FLAGS.noise_multiplier, 29305, 256, 1e-5)
-            mu = compute_mu_Poisson(epoch, FLAGS.noise_multiplier, 29305, 256)
+            eps = compute_eps_poisson(epoch, FLAGS.noise_multiplier, num_examples, 256, 1e-5)
+            mu = compute_mu_poisson(epoch, FLAGS.noise_multiplier, num_examples, 256)
             print('For delta=1e-5, the current epsilon is: %.2f' % eps)
             print('For delta=1e-5, the current mu is: %.2f' % mu)
 
