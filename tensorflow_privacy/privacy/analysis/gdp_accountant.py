@@ -30,32 +30,32 @@ from scipy import optimize
 # Target delta:delta
 
 def compute_mu_uniform(epoch, noise_multi, N, batch_size):
-    '''Compute mu from uniform subsampling'''
+    '''Compute mu from uniform subsampling.'''
     T = epoch*N/batch_size
     c = batch_size*np.sqrt(T)/N
     return np.sqrt(2)*c*np.sqrt(np.exp(noise_multi**(-2))*\
                    norm.cdf(1.5/noise_multi)+3*norm.cdf(-0.5/noise_multi)-2)
 
-def compute_mu_Poisson(epoch, noise_multi, N, batch_size):
-    '''Compute mu from Poisson subsampling'''
+def compute_mu_poisson(epoch, noise_multi, N, batch_size):
+    '''Compute mu from Poisson subsampling.'''
     T = epoch*N/batch_size
     return np.sqrt(np.exp(noise_multi**(-2))-1)*np.sqrt(T)*batch_size/N
 
 def delta_eps_mu(eps, mu):
-    '''Dual between mu-GDP and (epsilon, delta)-DP'''
+    '''Compute dual between mu-GDP and (epsilon, delta)-DP.'''
     return norm.cdf(-eps/mu+mu/2)-np.exp(eps)*norm.cdf(-eps/mu-mu/2)
 
 def eps_from_mu(mu, delta):
-    '''inverse Dual'''
+    '''Compute epsilon from mu given delta via inverse dual.'''
     def f(x):
-        '''reversely solving dual'''
+        '''Reversely solve dual by matching delta.'''
         return delta_eps_mu(x, mu) - delta
     return optimize.root_scalar(f, bracket=[0, 500], method='brentq').root
 
 def compute_eps_uniform(epoch, noise_multi, N, batch_size, delta):
-    '''inverse Dual of uniform subsampling'''
+    '''Compute epsilon given delta from inverse dual of uniform subsampling.'''
     return eps_from_mu(compute_mu_uniform(epoch, noise_multi, N, batch_size), delta)
 
-def compute_eps_Poisson(epoch, noise_multi, N, batch_size, delta):
-    '''inverse Dual of Poisson subsampling'''
-    return eps_from_mu(compute_mu_Poisson(epoch, noise_multi, N, batch_size), delta)
+def compute_eps_poisson(epoch, noise_multi, N, batch_size, delta):
+    '''Compute epsilon given delta from inverse dual of Poisson subsampling.'''
+    return eps_from_mu(compute_mu_poisson(epoch, noise_multi, N, batch_size), delta)
