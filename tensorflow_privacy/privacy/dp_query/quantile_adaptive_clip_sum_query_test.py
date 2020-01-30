@@ -142,7 +142,7 @@ class QuantileAdaptiveClipSumQueryTest(
 
     global_state = query.initial_global_state()
 
-    initial_clip = global_state.l2_norm_clip
+    initial_clip = global_state.sum_state.l2_norm_clip
     self.assertAllClose(initial_clip, 10.0)
 
     # On the first two iterations, nothing is clipped, so the clip goes down
@@ -156,7 +156,7 @@ class QuantileAdaptiveClipSumQueryTest(
       actual_sum, global_state = test_utils.run_query(
           query, [record1, record2], global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       self.assertAllClose(actual_clip.numpy(), expected_clip)
       self.assertAllClose(actual_sum.numpy(), (expected_sum,))
@@ -176,7 +176,7 @@ class QuantileAdaptiveClipSumQueryTest(
 
     global_state = query.initial_global_state()
 
-    initial_clip = global_state.l2_norm_clip
+    initial_clip = global_state.sum_state.l2_norm_clip
     self.assertAllClose(initial_clip, 16.0)
 
     # For two iterations, nothing is clipped, so the clip is cut in half.
@@ -192,7 +192,7 @@ class QuantileAdaptiveClipSumQueryTest(
       actual_sum, global_state = test_utils.run_query(
           query, [record1, record2], global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       self.assertAllClose(actual_clip.numpy(), expected_clip)
       self.assertAllClose(actual_sum.numpy(), (expected_sum,))
@@ -211,7 +211,7 @@ class QuantileAdaptiveClipSumQueryTest(
 
     global_state = query.initial_global_state()
 
-    initial_clip = global_state.l2_norm_clip
+    initial_clip = global_state.sum_state.l2_norm_clip
     self.assertAllClose(initial_clip, 0.0)
 
     # On the first two iterations, both are clipped, so the clip goes up
@@ -225,7 +225,7 @@ class QuantileAdaptiveClipSumQueryTest(
       actual_sum, global_state = test_utils.run_query(
           query, [record1, record2], global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       self.assertAllClose(actual_clip.numpy(), expected_clip)
       self.assertAllClose(actual_sum.numpy(), (expected_sum,))
@@ -245,7 +245,7 @@ class QuantileAdaptiveClipSumQueryTest(
 
     global_state = query.initial_global_state()
 
-    initial_clip = global_state.l2_norm_clip
+    initial_clip = global_state.sum_state.l2_norm_clip
     self.assertAllClose(initial_clip, 0.5)
 
     # On the first two iterations, both are clipped, so the clip is doubled.
@@ -261,7 +261,7 @@ class QuantileAdaptiveClipSumQueryTest(
       actual_sum, global_state = test_utils.run_query(
           query, [record1, record2], global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       self.assertAllClose(actual_clip.numpy(), expected_clip)
       self.assertAllClose(actual_sum.numpy(), (expected_sum,))
@@ -295,7 +295,7 @@ class QuantileAdaptiveClipSumQueryTest(
       tf.compat.v1.assign(learning_rate, 1.0 / np.sqrt(t + 1))
       _, global_state = test_utils.run_query(query, records, global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       if t > 40:
         self.assertNear(actual_clip, 5.0, 0.25)
@@ -325,7 +325,7 @@ class QuantileAdaptiveClipSumQueryTest(
       tf.compat.v1.assign(learning_rate, 1.0 / np.sqrt(t + 1))
       _, global_state = test_utils.run_query(query, records, global_state)
 
-      actual_clip = global_state.l2_norm_clip
+      actual_clip = global_state.sum_state.l2_norm_clip
 
       if t > 40:
         self.assertNear(actual_clip, 5.0, 0.5)
