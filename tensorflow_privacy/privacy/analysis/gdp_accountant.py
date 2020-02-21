@@ -23,14 +23,14 @@ import numpy as np
 from scipy.stats import norm
 from scipy import optimize
 
-# Total number of examples:N
-# batch size:batch_size
-# Noise multiplier for DP-SGD/DP-Adam:noise_multiplier
-# current epoch:epoch
-# Target delta:delta
 
 def compute_mu_uniform(epoch, noise_multi, N, batch_size):
     '''Compute mu from uniform subsampling.'''
+    # Total number of examples:N
+    # batch size:batch_size
+    # Noise multiplier for DP-SGD/DP-Adam:noise_multi
+    # current epoch:epoch
+
     T = epoch*N/batch_size
     c = batch_size*np.sqrt(T)/N
     return np.sqrt(2)*c*np.sqrt(np.exp(noise_multi**(-2))*\
@@ -38,6 +38,11 @@ def compute_mu_uniform(epoch, noise_multi, N, batch_size):
 
 def compute_mu_poisson(epoch, noise_multi, N, batch_size):
     '''Compute mu from Poisson subsampling.'''
+    # Total number of examples:N
+    # batch size:batch_size
+    # Noise multiplier for DP-SGD/DP-Adam:noise_multi
+    # current epoch:epoch
+
     T = epoch*N/batch_size
     return np.sqrt(np.exp(noise_multi**(-2))-1)*np.sqrt(T)*batch_size/N
 
@@ -47,6 +52,8 @@ def delta_eps_mu(eps, mu):
 
 def eps_from_mu(mu, delta):
     '''Compute epsilon from mu given delta via inverse dual.'''
+    # Target delta:delta
+
     def f(x):
         '''Reversely solve dual by matching delta.'''
         return delta_eps_mu(x, mu) - delta
@@ -54,8 +61,20 @@ def eps_from_mu(mu, delta):
 
 def compute_eps_uniform(epoch, noise_multi, N, batch_size, delta):
     '''Compute epsilon given delta from inverse dual of uniform subsampling.'''
+    # Total number of examples:N
+    # batch size:batch_size
+    # Noise multiplier for DP-SGD/DP-Adam:noise_multi
+    # current epoch:epoch
+    # Target delta:delta
+
     return eps_from_mu(compute_mu_uniform(epoch, noise_multi, N, batch_size), delta)
 
 def compute_eps_poisson(epoch, noise_multi, N, batch_size, delta):
     '''Compute epsilon given delta from inverse dual of Poisson subsampling.'''
+    # Total number of examples:N
+    # batch size:batch_size
+    # Noise multiplier for DP-SGD/DP-Adam:noise_multi
+    # current epoch:epoch
+    # Target delta:delta
+
     return eps_from_mu(compute_mu_poisson(epoch, noise_multi, N, batch_size), delta)
