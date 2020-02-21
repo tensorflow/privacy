@@ -28,8 +28,8 @@ import pandas as pd
 from sklearn.model_selection import KFold
 
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
-
-from tensorflow_privacy.privacy.analysis.gdp_accountant import *
+from tensorflow_privacy.privacy.analysis.gdp_accountant import compute_eps_poisson
+from tensorflow_privacy.privacy.analysis.gdp_accountant import compute_mu_poisson
 
 #### FLAGS
 FLAGS = flags.FLAGS
