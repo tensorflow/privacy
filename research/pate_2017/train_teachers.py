@@ -19,7 +19,7 @@ from __future__ import print_function
 import deep_cnn
 import input  # pylint: disable=redefined-builtin
 import metrics
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 
 tf.flags.DEFINE_string('dataset', 'svhn', 'The name of the dataset to use')

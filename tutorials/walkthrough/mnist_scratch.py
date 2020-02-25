@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
 tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')

@@ -28,7 +28,7 @@ from scipy.io import loadmat as loadmat
 from six.moves import cPickle as pickle
 from six.moves import urllib
 from six.moves import xrange
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 FLAGS = tf.flags.FLAGS
 
