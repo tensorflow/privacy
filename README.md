@@ -70,7 +70,7 @@ GitHub pull requests. To speed the code review process, we ask that:
 ## Tutorials directory
 
 To help you get started with the functionalities provided by this library, we
-provide a detailed walkthrough [here](tutorials/walkthrough/walkthrough.md) that
+provide a detailed walkthrough [here](tutorials/walkthrough/README.md) that
 will teach you how to wrap existing optimizers
 (e.g., SGD, Adam, ...) into their differentially private counterparts using
 TensorFlow (TF) Privacy. You will also learn how to tune the parameters
