@@ -30,6 +30,7 @@ py_test(
     deps = [
         ":gaussian_query",
         ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/absl/testing:parameterized",
         "//third_party/py/numpy",
         "//third_party/py/six",
@@ -55,6 +56,7 @@ py_test(
     deps = [
         ":no_privacy_query",
         ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/absl/testing:parameterized",
         "//third_party/py/tensorflow",
     ],
@@ -79,6 +81,7 @@ py_test(
         ":gaussian_query",
         ":normalized_query",
         ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/tensorflow",
     ],
 )
@@ -102,6 +105,7 @@ py_test(
         ":gaussian_query",
         ":nested_query",
         ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/absl/testing:parameterized",
         "//third_party/py/distutils",
         "//third_party/py/numpy",
@@ -127,6 +131,7 @@ py_test(
     deps = [
         ":quantile_adaptive_clip_sum_query",
         ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
         "//third_party/py/absl/testing:parameterized",
         "//third_party/py/numpy",
         "//third_party/py/tensorflow",
