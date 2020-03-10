@@ -30,7 +30,7 @@ from tensorflow_privacy.privacy.optimizers import dp_optimizer
 class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
-    tf.compat.v1.enable_eager_execution()
+    tf.enable_eager_execution()
     super(DPOptimizerEagerTest, self).setUp()
 
   def _loss_fn(self, val0, val1):
@@ -64,7 +64,7 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
           num_microbatches=num_microbatches,
           learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([1.0, 2.0], self.evaluate(var0))
 
@@ -89,7 +89,7 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([0.0, 0.0], self.evaluate(var0))
 
@@ -113,7 +113,7 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([0.0], self.evaluate(var0))
 

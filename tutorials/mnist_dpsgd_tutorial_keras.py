@@ -28,7 +28,7 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
-GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -121,7 +121,7 @@ def main(unused_argv):
         learning_rate=FLAGS.learning_rate)
     # Compute vector of per-example loss rather than its mean over a minibatch.
     loss = tf.keras.losses.CategoricalCrossentropy(
-        from_logits=True, reduction=tf.compat.v1.losses.Reduction.NONE)
+        from_logits=True, reduction=tf.losses.Reduction.NONE)
   else:
     optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
     loss = tf.keras.losses.CategoricalCrossentropy(from_logits=True)

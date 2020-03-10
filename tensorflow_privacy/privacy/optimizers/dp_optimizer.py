@@ -27,9 +27,9 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 
 def make_optimizer_class(cls):
   """Constructs a DP optimizer class from an existing one."""
-  parent_code = tf.compat.v1.train.Optimizer.compute_gradients.__code__
+  parent_code = tf.train.Optimizer.compute_gradients.__code__
   child_code = cls.compute_gradients.__code__
-  GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
+  GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
   if child_code is not parent_code:
     logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
@@ -146,8 +146,8 @@ def make_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.compat.v1.trainable_variables() + tf.compat.v1.get_collection(
-                  tf.compat.v1.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.trainable_variables() + tf.get_collection(
+                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         sample_state = self._dp_sum_query.initial_sample_state(var_list)
 
@@ -213,9 +213,9 @@ def make_gaussian_optimizer_class(cls):
 
   return DPGaussianOptimizerClass
 
-AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
-AdamOptimizer = tf.compat.v1.train.AdamOptimizer
-GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+AdagradOptimizer = tf.train.AdagradOptimizer
+AdamOptimizer = tf.train.AdamOptimizer
+GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
 DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(AdamOptimizer)

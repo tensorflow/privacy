@@ -21,7 +21,7 @@ import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.analysis import tensor_buffer
 
-tf.compat.v1.enable_eager_execution()
+tf.enable_eager_execution()
 
 
 class TensorBufferTest(tf.test.TestCase):

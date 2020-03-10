@@ -47,7 +47,7 @@ FLAGS = flags.FLAGS
 
 NUM_TRAIN_EXAMPLES = 60000
 
-GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
 
 def compute_epsilon(steps):
@@ -106,7 +106,7 @@ def cnn_model_fn(features, labels, mode):
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
-    global_step = tf.compat.v1.train.get_global_step()
+    global_step = tf.compat.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     # In the following, we pass the mean of the loss (scalar_loss) rather than
     # the vector_loss because tf.estimator requires a scalar loss. This is only
@@ -120,7 +120,7 @@ def cnn_model_fn(features, labels, mode):
   elif mode == tf.estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.compat.v1.metrics.accuracy(
+            tf.metrics.accuracy(
                 labels=labels,
                 predictions=tf.argmax(input=logits, axis=1))
     }
@@ -153,7 +153,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.INFO)
+  tf.logging.set_verbosity(tf.logging.INFO)
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
@@ -165,13 +165,13 @@ def main(unused_argv):
                                             model_dir=FLAGS.model_dir)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.estimator.inputs.numpy_input_fn(
       x={'x': train_data},
       y=train_labels,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
       x={'x': test_data},
       y=test_labels,
       num_epochs=1,

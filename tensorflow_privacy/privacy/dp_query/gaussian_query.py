@@ -96,7 +96,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
         return v + tf.random.normal(
             tf.shape(input=v), stddev=global_state.stddev)
     else:
-      random_normal = tf.compat.v1.random_normal_initializer(
+      random_normal = tf.random_normal_initializer(
           stddev=global_state.stddev)
 
       def add_noise(v):

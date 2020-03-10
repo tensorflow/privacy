@@ -58,7 +58,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           num_microbatches=num_microbatches,
           learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([1.0, 2.0], self.evaluate(var0))
 
@@ -82,7 +82,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                 num_microbatches=1,
                 learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([0.0, 0.0], self.evaluate(var0))
 
@@ -105,7 +105,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                 num_microbatches=1,
                 learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([0.0], self.evaluate(var0))
 
@@ -121,7 +121,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @mock.patch('absl.logging.warning')
   def testComputeGradientsOverrideWarning(self, mock_logging):
 
-    class SimpleOptimizer(tf.compat.v1.train.Optimizer):
+    class SimpleOptimizer(tf.train.Optimizer):
 
       def compute_gradients(self):
         return 0
@@ -147,7 +147,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           noise_multiplier=0.,
           num_microbatches=1,
           learning_rate=1.0)
-      global_step = tf.compat.v1.train.get_global_step()
+      global_step = tf.train.get_global_step()
       train_op = optimizer.minimize(loss=vector_loss, global_step=global_step)
       return tf.estimator.EstimatorSpec(
           mode=mode, loss=scalar_loss, train_op=train_op)
@@ -161,7 +161,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                              true_weights) + true_bias + np.random.normal(
                                  scale=0.1, size=(200, 1)).astype(np.float32)
 
-    train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+    train_input_fn = tf.estimator.inputs.numpy_input_fn(
         x={'x': train_data},
         y=train_labels,
         batch_size=20,
@@ -188,7 +188,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           num_microbatches=1,
           learning_rate=2.0)
 
-      self.evaluate(tf.compat.v1.global_variables_initializer())
+      self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
       self.assertAllClose([0.0], self.evaluate(var0))
 

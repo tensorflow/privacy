@@ -27,7 +27,7 @@ from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import quantile_adaptive_clip_sum_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
-tf.compat.v1.enable_eager_execution()
+tf.enable_eager_execution()
 
 
 class QuantileAdaptiveClipSumQueryTest(
@@ -323,7 +323,7 @@ class QuantileAdaptiveClipSumQueryTest(
     global_state = query.initial_global_state()
 
     for t in range(50):
-      tf.compat.v1.assign(learning_rate, 1.0 / np.sqrt(t + 1))
+      tf.assign(learning_rate, 1.0 / np.sqrt(t + 1))
       _, global_state = test_utils.run_query(query, records, global_state)
 
       actual_clip = global_state.sum_state.l2_norm_clip
@@ -350,8 +350,8 @@ class QuantileAdaptiveClipSumQueryTest(
         query, population_size, selection_probability)
 
     # First sample.
-    tf.compat.v1.assign(population_size, 10)
-    tf.compat.v1.assign(selection_probability, 0.1)
+    tf.assign(population_size, 10)
+    tf.assign(selection_probability, 0.1)
     _, global_state = test_utils.run_query(query, [record1, record2])
 
     expected_queries = [[10.0, 10.0], [0.5, 0.0]]
@@ -362,8 +362,8 @@ class QuantileAdaptiveClipSumQueryTest(
     self.assertAllClose(sample_1.queries, expected_queries)
 
     # Second sample.
-    tf.compat.v1.assign(population_size, 20)
-    tf.compat.v1.assign(selection_probability, 0.2)
+    tf.assign(population_size, 20)
+    tf.assign(selection_probability, 0.2)
     test_utils.run_query(query, [record1, record2], global_state)
 
     formatted = query.ledger.get_formatted_ledger_eager()

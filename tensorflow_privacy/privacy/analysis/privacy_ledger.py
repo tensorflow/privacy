@@ -111,7 +111,7 @@ class PrivacyLedger(object):
 
     def _do_record_query():
       with tf.control_dependencies(
-          [tf.compat.v1.assign(self._query_count, self._query_count + 1)]):
+          [tf.assign(self._query_count, self._query_count + 1)]):
         return self._query_buffer.append(
             [self._sample_count, l2_norm_bound, noise_stddev])
 
@@ -120,14 +120,14 @@ class PrivacyLedger(object):
   def finalize_sample(self):
     """Finalizes sample and records sample ledger entry."""
     with tf.control_dependencies([
-        tf.compat.v1.assign(self._sample_var, [
+        tf.assign(self._sample_var, [
             self._population_size, self._selection_probability,
             self._query_count
         ])
     ]):
       with tf.control_dependencies([
-          tf.compat.v1.assign(self._sample_count, self._sample_count + 1),
-          tf.compat.v1.assign(self._query_count, 0)
+          tf.assign(self._sample_count, self._sample_count + 1),
+          tf.assign(self._query_count, 0)
       ]):
         return self._sample_buffer.append(self._sample_var)
 
