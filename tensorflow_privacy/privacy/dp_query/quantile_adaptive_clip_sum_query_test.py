@@ -80,7 +80,7 @@ class QuantileAdaptiveClipSumQueryTest(
         expected_num_records=2.0)
 
     noised_sums = []
-    for _ in xrange(1000):
+    for _ in range(1000):
       query_result, _ = test_utils.run_query(query, [record1, record2])
       noised_sums.append(query_result.numpy())
 
