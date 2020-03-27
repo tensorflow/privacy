@@ -106,7 +106,7 @@ def cnn_model_fn(features, labels, mode):
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
-    global_step = tf.compat.get_global_step()
+    global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     # In the following, we pass the mean of the loss (scalar_loss) rather than
     # the vector_loss because tf.estimator requires a scalar loss. This is only
