@@ -238,6 +238,24 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       # Test standard deviation is close to l2_norm_clip * noise_multiplier.
       self.assertNear(np.std(grads), 2.0 * 4.0, 0.5)
 
+  @parameterized.named_parameters(
+      ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
+      ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
+      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+  def testAssertOnNoCallOfComputeGradients(self, cls):
+    dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
+    opt = cls(dp_sum_query, num_microbatches=1, learning_rate=1.0)
+
+    with self.assertRaises(AssertionError):
+      grads_and_vars = tf.Variable([0.0])
+      opt.apply_gradients(grads_and_vars)
+
+    # Expect no exception if compute_gradients is called.
+    var0 = tf.Variable([0.0])
+    data0 = tf.Variable([[0.0]])
+    grads_and_vars = opt.compute_gradients(self._loss(data0, var0), [var0])
+    opt.apply_gradients(grads_and_vars)
+
 
 if __name__ == '__main__':
   tf.test.main()
