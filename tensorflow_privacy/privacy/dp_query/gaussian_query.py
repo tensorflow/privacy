@@ -94,13 +94,13 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
       def add_noise(v):
         return v + tf.random.normal(
-            tf.shape(input=v), stddev=global_state.stddev)
+            tf.shape(input=v), stddev=global_state.stddev, dtype=v.dtype)
     else:
       random_normal = tf.random_normal_initializer(
           stddev=global_state.stddev)
 
       def add_noise(v):
-        return v + random_normal(tf.shape(input=v))
+        return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
 
     if self._ledger:
       dependencies = [
