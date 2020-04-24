@@ -92,7 +92,14 @@ will not break.
 
 This folder contains code to reproduce results from research papers related to
 privacy in machine learning. It is not maintained as carefully as the tutorials
-directory, but rather intended as a convenient archive. 
+directory, but rather intended as a convenient archive.
+
+## TensorFlow 2.x
+
+At the moment, TensorFlow Privacy does not generally work with TensorFlow 2.x.
+However, as of 2020-04-24. there is a [RFC to revamp Keras optimizers](https://github.com/tensorflow/community/pull/234)
+that will enable this. Once this is done, we will update TensorFlow Privacy
+as soon as possible. Thank you for your patience.
 
 ## Remarks
 
