@@ -135,7 +135,7 @@ def make_optimizer_class(cls):
 
         def process_microbatch(i, sample_state):
           """Process one microbatch (record) with privacy helper."""
-          grads, _ = zip(*super(cls, self).compute_gradients(
+          grads, _ = zip(*super(DPOptimizerClass, self).compute_gradients(
               tf.reduce_mean(input_tensor=tf.gather(
                   microbatches_losses, [i])), var_list, gate_gradients,
               aggregation_method, colocate_gradients_with_ops, grad_loss))
