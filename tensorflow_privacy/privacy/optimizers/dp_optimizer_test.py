@@ -48,7 +48,13 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdagrad 4', dp_optimizer.DPAdagradOptimizer, 4, [-2.5, -2.5]),
       ('DPAdam 1', dp_optimizer.DPAdamOptimizer, 1, [-2.5, -2.5]),
       ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
-      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]))
+      ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]),
+      ('DPRMSPropOptimizer 1', dp_optimizer.DPRMSPropOptimizer, 1,
+       [-2.5, -2.5]),
+      ('DPRMSPropOptimizer 2', dp_optimizer.DPRMSPropOptimizer, 2,
+       [-2.5, -2.5]),
+      ('DPRMSPropOptimizer 4', dp_optimizer.DPRMSPropOptimizer, 4, [-2.5, -2.5])
+  )
   def testBaseline(self, cls, num_microbatches, expected_answer):
     with self.cached_session() as sess:
       var0 = tf.Variable([1.0, 2.0])
@@ -76,7 +82,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
       ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPAdam', dp_optimizer.DPAdamOptimizer),
+      ('DPRMSPropOptimizer', dp_optimizer.DPRMSPropOptimizer))
   def testClippingNorm(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0, 0.0])
@@ -99,7 +106,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
       ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPAdam', dp_optimizer.DPAdamOptimizer),
+      ('DPRMSPropOptimizer', dp_optimizer.DPRMSPropOptimizer))
   def testNoiseMultiplier(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])
@@ -182,7 +190,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
       ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPAdam', dp_optimizer.DPAdamOptimizer),
+      ('DPRMSPropOptimizer', dp_optimizer.DPRMSPropOptimizer))
   def testUnrollMicrobatches(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([1.0, 2.0])
@@ -213,7 +222,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer.DPGradientDescentGaussianOptimizer),
       ('DPAdagrad', dp_optimizer.DPAdagradGaussianOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamGaussianOptimizer))
+      ('DPAdam', dp_optimizer.DPAdamGaussianOptimizer),
+      ('DPRMSPropOptimizer', dp_optimizer.DPRMSPropGaussianOptimizer))
   def testDPGaussianOptimizerClass(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])
@@ -241,7 +251,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer.DPGradientDescentOptimizer),
       ('DPAdagrad', dp_optimizer.DPAdagradOptimizer),
-      ('DPAdam', dp_optimizer.DPAdamOptimizer))
+      ('DPAdam', dp_optimizer.DPAdamOptimizer),
+      ('DPRMSPropOptimizer', dp_optimizer.DPRMSPropOptimizer))
   def testAssertOnNoCallOfComputeGradients(self, cls):
     dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
     opt = cls(dp_sum_query, num_microbatches=1, learning_rate=1.0)

@@ -228,12 +228,15 @@ def make_gaussian_optimizer_class(cls):
 AdagradOptimizer = tf.train.AdagradOptimizer
 AdamOptimizer = tf.train.AdamOptimizer
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+RMSPropOptimizer = tf.train.RMSPropOptimizer
 
 DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(AdamOptimizer)
 DPGradientDescentOptimizer = make_optimizer_class(GradientDescentOptimizer)
+DPRMSPropOptimizer = make_optimizer_class(RMSPropOptimizer)
 
 DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(AdagradOptimizer)
 DPAdamGaussianOptimizer = make_gaussian_optimizer_class(AdamOptimizer)
 DPGradientDescentGaussianOptimizer = make_gaussian_optimizer_class(
     GradientDescentOptimizer)
+DPRMSPropGaussianOptimizer = make_gaussian_optimizer_class(RMSPropOptimizer)
