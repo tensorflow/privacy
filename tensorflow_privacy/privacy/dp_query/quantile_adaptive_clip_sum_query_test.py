@@ -138,7 +138,8 @@ class QuantileAdaptiveClipSumQueryTest(
         target_unclipped_quantile=0.0,
         learning_rate=1.0,
         clipped_count_stddev=0.0,
-        expected_num_records=2.0)
+        expected_num_records=2.0,
+        geometric_update=False)
 
     global_state = query.initial_global_state()
 
@@ -207,7 +208,8 @@ class QuantileAdaptiveClipSumQueryTest(
         target_unclipped_quantile=1.0,
         learning_rate=1.0,
         clipped_count_stddev=0.0,
-        expected_num_records=2.0)
+        expected_num_records=2.0,
+        geometric_update=False)
 
     global_state = query.initial_global_state()
 
@@ -344,7 +346,8 @@ class QuantileAdaptiveClipSumQueryTest(
         target_unclipped_quantile=0.0,
         learning_rate=1.0,
         clipped_count_stddev=0.0,
-        expected_num_records=2.0)
+        expected_num_records=2.0,
+        geometric_update=False)
 
     query = privacy_ledger.QueryWithLedger(
         query, population_size, selection_probability)

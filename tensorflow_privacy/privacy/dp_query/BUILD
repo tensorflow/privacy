@@ -120,6 +120,7 @@ py_library(
         ":dp_query",
         ":gaussian_query",
         ":normalized_query",
+        ":quantile_estimator_query",
         "//third_party/py/tensorflow",
     ],
 )
@@ -136,6 +137,30 @@ py_test(
         "//third_party/py/numpy",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/analysis:privacy_ledger",
+    ],
+)
+
+py_library(
+    name = "quantile_estimator_query",
+    srcs = ["quantile_estimator_query.py"],
+    deps = [
+        ":dp_query",
+        ":gaussian_query",
+        "//third_party/py/tensorflow",
+    ],
+)
+
+py_test(
+    name = "quantile_estimator_query_test",
+    srcs = ["quantile_estimator_query_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":quantile_estimator_query",
+        ":test_utils",
+        "//learning/brain/public:disable_tf2",  # build_cleaner: keep; go/disable_tf2
+        "//third_party/py/absl/testing:parameterized",
+        "//third_party/py/numpy",
+        "//third_party/py/tensorflow",
     ],
 )
 

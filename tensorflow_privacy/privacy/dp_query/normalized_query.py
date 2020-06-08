@@ -26,7 +26,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 
 
-class NormalizedQuery(dp_query.DPQuery):
+class NormalizedQuery(dp_query.SumAggregationDPQuery):
   """DPQuery for queries with a DPQuery numerator and fixed denominator."""
 
   # pylint: disable=invalid-name
@@ -37,13 +37,15 @@ class NormalizedQuery(dp_query.DPQuery):
     """Initializer for NormalizedQuery.
 
     Args:
-      numerator_query: A DPQuery for the numerator.
+      numerator_query: A SumAggregationDPQuery for the numerator.
       denominator: A value for the denominator. May be None if it will be
         supplied via the set_denominator function before get_noised_result is
         called.
     """
     self._numerator = numerator_query
     self._denominator = denominator
+
+    assert isinstance(self._numerator, dp_query.SumAggregationDPQuery)
 
   def set_ledger(self, ledger):
     """See base class."""
@@ -70,12 +72,6 @@ class NormalizedQuery(dp_query.DPQuery):
   def preprocess_record(self, params, record):
     return self._numerator.preprocess_record(params, record)
 
-  def accumulate_preprocessed_record(
-      self, sample_state, preprocessed_record):
-    """See base class."""
-    return self._numerator.accumulate_preprocessed_record(
-        sample_state, preprocessed_record)
-
   def get_noised_result(self, sample_state, global_state):
     """See base class."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
@@ -85,7 +81,3 @@ class NormalizedQuery(dp_query.DPQuery):
 
     return (tf.nest.map_structure(normalize, noised_sum),
             self._GlobalState(new_sum_global_state, global_state.denominator))
-
-  def merge_sample_states(self, sample_state_1, sample_state_2):
-    """See base class."""
-    return self._numerator.merge_sample_states(sample_state_1, sample_state_2)
