@@ -19,6 +19,8 @@ from __future__ import print_function
 
 import sys
 
+from tensorflow_privacy.version import __version__  # pylint: disable=g-bad-import-order
+
 # pylint: disable=g-import-not-at-top
 
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
