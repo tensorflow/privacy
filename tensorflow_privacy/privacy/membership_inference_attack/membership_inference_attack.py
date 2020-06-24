@@ -680,6 +680,7 @@ def run_all_attacks_and_create_summary(
       results, metrics, filterby='misclassified')
   if misclassified:
     for metric in metrics:
+      best_value = misclassified['misclassified-' + metric]['value']
       best_attacker = misclassified['misclassified-' + metric]['attacker']
       summary.append(f'========== {metric.upper()} for misclassified '
                      '==========')
