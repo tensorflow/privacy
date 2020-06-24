@@ -633,7 +633,7 @@ def run_all_attacks_and_create_summary(
   """
   summary = []
   metrics = ['auc', 'advantage']
-  attack_classifiers = ['lr', 'rf', 'mlp', 'knn']
+  attack_classifiers = ['lr', 'knn']
   results = run_all_attacks(
       loss_train,
       loss_test,
