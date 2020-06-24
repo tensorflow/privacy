@@ -1,20 +1,20 @@
-# Membership inference attack functionality
+# Membership inference attack
 
-The goal is to provide empirical tests of "how much information a machine
-learning model has remembered about its training data". To this end, only the
-outputs of the model are used (e.g., losses, logits, predictions). From those
-alone, the attacks try to infer whether the corresponding inputs were part of
-the training set.
+A good privacy-preserving model learns from the training data, but
+doesn't memorize it. This library provides empirical tests for measuring
+potential memorization.
 
-> NOTE: Only the loss values are needed for some examples used during training
-> and some examples that have not been used during training (e.g., some examples
-> from the test set). No access to actual input data is needed. In case of
-> classification models, one can additionally (or instead of losses) provide
-> logits or output probabilities for stronger attacks.
+Technically, the tests build classifiers that infer whether a particular sample
+was present in the training set. The more accurate such classifier is, the more
+memorization is present and thus the less privacy-preserving the model is.
 
-The vulnerability of a model is measured via the area under the ROC-curve
-(`auc`) or via max{|fpr - tpr|} (`advantage`) of the attack classifier. These
-measures are very closely related.
+The privacy vulnerability (or memorization potential) is measured
+via the area under the ROC-curve (`auc`) or via max{|fpr - tpr|} (`advantage`)
+of the attack classifier. These measures are very closely related.
+
+The tests provided by the library are "black box". That is, only the outputs of
+the model are used (e.g., losses, logits, predictions). Neither model internals
+(weights) nor input samples are required.
 
 ## Highest level -- get attack summary
 
