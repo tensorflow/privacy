@@ -397,7 +397,7 @@ def run_attack(loss_train: np.ndarray = None,
   # ---------- If labels are provided ----------
   if labels_train is not None and labels_test is not None:
     if labels_train.ndim != 1 or labels_test.ndim != 1:
-      raise ValueError('Losses must be 1D arrays.')
+      raise ValueError('Labels must be 1D arrays.')
     if 'loss' in features:
       assert (loss_train.shape[0] == labels_train.shape[0] and
               loss_test.shape[0] == labels_test.shape[0]), \
