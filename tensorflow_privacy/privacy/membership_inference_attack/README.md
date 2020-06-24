@@ -16,7 +16,15 @@ The tests provided by the library are "black box". That is, only the outputs of
 the model are used (e.g., losses, logits, predictions). Neither model internals
 (weights) nor input samples are required.
 
-## Highest level -- get attack summary
+## How to use
+
+### Codelab
+
+The easiest way to get started is to go through [the introductory codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/codelab.ipynb).
+This trains a simple image classification model and tests it against a series
+of membership inference attacks.
+
+For a more detailed overview of the library, please check the sections below.
 
 ### Basic usage
 
