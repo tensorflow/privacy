@@ -108,3 +108,21 @@ class NestedQuery(dp_query.DPQuery):
         *tree.flatten_up_to(self._queries, estimates_and_new_global_states))
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
             tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
+
+
+class NestedSumQuery(dp_query.SumAggregationDPQuery, NestedQuery):
+  """A NestedQuery that consists only of SumAggregationDPQueries."""
+
+  def __init__(self, queries):
+    """Initializes the NestedSumQuery.
+
+    Args:
+      queries: A nested structure of queries that must all be
+        SumAggregationDPQueries.
+    """
+    def check(query):
+      if not isinstance(query, dp_query.SumAggregationDPQuery):
+        raise TypeError('All subqueries must be SumAggregationDPQueries.')
+    tree.map_structure(check, queries)
+
+    super(NestedSumQuery, self).__init__(queries)
