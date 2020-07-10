@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Authors.
+# Copyright 2020, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,10 +30,11 @@ import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
+from tensorflow_privacy.privacy.dp_query import no_privacy_query
 
 
 class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
-  """Defines iterative process to estimate a target quantile of a distribution.
+  """Iterative process to estimate target quantile of a univariate distribution.
   """
 
   # pylint: disable=invalid-name
@@ -82,6 +83,15 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
     self._target_quantile = target_quantile
     self._learning_rate = learning_rate
 
+    self._below_estimate_query = self._construct_below_estimate_query(
+        below_estimate_stddev, expected_num_records)
+    assert isinstance(self._below_estimate_query,
+                      dp_query.SumAggregationDPQuery)
+
+    self._geometric_update = geometric_update
+
+  def _construct_below_estimate_query(
+      self, below_estimate_stddev, expected_num_records):
     # A DPQuery used to estimate the fraction of records that are less than the
     # current quantile estimate. It accumulates an indicator 0/1 of whether each
     # record is below the estimate, and normalizes by the expected number of
@@ -91,15 +101,10 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
     # affect the count is 0.5. Note that although the l2_norm_clip of the
     # below_estimate query is 0.5, no clipping will ever actually occur
     # because the value of each record is always +/-0.5.
-    self._below_estimate_query = gaussian_query.GaussianAverageQuery(
+    return gaussian_query.GaussianAverageQuery(
         l2_norm_clip=0.5,
         sum_stddev=below_estimate_stddev,
         denominator=expected_num_records)
-
-    self._geometric_update = geometric_update
-
-    assert isinstance(self._below_estimate_query,
-                      dp_query.SumAggregationDPQuery)
 
   def set_ledger(self, ledger):
     """See base class."""
@@ -120,7 +125,15 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
     return self._SampleParams(global_state.current_estimate,
                               below_estimate_params)
 
+  def initial_sample_state(self, template=None):
+    # Template is ignored because records are required to be scalars.
+    del template
+
+    return self._below_estimate_query.initial_sample_state(0.0)
+
   def preprocess_record(self, params, record):
+    tf.debugging.assert_scalar(record)
+
     # We accumulate counts shifted by 0.5 so they are centered at zero.
     # This makes the sensitivity of the count query 0.5 instead of 1.0.
     below = tf.cast(record <= params.current_estimate, tf.float32) - 0.5
@@ -156,3 +169,42 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         below_estimate_state=new_below_estimate_state)
 
     return new_estimate, new_global_state
+
+
+class NoPrivacyQuantileEstimatorQuery(QuantileEstimatorQuery):
+  """Iterative process to estimate target quantile of a univariate distribution.
+
+  Unlike the base class, this uses a NoPrivacyQuery to estimate the fraction
+  below estimate with an exact denominator.
+  """
+
+  def __init__(
+      self,
+      initial_estimate,
+      target_quantile,
+      learning_rate,
+      geometric_update=False):
+    """Initializes the NoPrivacyQuantileEstimatorQuery.
+
+    Args:
+      initial_estimate: The initial estimate of the quantile.
+      target_quantile: The target quantile. I.e., a value of 0.8 means a value
+        should be found for which approximately 80% of updates are
+        less than the estimate each round.
+      learning_rate: The learning rate. A rate of r means that the estimate
+        will change by a maximum of r at each step (for arithmetic updating) or
+        by a maximum factor of exp(r) (for geometric updating).
+      geometric_update: If True, use geometric updating of estimate. Geometric
+        updating is preferred for non-negative records like vector norms that
+        could potentially be very large or very close to zero.
+    """
+    super(NoPrivacyQuantileEstimatorQuery, self).__init__(
+        initial_estimate, target_quantile, learning_rate,
+        below_estimate_stddev=None, expected_num_records=None,
+        geometric_update=geometric_update)
+
+  def _construct_below_estimate_query(
+      self, below_estimate_stddev, expected_num_records):
+    del below_estimate_stddev
+    del expected_num_records
+    return no_privacy_query.NoPrivacyAverageQuery()

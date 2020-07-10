@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Authors.
+# Copyright 2020, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,18 +29,42 @@ from tensorflow_privacy.privacy.dp_query import test_utils
 tf.enable_eager_execution()
 
 
+def _make_quantile_estimator_query(
+    initial_estimate,
+    target_quantile,
+    learning_rate,
+    below_estimate_stddev,
+    expected_num_records,
+    geometric_update):
+  if expected_num_records is not None:
+    return quantile_estimator_query.QuantileEstimatorQuery(
+        initial_estimate,
+        target_quantile,
+        learning_rate,
+        below_estimate_stddev,
+        expected_num_records,
+        geometric_update)
+  else:
+    return quantile_estimator_query.NoPrivacyQuantileEstimatorQuery(
+        initial_estimate,
+        target_quantile,
+        learning_rate,
+        geometric_update)
+
+
 class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
-  def test_target_zero(self):
+  @parameterized.named_parameters(('exact', True), ('fixed', False))
+  def test_target_zero(self, exact):
     record1 = tf.constant(8.5)
     record2 = tf.constant(7.25)
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=10.0,
         target_quantile=0.0,
         learning_rate=1.0,
         below_estimate_stddev=0.0,
-        expected_num_records=2.0,
+        expected_num_records=(None if exact else 2.0),
         geometric_update=False)
 
     global_state = query.initial_global_state()
@@ -60,16 +84,17 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       self.assertAllClose(actual_estimate.numpy(), expected_estimate)
 
-  def test_target_zero_geometric(self):
+  @parameterized.named_parameters(('exact', True), ('fixed', False))
+  def test_target_zero_geometric(self, exact):
     record1 = tf.constant(5.0)
     record2 = tf.constant(2.5)
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=16.0,
         target_quantile=0.0,
         learning_rate=np.log(2.0),        # Geometric steps in powers of 2.
         below_estimate_stddev=0.0,
-        expected_num_records=2.0,
+        expected_num_records=(None if exact else 2.0),
         geometric_update=True)
 
     global_state = query.initial_global_state()
@@ -91,16 +116,17 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       self.assertAllClose(actual_estimate.numpy(), expected_estimate)
 
-  def test_target_one(self):
+  @parameterized.named_parameters(('exact', True), ('fixed', False))
+  def test_target_one(self, exact):
     record1 = tf.constant(1.5)
     record2 = tf.constant(2.75)
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=0.0,
         target_quantile=1.0,
         learning_rate=1.0,
         below_estimate_stddev=0.0,
-        expected_num_records=2.0,
+        expected_num_records=(None if exact else 2.0),
         geometric_update=False)
 
     global_state = query.initial_global_state()
@@ -120,16 +146,17 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       self.assertAllClose(actual_estimate.numpy(), expected_estimate)
 
-  def test_target_one_geometric(self):
+  @parameterized.named_parameters(('exact', True), ('fixed', False))
+  def test_target_one_geometric(self, exact):
     record1 = tf.constant(1.5)
     record2 = tf.constant(3.0)
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=0.5,
         target_quantile=1.0,
         learning_rate=np.log(2.0),        # Geometric steps in powers of 2.
         below_estimate_stddev=0.0,
-        expected_num_records=2.0,
+        expected_num_records=(None if exact else 2.0),
         geometric_update=True)
 
     global_state = query.initial_global_state()
@@ -152,23 +179,27 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(actual_estimate.numpy(), expected_estimate)
 
   @parameterized.named_parameters(
-      ('start_low_arithmetic', True, False),
-      ('start_low_geometric', True, True),
-      ('start_high_arithmetic', False, False),
-      ('start_high_geometric', False, True))
-  def test_linspace(self, start_low, geometric):
+      ('start_low_geometric_exact', True, True, True),
+      ('start_low_arithmetic_exact', True, True, False),
+      ('start_high_geometric_exact', True, False, True),
+      ('start_high_arithmetic_exact', True, False, False),
+      ('start_low_geometric_noised', False, True, True),
+      ('start_low_arithmetic_noised', False, True, False),
+      ('start_high_geometric_noised', False, False, True),
+      ('start_high_arithmetic_noised', False, False, False))
+  def test_linspace(self, exact, start_low, geometric):
     # 100 records equally spaced from 0 to 10 in 0.1 increments.
     # Test that we converge to the correct median value and bounce around it.
     num_records = 21
     records = [tf.constant(x) for x in np.linspace(
         0.0, 10.0, num=num_records, dtype=np.float32)]
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=(1.0 if start_low else 10.0),
         target_quantile=0.5,
         learning_rate=1.0,
-        below_estimate_stddev=0.0,
-        expected_num_records=num_records,
+        below_estimate_stddev=(0.0 if exact else 1e-2),
+        expected_num_records=(None if exact else num_records),
         geometric_update=geometric)
 
     global_state = query.initial_global_state()
@@ -182,11 +213,15 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
         self.assertNear(actual_estimate, 5.0, 0.25)
 
   @parameterized.named_parameters(
-      ('start_low_arithmetic', True, False),
-      ('start_low_geometric', True, True),
-      ('start_high_arithmetic', False, False),
-      ('start_high_geometric', False, True))
-  def test_all_equal(self, start_low, geometric):
+      ('start_low_geometric_exact', True, True, True),
+      ('start_low_arithmetic_exact', True, True, False),
+      ('start_high_geometric_exact', True, False, True),
+      ('start_high_arithmetic_exact', True, False, False),
+      ('start_low_geometric_noised', False, True, True),
+      ('start_low_arithmetic_noised', False, True, False),
+      ('start_high_geometric_noised', False, False, True),
+      ('start_high_arithmetic_noised', False, False, False))
+  def test_all_equal(self, exact, start_low, geometric):
     # 20 equal records. Test that we converge to that record and bounce around
     # it. Unlike the linspace test, the quantile-matching objective is very
     # sharp at the optimum so a decaying learning rate is necessary.
@@ -195,12 +230,12 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
     learning_rate = tf.Variable(1.0)
 
-    query = quantile_estimator_query.QuantileEstimatorQuery(
+    query = _make_quantile_estimator_query(
         initial_estimate=(1.0 if start_low else 10.0),
         target_quantile=0.5,
         learning_rate=learning_rate,
-        below_estimate_stddev=0.0,
-        expected_num_records=num_records,
+        below_estimate_stddev=(0.0 if exact else 1e-2),
+        expected_num_records=(None if exact else num_records),
         geometric_update=geometric)
 
     global_state = query.initial_global_state()
@@ -213,6 +248,15 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       if t > 40:
         self.assertNear(actual_estimate, 5.0, 0.5)
+
+  def test_raises_with_non_scalar_record(self):
+    query = quantile_estimator_query.NoPrivacyQuantileEstimatorQuery(
+        initial_estimate=1.0,
+        target_quantile=0.5,
+        learning_rate=1.0)
+
+    with self.assertRaisesRegex(ValueError, 'scalar'):
+      query.accumulate_record(None, None, [1.0, 2.0])
 
 
 if __name__ == '__main__':

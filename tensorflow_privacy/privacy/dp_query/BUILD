@@ -146,6 +146,7 @@ py_library(
     deps = [
         ":dp_query",
         ":gaussian_query",
+        ":no_privacy_query",
         "//third_party/py/tensorflow",
     ],
 )

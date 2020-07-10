@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Authors.
+# Copyright 2020, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -126,7 +126,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
     """See base class."""
     return self._SampleState(
         self._sum_query.initial_sample_state(template),
-        self._quantile_estimator_query.initial_sample_state(tf.constant(0.0)))
+        self._quantile_estimator_query.initial_sample_state())
 
   def preprocess_record(self, params, record):
     clipped_record, global_norm = (
