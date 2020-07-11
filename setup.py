@@ -17,7 +17,7 @@ from setuptools import setup
 
 setup(
     name='tensorflow_privacy',
-    version='0.3.0',
+    version='0.4.0',
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
     install_requires=[
