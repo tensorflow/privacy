@@ -1,4 +1,4 @@
-# Copyright 2020, The TensorFlow Privacy Authors.
+# Copyright 2019, The TensorFlow Privacy Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ from __future__ import division
 from __future__ import print_function
 
 import sys
-
-from tensorflow_privacy.version import __version__  # pylint: disable=g-bad-import-order
 
 # pylint: disable=g-import-not-at-top
 
