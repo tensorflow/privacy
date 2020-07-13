@@ -16,7 +16,7 @@
 # Tool to build the TensorFlow Privacy pip package.
 #
 # Usage:
-#   bazel run //tensorflow_privacy/tools/development:build_pip_package -- \
+#   bazel run //tensorflow_privacy:build_pip_package -- \
 #       "/tmp/tensorflow_privacy"
 #
 # Arguments:
