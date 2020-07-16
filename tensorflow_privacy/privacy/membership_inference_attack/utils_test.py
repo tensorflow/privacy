@@ -100,6 +100,48 @@ class UtilsTest(absltest.TestCase):
       self.assertEqual(x_test.shape, (n_test, 11))
       self.assertEqual(y_test.shape, (n_test,))
 
+  def test_log_loss(self):
+    """Test computing cross-entropy loss."""
+    # Test binary case with a few normal values
+    pred = np.array([[0.01, 0.99], [0.1, 0.9], [0.25, 0.75], [0.5, 0.5],
+                     [0.75, 0.25], [0.9, 0.1], [0.99, 0.01]])
+    # Test the cases when true label (for all samples) is 0 and 1
+    expected_losses = {
+        0: np.array([4.60517019, 2.30258509, 1.38629436, 0.69314718, 0.28768207,
+                     0.10536052, 0.01005034]),
+        1: np.array([0.01005034, 0.10536052, 0.28768207, 0.69314718, 1.38629436,
+                     2.30258509, 4.60517019])
+    }
+    for c in [0, 1]:  # true label
+      y = np.ones(shape=pred.shape[0], dtype=int) * c
+      loss = utils.log_loss(y, pred)
+      np.testing.assert_allclose(loss, expected_losses[c], atol=1e-7)
+
+    # Test multiclass case with a few normal values
+    # (values from http://bit.ly/RJJHWA)
+    pred = np.array([[0.2, 0.7, 0.1], [0.6, 0.2, 0.2], [0.6, 0.1, 0.3],
+                     [0.99, 0.002, 0.008]])
+    # Test the cases when true label (for all samples) is 0, 1, and 2
+    expected_losses = {
+        0: np.array([1.60943791, 0.51082562, 0.51082562, 0.01005034]),
+        1: np.array([0.35667494, 1.60943791, 2.30258509, 6.2146081]),
+        2: np.array([2.30258509, 1.60943791, 1.2039728, 4.82831374])
+    }
+    for c in range(3):  # true label
+      y = np.ones(shape=pred.shape[0], dtype=int) * c
+      loss = utils.log_loss(y, pred)
+      np.testing.assert_allclose(loss, expected_losses[c], atol=1e-7)
+
+    # Test boundary values 0 and 1
+    pred = np.array([[0, 1]] * 2)
+    y = np.array([0, 1])
+    small_values = [1e-8, 1e-20, 1e-50]
+    expected_losses = np.array([18.42068074, 46.05170186, 115.12925465])
+    for i, small_value in enumerate(small_values):
+      loss = utils.log_loss(y, pred, small_value)
+      np.testing.assert_allclose(loss, np.array([expected_losses[i], 0]),
+                                 atol=1e-7)
+
 
 if __name__ == '__main__':
   absltest.main()

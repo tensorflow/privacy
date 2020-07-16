@@ -216,3 +216,23 @@ def compute_performance_metrics(true_labels: np.ndarray,
       'advantage': advantage,
   })
   return ensure_1d(results)
+
+
+# ------------------------------------------------------------------------------
+#  Loss functions
+# ------------------------------------------------------------------------------
+
+
+def log_loss(y, pred, small_value=1e-8):
+  """Compute the cross entropy loss.
+
+  Args:
+    y: numpy array, y[i] is the true label (scalar) of the i-th sample
+    pred: numpy array, pred[i] is the probability vector of the i-th sample
+    small_value: np.log can become -inf if the probability is too close to 0,
+      so the probability is clipped below by small_value.
+
+  Returns:
+    the cross-entropy loss of each sample
+  """
+  return -np.log(np.maximum(pred[range(y.size), y], small_value))
