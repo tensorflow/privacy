@@ -16,7 +16,6 @@
 # These are not necessary in a Python 3-only module.
 from __future__ import absolute_import
 from __future__ import division
-from __future__ import google_type_annotations
 from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
