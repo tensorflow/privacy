@@ -267,6 +267,35 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     grads_and_vars = opt.compute_gradients(self._loss(data0, var0), [var0])
     opt.apply_gradients(grads_and_vars)
 
+  @parameterized.named_parameters(
+      ('DPGradientDescent 1', dp_optimizer.DPGradientDescentOptimizer, 1,
+       [-2.5, -2.5]),
+      ('DPGradientDescent 2', dp_optimizer.DPGradientDescentOptimizer, 2,
+       [-2.5, -2.5]),
+  )
+  def testNoneGradients(self, cls, num_microbatches, expected_answer):
+    """Tests that optimizers can handle variables whose gradients are None."""
+    with self.cached_session() as sess:
+      var0 = tf.Variable([1.0, 2.0])
+      data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
+      # Create a string variable whose gradient will be None.
+      extra_variable = tf.Variable('foo', trainable=True, dtype=tf.string)
+
+      dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
+      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6,
+                                                    num_microbatches / 1e6)
+
+      opt = cls(
+          dp_sum_query, num_microbatches=num_microbatches, learning_rate=2.0)
+
+      self.evaluate(tf.global_variables_initializer())
+      # Fetch params to validate initial values
+      self.assertAllClose([1.0, 2.0], self.evaluate(var0))
+
+      minimize_op = opt.minimize(
+          loss=self._loss(data0, var0), var_list=[var0, extra_variable])
+      sess.run(minimize_op)
+
 
 if __name__ == '__main__':
   tf.test.main()

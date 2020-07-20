@@ -135,14 +135,13 @@ def make_optimizer_class(cls):
 
         def process_microbatch(i, sample_state):
           """Process one microbatch (record) with privacy helper."""
-          grads, _ = zip(*super(DPOptimizerClass, self).compute_gradients(
-              tf.reduce_mean(input_tensor=tf.gather(
-                  microbatches_losses, [i])), var_list, gate_gradients,
-              aggregation_method, colocate_gradients_with_ops, grad_loss))
-          grads_list = [
-              g if g is not None else tf.zeros_like(v)
-              for (g, v) in zip(list(grads), var_list)
-          ]
+          grads, _ = zip(
+              *super(DPOptimizerClass, self).compute_gradients(
+                  tf.reduce_mean(
+                      input_tensor=tf.gather(microbatches_losses,
+                                             [i])), var_list, gate_gradients,
+                  aggregation_method, colocate_gradients_with_ops, grad_loss))
+          grads_list = list(grads)
           sample_state = self._dp_sum_query.accumulate_record(
               sample_params, sample_state, grads_list)
           return sample_state
@@ -172,7 +171,10 @@ def make_optimizer_class(cls):
                 sample_state, self._global_state))
 
         def normalize(v):
-          return tf.truediv(v, tf.cast(self._num_microbatches, tf.float32))
+          try:
+            return tf.truediv(v, tf.cast(self._num_microbatches, tf.float32))
+          except TypeError:
+            return None
 
         final_grads = tf.nest.map_structure(normalize, grad_sums)
 

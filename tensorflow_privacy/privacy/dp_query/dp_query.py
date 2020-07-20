@@ -207,6 +207,10 @@ def zeros_like(arg):
   return tf.zeros(arg.shape, arg.dtype)
 
 
+def safe_add(x, y):
+  return x if y is None else tf.add(x, y)
+
+
 class SumAggregationDPQuery(DPQuery):
   """Base class for DPQueries that aggregate via sum."""
 
@@ -214,7 +218,7 @@ class SumAggregationDPQuery(DPQuery):
     return tf.nest.map_structure(zeros_like, template)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
-    return tf.nest.map_structure(tf.add, sample_state, preprocessed_record)
+    return tf.nest.map_structure(safe_add, sample_state, preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
-    return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)
+    return tf.nest.map_structure(safe_add, sample_state_1, sample_state_2)
