@@ -17,6 +17,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 from absl.testing import parameterized
 import mock
 import numpy as np
@@ -295,6 +296,41 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       minimize_op = opt.minimize(
           loss=self._loss(data0, var0), var_list=[var0, extra_variable])
       sess.run(minimize_op)
+
+  def _testWriteOutAndReload(self, optimizer_cls):
+    optimizer = optimizer_cls(l2_norm_clip=1.0,
+                              noise_multiplier=0.01,
+                              num_microbatches=1)
+
+    test_dir = self.get_temp_dir()
+    model_path = os.path.join(test_dir, 'model')
+
+    model = tf.keras.Sequential([tf.keras.layers.InputLayer(input_shape=(1, 1)),
+                                 tf.keras.layers.Dense(units=1,
+                                                       activation='softmax')])
+    model.compile(optimizer=optimizer,
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(
+                      from_logits=True))
+
+    tf.keras.models.save_model(model, filepath=model_path,
+                               include_optimizer=True)
+
+    optimizer_cls_str = optimizer_cls.__name__
+    tf.keras.models.load_model(model_path,
+                               custom_objects={
+                                   optimizer_cls_str: optimizer_cls})
+
+    return
+
+  def testWriteOutAndReloadAdam(self):
+    optimizer_class = dp_optimizer.make_gaussian_optimizer_class(
+        tf.keras.optimizers.Adam)
+    self._testWriteOutAndReload(optimizer_class)
+
+  def testWriteOutAndReloadSGD(self):
+    optimizer_class = dp_optimizer.make_gaussian_optimizer_class(
+        tf.keras.optimizers.SGD)
+    self._testWriteOutAndReload(optimizer_class)
 
 
 if __name__ == '__main__':

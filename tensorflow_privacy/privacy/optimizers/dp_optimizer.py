@@ -28,9 +28,12 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 def make_optimizer_class(cls):
   """Constructs a DP optimizer class from an existing one."""
   parent_code = tf.train.Optimizer.compute_gradients.__code__
-  child_code = cls.compute_gradients.__code__
+
+  has_compute_gradients = hasattr(cls, 'compute_gradients')
+  if has_compute_gradients:
+    child_code = cls.compute_gradients.__code__
   GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
-  if child_code is not parent_code:
+  if has_compute_gradients and child_code is not parent_code:
     logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
@@ -135,13 +138,23 @@ def make_optimizer_class(cls):
 
         def process_microbatch(i, sample_state):
           """Process one microbatch (record) with privacy helper."""
-          grads, _ = zip(
-              *super(DPOptimizerClass, self).compute_gradients(
-                  tf.reduce_mean(
-                      input_tensor=tf.gather(microbatches_losses,
-                                             [i])), var_list, gate_gradients,
-                  aggregation_method, colocate_gradients_with_ops, grad_loss))
+          self_super = super(DPOptimizerClass, self)
+
+          mean_loss = tf.reduce_mean(input_tensor=tf.gather(
+              microbatches_losses, [i]))
+
+          if hasattr(self_super, 'compute_gradients'):
+            # This case covers optimizers in tf.train.
+            compute_gradients_fn = self_super.compute_gradients
+          else:
+            # This case covers Keras optimizers from optimizers_v2.
+            compute_gradients_fn = self_super._compute_gradients  # pylint: disable=protected-access
+
+          grads, _ = zip(*compute_gradients_fn(
+              mean_loss, var_list, gate_gradients,
+              aggregation_method, colocate_gradients_with_ops, grad_loss))
           grads_list = list(grads)
+
           sample_state = self._dp_sum_query.accumulate_record(
               sample_params, sample_state, grads_list)
           return sample_state
@@ -207,6 +220,11 @@ def make_gaussian_optimizer_class(cls):
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg
         **kwargs):
+      self._l2_norm_clip = l2_norm_clip
+      self._noise_multiplier = noise_multiplier
+      self._num_microbatches = num_microbatches
+      self._base_optimizer_class = cls
+
       dp_sum_query = gaussian_query.GaussianSumQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier)
 
@@ -220,6 +238,25 @@ def make_gaussian_optimizer_class(cls):
           unroll_microbatches,
           *args,
           **kwargs)
+
+    def get_config(self):
+      """Creates configuration for Keras serialization.
+
+      This method will be called when Keras creates model checkpoints
+      and is necessary so that deserialization can be performed.
+
+      Returns:
+        A dict object storing arguments to be passed to the __init__ method
+        upon deserialization.
+      """
+
+      config = self._base_optimizer_class.get_config(self)
+      config.update({
+          'l2_norm_clip': self._l2_norm_clip,
+          'noise_multiplier': self._noise_multiplier,
+          'num_microbatches': self._num_microbatches})
+
+      return config
 
     @property
     def ledger(self):
