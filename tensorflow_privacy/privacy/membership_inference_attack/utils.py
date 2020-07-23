@@ -19,6 +19,8 @@ from typing import Text, Dict, Union, List, Any, Tuple
 
 import numpy as np
 from sklearn import metrics
+import tensorflow.compat.v1 as tf
+
 
 ArrayDict = Dict[Text, np.ndarray]
 Dataset = Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
@@ -236,3 +238,26 @@ def log_loss(y, pred, small_value=1e-8):
     the cross-entropy loss of each sample
   """
   return -np.log(np.maximum(pred[range(y.size), y], small_value))
+
+
+# ------------------------------------------------------------------------------
+#  Tensorboard
+# ------------------------------------------------------------------------------
+
+
+def write_to_tensorboard(writer, tags, values, step):
+  """Write metrics to tensorboard.
+
+  Args:
+    writer: tensorboard writer
+    tags: a list of tags of metrics
+    values: a list of values of metrics
+    step: step for the summary
+  """
+  if writer is None:
+    return
+  summary = tf.Summary()
+  for tag, val in zip(tags, values):
+    summary.value.add(tag=tag, simple_value=val)
+  writer.add_summary(summary, step)
+  writer.flush()
