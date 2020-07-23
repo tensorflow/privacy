@@ -39,11 +39,6 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean(
@@ -66,10 +61,10 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   logits = tf.layers.dense(
       inputs=input_layer,
       units=nclasses,
-      kernel_regularizer=tf.contrib.layers.l2_regularizer(
-          scale=FLAGS.regularizer),
-      bias_regularizer=tf.contrib.layers.l2_regularizer(
-          scale=FLAGS.regularizer))
+      kernel_regularizer=tf.keras.regularizers.l2(
+          l=FLAGS.regularizer),
+      bias_regularizer=tf.keras.regularizers.l2(
+          l=FLAGS.regularizer))
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -91,7 +86,7 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
           learning_rate=FLAGS.learning_rate)
       opt_loss = vector_loss
     else:
-      optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+      optimizer = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
