@@ -86,7 +86,8 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
           learning_rate=FLAGS.learning_rate)
       opt_loss = vector_loss
     else:
-      optimizer = tf.train.GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+      optimizer = tf.train.GradientDescentOptimizer(
+          learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
@@ -164,14 +165,17 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
        np.linspace(20, 100, num=81)])
   delta = 1e-5
   for p in (.5, .9, .99):
-    steps = math.ceil(steps_per_epoch * p)  # Steps in the last epoch.
-    coef = 2 * (noise_multiplier * batch_size)**-2 * (
-        # Accounting for privacy loss
-        (epochs - 1) / steps_per_epoch +  # ... from all-but-last epochs
-        1 / (steps_per_epoch - steps + 1))  # ... due to the last epoch
+    steps = math.ceil(steps_per_epoch * p)  # Steps in the last epoch
+    # compute rdp coeff for a single differing batch
+    coeff = 2 * (noise_multiplier * batch_size)**-2
+    # amplification by iteration from all-but-last-epochs
+    amp_part1 = (epochs - 1) / steps_per_epoch
+    # min amplification by iteration for at least p items due to last epoch
+    amp_part2 = 1 / (steps_per_epoch - steps + 1)
+    # compute rdp of output model
+    rdp = [coeff * order * (amp_part1 + amp_part2) for order in orders]
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
-    rdp = [order * coef for order in orders]
     eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(
         p * 100, eps, delta))
