@@ -67,7 +67,7 @@ class RocCurveTest(absltest.TestCase):
   def test_auc_random_classifier(self):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
-        fpr=np.array([1.0, 0.5, 0.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
         thresholds=np.array([0, 1, 2]))
 
     self.assertEqual(roc.get_auc(), 0.5)
@@ -83,7 +83,7 @@ class RocCurveTest(absltest.TestCase):
   def test_attacker_advantage_random_classifier(self):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
-        fpr=np.array([1.0, 0.5, 0.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
         thresholds=np.array([0, 1, 2]))
 
     self.assertEqual(roc.get_attacker_advantage(), 0.0)
