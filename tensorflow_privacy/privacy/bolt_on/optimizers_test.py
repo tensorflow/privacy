@@ -151,7 +151,7 @@ class TestOptimizer(OptimizerV2):
     self.iterations = tf.constant(1, dtype=tf.float32)
     self._iterations = tf.constant(1, dtype=tf.float32)
 
-  def _compute_gradients(self, loss, var_list, grad_loss=None):
+  def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
     return 'test'
 
   def get_config(self):
