@@ -196,33 +196,33 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(results.get_result_with_max_attacker_advantage(),
                      self.perfect_classifier_result)
 
-  @absltest.skip('Will be enabled in the next CL')
   def test_summary_by_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
     self.assertEqual(
-        results.summary(by_slices=True), 'Highest AUC on slice '
-        'SingleSliceSpec' +
-        '(SlicingFeature.CORRECTLY_CLASSIFIED=True) achieved by ' +
-        'AttackType.THRESHOLD_ATTACK with an AUC of 1.0\n' +
-        'Highest advantage on ' +
-        'slice SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED=True) ' +
-        'achieved by AttackType.THRESHOLD_ATTACK with an advantage of 1.0\n' +
-        'Highest AUC on slice SingleSliceSpec(Entire dataset) achieved ' +
-        'by AttackType.THRESHOLD_ATTACK with an AUC of 0.5\n' +
-        'Highest advantage on slice SingleSliceSpec(Entire dataset) achieved ' +
-        'by AttackType.THRESHOLD_ATTACK with an advantage of 0.0')
+        results.summary(by_slices=True),
+        'Best-performing attacks over all slices\n' +
+        '  THRESHOLD_ATTACK achieved an AUC of 1.00 ' +
+        'on slice CORRECTLY_CLASSIFIED=True\n' +
+        '  THRESHOLD_ATTACK achieved an advantage of 1.00 ' +
+        'on slice CORRECTLY_CLASSIFIED=True\n\n' +
+        'Best-performing attacks over slice: "CORRECTLY_CLASSIFIED=True"\n' +
+        '  THRESHOLD_ATTACK achieved an AUC of 1.00\n' +
+        '  THRESHOLD_ATTACK achieved an advantage of 1.00\n\n' +
+        'Best-performing attacks over slice: "Entire dataset"\n' +
+        '  THRESHOLD_ATTACK achieved an AUC of 0.50\n' +
+        '  THRESHOLD_ATTACK achieved an advantage of 0.00')
 
-  @absltest.skip('Will be enabled in the next CL')
   def test_summary_without_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
     self.assertEqual(
         results.summary(by_slices=False),
-        'Highest AUC on slice SingleSliceSpec(Entire dataset) achieved ' +
-        'by AttackType.THRESHOLD_ATTACK with an AUC of 0.5\n' +
-        'Highest advantage on slice SingleSliceSpec(Entire dataset) achieved ' +
-        'by AttackType.THRESHOLD_ATTACK with an advantage of 0.0')
+        'Best-performing attacks over all slices\n' +
+        '  THRESHOLD_ATTACK achieved an AUC of 1.00 ' +
+        'on slice CORRECTLY_CLASSIFIED=True\n' +
+        '  THRESHOLD_ATTACK achieved an advantage of 1.00 ' +
+        'on slice CORRECTLY_CLASSIFIED=True')
 
   def test_save_load(self):
     results = AttackResults(
