@@ -13,7 +13,12 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Code that runs membership inference attacks based on the model outputs."""
+"""Code that runs membership inference attacks based on the model outputs.
+
+Warning: This file belongs to the old API for membership inference attacks. This
+file will be removed soon. membership_inference_attack_new.py contains the new
+API.
+"""
 
 import collections
 import io
@@ -354,6 +359,11 @@ def run_attack(loss_train: np.ndarray = None,
     results: Dictionary with the chosen vulnerability metric(s) for all ran
       attacks.
   """
+  print(
+      'Deprecation warning: function run_attack is '
+      'deprecated and will be removed soon. '
+      'Please use membership_inference_attack_new.run_attacks'
+  )
   attacks = []
   features = {}
   # ---------- Check available data ----------
@@ -529,6 +539,11 @@ def run_all_attacks(loss_train: np.ndarray = None,
   Returns:
     result: dictionary with all attack results
   """
+  print(
+      'Deprecation warning: function run_all_attacks is '
+      'deprecated and will be removed soon. '
+      'Please use membership_inference_attack_new.run_attacks'
+  )
   metrics = ['auc', 'advantage']
 
   # Entire data
@@ -631,6 +646,11 @@ def run_all_attacks_and_create_summary(
     result: a dictionary with all the distilled attack information summarized
       in the summarystring
   """
+  print(
+      'Deprecation warning: function run_all_attacks_and_create_summary is '
+      'deprecated and will be removed soon. '
+      'Please use membership_inference_attack_new.run_attacks'
+  )
   summary = []
   metrics = ['auc', 'advantage']
   attack_classifiers = ['lr', 'knn']
