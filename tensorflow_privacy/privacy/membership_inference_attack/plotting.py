@@ -78,3 +78,9 @@ def plot_histograms(train: Iterable[float],
   plt.ylabel('normalized counts (density)')
   plt.legend()
   return fig
+
+
+def plot_roc_curve(roc_curve) -> plt.Figure:
+  """Plot the ROC curve and the area under the curve."""
+  return plot_curve_with_area(
+      roc_curve.fpr, roc_curve.tpr, xlabel='FPR', ylabel='TPR')

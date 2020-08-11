@@ -19,6 +19,8 @@ This is using a toy model based on classifying four spacial clusters of data.
 """
 import os
 import tempfile
+
+import matplotlib.pyplot as plt
 import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -28,6 +30,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
+import tensorflow_privacy.privacy.membership_inference_attack.plotting as plotting
 
 
 def generate_random_cluster(center, scale, num_points):
@@ -147,3 +150,11 @@ print(attack_results.summary(by_slices=False))
 
 print("Summary by slices: \n")
 print(attack_results.summary(by_slices=True))
+
+# Example of ROC curve plotting.
+figure = plotting.plot_roc_curve(
+    attack_results.single_attack_results[0].roc_curve)
+plt.show()
+
+# For saving a figure into a file:
+# plotting.save_plot(figure, <file_path>)
