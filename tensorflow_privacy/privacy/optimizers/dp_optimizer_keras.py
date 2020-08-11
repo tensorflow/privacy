@@ -60,7 +60,7 @@ def make_keras_optimizer_class(cls):
       self._num_microbatches = num_microbatches
       self._dp_sum_query = gaussian_query.GaussianSumQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier)
-      self._global_state = self._dp_sum_query.initial_global_state()
+      self._global_state = None
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP version of superclass method."""
@@ -118,6 +118,9 @@ def make_keras_optimizer_class(cls):
 
     def get_gradients(self, loss, params):
       """DP version of superclass method."""
+
+      if self._global_state is None:
+        self._global_state = self._dp_sum_query.initial_global_state()
 
       # This code mostly follows the logic in the original DPOptimizerClass
       # in dp_optimizer.py, except that this returns only the gradients,
