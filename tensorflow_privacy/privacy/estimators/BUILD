@@ -20,8 +20,7 @@ py_library(
     ],
     deps = [
         "//third_party/py/tensorflow",
-        # TODO(b/163395075): Remove this dependency once necessary function is public.
-        "//third_party/tensorflow/python:keras_lib",
+        "//third_party/tensorflow/python:keras_lib",  # TODO(b/163395075): Remove when fixed.
         "//third_party/tensorflow_estimator",
     ],
 )
@@ -33,9 +32,18 @@ py_library(
     ],
     deps = [
         "//third_party/py/tensorflow",
-        # TODO(b/163395075): Remove this dependency once necessary function is public.
-        "//third_party/tensorflow/python:keras_lib",
+        "//third_party/tensorflow/python:keras_lib",  # TODO(b/163395075): Remove when fixed.
         "//third_party/tensorflow_estimator",
+    ],
+)
+
+py_library(
+    name = "test_utils",
+    srcs = [
+        "test_utils.py",
+    ],
+    deps = [
+        "//third_party/py/tensorflow",
     ],
 )
 
@@ -46,8 +54,7 @@ py_test(
     python_version = "PY3",
     deps = [
         ":binary_class_head",
-        "//third_party/py/absl/testing:parameterized",
-        "//third_party/py/six",
+        ":test_utils",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
     ],
@@ -60,8 +67,7 @@ py_test(
     python_version = "PY3",
     deps = [
         ":multi_class_head",
-        "//third_party/py/absl/testing:parameterized",
-        "//third_party/py/six",
+        ":test_utils",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
     ],
