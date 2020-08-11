@@ -56,7 +56,7 @@ class SingleSliceSpec:
     if self.feature == SlicingFeature.PERCENTILE:
       return 'Loss percentiles: %d-%d' % self.value
 
-    return f'{self.feature.name}={self.value}'
+    return '%s=%s' % (self.feature.name, self.value)
 
 
 @dataclass
@@ -98,7 +98,7 @@ class AttackType(enum.Enum):
 
   # Return LOGISTIC_REGRESSION instead of AttackType.LOGISTIC_REGRESSION
   def __str__(self):
-    return f'{self.name}'
+    return '%s' % self.name
 
 
 @dataclass
@@ -125,7 +125,7 @@ class AttackInputData:
   def num_classes(self):
     if self.labels_train is None or self.labels_test is None:
       raise ValueError(
-          "Can't identify the number of classes as no labels were provided. "
+          'Can\'t identify the number of classes as no labels were provided. '
           'Please set labels_train and labels_test')
     return int(max(np.max(self.labels_train), np.max(self.labels_test))) + 1
 
@@ -204,7 +204,7 @@ class RocCurve:
     over all available classifier thresholds.
 
     Returns:
-      a single float number with membership attaker's advantage.
+      a single float number with membership attacker's advantage.
     """
     return max(np.abs(self.tpr - self.fpr))
 

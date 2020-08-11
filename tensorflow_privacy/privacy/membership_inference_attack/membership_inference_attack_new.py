@@ -54,8 +54,8 @@ def run_trained_attack(attack_input: AttackInputData, attack_type: AttackType):
   elif attack_type == AttackType.K_NEAREST_NEIGHBORS:
     attacker = models.KNearestNeighborsAttacker()
   else:
-    raise NotImplementedError(
-        'Attack type {} not implemented yet.'.format(attack_type))
+    raise NotImplementedError('Attack type %s not implemented yet.' %
+                              attack_type)
 
   prepared_attacker_data = models.create_attacker_data(attack_input)
 

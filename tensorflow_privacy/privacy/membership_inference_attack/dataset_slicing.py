@@ -137,7 +137,7 @@ def get_slice(data: AttackInputData,
   elif slice_spec.feature == SlicingFeature.CORRECTLY_CLASSIFIED:
     data_slice = _slice_by_classification_correctness(data, slice_spec.value)
   else:
-    raise ValueError(f'Unknown slice spec feature "{slice_spec.feature}"')
+    raise ValueError('Unknown slice spec feature "%s"' % slice_spec.feature)
 
   data_slice.slice_spec = slice_spec
   return data_slice
