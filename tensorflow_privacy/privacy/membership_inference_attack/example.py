@@ -66,7 +66,7 @@ def generate_features_and_labels(samples_per_cluster=250, scale=0.1):
       np.ones(samples_per_cluster),
       np.ones(samples_per_cluster) * 2,
       np.ones(samples_per_cluster) * 3,
-  ))
+  )).astype("uint8")
 
   return (features, labels)
 
@@ -115,6 +115,8 @@ attack_results = mia.run_attacks(
     AttackInputData(
         labels_train=training_labels,
         labels_test=test_labels,
+        logits_train=training_pred,
+        logits_test=test_pred,
         loss_train=crossentropy(training_labels, training_pred),
         loss_test=crossentropy(test_labels, test_pred)),
     SlicingSpec(entire_dataset=True, by_class=True),

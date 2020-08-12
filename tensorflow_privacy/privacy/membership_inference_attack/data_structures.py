@@ -101,6 +101,10 @@ class AttackType(enum.Enum):
     return '%s' % self.name
 
 
+def _is_integer_type_array(a):
+  return np.issubdtype(a.dtype, np.integer)
+
+
 @dataclass
 class AttackInputData:
   """Input data for running an attack.
@@ -174,6 +178,14 @@ class AttackInputData:
     if (self.labels_train is None and self.loss_train is None and
         self.logits_train is None):
       raise ValueError('At least one of labels, logits or losses should be set')
+
+    if self.labels_train is not None and not _is_integer_type_array(
+        self.labels_train):
+      raise ValueError('labels_train elements should have integer type')
+
+    if self.labels_test is not None and not _is_integer_type_array(
+        self.labels_test):
+      raise ValueError('labels_test elements should have integer type')
 
     # TODO(b/161366709): Add checks for equal sizes
 
