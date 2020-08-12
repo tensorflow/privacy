@@ -115,8 +115,13 @@ class TrainedAttacker:
     Args:
       input_features : A vector of features with the same semantics as x_train
         passed to train_model.
+    Returns:
+      An array of probabilities denoting whether the example belongs to test.
     """
-    raise NotImplementedError()
+    if self.model is None:
+      raise AssertionError(
+          'Model not trained yet. Please call train_model first.')
+    return self.model.predict_proba(input_features)[:, 1]
 
 
 class LogisticRegressionAttacker(TrainedAttacker):
@@ -131,12 +136,6 @@ class LogisticRegressionAttacker(TrainedAttacker):
         lr, param_grid=param_grid, cv=3, n_jobs=1, verbose=0)
     model.fit(input_features, is_training_labels)
     self.model = model
-
-  def predict(self, input_features):
-    if self.model is None:
-      raise AssertionError(
-          'Model not trained yet. Please call train_model first.')
-    return self.model.predict(input_features)
 
 
 class MultilayerPerceptronAttacker(TrainedAttacker):
@@ -154,12 +153,6 @@ class MultilayerPerceptronAttacker(TrainedAttacker):
         mlp_model, param_grid=param_grid, cv=3, n_jobs=n_jobs, verbose=0)
     model.fit(input_features, is_training_labels)
     self.model = model
-
-  def predict(self, input_features):
-    if self.model is None:
-      raise AssertionError(
-          'Model not trained yet. Please call train_model first.')
-    return self.model.predict(input_features)
 
 
 class RandomForestAttacker(TrainedAttacker):
@@ -182,12 +175,6 @@ class RandomForestAttacker(TrainedAttacker):
     model.fit(input_features, is_training_labels)
     self.model = model
 
-  def predict(self, input_features):
-    if self.model is None:
-      raise AssertionError(
-          'Model not trained yet. Please call train_model first.')
-    return self.model.predict(input_features)
-
 
 class KNearestNeighborsAttacker(TrainedAttacker):
   """K nearest neighbor attacker."""
@@ -201,9 +188,3 @@ class KNearestNeighborsAttacker(TrainedAttacker):
         knn_model, param_grid=param_grid, cv=3, n_jobs=1, verbose=0)
     model.fit(input_features, is_training_labels)
     self.model = model
-
-  def predict(self, input_features):
-    if self.model is None:
-      raise AssertionError(
-          'Model not trained yet. Please call train_model first.')
-    return self.model.predict(input_features)

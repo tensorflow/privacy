@@ -26,7 +26,7 @@ class TrainedAttackerTest(absltest.TestCase):
   def test_base_attacker_train_and_predict(self):
     base_attacker = models.TrainedAttacker()
     self.assertRaises(NotImplementedError, base_attacker.train_model, [], [])
-    self.assertRaises(NotImplementedError, base_attacker.predict, [])
+    self.assertRaises(AssertionError, base_attacker.predict, [])
 
   def test_predict_before_training(self):
     lr_attacker = models.LogisticRegressionAttacker()
