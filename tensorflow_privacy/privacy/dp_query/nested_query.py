@@ -1,4 +1,4 @@
-# Copyright 2018, The TensorFlow Authors.
+# Copyright 2020, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+import collections
 
 import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
@@ -51,6 +53,7 @@ class NestedQuery(dp_query.DPQuery):
     self._queries = queries
 
   def _map_to_queries(self, fn, *inputs, **kwargs):
+    """Maps DPQuery methods to the subqueries."""
     def caller(query, *args):
       return getattr(query, fn)(*args, **kwargs)
 
@@ -61,24 +64,22 @@ class NestedQuery(dp_query.DPQuery):
     self._map_to_queries('set_ledger', ledger=ledger)
 
   def initial_global_state(self):
-    """See base class."""
     return self._map_to_queries('initial_global_state')
 
   def derive_sample_params(self, global_state):
-    """See base class."""
     return self._map_to_queries('derive_sample_params', global_state)
 
-  def initial_sample_state(self, template):
-    """See base class."""
-    return self._map_to_queries('initial_sample_state', template)
+  def initial_sample_state(self, template=None):
+    if template is None:
+      return self._map_to_queries('initial_sample_state')
+    else:
+      return self._map_to_queries('initial_sample_state', template)
 
   def preprocess_record(self, params, record):
-    """See base class."""
     return self._map_to_queries('preprocess_record', params, record)
 
   def accumulate_preprocessed_record(
       self, sample_state, preprocessed_record):
-    """See base class."""
     return self._map_to_queries(
         'accumulate_preprocessed_record',
         sample_state,
@@ -89,18 +90,6 @@ class NestedQuery(dp_query.DPQuery):
         'merge_sample_states', sample_state_1, sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
-    """Gets query result after all records of sample have been accumulated.
-
-    Args:
-      sample_state: The sample state after all records have been accumulated.
-      global_state: The global state.
-
-    Returns:
-      A tuple (result, new_global_state) where "result" is a structure matching
-      the query structure containing the results of the subqueries and
-      "new_global_state" is a structure containing the updated global states
-      for the subqueries.
-    """
     estimates_and_new_global_states = self._map_to_queries(
         'get_noised_result', sample_state, global_state)
 
@@ -109,8 +98,22 @@ class NestedQuery(dp_query.DPQuery):
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
             tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
 
+  def derive_metrics(self, global_state):
+    metrics = collections.OrderedDict()
 
-class NestedSumQuery(dp_query.SumAggregationDPQuery, NestedQuery):
+    def add_metrics(tuple_path, subquery, subquery_global_state):
+      metrics.update({
+          '/'.join(str(s) for s in tuple_path + (name,)): metric
+          for name, metric
+          in subquery.derive_metrics(subquery_global_state).items()})
+
+    tree.map_structure_with_path_up_to(
+        self._queries, add_metrics, self._queries, global_state)
+
+    return metrics
+
+
+class NestedSumQuery(NestedQuery, dp_query.SumAggregationDPQuery):
   """A NestedQuery that consists only of SumAggregationDPQueries."""
 
   def __init__(self, queries):

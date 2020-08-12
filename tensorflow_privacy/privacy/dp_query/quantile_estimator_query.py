@@ -107,11 +107,9 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         denominator=expected_num_records)
 
   def set_ledger(self, ledger):
-    """See base class."""
     self._below_estimate_query.set_ledger(ledger)
 
   def initial_global_state(self):
-    """See base class."""
     return self._GlobalState(
         tf.cast(self._initial_estimate, tf.float32),
         tf.cast(self._target_quantile, tf.float32),
@@ -119,7 +117,6 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         self._below_estimate_query.initial_global_state())
 
   def derive_sample_params(self, global_state):
-    """See base class."""
     below_estimate_params = self._below_estimate_query.derive_sample_params(
         global_state.below_estimate_state)
     return self._SampleParams(global_state.current_estimate,
@@ -141,7 +138,6 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         params.below_estimate_params, below)
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
     below_estimate_result, new_below_estimate_state = (
         self._below_estimate_query.get_noised_result(
             sample_state,
@@ -169,6 +165,9 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         below_estimate_state=new_below_estimate_state)
 
     return new_estimate, new_global_state
+
+  def derive_metrics(self, global_state):
+    return collections.OrderedDict(estimate=global_state.current_estimate)
 
 
 class NoPrivacyQuantileEstimatorQuery(QuantileEstimatorQuery):

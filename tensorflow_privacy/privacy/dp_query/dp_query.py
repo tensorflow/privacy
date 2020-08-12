@@ -47,6 +47,7 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import collections
 
 import tensorflow.compat.v1 as tf
 
@@ -83,7 +84,7 @@ class DPQuery(object):
     return ()
 
   @abc.abstractmethod
-  def initial_sample_state(self, template):
+  def initial_sample_state(self, template=None):
     """Returns an initial state to use for the next sample.
 
     Args:
@@ -197,6 +198,20 @@ class DPQuery(object):
     """
     pass
 
+  def derive_metrics(self, global_state):
+    """Derives metric information from the current global state.
+
+    Any metrics returned should be derived only from privatized quantities.
+
+    Args:
+      global_state: The global state from which to derive metrics.
+
+    Returns:
+      A `collections.OrderedDict` mapping string metric names to tensor values.
+    """
+    del global_state
+    return collections.OrderedDict()
+
 
 def zeros_like(arg):
   """A `zeros_like` function that also works for `tf.TensorSpec`s."""
@@ -214,11 +229,14 @@ def safe_add(x, y):
 class SumAggregationDPQuery(DPQuery):
   """Base class for DPQueries that aggregate via sum."""
 
-  def initial_sample_state(self, template):
+  def initial_sample_state(self, template=None):
     return tf.nest.map_structure(zeros_like, template)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
     return tf.nest.map_structure(safe_add, sample_state, preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
-    return tf.nest.map_structure(safe_add, sample_state_1, sample_state_2)
+    return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)
+
+  def get_noised_result(self, sample_state, global_state):
+    return sample_state, global_state

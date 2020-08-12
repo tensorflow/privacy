@@ -104,26 +104,22 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
                       dp_query.SumAggregationDPQuery)
 
   def set_ledger(self, ledger):
-    """See base class."""
     self._sum_query.set_ledger(ledger)
     self._quantile_estimator_query.set_ledger(ledger)
 
   def initial_global_state(self):
-    """See base class."""
     return self._GlobalState(
         tf.cast(self._noise_multiplier, tf.float32),
         self._sum_query.initial_global_state(),
         self._quantile_estimator_query.initial_global_state())
 
   def derive_sample_params(self, global_state):
-    """See base class."""
     return self._SampleParams(
         self._sum_query.derive_sample_params(global_state.sum_state),
         self._quantile_estimator_query.derive_sample_params(
             global_state.quantile_estimator_state))
 
   def initial_sample_state(self, template):
-    """See base class."""
     return self._SampleState(
         self._sum_query.initial_sample_state(template),
         self._quantile_estimator_query.initial_sample_state())
@@ -138,7 +134,6 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
     return self._SampleState(clipped_record, was_unclipped)
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
     noised_vectors, sum_state = self._sum_query.get_noised_result(
         sample_state.sum_state, global_state.sum_state)
     del sum_state  # To be set explicitly later when we know the new clip.
@@ -160,6 +155,9 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
         new_quantile_estimator_state)
 
     return noised_vectors, new_global_state
+
+  def derive_metrics(self, global_state):
+    return collections.OrderedDict(clip=global_state.sum_state.l2_norm_clip)
 
 
 class QuantileAdaptiveClipAverageQuery(normalized_query.NormalizedQuery):

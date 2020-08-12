@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 
 from absl.testing import parameterized
 import numpy as np
@@ -151,6 +152,32 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
     # This should not.
     with self.assertRaises(TypeError):
       nested_query.NestedSumQuery(non_sum_query)
+
+  def test_metrics(self):
+    class QueryWithMetric(dp_query.SumAggregationDPQuery):
+
+      def __init__(self, metric_val):
+        self._metric_val = metric_val
+
+      def derive_metrics(self, global_state):
+        return collections.OrderedDict(metric=self._metric_val)
+
+    query1 = QueryWithMetric(1)
+    query2 = QueryWithMetric(2)
+    query3 = QueryWithMetric(3)
+
+    nested_a = nested_query.NestedSumQuery(query1)
+    global_state = nested_a.initial_global_state()
+    metric_val = nested_a.derive_metrics(global_state)
+    self.assertEqual(metric_val['metric'], 1)
+
+    nested_b = nested_query.NestedSumQuery(
+        {'key1': query1, 'key2': [query2, query3]})
+    global_state = nested_b.initial_global_state()
+    metric_val = nested_b.derive_metrics(global_state)
+    self.assertEqual(metric_val['key1/metric'], 1)
+    self.assertEqual(metric_val['key2/0/metric'], 2)
+    self.assertEqual(metric_val['key2/1/metric'], 3)
 
 
 if __name__ == '__main__':

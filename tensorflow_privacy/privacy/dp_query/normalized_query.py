@@ -1,4 +1,4 @@
-# Copyright 2019, The TensorFlow Authors.
+# Copyright 2020, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,11 +48,9 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
     assert isinstance(self._numerator, dp_query.SumAggregationDPQuery)
 
   def set_ledger(self, ledger):
-    """See base class."""
     self._numerator.set_ledger(ledger)
 
   def initial_global_state(self):
-    """See base class."""
     if self._denominator is not None:
       denominator = tf.cast(self._denominator, tf.float32)
     else:
@@ -61,11 +59,9 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
         self._numerator.initial_global_state(), denominator)
 
   def derive_sample_params(self, global_state):
-    """See base class."""
     return self._numerator.derive_sample_params(global_state.numerator_state)
 
   def initial_sample_state(self, template):
-    """See base class."""
     # NormalizedQuery has no sample state beyond the numerator state.
     return self._numerator.initial_sample_state(template)
 
@@ -73,7 +69,6 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
     return self._numerator.preprocess_record(params, record)
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
         sample_state, global_state.numerator_state)
     def normalize(v):
@@ -81,3 +76,6 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
 
     return (tf.nest.map_structure(normalize, noised_sum),
             self._GlobalState(new_sum_global_state, global_state.denominator))
+
+  def derive_metrics(self, global_state):
+    return self._numerator.derive_metrics(global_state.numerator_state)
