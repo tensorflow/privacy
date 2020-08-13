@@ -38,6 +38,18 @@ py_library(
 )
 
 py_library(
+    name = "dnn",
+    srcs = [
+        "dnn.py",
+    ],
+    deps = [
+        ":head_utils",
+        "//third_party/py/tensorflow",
+        "//third_party/tensorflow_estimator",
+    ],
+)
+
+py_library(
     name = "test_utils",
     srcs = [
         "test_utils.py",
@@ -68,6 +80,20 @@ py_test(
     deps = [
         ":multi_class_head",
         ":test_utils",
+        "//third_party/py/tensorflow",
+        "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+    ],
+)
+
+py_test(
+    name = "dnn_test",
+    timeout = "long",
+    srcs = ["dnn_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":dnn",
+        ":test_utils",
+        "//third_party/py/absl/testing:parameterized",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
     ],

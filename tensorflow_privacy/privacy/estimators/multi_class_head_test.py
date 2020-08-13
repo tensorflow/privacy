@@ -78,9 +78,9 @@ class DPMultiClassHeadTest(tf.test.TestCase):
         input_fn=test_utils.make_input_fn(test_features, test_labels, False),
         steps=4)
 
-    predict_features, predict_labels_ = test_utils.make_input_data(64, 3)
+    predict_features, predict_labels = test_utils.make_input_data(64, 3)
     classifier.predict(
-        input_fn=test_utils.make_input_fn(predict_features, predict_labels_,
+        input_fn=test_utils.make_input_fn(predict_features, predict_labels,
                                           False))
 
 
