@@ -38,6 +38,18 @@ py_library(
 )
 
 py_library(
+    name = "multi_label_head",
+    srcs = [
+        "multi_label_head.py",
+    ],
+    deps = [
+        "//third_party/py/tensorflow",
+        "//third_party/tensorflow/python:keras_lib",  # TODO(b/163395075): Remove when fixed.
+        "//third_party/tensorflow_estimator",
+    ],
+)
+
+py_library(
     name = "dnn",
     srcs = [
         "dnn.py",
@@ -79,6 +91,19 @@ py_test(
     python_version = "PY3",
     deps = [
         ":multi_class_head",
+        ":test_utils",
+        "//third_party/py/tensorflow",
+        "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+    ],
+)
+
+py_test(
+    name = "multi_label_head_test",
+    timeout = "long",
+    srcs = ["multi_label_head_test.py"],
+    python_version = "PY3",
+    deps = [
+        ":multi_label_head",
         ":test_utils",
         "//third_party/py/tensorflow",
         "//third_party/py/tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",

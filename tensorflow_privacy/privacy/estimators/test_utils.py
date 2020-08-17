@@ -54,6 +54,30 @@ def make_input_data(size, classes):
   return features, labels
 
 
+def make_multilabel_input_data(size):
+  """Create raw input data for testing."""
+  feature_a = np.random.normal(4, 1, (size))
+  feature_b = np.random.normal(5, 0.7, (size))
+  feature_c = np.random.normal(6, 2, (size))
+  noise_a = np.random.normal(0, 1, (size))
+  noise_b = np.random.normal(0, 1, (size))
+  noise_c = np.random.normal(0, 1, (size))
+  features = {
+      'feature_a': feature_a,
+      'feature_b': feature_b,
+      'feature_c': feature_c,
+  }
+
+  def label_fn(a, b, c):
+    return [int(a > 4), int(b > 5), int(c > 6)]
+
+  labels = list(
+      map(label_fn, feature_a + noise_a, feature_b + noise_b,
+          feature_c + noise_c))
+
+  return features, labels
+
+
 def make_input_fn(features, labels, training, batch_size=16):
   """Returns an input function suitable for an estimator."""
 
