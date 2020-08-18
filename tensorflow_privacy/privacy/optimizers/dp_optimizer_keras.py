@@ -83,8 +83,9 @@ def make_keras_optimizer_class(cls):
           if callable(var_list):
             var_list = var_list()
       else:
-        microbatch_losses = tf.reduce_mean(
-            tf.reshape(loss, [self._num_microbatches, -1]), axis=1)
+        with tape:
+          microbatch_losses = tf.reduce_mean(
+              tf.reshape(loss, [self._num_microbatches, -1]), axis=1)
 
       var_list = tf.nest.flatten(var_list)
 

@@ -42,7 +42,8 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
        [-2.5, -2.5], [-0.5]),
   )
-  def testBaseline(self, cls, num_microbatches, expected_grad0, expected_grad1):
+  def testBaselineWithCallableLoss(self, cls, num_microbatches, expected_grad0,
+                                   expected_grad1):
     var0 = tf.Variable([1.0, 2.0])
     var1 = tf.Variable([3.0])
     data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
@@ -57,6 +58,38 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     loss = lambda: self._loss(data0, var0) + self._loss(data1, var1)
 
     grads_and_vars = opt._compute_gradients(loss, [var0, var1])
+    self.assertAllCloseAccordingToType(expected_grad0, grads_and_vars[0][0])
+    self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
+
+  # Parameters for testing: optimizer, num_microbatches, expected gradient for
+  # var0, expected gradient for var1.
+  @parameterized.named_parameters(
+      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdam 2', dp_optimizer_keras.DPKerasAdamOptimizer, 2, [-2.5, -2.5
+                                                               ], [-0.5]),
+      ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
+       [-2.5, -2.5], [-0.5]),
+  )
+  def testBaselineWithTensorLoss(self, cls, num_microbatches, expected_grad0,
+                                 expected_grad1):
+    var0 = tf.Variable([1.0, 2.0])
+    var1 = tf.Variable([3.0])
+    data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
+    data1 = tf.Variable([[8.0], [2.0], [3.0], [1.0]])
+
+    opt = cls(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        num_microbatches=num_microbatches,
+        learning_rate=2.0)
+
+    tape = tf.GradientTape()
+    with tape:
+      loss = self._loss(data0, var0) + self._loss(data1, var1)
+
+    grads_and_vars = opt._compute_gradients(
+        loss, [var0, var1], tape=tape)
     self.assertAllCloseAccordingToType(expected_grad0, grads_and_vars[0][0])
     self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
 
