@@ -19,6 +19,7 @@ import tempfile
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
+import pandas as pd
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
@@ -234,6 +235,20 @@ class AttackResultsTest(absltest.TestCase):
       loaded_results = AttackResults.load(filepath)
 
     self.assertEqual(repr(results), repr(loaded_results))
+
+  def test_calculate_pd_dataframe(self):
+    single_results = [self.perfect_classifier_result,
+                      self.random_classifier_result]
+    results = AttackResults(single_results)
+    df = results.calculate_pd_dataframe()
+    df_expected = pd.DataFrame({
+        'slice feature': ['correctly_classfied', 'entire_dataset'],
+        'slice value': ['True', ''],
+        'attack type': ['threshold', 'threshold'],
+        'attack advantage': [1.0, 0.0],
+        'roc auc': [1.0, 0.5]
+    })
+    self.assertTrue(df.equals(df_expected))
 
 
 if __name__ == '__main__':

@@ -20,7 +20,9 @@ from typing import Any, Iterable, Union
 
 from dataclasses import dataclass
 import numpy as np
+import pandas as pd
 from sklearn import metrics
+
 
 ENTIRE_DATASET_SLICE_STR = 'SingleSliceSpec(Entire dataset)'
 
@@ -334,8 +336,31 @@ class AttackResults:
   single_attack_results: Iterable[SingleAttackResult]
 
   def calculate_pd_dataframe(self):
-    # returns all metrics as a Pandas DataFrame
-    return
+    """Returns all metrics as a Pandas DataFrame."""
+    slice_features = []
+    slice_values = []
+    attack_types = []
+    advantages = []
+    aucs = []
+
+    for attack_result in self.single_attack_results:
+      slice_spec = attack_result.slice_spec
+      if slice_spec.entire_dataset:
+        slice_feature, slice_value = 'entire_dataset', ''
+      else:
+        slice_feature, slice_value = slice_spec.feature.value, slice_spec.value
+      slice_features.append(str(slice_feature))
+      slice_values.append(str(slice_value))
+      attack_types.append(str(attack_result.attack_type.value))
+      advantages.append(float(attack_result.get_attacker_advantage()))
+      aucs.append(float(attack_result.get_auc()))
+
+    df = pd.DataFrame({'slice feature': slice_features,
+                       'slice value': slice_values,
+                       'attack type': attack_types,
+                       'attack advantage': advantages,
+                       'roc auc': aucs})
+    return df
 
   def summary(self, by_slices=False) -> str:
     """Provides a summary of the metrics.

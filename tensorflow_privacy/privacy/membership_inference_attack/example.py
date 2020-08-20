@@ -22,6 +22,7 @@ import tempfile
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import to_categorical
@@ -152,6 +153,11 @@ print(attack_results.summary(by_slices=False))
 
 print("Summary by slices: \n")
 print(attack_results.summary(by_slices=True))
+
+# Print pandas data frame
+print("Pandas frame: \n")
+pd.set_option("display.max_rows", None, "display.max_columns", None)
+print(attack_results.calculate_pd_dataframe())
 
 # Example of ROC curve plotting.
 figure = plotting.plot_roc_curve(
