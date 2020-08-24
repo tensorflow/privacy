@@ -21,9 +21,11 @@ from absl import logging
 
 import numpy as np
 import tensorflow.compat.v1 as tf
-
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import MembershipInferenceTrainingHook
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import run_attack_on_tf_estimator_model
+from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
@@ -97,9 +99,9 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
-  logging.set_verbosity(logging.INFO)
-  logging.set_stderrthreshold(logging.INFO)
+  tf.logging.set_verbosity(tf.logging.ERROR)
+  logging.set_verbosity(logging.ERROR)
+  logging.set_stderrthreshold(logging.ERROR)
   logging.get_absl_handler().use_absl_log_file()
 
   # Load training and test data.
@@ -121,12 +123,13 @@ def main(unused_argv):
       summary_writer = tf.summary.FileWriter(FLAGS.model_dir)
     else:
       summary_writer = None
-    mia_hook = MembershipInferenceTrainingHook(mnist_classifier,
-                                               (train_data, train_labels),
-                                               (test_data, test_labels),
-                                               input_fn_constructor,
-                                               [],
-                                               summary_writer)
+    mia_hook = MembershipInferenceTrainingHook(
+        mnist_classifier,
+        (train_data, train_labels),
+        (test_data, test_labels),
+        input_fn_constructor,
+        attack_types=[AttackType.THRESHOLD_ATTACK],
+        writer=summary_writer)
 
   # Create tf.Estimator input functions for the training and test data.
   train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -151,11 +154,17 @@ def main(unused_argv):
     print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
 
   print('End of training attack')
-  run_attack_on_tf_estimator_model(mnist_classifier,
-                                   (train_data, train_labels),
-                                   (test_data, test_labels),
-                                   input_fn_constructor,
-                                   ['lr'])
+  attack_results = run_attack_on_tf_estimator_model(
+      mnist_classifier,
+      (train_data, train_labels),
+      (test_data, test_labels),
+      input_fn_constructor,
+      slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
+      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
+      )
+  attack_properties, attack_values = get_all_attack_results(attack_results)
+  print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
+                   zip(attack_properties, attack_values)]))
 
 
 if __name__ == '__main__':

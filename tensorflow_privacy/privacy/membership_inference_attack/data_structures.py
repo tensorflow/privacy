@@ -293,8 +293,8 @@ class RocCurve:
     """Returns AUC and advantage metrics."""
     return '\n'.join([
         'RocCurve(',
-        '  AUC: %f.02' % self.get_auc(),
-        '  Attacker advantage: %f.02' % self.get_attacker_advantage(), ')'
+        '  AUC: %.2f' % self.get_auc(),
+        '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
     ])
 
 
@@ -324,8 +324,8 @@ class SingleAttackResult:
         'SingleAttackResult(',
         '  SliceSpec: %s' % str(self.slice_spec),
         '  AttackType: %s' % str(self.attack_type),
-        '  AUC: %f.02' % self.get_auc(),
-        '  Attacker advantage: %f.02' % self.get_attacker_advantage(), ')'
+        '  AUC: %.2f' % self.get_auc(),
+        '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
     ])
 
 

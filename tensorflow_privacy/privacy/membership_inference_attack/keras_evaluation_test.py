@@ -21,6 +21,9 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.membership_inference_attack import keras_evaluation
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 
 
 class UtilsTest(absltest.TestCase):
@@ -62,10 +65,11 @@ class UtilsTest(absltest.TestCase):
         self.model,
         (self.train_data, self.train_labels),
         (self.test_data, self.test_labels),
-        [])
-    self.assertIsInstance(results, dict)
-    self.assertIn('all_thresh_loss_auc', results)
-    self.assertIn('all_thresh_loss_advantage', results)
+        attack_types=[AttackType.THRESHOLD_ATTACK])
+    self.assertIsInstance(results, AttackResults)
+    attack_properties, attack_values = get_all_attack_results(results)
+    self.assertLen(attack_properties, 2)
+    self.assertLen(attack_values, 2)
 
 
 if __name__ == '__main__':

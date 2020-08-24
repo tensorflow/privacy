@@ -20,8 +20,12 @@ from absl import flags
 
 import numpy as np
 import tensorflow.compat.v1 as tf
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import MembershipInferenceCallback
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import run_attack_on_keras_model
+from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
+
 
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
@@ -78,10 +82,11 @@ def main(unused_argv):
   model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
   # Get callback for membership inference attack.
-  mia_callback = MembershipInferenceCallback((train_data, train_labels),
-                                             (test_data, test_labels),
-                                             [],
-                                             FLAGS.model_dir)
+  mia_callback = MembershipInferenceCallback(
+      (train_data, train_labels),
+      (test_data, test_labels),
+      attack_types=[AttackType.THRESHOLD_ATTACK],
+      tensorboard_dir=FLAGS.model_dir)
 
   # Train model with Keras
   model.fit(train_data, train_labels,
@@ -91,13 +96,18 @@ def main(unused_argv):
             callbacks=[mia_callback],
             verbose=2)
 
-  print('End of training attack')
-  attack_results = run_attack_on_keras_model(model,
-                                             (train_data, train_labels),
-                                             (test_data, test_labels),
-                                             [])
-  print('all_thresh_loss_advantage',
-        attack_results['all_thresh_loss_advantage'])
+  print('End of training attack:')
+  attack_results = run_attack_on_keras_model(
+      model,
+      (train_data, train_labels),
+      (test_data, test_labels),
+      slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
+      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
+      )
+
+  attack_properties, attack_values = get_all_attack_results(attack_results)
+  print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
+                   zip(attack_properties, attack_values)]))
 
 
 if __name__ == '__main__':

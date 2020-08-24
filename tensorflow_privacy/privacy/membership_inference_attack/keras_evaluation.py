@@ -15,11 +15,17 @@
 # Lint as: python3
 """A callback and a function in keras for membership inference attack."""
 
+from typing import Iterable
+
 from absl import logging
 
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
+from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
+from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
 from tensorflow_privacy.privacy.membership_inference_attack.utils import write_to_tensorboard
 
@@ -44,20 +50,25 @@ def calculate_losses(model, data, labels):
 class MembershipInferenceCallback(tf.keras.callbacks.Callback):
   """Callback to perform membership inference attack on epoch end."""
 
-  def __init__(self, in_train, out_train, attack_classifiers,
-               tensorboard_dir=None):
+  def __init__(
+      self,
+      in_train, out_train,
+      slicing_spec: SlicingSpec = None,
+      attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
+      tensorboard_dir=None):
     """Initalizes the callback.
 
     Args:
       in_train: (in_training samples, in_training labels)
       out_train: (out_training samples, out_training labels)
-      attack_classifiers: a list of classifiers to be used by attacker, must be
-        a subset of ['lr', 'mlp', 'rf', 'knn']
+      slicing_spec: slicing specification of the attack
+      attack_types: a list of attacks, each of type AttackType
       tensorboard_dir: directory for tensorboard summary
     """
     self._in_train_data, self._in_train_labels = in_train
     self._out_train_data, self._out_train_labels = out_train
-    self._attack_classifiers = attack_classifiers
+    self._slicing_spec = slicing_spec
+    self._attack_types = attack_types
     # Setup tensorboard writer if tensorboard_dir is specified
     if tensorboard_dir:
       with tf.Graph().as_default():
@@ -71,24 +82,33 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
         self.model,
         (self._in_train_data, self._in_train_labels),
         (self._out_train_data, self._out_train_labels),
-        self._attack_classifiers)
-    print('all_thresh_loss_advantage', results['all_thresh_loss_advantage'])
+        self._slicing_spec,
+        self._attack_types)
     logging.info(results)
 
+    attack_properties, attack_values = get_all_attack_results(results)
+    print('Attack result:')
+    print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
+                     zip(attack_properties, attack_values)]))
+
     # Write to tensorboard if tensorboard_dir is specified
-    write_to_tensorboard(self._writer, ['attack advantage'],
-                         [results['all_thresh_loss_advantage']], epoch)
+    attack_property_tags = ['attack/' + '_'.join(p) for p in attack_properties]
+    write_to_tensorboard(self._writer, attack_property_tags, attack_values,
+                         epoch)
 
 
-def run_attack_on_keras_model(model, in_train, out_train, attack_classifiers):
+def run_attack_on_keras_model(
+    model, in_train, out_train,
+    slicing_spec: SlicingSpec = None,
+    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)):
   """Performs the attack on a trained model.
 
   Args:
     model: model to be tested
     in_train: a (in_training samples, in_training labels) tuple
     out_train: a (out_training samples, out_training labels) tuple
-    attack_classifiers: a list of classifiers to be used by attacker, must be
-      a subset of ['lr', 'mlp', 'rf', 'knn']
+    slicing_spec: slicing specification of the attack
+    attack_types: a list of attacks, each of type AttackType
   Returns:
     Results of the attack
   """
@@ -100,9 +120,12 @@ def run_attack_on_keras_model(model, in_train, out_train, attack_classifiers):
                                                   in_train_labels)
   out_train_pred, out_train_loss = calculate_losses(model, out_train_data,
                                                     out_train_labels)
-  results = mia.run_all_attacks(in_train_loss, out_train_loss,
-                                in_train_pred, out_train_pred,
-                                in_train_labels, out_train_labels,
-                                attack_classifiers=attack_classifiers)
+  attack_input = AttackInputData(
+      logits_train=in_train_pred, logits_test=out_train_pred,
+      labels_train=in_train_labels, labels_test=out_train_labels,
+      loss_train=in_train_loss, loss_test=out_train_loss
+  )
+  results = mia.run_attacks(attack_input,
+                            slicing_spec=slicing_spec,
+                            attack_types=attack_types)
   return results
-

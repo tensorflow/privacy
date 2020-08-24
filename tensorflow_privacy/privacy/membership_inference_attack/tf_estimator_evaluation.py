@@ -15,13 +15,19 @@
 # Lint as: python3
 """A hook and a function in tf estimator for membership inference attack."""
 
+from typing import Iterable
+
 from absl import logging
 
 import numpy as np
 
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
+from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
+from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
 from tensorflow_privacy.privacy.membership_inference_attack.utils import write_to_tensorboard
 
@@ -49,16 +55,17 @@ def calculate_losses(estimator, input_fn, labels):
 
 
 class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
-  """Training hook to perform membership inference attack after an epoch."""
+  """Training hook to perform membership inference attack on epoch end."""
 
-  def __init__(self,
-               estimator,
-               in_train,
-               out_train,
-               input_fn_constructor,
-               attack_classifiers,
-               writer=None):
-    """Initalizes the hook.
+  def __init__(
+      self,
+      estimator,
+      in_train, out_train,
+      input_fn_constructor,
+      slicing_spec: SlicingSpec = None,
+      attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
+      writer=None):
+    """Initialize the hook.
 
     Args:
       estimator: model to be tested
@@ -66,8 +73,8 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
       out_train: (out_training samples, out_training labels)
       input_fn_constructor: a function that receives sample, label and construct
         the input_fn for model prediction
-      attack_classifiers: a list of classifiers to be used by attacker, must be
-        a subset of ['lr', 'mlp', 'rf', 'knn']
+      slicing_spec: slicing specification of the attack
+      attack_types: a list of attacks, each of type AttackType
       writer: summary writer for tensorboard
     """
     in_train_data, self._in_train_labels = in_train
@@ -79,7 +86,8 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
     self._out_train_input_fn = input_fn_constructor(out_train_data,
                                                     self._out_train_labels)
     self._estimator = estimator
-    self._attack_classifiers = attack_classifiers
+    self._slicing_spec = slicing_spec
+    self._attack_types = attack_types
     self._writer = writer
     if self._writer:
       logging.info('Will write to tensorboard.')
@@ -89,19 +97,28 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
                                 self._in_train_input_fn,
                                 self._out_train_input_fn,
                                 self._in_train_labels, self._out_train_labels,
-                                self._attack_classifiers)
-    print('all_thresh_loss_advantage', results['all_thresh_loss_advantage'])
+                                self._slicing_spec,
+                                self._attack_types)
     logging.info(results)
+
+    attack_properties, attack_values = get_all_attack_results(results)
+    print('Attack result:')
+    print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
+                     zip(attack_properties, attack_values)]))
 
     # Write to tensorboard if writer is specified
     global_step = self._estimator.get_variable_value('global_step')
-    write_to_tensorboard(self._writer, ['attack advantage'],
-                         [results['all_thresh_loss_advantage']], global_step)
+    attack_property_tags = ['attack/' + '_'.join(p) for p in attack_properties]
+    write_to_tensorboard(self._writer, attack_property_tags, attack_values,
+                         global_step)
 
 
-def run_attack_on_tf_estimator_model(estimator, in_train, out_train,
-                                     input_fn_constructor, attack_classifiers):
-  """A function to perform the attack in the end of training.
+def run_attack_on_tf_estimator_model(
+    estimator, in_train, out_train,
+    input_fn_constructor,
+    slicing_spec: SlicingSpec = None,
+    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)):
+  """Performs the attack in the end of training.
 
   Args:
     estimator: model to be tested
@@ -109,8 +126,8 @@ def run_attack_on_tf_estimator_model(estimator, in_train, out_train,
     out_train: (out_training samples, out_training labels)
     input_fn_constructor: a function that receives sample, label and construct
       the input_fn for model prediction
-    attack_classifiers: a list of classifiers to be used by attacker, must be
-      a subset of ['lr', 'mlp', 'rf', 'knn']
+    slicing_spec: slicing specification of the attack
+    attack_types: a list of attacks, each of type AttackType
   Returns:
     Results of the attack
   """
@@ -125,17 +142,19 @@ def run_attack_on_tf_estimator_model(estimator, in_train, out_train,
   results = run_attack_helper(estimator,
                               in_train_input_fn, out_train_input_fn,
                               in_train_labels, out_train_labels,
-                              attack_classifiers)
-  print('all_thresh_loss_advantage', results['all_thresh_loss_advantage'])
+                              slicing_spec,
+                              attack_types)
   logging.info('End of training attack:')
   logging.info(results)
   return results
 
 
-def run_attack_helper(estimator,
-                      in_train_input_fn, out_train_input_fn,
-                      in_train_labels, out_train_labels,
-                      attack_classifiers):
+def run_attack_helper(
+    estimator,
+    in_train_input_fn, out_train_input_fn,
+    in_train_labels, out_train_labels,
+    slicing_spec: SlicingSpec = None,
+    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)):
   """A helper function to perform attack.
 
   Args:
@@ -144,8 +163,8 @@ def run_attack_helper(estimator,
     out_train_input_fn: input_fn for out of training data
     in_train_labels: in training labels
     out_train_labels: out of training labels
-    attack_classifiers: a list of classifiers to be used by attacker, must be
-      a subset of ['lr', 'mlp', 'rf', 'knn']
+    slicing_spec: slicing specification of the attack
+    attack_types: a list of attacks, each of type AttackType
   Returns:
     Results of the attack
   """
@@ -156,9 +175,13 @@ def run_attack_helper(estimator,
   out_train_pred, out_train_loss = calculate_losses(estimator,
                                                     out_train_input_fn,
                                                     out_train_labels)
-  results = mia.run_all_attacks(in_train_loss, out_train_loss,
-                                in_train_pred, out_train_pred,
-                                in_train_labels, out_train_labels,
-                                attack_classifiers=attack_classifiers)
+  attack_input = AttackInputData(
+      logits_train=in_train_pred, logits_test=out_train_pred,
+      labels_train=in_train_labels, labels_test=out_train_labels,
+      loss_train=in_train_loss, loss_test=out_train_loss
+  )
+  results = mia.run_attacks(attack_input,
+                            slicing_spec=slicing_spec,
+                            attack_types=attack_types)
   return results
 

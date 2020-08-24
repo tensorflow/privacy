@@ -20,6 +20,7 @@ from typing import Text, Dict, Union, List, Any, Tuple
 import numpy as np
 from sklearn import metrics
 import tensorflow.compat.v1 as tf
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 
 
 ArrayDict = Dict[Text, np.ndarray]
@@ -71,6 +72,25 @@ def prepend_to_keys(in_dict: Dict[Text, Any], prefix: Text) -> Dict[Text, Any]:
         to them
   """
   return {prefix + k: v for k, v in in_dict.items()}
+
+
+# ------------------------------------------------------------------------------
+#  Utilities for managing result.
+# ------------------------------------------------------------------------------
+
+
+def get_all_attack_results(results: AttackResults):
+  """Get all results as a list of attack properties and a list of attack result."""
+  properties = []
+  values = []
+  for attack_result in results.single_attack_results:
+    slice_spec = attack_result.slice_spec
+    prop = [str(slice_spec), str(attack_result.attack_type)]
+    properties += [prop + ['adv'], prop + ['auc']]
+    values += [float(attack_result.get_attacker_advantage()),
+               float(attack_result.get_auc())]
+
+  return properties, values
 
 
 # ------------------------------------------------------------------------------
