@@ -241,6 +241,11 @@ Among other things, the `run_attack` functionality allows to control:
 Reach out to tf-privacy@google.com and let us know how you’re using this module.
 We’re keen on hearing your stories, feedback, and suggestions!
 
+## Contributing
+
+If you wish to add novel attacks to the attack library, please check our
+[guidelines](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/CONTRIBUTING.md)
+
 ## Copyright
 
 Copyright 2020 - Google LLC

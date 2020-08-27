@@ -22,6 +22,11 @@ use GitHub pull requests for this purpose. Consult
 [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more
 information on using pull requests.
 
+## Attack library
+
+If you wish to add novel attacks to the attack library, please check our
+[guidelines](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/CONTRIBUTING.md)
+
 ## Community Guidelines
 
 This project follows Google's 
