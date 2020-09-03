@@ -39,8 +39,10 @@ class UtilsTest(absltest.TestCase):
 
     results = utils.compute_performance_metrics(true, pred, threshold=0.5)
 
-    for k in ['precision', 'recall', 'accuracy', 'f1_score', 'fpr', 'tpr',
-              'thresholds', 'auc', 'advantage']:
+    for k in [
+        'precision', 'recall', 'accuracy', 'f1_score', 'fpr', 'tpr',
+        'thresholds', 'auc', 'advantage'
+    ]:
       self.assertIn(k, results)
 
     np.testing.assert_almost_equal(results['accuracy'], 1. / 2.)
@@ -107,10 +109,16 @@ class UtilsTest(absltest.TestCase):
                      [0.75, 0.25], [0.9, 0.1], [0.99, 0.01]])
     # Test the cases when true label (for all samples) is 0 and 1
     expected_losses = {
-        0: np.array([4.60517019, 2.30258509, 1.38629436, 0.69314718, 0.28768207,
-                     0.10536052, 0.01005034]),
-        1: np.array([0.01005034, 0.10536052, 0.28768207, 0.69314718, 1.38629436,
-                     2.30258509, 4.60517019])
+        0:
+            np.array([
+                4.60517019, 2.30258509, 1.38629436, 0.69314718, 0.28768207,
+                0.10536052, 0.01005034
+            ]),
+        1:
+            np.array([
+                0.01005034, 0.10536052, 0.28768207, 0.69314718, 1.38629436,
+                2.30258509, 4.60517019
+            ])
     }
     for c in [0, 1]:  # true label
       y = np.ones(shape=pred.shape[0], dtype=int) * c
@@ -139,8 +147,18 @@ class UtilsTest(absltest.TestCase):
     expected_losses = np.array([18.42068074, 46.05170186, 115.12925465])
     for i, small_value in enumerate(small_values):
       loss = utils.log_loss(y, pred, small_value)
-      np.testing.assert_allclose(loss, np.array([expected_losses[i], 0]),
-                                 atol=1e-7)
+      np.testing.assert_allclose(
+          loss, np.array([expected_losses[i], 0]), atol=1e-7)
+
+  def test_log_loss_from_logits(self):
+    """Test computing cross-entropy loss from logits."""
+
+    logits = np.array([[1, 2, 0, -1], [1, 2, 0, -1], [-1, 3, 0, 0]])
+    labels = np.array([0, 3, 1])
+    expected_loss = np.array([1.4401897, 3.4401897, 0.11144278])
+
+    loss = utils.log_loss_from_logits(labels, logits)
+    np.testing.assert_allclose(expected_loss, loss, atol=1e-7)
 
 
 if __name__ == '__main__':

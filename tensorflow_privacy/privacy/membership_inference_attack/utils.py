@@ -18,10 +18,9 @@
 from typing import Text, Dict, Union, List, Any, Tuple
 
 import numpy as np
+import scipy.special
 from sklearn import metrics
 import tensorflow.compat.v1 as tf
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
-
 
 ArrayDict = Dict[Text, np.ndarray]
 Dataset = Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
@@ -72,25 +71,6 @@ def prepend_to_keys(in_dict: Dict[Text, Any], prefix: Text) -> Dict[Text, Any]:
         to them
   """
   return {prefix + k: v for k, v in in_dict.items()}
-
-
-# ------------------------------------------------------------------------------
-#  Utilities for managing result.
-# ------------------------------------------------------------------------------
-
-
-def get_all_attack_results(results: AttackResults):
-  """Get all results as a list of attack properties and a list of attack result."""
-  properties = []
-  values = []
-  for attack_result in results.single_attack_results:
-    slice_spec = attack_result.slice_spec
-    prop = [str(slice_spec), str(attack_result.attack_type)]
-    properties += [prop + ['adv'], prop + ['auc']]
-    values += [float(attack_result.get_attacker_advantage()),
-               float(attack_result.get_auc())]
-
-  return properties, values
 
 
 # ------------------------------------------------------------------------------
@@ -245,19 +225,24 @@ def compute_performance_metrics(true_labels: np.ndarray,
 # ------------------------------------------------------------------------------
 
 
-def log_loss(y, pred, small_value=1e-8):
+def log_loss(labels: np.ndarray, pred: np.ndarray, small_value=1e-8):
   """Compute the cross entropy loss.
 
   Args:
-    y: numpy array, y[i] is the true label (scalar) of the i-th sample
+    labels: numpy array, labels[i] is the true label (scalar) of the i-th sample
     pred: numpy array, pred[i] is the probability vector of the i-th sample
-    small_value: np.log can become -inf if the probability is too close to 0,
-      so the probability is clipped below by small_value.
+    small_value: np.log can become -inf if the probability is too close to 0, so
+      the probability is clipped below by small_value.
 
   Returns:
     the cross-entropy loss of each sample
   """
-  return -np.log(np.maximum(pred[range(y.size), y], small_value))
+  return -np.log(np.maximum(pred[range(labels.size), labels], small_value))
+
+
+def log_loss_from_logits(labels: np.ndarray, logits: np.ndarray):
+  """Compute the cross entropy loss from logits."""
+  return log_loss(labels, scipy.special.softmax(logits, axis=-1))
 
 
 # ------------------------------------------------------------------------------

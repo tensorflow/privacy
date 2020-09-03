@@ -26,8 +26,8 @@ import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
-from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
 from tensorflow_privacy.privacy.membership_inference_attack.utils import write_to_tensorboard
 
@@ -101,7 +101,7 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
                                 self._attack_types)
     logging.info(results)
 
-    attack_properties, attack_values = get_all_attack_results(results)
+    attack_properties, attack_values = get_flattened_attack_metrics(results)
     print('Attack result:')
     print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
                      zip(attack_properties, attack_values)]))

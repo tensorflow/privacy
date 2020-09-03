@@ -22,7 +22,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-
+import tensorflow_privacy.privacy.membership_inference_attack.utils as utils
 
 ENTIRE_DATASET_SLICE_STR = 'SingleSliceSpec(Entire dataset)'
 
@@ -173,21 +173,19 @@ class AttackInputData:
           'Please set labels_train and labels_test')
     return int(max(np.max(self.labels_train), np.max(self.labels_test))) + 1
 
-  @staticmethod
-  def _get_loss(logits: np.ndarray, true_labels: np.ndarray):
-    return logits[range(logits.shape[0]), true_labels]
-
   def get_loss_train(self):
-    """Calculates cross-entropy losses for the training set."""
-    if self.loss_train is not None:
-      return self.loss_train
-    return self._get_loss(self.logits_train, self.labels_train)
+    """Calculates (if needed) cross-entropy losses for the training set."""
+    if self.loss_train is None:
+      self.loss_train = utils.log_loss_from_logits(self.labels_train,
+                                                   self.logits_train)
+    return self.loss_train
 
   def get_loss_test(self):
-    """Calculates cross-entropy losses for the test set."""
-    if self.loss_test is not None:
-      return self.loss_test
-    return self._get_loss(self.logits_test, self.labels_test)
+    """Calculates (if needed)  cross-entropy losses for the test set."""
+    if self.loss_test is None:
+      self.loss_test = utils.log_loss_from_logits(self.labels_test,
+                                                  self.logits_test)
+    return self.loss_test
 
   def get_train_size(self):
     """Returns size of the training set."""
@@ -365,11 +363,13 @@ class AttackResults:
       advantages.append(float(attack_result.get_attacker_advantage()))
       aucs.append(float(attack_result.get_auc()))
 
-    df = pd.DataFrame({'slice feature': slice_features,
-                       'slice value': slice_values,
-                       'attack type': attack_types,
-                       'attack advantage': advantages,
-                       'roc auc': aucs})
+    df = pd.DataFrame({
+        'slice feature': slice_features,
+        'slice value': slice_values,
+        'attack type': attack_types,
+        'attack advantage': advantages,
+        'roc auc': aucs
+    })
     return df
 
   def summary(self, by_slices=False) -> str:
@@ -452,3 +452,27 @@ class AttackResults:
     """Loads AttackResults from a pickle file."""
     with open(filepath, 'rb') as inp:
       return pickle.load(inp)
+
+
+def get_flattened_attack_metrics(results: AttackResults):
+  """Get flattened attack metrics.
+
+  Args:
+    results: membership inference attack results.
+
+  Returns:
+       properties: a list of (slice, attack_type, metric name)
+       values: a list of metric values, i-th element correspond to properties[i]
+  """
+  properties = []
+  values = []
+  for attack_result in results.single_attack_results:
+    slice_spec = attack_result.slice_spec
+    prop = [str(slice_spec), str(attack_result.attack_type)]
+    properties += [prop + ['adv'], prop + ['auc']]
+    values += [
+        float(attack_result.get_attacker_advantage()),
+        float(attack_result.get_auc())
+    ]
+
+  return properties, values

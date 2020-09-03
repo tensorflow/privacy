@@ -23,7 +23,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.membership_inference_attack import keras_evaluation
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 
 
 class UtilsTest(absltest.TestCase):
@@ -67,7 +67,7 @@ class UtilsTest(absltest.TestCase):
         (self.test_data, self.test_labels),
         attack_types=[AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, AttackResults)
-    attack_properties, attack_values = get_all_attack_results(results)
+    attack_properties, attack_values = get_flattened_attack_metrics(results)
     self.assertLen(attack_properties, 2)
     self.assertLen(attack_values, 2)
 

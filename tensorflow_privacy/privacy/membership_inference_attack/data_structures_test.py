@@ -47,13 +47,15 @@ class AttackInputDataTest(absltest.TestCase):
 
   def test_get_loss(self):
     attack_input = AttackInputData(
-        logits_train=np.array([[0.3, 0.5, 0.2], [0.2, 0.3, 0.5]]),
-        logits_test=np.array([[0.2, 0.3, 0.5], [0.3, 0.5, 0.2]]),
+        logits_train=np.array([[-0.3, 1.5, 0.2], [2, 3, 0.5]]),
+        logits_test=np.array([[2, 0.3, 0.2], [0.3, -0.5, 0.2]]),
         labels_train=np.array([1, 0]),
-        labels_test=np.array([0, 1]))
+        labels_test=np.array([0, 2]))
 
-    np.testing.assert_equal(attack_input.get_loss_train().tolist(), [0.5, 0.2])
-    np.testing.assert_equal(attack_input.get_loss_test().tolist(), [0.2, 0.5])
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), [0.36313551, 1.37153903], atol=1e-7)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [0.29860897, 0.95618669], atol=1e-7)
 
   def test_get_loss_explicitly_provided(self):
     attack_input = AttackInputData(
@@ -237,8 +239,9 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(repr(results), repr(loaded_results))
 
   def test_calculate_pd_dataframe(self):
-    single_results = [self.perfect_classifier_result,
-                      self.random_classifier_result]
+    single_results = [
+        self.perfect_classifier_result, self.random_classifier_result
+    ]
     results = AttackResults(single_results)
     df = results.calculate_pd_dataframe()
     df_expected = pd.DataFrame({

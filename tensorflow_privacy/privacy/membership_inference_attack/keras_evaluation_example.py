@@ -21,11 +21,10 @@ from absl import flags
 import numpy as np
 import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import MembershipInferenceCallback
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import run_attack_on_keras_model
-from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
-
 
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
@@ -40,11 +39,16 @@ flags.DEFINE_string('model_dir', None, 'Model directory.')
 def cnn_model():
   """Define a CNN model."""
   model = tf.keras.Sequential([
-      tf.keras.layers.Conv2D(16, 8, strides=2, padding='same',
-                             activation='relu', input_shape=(28, 28, 1)),
+      tf.keras.layers.Conv2D(
+          16,
+          8,
+          strides=2,
+          padding='same',
+          activation='relu',
+          input_shape=(28, 28, 1)),
       tf.keras.layers.MaxPool2D(2, 1),
-      tf.keras.layers.Conv2D(32, 4, strides=2, padding='valid',
-                             activation='relu'),
+      tf.keras.layers.Conv2D(
+          32, 4, strides=2, padding='valid', activation='relu'),
       tf.keras.layers.MaxPool2D(2, 1),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(32, activation='relu'),
@@ -83,31 +87,34 @@ def main(unused_argv):
 
   # Get callback for membership inference attack.
   mia_callback = MembershipInferenceCallback(
-      (train_data, train_labels),
-      (test_data, test_labels),
+      (train_data, train_labels), (test_data, test_labels),
       attack_types=[AttackType.THRESHOLD_ATTACK],
       tensorboard_dir=FLAGS.model_dir)
 
   # Train model with Keras
-  model.fit(train_data, train_labels,
-            epochs=FLAGS.epochs,
-            validation_data=(test_data, test_labels),
-            batch_size=FLAGS.batch_size,
-            callbacks=[mia_callback],
-            verbose=2)
+  model.fit(
+      train_data,
+      train_labels,
+      epochs=FLAGS.epochs,
+      validation_data=(test_data, test_labels),
+      batch_size=FLAGS.batch_size,
+      callbacks=[mia_callback],
+      verbose=2)
 
   print('End of training attack:')
   attack_results = run_attack_on_keras_model(
-      model,
-      (train_data, train_labels),
-      (test_data, test_labels),
+      model, (train_data, train_labels), (test_data, test_labels),
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
-      )
+      attack_types=[
+          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
+      ])
 
-  attack_properties, attack_values = get_all_attack_results(attack_results)
-  print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
-                   zip(attack_properties, attack_values)]))
+  attack_properties, attack_values = get_flattened_attack_metrics(
+      attack_results)
+  print('\n'.join([
+      '  %s: %.4f' % (', '.join(p), r)
+      for p, r in zip(attack_properties, attack_values)
+  ]))
 
 
 if __name__ == '__main__':

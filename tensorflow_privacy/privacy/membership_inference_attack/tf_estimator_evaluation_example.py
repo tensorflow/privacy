@@ -22,10 +22,10 @@ from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import MembershipInferenceTrainingHook
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import run_attack_on_tf_estimator_model
-from tensorflow_privacy.privacy.membership_inference_attack.utils import get_all_attack_results
 
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
@@ -63,9 +63,7 @@ def cnn_model_fn(features, labels, mode):
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(
-        mode=mode,
-        loss=scalar_loss,
-        train_op=train_op)
+        mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
@@ -108,8 +106,8 @@ def main(unused_argv):
   train_data, train_labels, test_data, test_labels = load_mnist()
 
   # Instantiate the tf.Estimator.
-  mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn,
-                                            model_dir=FLAGS.model_dir)
+  mnist_classifier = tf.estimator.Estimator(
+      model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
 
   # A function to construct input_fn given (data, label), to be used by the
   # membership inference training hook.
@@ -124,9 +122,7 @@ def main(unused_argv):
     else:
       summary_writer = None
     mia_hook = MembershipInferenceTrainingHook(
-        mnist_classifier,
-        (train_data, train_labels),
-        (test_data, test_labels),
+        mnist_classifier, (train_data, train_labels), (test_data, test_labels),
         input_fn_constructor,
         attack_types=[AttackType.THRESHOLD_ATTACK],
         writer=summary_writer)
@@ -145,8 +141,8 @@ def main(unused_argv):
   steps_per_epoch = 60000 // FLAGS.batch_size
   for epoch in range(1, FLAGS.epochs + 1):
     # Train the model, with the membership inference hook.
-    mnist_classifier.train(input_fn=train_input_fn, steps=steps_per_epoch,
-                           hooks=[mia_hook])
+    mnist_classifier.train(
+        input_fn=train_input_fn, steps=steps_per_epoch, hooks=[mia_hook])
 
     # Evaluate the model and print results
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
@@ -155,16 +151,18 @@ def main(unused_argv):
 
   print('End of training attack')
   attack_results = run_attack_on_tf_estimator_model(
-      mnist_classifier,
-      (train_data, train_labels),
-      (test_data, test_labels),
+      mnist_classifier, (train_data, train_labels), (test_data, test_labels),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
-      )
-  attack_properties, attack_values = get_all_attack_results(attack_results)
-  print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
-                   zip(attack_properties, attack_values)]))
+      attack_types=[
+          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
+      ])
+  attack_properties, attack_values = get_flattened_attack_metrics(
+      attack_results)
+  print('\n'.join([
+      '  %s: %.4f' % (', '.join(p), r)
+      for p, r in zip(attack_properties, attack_values)
+  ]))
 
 
 if __name__ == '__main__':
