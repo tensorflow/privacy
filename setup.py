@@ -17,11 +17,12 @@ from setuptools import setup
 
 setup(
     name='tensorflow_privacy',
-    version='0.5.0',
+    version='0.5.1',
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
     install_requires=[
         'scipy>=0.17',
+        'tensorflow-estimator>=2.3.0',  # for DP versions of estimator.
         'mpmath',  # used in tests only
         'dm-tree~=0.1.1',  # used in tests only
     ],
