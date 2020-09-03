@@ -72,6 +72,15 @@ class RunAttacksTest(absltest.TestCase):
     expected_slice = SingleSliceSpec(SlicingFeature.CLASS, 2)
     self.assertEqual(result.single_attack_results[3].slice_spec, expected_slice)
 
+  def test_accuracy(self):
+    predictions = [[0.5, 0.2, 0.3], [0.1, 0.6, 0.3], [0.5, 0.2, 0.3]]
+    logits = [[1, -1, -3], [-3, -1, -2], [9, 8, 8.5]]
+    labels = [0, 1, 2]
+    self.assertEqual(mia._get_accuracy(predictions, labels), 2 / 3)
+    self.assertEqual(mia._get_accuracy(logits, labels), 2 / 3)
+    # If accuracy is already present, simply return it.
+    self.assertIsNone(mia._get_accuracy(None, labels))
+
 
 if __name__ == '__main__':
   absltest.main()

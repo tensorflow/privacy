@@ -308,10 +308,6 @@ class SingleAttackResult:
   attack_type: AttackType
   roc_curve: RocCurve  # for drawing and metrics calculation
 
-  # TODO(b/162693190): Add more metrics. Think which info we should store
-  #  to derive metrics like f1_score or accuracy. Should we store labels and
-  #  predictions, or rather some aggregate data?
-
   def get_attacker_advantage(self):
     return self.roc_curve.get_attacker_advantage()
 
@@ -330,10 +326,24 @@ class SingleAttackResult:
 
 
 @dataclass
+class PrivacyReportMetadata:
+  """Metadata about the evaluated model.
+
+  Used to create a privacy report based on AttackResults.
+  """
+  accuracy_train: float = None
+  accuracy_test: float = None
+
+  loss_train: float = None
+  loss_test: float = None
+
+
+@dataclass
 class AttackResults:
   """Results from running multiple attacks."""
-  # add metadata, such as parameters of attack evaluation, input data etc
   single_attack_results: Iterable[SingleAttackResult]
+
+  privacy_report_metadata: PrivacyReportMetadata = None
 
   def calculate_pd_dataframe(self):
     """Returns all metrics as a Pandas DataFrame."""

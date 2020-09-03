@@ -23,6 +23,7 @@ import tempfile
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from sklearn import metrics
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import to_categorical
@@ -30,6 +31,8 @@ from tensorflow_privacy.privacy.membership_inference_attack import membership_in
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
+  PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 import tensorflow_privacy.privacy.membership_inference_attack.plotting as plotting
 
@@ -112,6 +115,13 @@ def crossentropy(true_labels, predictions):
           keras.backend.variable(predictions)))
 
 
+# Add metadata to generate a privacy report.
+privacy_report_metadata = PrivacyReportMetadata(
+    accuracy_train=metrics.accuracy_score(training_labels,
+                                          np.argmax(training_pred, axis=1)),
+    accuracy_test=metrics.accuracy_score(test_labels,
+                                         np.argmax(test_pred, axis=1)))
+
 attack_results = mia.run_attacks(
     AttackInputData(
         labels_train=training_labels,
@@ -121,7 +131,8 @@ attack_results = mia.run_attacks(
         loss_train=crossentropy(training_labels, training_pred),
         loss_test=crossentropy(test_labels, test_pred)),
     SlicingSpec(entire_dataset=True, by_class=True),
-    attack_types=(AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION))
+    attack_types=(AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION),
+    privacy_report_metadata=None)
 
 # Example of saving the results to the file and loading them back.
 with tempfile.TemporaryDirectory() as tmpdirname:

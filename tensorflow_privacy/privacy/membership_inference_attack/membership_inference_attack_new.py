@@ -27,6 +27,8 @@ from tensorflow_privacy.privacy.membership_inference_attack import models
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
+  PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
@@ -103,8 +105,8 @@ def run_attack(attack_input: AttackInputData, attack_type: AttackType):
 def run_attacks(
     attack_input: AttackInputData,
     slicing_spec: SlicingSpec = None,
-    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)
-) -> AttackResults:
+    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
+    privacy_report_metadata: PrivacyReportMetadata = None) -> AttackResults:
   """Run all attacks."""
   attack_input.validate()
   attack_results = []
@@ -118,4 +120,35 @@ def run_attacks(
     for attack_type in attack_types:
       attack_results.append(run_attack(attack_input_slice, attack_type))
 
-  return AttackResults(single_attack_results=attack_results)
+  privacy_report_metadata = _compute_missing_privacy_report_metadata(
+      privacy_report_metadata, attack_input)
+
+  return AttackResults(
+      single_attack_results=attack_results,
+      privacy_report_metadata=privacy_report_metadata)
+
+
+def _compute_missing_privacy_report_metadata(
+    metadata: PrivacyReportMetadata,
+    attack_input: AttackInputData) -> PrivacyReportMetadata:
+  """Populates metadata fields if they are missing."""
+  if metadata is None:
+    metadata = PrivacyReportMetadata()
+  if metadata.accuracy_train is None:
+    metadata.accuracy_train = _get_accuracy(attack_input.logits_train,
+                                            attack_input.labels_train)
+  if metadata.accuracy_test is None:
+    metadata.accuracy_test = _get_accuracy(attack_input.logits_test,
+                                           attack_input.labels_test)
+  if metadata.loss_train is None:
+    metadata.loss_train = np.average(attack_input.get_loss_train())
+  if metadata.loss_test is None:
+    metadata.loss_test = np.average(attack_input.get_loss_test())
+  return metadata
+
+
+def _get_accuracy(logits, labels):
+  """Computes the accuracy if it is missing."""
+  if logits is None or labels is None:
+    return None
+  return metrics.accuracy_score(labels, np.argmax(logits, axis=1))
