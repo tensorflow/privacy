@@ -106,13 +106,24 @@ class GetSliceTest(absltest.TestCase):
     # Create test data for 3 class classification task.
     logits_train = np.array([[0, 1, 0], [2, 0, 3], [4, 5, 0], [6, 7, 0]])
     logits_test = np.array([[10, 0, 11], [12, 13, 0], [14, 15, 0], [0, 16, 17]])
+    probs_train = np.array([[0, 1, 0], [0.1, 0, 0.7], [0.4, 0.6, 0],
+                            [0.3, 0.7, 0]])
+    probs_test = np.array([[0.4, 0, 0.6], [0.1, 0.9, 0], [0.15, 0.85, 0],
+                           [0, 0, 1]])
     labels_train = np.array([1, 0, 1, 2])
     labels_test = np.array([1, 2, 0, 2])
     loss_train = np.array([2, 0.25, 4, 3])
     loss_test = np.array([0.5, 3.5, 7, 4.5])
 
-    self.input_data = AttackInputData(logits_train, logits_test, labels_train,
-                                      labels_test, loss_train, loss_test)
+    self.input_data = AttackInputData(
+        logits_train=logits_train,
+        logits_test=logits_test,
+        probs_train=probs_train,
+        probs_test=probs_test,
+        labels_train=labels_train,
+        labels_test=labels_test,
+        loss_train=loss_train,
+        loss_test=loss_test)
 
   def test_slice_entire_dataset(self):
     entire_dataset_slice = SingleSliceSpec()
@@ -130,6 +141,11 @@ class GetSliceTest(absltest.TestCase):
     self.assertLen(output.logits_train, 2)
     self.assertLen(output.logits_test, 1)
     self.assertTrue((output.logits_train[1] == [4, 5, 0]).all())
+
+    # Check probs.
+    self.assertLen(output.probs_train, 2)
+    self.assertLen(output.probs_test, 1)
+    self.assertTrue((output.probs_train[1] == [0.4, 0.6, 0]).all())
 
     # Check labels.
     self.assertLen(output.labels_train, 2)

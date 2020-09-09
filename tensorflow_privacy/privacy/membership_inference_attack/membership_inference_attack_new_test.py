@@ -28,9 +28,10 @@ def get_test_input(n_train, n_test):
   """Get example inputs for attacks."""
   rng = np.random.RandomState(4)
   return AttackInputData(
-      rng.randn(n_train, 5) + 0.2,
-      rng.randn(n_test, 5) + 0.2, np.array([i % 5 for i in range(n_train)]),
-      np.array([i % 5 for i in range(n_test)]))
+      logits_train=rng.randn(n_train, 5) + 0.2,
+      logits_test=rng.randn(n_test, 5) + 0.2,
+      labels_train=np.array([i % 5 for i in range(n_train)]),
+      labels_test=np.array([i % 5 for i in range(n_test)]))
 
 
 class RunAttacksTest(absltest.TestCase):

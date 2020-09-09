@@ -161,6 +161,11 @@ class AttackInputData:
   logits_train: np.ndarray = None
   logits_test: np.ndarray = None
 
+  # Predicted probabilities for each class. They can be derived from logits,
+  # so they can be set only if logits are not explicitly provided.
+  probs_train: np.ndarray = None
+  probs_test: np.ndarray = None
+
   # Contains ground-truth classes. Classes are assumed to be integers starting
   # from 0.
   labels_train: np.ndarray = None
@@ -185,6 +190,16 @@ class AttackInputData:
           'Please set labels_train and labels_test')
     return int(max(np.max(self.labels_train), np.max(self.labels_test))) + 1
 
+  @property
+  def logits_or_probs_train(self):
+    """Returns train logits or probs whatever is not None."""
+    return self.logits_train if self.probs_train is None else self.probs_train
+
+  @property
+  def logits_or_probs_test(self):
+    """Returns test logits or probs whatever is not None."""
+    return self.logits_test if self.probs_test is None else self.probs_test
+
   @staticmethod
   def _get_entropy(logits: np.ndarray, true_labels: np.ndarray):
     """Computes the prediction entropy (by Song and Mittal)."""
@@ -199,7 +214,7 @@ class AttackInputData:
       # See the Equation (7) in https://arxiv.org/pdf/2003.10595.pdf
       return np.sum(np.multiply(probs, _log_value(probs)), axis=1)
     else:
-      # When given the groud truth label, we compute the
+      # When given the ground truth label, we compute the
       # modified prediction entropy.
       # See the Equation (8) in https://arxiv.org/pdf/2003.10595.pdf
       log_probs = _log_value(probs)
@@ -218,15 +233,21 @@ class AttackInputData:
   def get_loss_train(self):
     """Calculates (if needed) cross-entropy losses for the training set."""
     if self.loss_train is None:
-      self.loss_train = utils.log_loss_from_logits(self.labels_train,
-                                                   self.logits_train)
+      if self.logits_train is not None:
+        self.loss_train = utils.log_loss_from_logits(self.labels_train,
+                                                     self.logits_train)
+      else:
+        self.loss_train = utils.log_loss(self.labels_train, self.probs_train)
     return self.loss_train
 
   def get_loss_test(self):
     """Calculates (if needed)  cross-entropy losses for the test set."""
     if self.loss_test is None:
-      self.loss_test = utils.log_loss_from_logits(self.labels_test,
-                                                  self.logits_test)
+      if self.logits_train is not None:
+        self.loss_test = utils.log_loss_from_logits(self.labels_test,
+                                                    self.logits_test)
+      else:
+        self.loss_test = utils.log_loss(self.labels_test, self.probs_test)
     return self.loss_test
 
   def get_entropy_train(self):
@@ -267,6 +288,13 @@ class AttackInputData:
       raise ValueError(
           'logits_train and logits_test should both be either set or unset')
 
+    if (self.probs_train is None) != (self.probs_test is None):
+      raise ValueError(
+          'probs_train and probs_test should both be either set or unset')
+
+    if (self.logits_train is not None) and (self.probs_train is not None):
+      raise ValueError('Logits and probs can not be both set')
+
     if (self.labels_train is None) != (self.labels_test is None):
       raise ValueError(
           'labels_train and labels_test should both be either set or unset')
@@ -286,6 +314,8 @@ class AttackInputData:
 
     _is_np_array(self.logits_train, 'logits_train')
     _is_np_array(self.logits_test, 'logits_test')
+    _is_np_array(self.probs_train, 'probs_train')
+    _is_np_array(self.probs_test, 'probs_test')
     _is_np_array(self.labels_train, 'labels_train')
     _is_np_array(self.labels_test, 'labels_test')
     _is_np_array(self.loss_train, 'loss_train')
@@ -295,6 +325,8 @@ class AttackInputData:
 
     _is_last_dim_equal(self.logits_train, 'logits_train', self.logits_test,
                        'logits_test')
+    _is_last_dim_equal(self.probs_train, 'probs_train', self.probs_test,
+                       'probs_test')
     _is_array_one_dimensional(self.loss_train, 'loss_train')
     _is_array_one_dimensional(self.loss_test, 'loss_test')
     _is_array_one_dimensional(self.entropy_train, 'entropy_train')
@@ -311,6 +343,8 @@ class AttackInputData:
     _append_array_shape(self.entropy_test, 'entropy_test', result)
     _append_array_shape(self.logits_train, 'logits_train', result)
     _append_array_shape(self.logits_test, 'logits_test', result)
+    _append_array_shape(self.probs_train, 'probs_train', result)
+    _append_array_shape(self.probs_test, 'probs_test', result)
     _append_array_shape(self.labels_train, 'labels_train', result)
     _append_array_shape(self.labels_test, 'labels_test', result)
     result.append(')')

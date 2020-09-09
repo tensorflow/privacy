@@ -101,7 +101,7 @@ model.fit(
     to_categorical(training_labels, num_clusters),
     validation_data=(test_features, to_categorical(test_labels, num_clusters)),
     batch_size=64,
-    epochs=10,
+    epochs=2,
     shuffle=True)
 
 training_pred = model.predict(training_features)
@@ -126,8 +126,8 @@ attack_results = mia.run_attacks(
     AttackInputData(
         labels_train=training_labels,
         labels_test=test_labels,
-        logits_train=training_pred,
-        logits_test=test_pred,
+        probs_train=training_pred,
+        probs_test=test_pred,
         loss_train=crossentropy(training_labels, training_pred),
         loss_test=crossentropy(test_labels, test_pred)),
     SlicingSpec(entire_dataset=True, by_class=True),

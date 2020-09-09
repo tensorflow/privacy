@@ -38,11 +38,13 @@ def _slice_data_by_indices(data: AttackInputData, idx_train,
 
   # Slice train data.
   result.logits_train = _slice_if_not_none(data.logits_train, idx_train)
+  result.probs_train = _slice_if_not_none(data.probs_train, idx_train)
   result.labels_train = _slice_if_not_none(data.labels_train, idx_train)
   result.loss_train = _slice_if_not_none(data.loss_train, idx_train)
 
   # Slice test data.
   result.logits_test = _slice_if_not_none(data.logits_test, idx_test)
+  result.probs_test = _slice_if_not_none(data.probs_test, idx_test)
   result.labels_test = _slice_if_not_none(data.labels_test, idx_test)
   result.loss_test = _slice_if_not_none(data.loss_test, idx_test)
 

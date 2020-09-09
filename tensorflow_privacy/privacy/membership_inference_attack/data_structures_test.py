@@ -46,7 +46,7 @@ class SingleSliceSpecTest(parameterized.TestCase):
 
 class AttackInputDataTest(absltest.TestCase):
 
-  def test_get_loss(self):
+  def test_get_loss_from_logits(self):
     attack_input = AttackInputData(
         logits_train=np.array([[-0.3, 1.5, 0.2], [2, 3, 0.5]]),
         logits_test=np.array([[2, 0.3, 0.2], [0.3, -0.5, 0.2]]),
@@ -57,6 +57,18 @@ class AttackInputDataTest(absltest.TestCase):
         attack_input.get_loss_train(), [0.36313551, 1.37153903], atol=1e-7)
     np.testing.assert_allclose(
         attack_input.get_loss_test(), [0.29860897, 0.95618669], atol=1e-7)
+
+  def test_get_loss_from_probs(self):
+    attack_input = AttackInputData(
+        probs_train=np.array([[0.1, 0.1, 0.8], [0.8, 0.2, 0]]),
+        probs_test=np.array([[0, 0.0001, 0.9999], [0.07, 0.18, 0.75]]),
+        labels_train=np.array([1, 0]),
+        labels_test=np.array([0, 2]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), [2.30258509, 0.2231436], atol=1e-7)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [18.42068074, 0.28768207], atol=1e-7)
 
   def test_get_loss_explicitly_provided(self):
     attack_input = AttackInputData(
@@ -100,6 +112,8 @@ class AttackInputDataTest(absltest.TestCase):
     self.assertRaises(ValueError,
                       AttackInputData(logits_train=np.array([])).validate)
     self.assertRaises(ValueError,
+                      AttackInputData(probs_train=np.array([])).validate)
+    self.assertRaises(ValueError,
                       AttackInputData(labels_train=np.array([])).validate)
     self.assertRaises(ValueError,
                       AttackInputData(loss_train=np.array([])).validate)
@@ -108,12 +122,22 @@ class AttackInputDataTest(absltest.TestCase):
     self.assertRaises(ValueError,
                       AttackInputData(logits_test=np.array([])).validate)
     self.assertRaises(ValueError,
+                      AttackInputData(probs_test=np.array([])).validate)
+    self.assertRaises(ValueError,
                       AttackInputData(labels_test=np.array([])).validate)
     self.assertRaises(ValueError,
                       AttackInputData(loss_test=np.array([])).validate)
     self.assertRaises(ValueError,
                       AttackInputData(entropy_test=np.array([])).validate)
     self.assertRaises(ValueError, AttackInputData().validate)
+    # Tests that having both logits and probs are not allowed.
+    self.assertRaises(
+        ValueError,
+        AttackInputData(
+            logits_train=np.array([]),
+            logits_test=np.array([]),
+            probs_train=np.array([]),
+            probs_test=np.array([])).validate)
 
 
 class RocCurveTest(absltest.TestCase):

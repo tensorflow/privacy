@@ -55,9 +55,9 @@ def create_attacker_data(attack_input_data: AttackInputData,
   Returns:
     AttackerData.
   """
-  attack_input_train = _column_stack(attack_input_data.logits_train,
+  attack_input_train = _column_stack(attack_input_data.logits_or_probs_train,
                                      attack_input_data.get_loss_train())
-  attack_input_test = _column_stack(attack_input_data.logits_test,
+  attack_input_test = _column_stack(attack_input_data.logits_or_probs_test,
                                     attack_input_data.get_loss_test())
 
   features_all = np.concatenate((attack_input_train, attack_input_test))
