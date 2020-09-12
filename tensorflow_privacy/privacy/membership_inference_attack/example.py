@@ -35,6 +35,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
   PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 import tensorflow_privacy.privacy.membership_inference_attack.plotting as plotting
+import tensorflow_privacy.privacy.membership_inference_attack.privacy_report as privacy_report
 
 
 def generate_random_cluster(center, scale, num_points):
@@ -96,16 +97,6 @@ model = keras.models.Sequential([
 ])
 model.compile(
     optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-model.fit(
-    training_features,
-    to_categorical(training_labels, num_clusters),
-    validation_data=(test_features, to_categorical(test_labels, num_clusters)),
-    batch_size=64,
-    epochs=2,
-    shuffle=True)
-
-training_pred = model.predict(training_features)
-test_pred = model.predict(test_features)
 
 
 def crossentropy(true_labels, predictions):
@@ -115,24 +106,49 @@ def crossentropy(true_labels, predictions):
           keras.backend.variable(predictions)))
 
 
-# Add metadata to generate a privacy report.
-privacy_report_metadata = PrivacyReportMetadata(
-    accuracy_train=metrics.accuracy_score(training_labels,
-                                          np.argmax(training_pred, axis=1)),
-    accuracy_test=metrics.accuracy_score(test_labels,
-                                         np.argmax(test_pred, axis=1)))
+epoch_results = []
 
-attack_results = mia.run_attacks(
-    AttackInputData(
-        labels_train=training_labels,
-        labels_test=test_labels,
-        probs_train=training_pred,
-        probs_test=test_pred,
-        loss_train=crossentropy(training_labels, training_pred),
-        loss_test=crossentropy(test_labels, test_pred)),
-    SlicingSpec(entire_dataset=True, by_class=True),
-    attack_types=(AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION),
-    privacy_report_metadata=None)
+# Incrementally train the model and store privacy risk metrics every 10 epochs.
+for i in range(1, 6):
+  model.fit(
+      training_features,
+      to_categorical(training_labels, num_clusters),
+      validation_data=(test_features, to_categorical(test_labels,
+                                                     num_clusters)),
+      batch_size=64,
+      epochs=2,
+      shuffle=True)
+
+  training_pred = model.predict(training_features)
+  test_pred = model.predict(test_features)
+
+  # Add metadata to generate a privacy report.
+  privacy_report_metadata = PrivacyReportMetadata(
+      accuracy_train=metrics.accuracy_score(training_labels,
+                                            np.argmax(training_pred, axis=1)),
+      accuracy_test=metrics.accuracy_score(test_labels,
+                                           np.argmax(test_pred, axis=1)),
+      epoch_num=2 * i,
+      model_variant_label="default")
+
+  attack_results = mia.run_attacks(
+      AttackInputData(
+          labels_train=training_labels,
+          labels_test=test_labels,
+          probs_train=training_pred,
+          probs_test=test_pred,
+          loss_train=crossentropy(training_labels, training_pred),
+          loss_test=crossentropy(test_labels, test_pred)),
+      SlicingSpec(entire_dataset=True, by_class=True),
+      attack_types=(AttackType.THRESHOLD_ATTACK,
+                    AttackType.LOGISTIC_REGRESSION),
+      privacy_report_metadata=privacy_report_metadata)
+  epoch_results.append(attack_results)
+
+# Generate privacy report
+epoch_figure = privacy_report.plot_by_epochs(epoch_results,
+                                             ["Attacker advantage", "AUC"])
+epoch_figure.show()
 
 # Example of saving the results to the file and loading them back.
 with tempfile.TemporaryDirectory() as tmpdirname:

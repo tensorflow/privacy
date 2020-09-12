@@ -434,6 +434,9 @@ class PrivacyReportMetadata:
   loss_train: float = None
   loss_test: float = None
 
+  model_variant_label: str = 'Default model variant'
+  epoch_num: int = None
+
 
 @dataclass
 class AttackResults:
@@ -466,8 +469,8 @@ class AttackResults:
         'slice feature': slice_features,
         'slice value': slice_values,
         'attack type': attack_types,
-        'attack advantage': advantages,
-        'roc auc': aucs
+        'Attacker advantage': advantages,
+        'AUC': aucs
     })
     return df
 

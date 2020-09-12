@@ -305,8 +305,8 @@ class AttackResultsTest(absltest.TestCase):
         'slice feature': ['correctly_classfied', 'entire_dataset'],
         'slice value': ['True', ''],
         'attack type': ['threshold', 'threshold'],
-        'attack advantage': [1.0, 0.0],
-        'roc auc': [1.0, 0.5]
+        'Attacker advantage': [1.0, 0.0],
+        'AUC': [1.0, 0.5]
     })
     self.assertTrue(df.equals(df_expected))
 
