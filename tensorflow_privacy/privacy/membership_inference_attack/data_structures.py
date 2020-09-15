@@ -123,6 +123,16 @@ class AttackType(enum.Enum):
     return '%s' % self.name
 
 
+class PrivacyMetric(enum.Enum):
+  """An enum for the supported privacy risk metrics."""
+  AUC = 'AUC'
+  ATTACKER_ADVANTAGE = 'Attacker advantage'
+
+  def __str__(self):
+    """Returns 'AUC' instead of PrivacyMetric.AUC."""
+    return '%s' % self.value
+
+
 def _is_integer_type_array(a):
   return np.issubdtype(a.dtype, np.integer)
 
@@ -469,8 +479,8 @@ class AttackResults:
         'slice feature': slice_features,
         'slice value': slice_values,
         'attack type': attack_types,
-        'Attacker advantage': advantages,
-        'AUC': aucs
+        str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
+        str(PrivacyMetric.AUC): aucs
     })
     return df
 

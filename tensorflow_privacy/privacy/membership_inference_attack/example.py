@@ -28,9 +28,11 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import to_categorical
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
+
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyMetric
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
   PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
@@ -109,6 +111,7 @@ def crossentropy(true_labels, predictions):
 epoch_results = []
 
 # Incrementally train the model and store privacy risk metrics every 10 epochs.
+num_epochs = 2
 for i in range(1, 6):
   model.fit(
       training_features,
@@ -116,7 +119,7 @@ for i in range(1, 6):
       validation_data=(test_features, to_categorical(test_labels,
                                                      num_clusters)),
       batch_size=64,
-      epochs=2,
+      epochs=num_epochs,
       shuffle=True)
 
   training_pred = model.predict(training_features)
@@ -128,7 +131,7 @@ for i in range(1, 6):
                                             np.argmax(training_pred, axis=1)),
       accuracy_test=metrics.accuracy_score(test_labels,
                                            np.argmax(test_pred, axis=1)),
-      epoch_num=2 * i,
+      epoch_num=num_epochs * i,
       model_variant_label="default")
 
   attack_results = mia.run_attacks(
@@ -145,10 +148,13 @@ for i in range(1, 6):
       privacy_report_metadata=privacy_report_metadata)
   epoch_results.append(attack_results)
 
-# Generate privacy report
-epoch_figure = privacy_report.plot_by_epochs(epoch_results,
-                                             ["Attacker advantage", "AUC"])
+# Generate privacy reports
+epoch_figure = privacy_report.plot_by_epochs(
+    epoch_results, [PrivacyMetric.ATTACKER_ADVANTAGE, PrivacyMetric.AUC])
 epoch_figure.show()
+privacy_utility_figure = privacy_report.plot_privacy_vs_accuracy_single_model(
+    epoch_results, [PrivacyMetric.ATTACKER_ADVANTAGE, PrivacyMetric.AUC])
+privacy_utility_figure.show()
 
 # Example of saving the results to the file and loading them back.
 with tempfile.TemporaryDirectory() as tmpdirname:

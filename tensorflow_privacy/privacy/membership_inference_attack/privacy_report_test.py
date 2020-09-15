@@ -84,6 +84,8 @@ class PrivacyReportTest(absltest.TestCase):
     np.testing.assert_array_equal(auc_data[0], [10, 15])
     # Y axis lists AUC values
     np.testing.assert_array_equal(auc_data[1], [0.5, 1.0])
+    # Check the title
+    self.assertEqual(fig._suptitle.get_text(), 'Vulnerability per Epoch')
 
   def test_multiple_metrics_plot_by_epochs(self):
     fig = privacy_report.plot_by_epochs(
@@ -98,6 +100,42 @@ class PrivacyReportTest(absltest.TestCase):
     # Y axis lists privacy metrics
     np.testing.assert_array_equal(auc_data[1], [0.5, 1.0])
     np.testing.assert_array_equal(attacker_advantage_data[1], [0, 1.0])
+    # Check the title
+    self.assertEqual(fig._suptitle.get_text(), 'Vulnerability per Epoch')
+
+  def test_plot_privacy_vs_accuracy_single_model_no_metadata(self):
+    # Raise error if metadata is missing
+    self.assertRaises(ValueError,
+                      privacy_report.plot_privacy_vs_accuracy_single_model,
+                      (self.attack_results_no_metadata,), ['AUC'])
+
+  def test_single_metric_plot_privacy_vs_accuracy_single_model(self):
+    fig = privacy_report.plot_privacy_vs_accuracy_single_model(
+        (self.results_epoch_10, self.results_epoch_15), ['AUC'])
+    # extract data from figure.
+    auc_data = fig.gca().lines[0].get_data()
+    # X axis lists epoch values
+    np.testing.assert_array_equal(auc_data[0], [0.4, 0.5])
+    # Y axis lists AUC values
+    np.testing.assert_array_equal(auc_data[1], [0.5, 1.0])
+    # Check the title
+    self.assertEqual(fig._suptitle.get_text(), 'Privacy vs Utility Analysis')
+
+  def test_multiple_metrics_plot_privacy_vs_accuracy_single_model(self):
+    fig = privacy_report.plot_privacy_vs_accuracy_single_model(
+        (self.results_epoch_10, self.results_epoch_15),
+        ['AUC', 'Attacker advantage'])
+    # extract data from figure.
+    auc_data = fig.axes[0].lines[0].get_data()
+    attacker_advantage_data = fig.axes[1].lines[0].get_data()
+    # X axis lists epoch values
+    np.testing.assert_array_equal(auc_data[0], [0.4, 0.5])
+    np.testing.assert_array_equal(attacker_advantage_data[0], [0.4, 0.5])
+    # Y axis lists privacy metrics
+    np.testing.assert_array_equal(auc_data[1], [0.5, 1.0])
+    np.testing.assert_array_equal(attacker_advantage_data[1], [0, 1.0])
+    # Check the title
+    self.assertEqual(fig._suptitle.get_text(), 'Privacy vs Utility Analysis')
 
 
 if __name__ == '__main__':
