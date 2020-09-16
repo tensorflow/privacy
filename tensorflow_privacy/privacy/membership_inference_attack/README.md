@@ -18,6 +18,20 @@ the model are used (e.g., losses, logits, predictions). Neither model internals
 
 ## How to use
 
+
+### API revamp note
+We're **revamping our attacks API to make it more structured, modular and
+extensible**. The docs below refers to the legacy experimental API and will be
+updated soon. Stay tuned!
+
+For a quick preview, you can take a look at [data_structures.py]
+(https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/data_structures.py)
+and [membership_inference_attack_new.py]
+(https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/membership_inference_attack_new.py).
+
+For now, here's a reference to the legacy API.
+
+
 ### Codelab
 
 The easiest way to get started is to go through [the introductory codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/codelab.ipynb).
