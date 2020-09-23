@@ -27,30 +27,27 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import MembershipInferenceTrainingHook
 from tensorflow_privacy.privacy.membership_inference_attack.tf_estimator_evaluation import run_attack_on_tf_estimator_model
 
-GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
 FLAGS = flags.FLAGS
-
-flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
-flags.DEFINE_integer('batch_size', 256, 'Batch size')
-flags.DEFINE_integer('epochs', 10, 'Number of epochs')
+flags.DEFINE_float('learning_rate', 0.02, 'Learning rate for training')
+flags.DEFINE_integer('batch_size', 250, 'Batch size')
+flags.DEFINE_integer('epochs', 100, 'Number of epochs')
 flags.DEFINE_string('model_dir', None, 'Model directory.')
+flags.DEFINE_bool('tensorboard_merge_classifiers', False, 'If true, plot '
+                  'different classifiers with the same slicing_spec and metric '
+                  'in the same figure.')
 
 
-def cnn_model_fn(features, labels, mode):
-  """Model function for a CNN."""
+def small_cnn_fn(features, labels, mode):
+  """Setup a small CNN for image classification."""
+  input_layer = tf.reshape(features['x'], [-1, 32, 32, 3])
+  for _ in range(3):
+    y = tf.keras.layers.Conv2D(32, (3, 3), activation='relu')(input_layer)
+    y = tf.keras.layers.MaxPool2D()(y)
 
-  # Define CNN architecture using tf.keras.layers.
-  input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
-  y = tf.keras.layers.Conv2D(
-      16, 8, strides=2, padding='same', activation='relu').apply(input_layer)
-  y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Conv2D(
-      32, 4, strides=2, padding='valid', activation='relu').apply(y)
-  y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Flatten().apply(y)
-  y = tf.keras.layers.Dense(32, activation='relu').apply(y)
-  logits = tf.keras.layers.Dense(10).apply(y)
+  y = tf.keras.layers.Flatten()(y)
+  y = tf.keras.layers.Dense(64, activation='relu')(y)
+  logits = tf.keras.layers.Dense(10)(y)
 
   if mode != tf.estimator.ModeKeys.PREDICT:
     vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -59,7 +56,8 @@ def cnn_model_fn(features, labels, mode):
 
   # Configure the training op (for TRAIN mode).
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+    optimizer = tf.train.MomentumOptimizer(learning_rate=FLAGS.learning_rate,
+                                           momentum=0.9)
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(
@@ -81,19 +79,17 @@ def cnn_model_fn(features, labels, mode):
     return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
 
-def load_mnist():
-  """Loads MNIST and preprocesses to combine training and validation data."""
-  (train_data,
-   train_labels), (test_data,
-                   test_labels) = tf.keras.datasets.mnist.load_data()
+def load_cifar10():
+  """Loads CIFAR10 data."""
+  (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
-  train_data = np.array(train_data, dtype=np.float32) / 255
-  test_data = np.array(test_data, dtype=np.float32) / 255
+  x_train = np.array(x_train, dtype=np.float32) / 255
+  x_test = np.array(x_test, dtype=np.float32) / 255
 
-  train_labels = np.array(train_labels, dtype=np.int32)
-  test_labels = np.array(test_labels, dtype=np.int32)
+  y_train = np.array(y_train, dtype=np.int32).squeeze()
+  y_test = np.array(y_test, dtype=np.int32).squeeze()
 
-  return train_data, train_labels, test_data, test_labels
+  return x_train, y_train, x_test, y_test
 
 
 def main(unused_argv):
@@ -103,39 +99,38 @@ def main(unused_argv):
   logging.get_absl_handler().use_absl_log_file()
 
   # Load training and test data.
-  train_data, train_labels, test_data, test_labels = load_mnist()
+  x_train, y_train, x_test, y_test = load_cifar10()
 
   # Instantiate the tf.Estimator.
   mnist_classifier = tf.estimator.Estimator(
-      model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
+      model_fn=small_cnn_fn, model_dir=FLAGS.model_dir)
 
   # A function to construct input_fn given (data, label), to be used by the
   # membership inference training hook.
   def input_fn_constructor(x, y):
     return tf.estimator.inputs.numpy_input_fn(x={'x': x}, y=y, shuffle=False)
 
-  with tf.Graph().as_default():
-    # Get a summary writer for the hook to write to tensorboard.
-    # Can set summary_writer to None if not needed.
-    if FLAGS.model_dir:
-      summary_writer = tf.summary.FileWriter(FLAGS.model_dir)
-    else:
-      summary_writer = None
-    mia_hook = MembershipInferenceTrainingHook(
-        mnist_classifier, (train_data, train_labels), (test_data, test_labels),
-        input_fn_constructor,
-        attack_types=[AttackType.THRESHOLD_ATTACK],
-        writer=summary_writer)
+  # Get hook for membership inference attack.
+  mia_hook = MembershipInferenceTrainingHook(
+      mnist_classifier,
+      (x_train, y_train),
+      (x_test, y_test),
+      input_fn_constructor,
+      slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
+      attack_types=[AttackType.THRESHOLD_ATTACK,
+                    AttackType.K_NEAREST_NEIGHBORS],
+      tensorboard_dir=FLAGS.model_dir,
+      tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
 
   # Create tf.Estimator input functions for the training and test data.
   train_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={'x': train_data},
-      y=train_labels,
+      x={'x': x_train},
+      y=y_train,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
   eval_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
+      x={'x': x_test}, y=y_test, num_epochs=1, shuffle=False)
 
   # Training loop.
   steps_per_epoch = 60000 // FLAGS.batch_size
@@ -151,18 +146,15 @@ def main(unused_argv):
 
   print('End of training attack')
   attack_results = run_attack_on_tf_estimator_model(
-      mnist_classifier, (train_data, train_labels), (test_data, test_labels),
+      mnist_classifier, (x_train, y_train), (x_test, y_test),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[
-          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
-      ])
-  attack_properties, attack_values = get_flattened_attack_metrics(
+      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
+      )
+  att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
-  print('\n'.join([
-      '  %s: %.4f' % (', '.join(p), r)
-      for p, r in zip(attack_properties, attack_values)
-  ]))
+  print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
+                   zip(att_types, att_slices, att_metrics, att_values)]))
 
 
 if __name__ == '__main__':

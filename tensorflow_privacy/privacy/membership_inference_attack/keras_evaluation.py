@@ -15,8 +15,8 @@
 # Lint as: python3
 """A callback and a function in keras for membership inference attack."""
 
+import os
 from typing import Iterable
-
 from absl import logging
 
 import tensorflow.compat.v1 as tf
@@ -27,7 +27,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
-from tensorflow_privacy.privacy.membership_inference_attack.utils import write_to_tensorboard
+from tensorflow_privacy.privacy.membership_inference_attack.utils_tensorboard import write_results_to_tensorboard
 
 
 def calculate_losses(model, data, labels):
@@ -55,7 +55,8 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
       in_train, out_train,
       slicing_spec: SlicingSpec = None,
       attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
-      tensorboard_dir=None):
+      tensorboard_dir=None,
+      tensorboard_merge_classifiers=False):
     """Initalizes the callback.
 
     Args:
@@ -64,18 +65,28 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
       slicing_spec: slicing specification of the attack
       attack_types: a list of attacks, each of type AttackType
       tensorboard_dir: directory for tensorboard summary
+      tensorboard_merge_classifiers: if true, plot different classifiers with
+      the same slicing_spec and metric in the same figure
     """
     self._in_train_data, self._in_train_labels = in_train
     self._out_train_data, self._out_train_labels = out_train
     self._slicing_spec = slicing_spec
     self._attack_types = attack_types
-    # Setup tensorboard writer if tensorboard_dir is specified
+    self._tensorboard_merge_classifiers = tensorboard_merge_classifiers
     if tensorboard_dir:
-      with tf.Graph().as_default():
-        self._writer = tf.summary.FileWriter(tensorboard_dir)
+      if tensorboard_merge_classifiers:
+        self._writers = {}
+        with tf.Graph().as_default():
+          for attack_type in attack_types:
+            self._writers[attack_type.name] = tf.summary.FileWriter(
+                os.path.join(tensorboard_dir, 'MI', attack_type.name))
+      else:
+        with tf.Graph().as_default():
+          self._writers = tf.summary.FileWriter(
+              os.path.join(tensorboard_dir, 'MI'))
       logging.info('Will write to tensorboard.')
     else:
-      self._writer = None
+      self._writers = None
 
   def on_epoch_end(self, epoch, logs=None):
     results = run_attack_on_keras_model(
@@ -86,15 +97,16 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
         self._attack_types)
     logging.info(results)
 
-    attack_properties, attack_values = get_flattened_attack_metrics(results)
+    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+        results)
     print('Attack result:')
-    print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
-                     zip(attack_properties, attack_values)]))
+    print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
+                     zip(att_types, att_slices, att_metrics, att_values)]))
 
     # Write to tensorboard if tensorboard_dir is specified
-    attack_property_tags = ['attack/' + '_'.join(p) for p in attack_properties]
-    write_to_tensorboard(self._writer, attack_property_tags, attack_values,
-                         epoch)
+    if self._writers is not None:
+      write_results_to_tensorboard(results, self._writers, epoch,
+                                   self._tensorboard_merge_classifiers)
 
 
 def run_attack_on_keras_model(

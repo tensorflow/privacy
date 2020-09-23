@@ -15,21 +15,18 @@
 # Lint as: python3
 """A hook and a function in tf estimator for membership inference attack."""
 
+import os
 from typing import Iterable
-
 from absl import logging
-
 import numpy as np
-
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
-from tensorflow_privacy.privacy.membership_inference_attack.utils import write_to_tensorboard
+from tensorflow_privacy.privacy.membership_inference_attack.utils_tensorboard import write_results_to_tensorboard
 
 
 def calculate_losses(estimator, input_fn, labels):
@@ -43,7 +40,7 @@ def calculate_losses(estimator, input_fn, labels):
   Args:
     estimator: model to make prediction
     input_fn: input function to be used in estimator.predict
-    labels: true labels of samples (integer valued)
+    labels: array of size (n_samples, ), true labels of samples (integer valued)
 
   Returns:
     preds: probability vector of each sample
@@ -64,7 +61,8 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
       input_fn_constructor,
       slicing_spec: SlicingSpec = None,
       attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
-      writer=None):
+      tensorboard_dir=None,
+      tensorboard_merge_classifiers=False):
     """Initialize the hook.
 
     Args:
@@ -75,7 +73,9 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
         the input_fn for model prediction
       slicing_spec: slicing specification of the attack
       attack_types: a list of attacks, each of type AttackType
-      writer: summary writer for tensorboard
+      tensorboard_dir: directory for tensorboard summary
+      tensorboard_merge_classifiers: if true, plot different classifiers with
+      the same slicing_spec and metric in the same figure
     """
     in_train_data, self._in_train_labels = in_train
     out_train_data, self._out_train_labels = out_train
@@ -88,9 +88,21 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
     self._estimator = estimator
     self._slicing_spec = slicing_spec
     self._attack_types = attack_types
-    self._writer = writer
-    if self._writer:
+    self._tensorboard_merge_classifiers = tensorboard_merge_classifiers
+    if tensorboard_dir:
+      if tensorboard_merge_classifiers:
+        self._writers = {}
+        with tf.Graph().as_default():
+          for attack_type in attack_types:
+            self._writers[attack_type.name] = tf.summary.FileWriter(
+                os.path.join(tensorboard_dir, 'MI', attack_type.name))
+      else:
+        with tf.Graph().as_default():
+          self._writers = tf.summary.FileWriter(
+              os.path.join(tensorboard_dir, 'MI'))
       logging.info('Will write to tensorboard.')
+    else:
+      self._writers = None
 
   def end(self, session):
     results = run_attack_helper(self._estimator,
@@ -101,16 +113,17 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
                                 self._attack_types)
     logging.info(results)
 
-    attack_properties, attack_values = get_flattened_attack_metrics(results)
+    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+        results)
     print('Attack result:')
-    print('\n'.join(['  %s: %.4f' % (', '.join(p), r) for p, r in
-                     zip(attack_properties, attack_values)]))
+    print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
+                     zip(att_types, att_slices, att_metrics, att_values)]))
 
-    # Write to tensorboard if writer is specified
+    # Write to tensorboard if tensorboard_dir is specified
     global_step = self._estimator.get_variable_value('global_step')
-    attack_property_tags = ['attack/' + '_'.join(p) for p in attack_properties]
-    write_to_tensorboard(self._writer, attack_property_tags, attack_values,
-                         global_step)
+    if self._writers is not None:
+      write_results_to_tensorboard(results, self._writers, global_step,
+                                   self._tensorboard_merge_classifiers)
 
 
 def run_attack_on_tf_estimator_model(
@@ -184,4 +197,3 @@ def run_attack_helper(
                             slicing_spec=slicing_spec,
                             attack_types=attack_types)
   return results
-

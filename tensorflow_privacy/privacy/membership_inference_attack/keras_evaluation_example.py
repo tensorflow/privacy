@@ -26,95 +26,86 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import MembershipInferenceCallback
 from tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation import run_attack_on_keras_model
 
-GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 
 FLAGS = flags.FLAGS
-
-flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
-flags.DEFINE_integer('batch_size', 256, 'Batch size')
-flags.DEFINE_integer('epochs', 10, 'Number of epochs')
+flags.DEFINE_float('learning_rate', 0.02, 'Learning rate for training')
+flags.DEFINE_integer('batch_size', 250, 'Batch size')
+flags.DEFINE_integer('epochs', 100, 'Number of epochs')
 flags.DEFINE_string('model_dir', None, 'Model directory.')
+flags.DEFINE_bool('tensorboard_merge_classifiers', False, 'If true, plot '
+                  'different classifiers with the same slicing_spec and metric '
+                  'in the same figure.')
 
 
-def cnn_model():
-  """Define a CNN model."""
-  model = tf.keras.Sequential([
-      tf.keras.layers.Conv2D(
-          16,
-          8,
-          strides=2,
-          padding='same',
-          activation='relu',
-          input_shape=(28, 28, 1)),
-      tf.keras.layers.MaxPool2D(2, 1),
-      tf.keras.layers.Conv2D(
-          32, 4, strides=2, padding='valid', activation='relu'),
-      tf.keras.layers.MaxPool2D(2, 1),
-      tf.keras.layers.Flatten(),
-      tf.keras.layers.Dense(32, activation='relu'),
-      tf.keras.layers.Dense(10)
-  ])
+def small_cnn():
+  """Setup a small CNN for image classification."""
+  model = tf.keras.models.Sequential()
+  model.add(tf.keras.layers.Input(shape=(32, 32, 3)))
+
+  for _ in range(3):
+    model.add(tf.keras.layers.Conv2D(32, (3, 3), activation='relu'))
+    model.add(tf.keras.layers.MaxPooling2D())
+
+  model.add(tf.keras.layers.Flatten())
+  model.add(tf.keras.layers.Dense(64, activation='relu'))
+  model.add(tf.keras.layers.Dense(10))
   return model
 
 
-def load_mnist():
-  """Loads MNIST and preprocesses to combine training and validation data."""
-  (train_data,
-   train_labels), (test_data,
-                   test_labels) = tf.keras.datasets.mnist.load_data()
+def load_cifar10():
+  """Loads CIFAR10 data."""
+  (x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
 
-  train_data = np.array(train_data, dtype=np.float32) / 255
-  test_data = np.array(test_data, dtype=np.float32) / 255
+  x_train = np.array(x_train, dtype=np.float32) / 255
+  x_test = np.array(x_test, dtype=np.float32) / 255
 
-  train_data = train_data.reshape((train_data.shape[0], 28, 28, 1))
-  test_data = test_data.reshape((test_data.shape[0], 28, 28, 1))
+  y_train = np.array(y_train, dtype=np.int32).squeeze()
+  y_test = np.array(y_test, dtype=np.int32).squeeze()
 
-  train_labels = np.array(train_labels, dtype=np.int32)
-  test_labels = np.array(test_labels, dtype=np.int32)
-
-  return train_data, train_labels, test_data, test_labels
+  return x_train, y_train, x_test, y_test
 
 
 def main(unused_argv):
   # Load training and test data.
-  train_data, train_labels, test_data, test_labels = load_mnist()
+  x_train, y_train, x_test, y_test = load_cifar10()
 
   # Get model, optimizer and specify loss.
-  model = cnn_model()
-  optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+  model = small_cnn()
+  optimizer = tf.keras.optimizers.SGD(lr=FLAGS.learning_rate, momentum=0.9)
   loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
   model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
   # Get callback for membership inference attack.
   mia_callback = MembershipInferenceCallback(
-      (train_data, train_labels), (test_data, test_labels),
-      attack_types=[AttackType.THRESHOLD_ATTACK],
-      tensorboard_dir=FLAGS.model_dir)
+      (x_train, y_train),
+      (x_test, y_test),
+      slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
+      attack_types=[AttackType.THRESHOLD_ATTACK,
+                    AttackType.K_NEAREST_NEIGHBORS],
+      tensorboard_dir=FLAGS.model_dir,
+      tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
 
   # Train model with Keras
   model.fit(
-      train_data,
-      train_labels,
+      x_train,
+      y_train,
       epochs=FLAGS.epochs,
-      validation_data=(test_data, test_labels),
+      validation_data=(x_test, y_test),
       batch_size=FLAGS.batch_size,
       callbacks=[mia_callback],
       verbose=2)
 
   print('End of training attack:')
   attack_results = run_attack_on_keras_model(
-      model, (train_data, train_labels), (test_data, test_labels),
+      model, (x_train, y_train), (x_test, y_test),
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
       attack_types=[
           AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
       ])
-
-  attack_properties, attack_values = get_flattened_attack_metrics(
+  att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
-  print('\n'.join([
-      '  %s: %.4f' % (', '.join(p), r)
-      for p, r in zip(attack_properties, attack_values)
-  ]))
+  print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
+                   zip(att_types, att_slices, att_metrics, att_values)]))
 
 
 if __name__ == '__main__':

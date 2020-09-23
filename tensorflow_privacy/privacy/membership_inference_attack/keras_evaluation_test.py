@@ -67,9 +67,12 @@ class UtilsTest(absltest.TestCase):
         (self.test_data, self.test_labels),
         attack_types=[AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, AttackResults)
-    attack_properties, attack_values = get_flattened_attack_metrics(results)
-    self.assertLen(attack_properties, 2)
-    self.assertLen(attack_values, 2)
+    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+        results)
+    self.assertLen(att_types, 2)
+    self.assertLen(att_slices, 2)
+    self.assertLen(att_metrics, 2)
+    self.assertLen(att_values, 2)
 
 
 if __name__ == '__main__':

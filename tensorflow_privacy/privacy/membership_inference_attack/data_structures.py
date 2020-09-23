@@ -573,18 +573,19 @@ def get_flattened_attack_metrics(results: AttackResults):
     results: membership inference attack results.
 
   Returns:
-       properties: a list of (slice, attack_type, metric name)
+       types: a list of attack types
+       slices: a list of slices
+       attack_metrics: a list of metric names
        values: a list of metric values, i-th element correspond to properties[i]
   """
-  properties = []
+  types = []
+  slices = []
+  attack_metrics = []
   values = []
   for attack_result in results.single_attack_results:
-    slice_spec = attack_result.slice_spec
-    prop = [str(slice_spec), str(attack_result.attack_type)]
-    properties += [prop + ['adv'], prop + ['auc']]
-    values += [
-        float(attack_result.get_attacker_advantage()),
-        float(attack_result.get_auc())
-    ]
-
-  return properties, values
+    types += [str(attack_result.attack_type)] * 2
+    slices += [str(attack_result.slice_spec)] * 2
+    attack_metrics += ['adv', 'auc']
+    values += [float(attack_result.get_attacker_advantage()),
+               float(attack_result.get_auc())]
+  return types, slices, attack_metrics, values

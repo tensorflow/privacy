@@ -20,7 +20,7 @@ from typing import Text, Dict, Union, List, Any, Tuple
 import numpy as np
 import scipy.special
 from sklearn import metrics
-import tensorflow.compat.v1 as tf
+
 
 ArrayDict = Dict[Text, np.ndarray]
 Dataset = Tuple[Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray]]
@@ -229,10 +229,12 @@ def log_loss(labels: np.ndarray, pred: np.ndarray, small_value=1e-8):
   """Compute the cross entropy loss.
 
   Args:
-    labels: numpy array, labels[i] is the true label (scalar) of the i-th sample
-    pred: numpy array, pred[i] is the probability vector of the i-th sample
-    small_value: np.log can become -inf if the probability is too close to 0, so
-      the probability is clipped below by small_value.
+    labels: numpy array of shape (num_samples,) labels[i] is the true label
+      (scalar) of the i-th sample
+    pred: numpy array of shape(num_samples, num_classes) where pred[i] is the
+      probability vector of the i-th sample
+    small_value: a scalar. np.log can become -inf if the probability is too
+      close to 0, so the probability is clipped below by small_value.
 
   Returns:
     the cross-entropy loss of each sample
@@ -243,26 +245,3 @@ def log_loss(labels: np.ndarray, pred: np.ndarray, small_value=1e-8):
 def log_loss_from_logits(labels: np.ndarray, logits: np.ndarray):
   """Compute the cross entropy loss from logits."""
   return log_loss(labels, scipy.special.softmax(logits, axis=-1))
-
-
-# ------------------------------------------------------------------------------
-#  Tensorboard
-# ------------------------------------------------------------------------------
-
-
-def write_to_tensorboard(writer, tags, values, step):
-  """Write metrics to tensorboard.
-
-  Args:
-    writer: tensorboard writer
-    tags: a list of tags of metrics
-    values: a list of values of metrics
-    step: step for the summary
-  """
-  if writer is None:
-    return
-  summary = tf.Summary()
-  for tag, val in zip(tags, values):
-    summary.value.add(tag=tag, simple_value=val)
-  writer.add_summary(summary, step)
-  writer.flush()
