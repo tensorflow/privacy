@@ -135,6 +135,29 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNear(
         np.std(grads), l2_norm_clip * noise_multiplier / num_microbatches, 0.5)
 
+  @parameterized.named_parameters(
+      ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),
+      ('DPAdagrad', dp_optimizer_keras.DPKerasAdagradOptimizer),
+      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer))
+  def testAssertOnNoCallOfComputeGradients(self, cls):
+    """Tests that assertion fails when DP gradients are not computed."""
+    opt = cls(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        num_microbatches=1,
+        learning_rate=2.0)
+
+    with self.assertRaises(AssertionError):
+      grads_and_vars = tf.Variable([0.0])
+      opt.apply_gradients(grads_and_vars)
+
+    # Expect no exception if _compute_gradients is called.
+    var0 = tf.Variable([0.0])
+    data0 = tf.Variable([[0.0]])
+    loss = lambda: self._loss(data0, var0)
+    grads_and_vars = opt._compute_gradients(loss, [var0])
+    opt.apply_gradients(grads_and_vars)
+
 
 class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for get_gradient method.
@@ -247,7 +270,8 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
         bias_value / global_norm,
         atol=0.001)
 
-  # Parameters for testing: optimizer, num_microbatches.
+  # Parameters for testing: optimizer, l2_norm_clip, noise_multiplier,
+  # num_microbatches.
   @parameterized.named_parameters(
       ('DPGradientDescent 2 4 1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
        4.0, 1),
@@ -284,6 +308,22 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNear(
         np.std(kernel_value),
         l2_norm_clip * noise_multiplier / num_microbatches, 0.5)
+
+  @parameterized.named_parameters(
+      ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),
+      ('DPAdagrad', dp_optimizer_keras.DPKerasAdagradOptimizer),
+      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer))
+  def testAssertOnNoCallOfGetGradients(self, cls):
+    """Tests that assertion fails when DP gradients are not computed."""
+    opt = cls(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        num_microbatches=1,
+        learning_rate=2.0)
+
+    with self.assertRaises(AssertionError):
+      grads_and_vars = tf.Variable([0.0])
+      opt.apply_gradients(grads_and_vars)
 
 
 if __name__ == '__main__':

@@ -61,10 +61,12 @@ def make_keras_optimizer_class(cls):
       self._dp_sum_query = gaussian_query.GaussianSumQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier)
       self._global_state = None
+      self._was_dp_gradients_called = False
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP version of superclass method."""
 
+      self._was_dp_gradients_called = True
       # Compute loss.
       if not callable(loss) and tape is None:
         raise ValueError('`tape` is required when a `Tensor` loss is passed.')
@@ -120,6 +122,7 @@ def make_keras_optimizer_class(cls):
     def get_gradients(self, loss, params):
       """DP version of superclass method."""
 
+      self._was_dp_gradients_called = True
       if self._global_state is None:
         self._global_state = self._dp_sum_query.initial_global_state()
 
@@ -155,6 +158,16 @@ def make_keras_optimizer_class(cls):
       final_grads = tf.nest.map_structure(normalize, grad_sums)
 
       return final_grads
+
+    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+      assert self._was_dp_gradients_called, (
+          'Neither _compute_gradients() or get_gradients() on the '
+          'differentially private optimizer was called. This means the '
+          'training is not differentially private. It may be the case that '
+          'you need to upgrade to TF 2.4 or higher to use this particular '
+          'optimizer.')
+      return super(DPOptimizerClass,
+                   self).apply_gradients(grads_and_vars, global_step, name)
 
   return DPOptimizerClass
 
