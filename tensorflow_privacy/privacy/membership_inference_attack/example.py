@@ -90,14 +90,23 @@ num_clusters = int(round(np.max(training_labels))) + 1
 
 # Hint: play with the number of layers to achieve different level of
 # over-fitting and observe its effects on membership inference performance.
-model = keras.models.Sequential([
+three_layer_model = keras.models.Sequential([
     layers.Dense(300, activation="relu"),
     layers.Dense(300, activation="relu"),
     layers.Dense(300, activation="relu"),
     layers.Dense(num_clusters, activation="relu"),
     layers.Softmax()
 ])
-model.compile(
+three_layer_model.compile(
+    optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+
+two_layer_model = keras.models.Sequential([
+    layers.Dense(300, activation="relu"),
+    layers.Dense(300, activation="relu"),
+    layers.Dense(num_clusters, activation="relu"),
+    layers.Softmax()
+])
+two_layer_model.compile(
     optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
 
@@ -110,43 +119,48 @@ def crossentropy(true_labels, predictions):
 
 epoch_results = []
 
-# Incrementally train the model and store privacy risk metrics every 10 epochs.
 num_epochs = 2
-for i in range(1, 6):
-  model.fit(
-      training_features,
-      to_categorical(training_labels, num_clusters),
-      validation_data=(test_features, to_categorical(test_labels,
-                                                     num_clusters)),
-      batch_size=64,
-      epochs=num_epochs,
-      shuffle=True)
+models = {
+    "two layer model": two_layer_model,
+    "three layer model": three_layer_model,
+}
+for model_name in models:
+  # Incrementally train the model and store privacy metrics every num_epochs.
+  for i in range(1, 6):
+    models[model_name].fit(
+        training_features,
+        to_categorical(training_labels, num_clusters),
+        validation_data=(test_features, to_categorical(test_labels,
+                                                       num_clusters)),
+        batch_size=64,
+        epochs=num_epochs,
+        shuffle=True)
 
-  training_pred = model.predict(training_features)
-  test_pred = model.predict(test_features)
+    training_pred = models[model_name].predict(training_features)
+    test_pred = models[model_name].predict(test_features)
 
-  # Add metadata to generate a privacy report.
-  privacy_report_metadata = PrivacyReportMetadata(
-      accuracy_train=metrics.accuracy_score(training_labels,
-                                            np.argmax(training_pred, axis=1)),
-      accuracy_test=metrics.accuracy_score(test_labels,
-                                           np.argmax(test_pred, axis=1)),
-      epoch_num=num_epochs * i,
-      model_variant_label="default")
+    # Add metadata to generate a privacy report.
+    privacy_report_metadata = PrivacyReportMetadata(
+        accuracy_train=metrics.accuracy_score(training_labels,
+                                              np.argmax(training_pred, axis=1)),
+        accuracy_test=metrics.accuracy_score(test_labels,
+                                             np.argmax(test_pred, axis=1)),
+        epoch_num=num_epochs * i,
+        model_variant_label=model_name)
 
-  attack_results = mia.run_attacks(
-      AttackInputData(
-          labels_train=training_labels,
-          labels_test=test_labels,
-          probs_train=training_pred,
-          probs_test=test_pred,
-          loss_train=crossentropy(training_labels, training_pred),
-          loss_test=crossentropy(test_labels, test_pred)),
-      SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=(AttackType.THRESHOLD_ATTACK,
-                    AttackType.LOGISTIC_REGRESSION),
-      privacy_report_metadata=privacy_report_metadata)
-  epoch_results.append(attack_results)
+    attack_results = mia.run_attacks(
+        AttackInputData(
+            labels_train=training_labels,
+            labels_test=test_labels,
+            probs_train=training_pred,
+            probs_test=test_pred,
+            loss_train=crossentropy(training_labels, training_pred),
+            loss_test=crossentropy(test_labels, test_pred)),
+        SlicingSpec(entire_dataset=True, by_class=True),
+        attack_types=(AttackType.THRESHOLD_ATTACK,
+                      AttackType.LOGISTIC_REGRESSION),
+        privacy_report_metadata=privacy_report_metadata)
+    epoch_results.append(attack_results)
 
 # Generate privacy reports
 epoch_figure = privacy_report.plot_by_epochs(

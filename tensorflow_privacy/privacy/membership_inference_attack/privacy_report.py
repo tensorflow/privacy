@@ -80,6 +80,10 @@ def _calculate_combined_df_with_metadata(results: Iterable[AttackResults]):
     attack_results_df.insert(
         0, 'Train accuracy',
         attack_results.privacy_report_metadata.accuracy_train)
+    attack_results_df.insert(
+        0, 'legend label',
+        attack_results.privacy_report_metadata.model_variant_label + ' - ' +
+        attack_results_df['attack type'])
     if all_results_df is None:
       all_results_df = attack_results_df
     else:
@@ -98,15 +102,15 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
   if len(privacy_metrics) == 1:
     axes = (axes,)
   for i, privacy_metric in enumerate(privacy_metrics):
-    attack_types = all_results_df['attack type'].unique()
-    for attack_type in attack_types:
-      attack_type_results = all_results_df.loc[all_results_df['attack type'] ==
-                                               attack_type]
-      axes[i].plot(attack_type_results[x_axis_metric],
-                   attack_type_results[str(privacy_metric)])
-      axes[i].legend(attack_types)
-      axes[i].set_xlabel(x_axis_metric)
-      axes[i].set_title('%s for Entire dataset' % str(privacy_metric))
+    legend_labels = all_results_df['legend label'].unique()
+    for legend_label in legend_labels:
+      single_label_results = all_results_df.loc[all_results_df['legend label']
+                                                == legend_label]
+      axes[i].plot(single_label_results[x_axis_metric],
+                   single_label_results[str(privacy_metric)])
+    axes[i].legend(legend_labels)
+    axes[i].set_xlabel(x_axis_metric)
+    axes[i].set_title('%s for Entire dataset' % str(privacy_metric))
 
   return fig
 
