@@ -25,14 +25,14 @@ from scipy import special
 from sklearn import metrics
 import tensorflow_privacy.privacy.membership_inference_attack.utils as utils
 
-ENTIRE_DATASET_SLICE_STR = 'SingleSliceSpec(Entire dataset)'
+ENTIRE_DATASET_SLICE_STR = 'Entire dataset'
 
 
 class SlicingFeature(enum.Enum):
   """Enum with features by which slicing is available."""
   CLASS = 'class'
   PERCENTILE = 'percentile'
-  CORRECTLY_CLASSIFIED = 'correctly_classfied'
+  CORRECTLY_CLASSIFIED = 'correctly_classified'
 
 
 @dataclass
@@ -54,7 +54,7 @@ class SingleSliceSpec:
 
   def __str__(self):
     if self.entire_dataset:
-      return 'Entire dataset'
+      return ENTIRE_DATASET_SLICE_STR
 
     if self.feature == SlicingFeature.PERCENTILE:
       return 'Loss percentiles: %d-%d' % self.value
@@ -448,6 +448,17 @@ class PrivacyReportMetadata:
   epoch_num: int = None
 
 
+class AttackResultsDFColumns(enum.Enum):
+  """Columns for the Pandas DataFrame that stores AttackResults metrics."""
+  SLICE_FEATURE = 'slice feature'
+  SLICE_VALUE = 'slice value'
+  ATTACK_TYPE = 'attack type'
+
+  def __str__(self):
+    """Returns 'slice value' instead of AttackResultsDFColumns.SLICE_VALUE."""
+    return '%s' % self.value
+
+
 @dataclass
 class AttackResults:
   """Results from running multiple attacks."""
@@ -466,19 +477,19 @@ class AttackResults:
     for attack_result in self.single_attack_results:
       slice_spec = attack_result.slice_spec
       if slice_spec.entire_dataset:
-        slice_feature, slice_value = 'entire_dataset', ''
+        slice_feature, slice_value = str(slice_spec), ''
       else:
         slice_feature, slice_value = slice_spec.feature.value, slice_spec.value
       slice_features.append(str(slice_feature))
       slice_values.append(str(slice_value))
-      attack_types.append(str(attack_result.attack_type.value))
+      attack_types.append(str(attack_result.attack_type))
       advantages.append(float(attack_result.get_attacker_advantage()))
       aucs.append(float(attack_result.get_auc()))
 
     df = pd.DataFrame({
-        'slice feature': slice_features,
-        'slice value': slice_values,
-        'attack type': attack_types,
+        str(AttackResultsDFColumns.SLICE_FEATURE): slice_features,
+        str(AttackResultsDFColumns.SLICE_VALUE): slice_values,
+        str(AttackResultsDFColumns.ATTACK_TYPE): attack_types,
         str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
         str(PrivacyMetric.AUC): aucs
     })

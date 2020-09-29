@@ -19,7 +19,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsDFColumns
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import ENTIRE_DATASET_SLICE_STR
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyMetric
+
+# Helper constants for DataFrame keys.
+LEGEND_LABEL_STR = 'legend label'
+EPOCH_STR = 'Epoch'
+TRAIN_ACCURACY_STR = 'Train accuracy'
 
 
 def plot_by_epochs(results: Iterable[AttackResults],
@@ -73,17 +80,17 @@ def _calculate_combined_df_with_metadata(results: Iterable[AttackResults]):
   all_results_df = None
   for attack_results in results:
     attack_results_df = attack_results.calculate_pd_dataframe()
-    attack_results_df = attack_results_df.loc[attack_results_df['slice feature']
-                                              == 'entire_dataset']
-    attack_results_df.insert(0, 'Epoch',
+    attack_results_df = attack_results_df.loc[attack_results_df[str(
+        AttackResultsDFColumns.SLICE_FEATURE)] == ENTIRE_DATASET_SLICE_STR]
+    attack_results_df.insert(0, EPOCH_STR,
                              attack_results.privacy_report_metadata.epoch_num)
     attack_results_df.insert(
-        0, 'Train accuracy',
+        0, TRAIN_ACCURACY_STR,
         attack_results.privacy_report_metadata.accuracy_train)
     attack_results_df.insert(
-        0, 'legend label',
+        0, LEGEND_LABEL_STR,
         attack_results.privacy_report_metadata.model_variant_label + ' - ' +
-        attack_results_df['attack type'])
+        attack_results_df[str(AttackResultsDFColumns.ATTACK_TYPE)])
     if all_results_df is None:
       all_results_df = attack_results_df
     else:
@@ -102,15 +109,15 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
   if len(privacy_metrics) == 1:
     axes = (axes,)
   for i, privacy_metric in enumerate(privacy_metrics):
-    legend_labels = all_results_df['legend label'].unique()
+    legend_labels = all_results_df[LEGEND_LABEL_STR].unique()
     for legend_label in legend_labels:
-      single_label_results = all_results_df.loc[all_results_df['legend label']
+      single_label_results = all_results_df.loc[all_results_df[LEGEND_LABEL_STR]
                                                 == legend_label]
       axes[i].plot(single_label_results[x_axis_metric],
                    single_label_results[str(privacy_metric)])
     axes[i].legend(legend_labels)
     axes[i].set_xlabel(x_axis_metric)
-    axes[i].set_title('%s for Entire dataset' % str(privacy_metric))
+    axes[i].set_title('%s for Entire dataset' % ENTIRE_DATASET_SLICE_STR)
 
   return fig
 

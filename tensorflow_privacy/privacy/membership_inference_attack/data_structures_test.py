@@ -302,13 +302,13 @@ class AttackResultsTest(absltest.TestCase):
     results = AttackResults(single_results)
     df = results.calculate_pd_dataframe()
     df_expected = pd.DataFrame({
-        'slice feature': ['correctly_classfied', 'entire_dataset'],
+        'slice feature': ['correctly_classified', 'Entire dataset'],
         'slice value': ['True', ''],
-        'attack type': ['threshold', 'threshold'],
+        'attack type': ['THRESHOLD_ATTACK', 'THRESHOLD_ATTACK'],
         'Attacker advantage': [1.0, 0.0],
         'AUC': [1.0, 0.5]
     })
-    self.assertTrue(df.equals(df_expected))
+    pd.testing.assert_frame_equal(df, df_expected)
 
 
 if __name__ == '__main__':
