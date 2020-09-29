@@ -27,7 +27,7 @@ from sklearn import metrics
 from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras.utils import to_categorical
-from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
+from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
@@ -185,7 +185,7 @@ for attack_result in attack_results.single_attack_results:
   print("Attacker advantage: %.2f\n" %
         attack_result.roc_curve.get_attacker_advantage())
 
-max_auc_attacker = attack_results.get_result_with_max_attacker_advantage()
+max_auc_attacker = attack_results.get_result_with_max_auc()
 print("Attack type with max AUC: %s, AUC of %.2f" %
       (max_auc_attacker.attack_type, max_auc_attacker.roc_curve.get_auc()))
 

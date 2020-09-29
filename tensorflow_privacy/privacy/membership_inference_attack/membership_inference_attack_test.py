@@ -16,7 +16,7 @@
 """Tests for tensorflow_privacy.privacy.membership_inference_attack.utils."""
 from absl.testing import absltest
 import numpy as np
-from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack_new as mia
+from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
