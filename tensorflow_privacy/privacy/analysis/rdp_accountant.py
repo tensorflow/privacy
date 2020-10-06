@@ -264,6 +264,32 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   return rdp * steps
 
 
+def compute_heterogenous_rdp(sampling_probabilities, noise_multipliers,
+                             steps_list, orders):
+  """Compute RDP of Heteregoneous Applications of Sampled Gaussian Mechanisms.
+
+  Args:
+    sampling_probabilities: A list containing the sampling rates.
+    noise_multipliers: A list containing the noise multipliers: the ratio of the
+      standard deviation of the Gaussian noise to the l2-sensitivity of the
+      function to which it is added.
+    steps_list: A list containing the number of steps at each
+      `sampling_probability` and `noise_multiplier`.
+    orders: An array (or a scalar) of RDP orders.
+
+  Returns:
+    The RDPs at all orders, can be np.inf.
+  """
+  assert len(sampling_probabilities) == len(noise_multipliers)
+
+  rdp = 0
+  for q, noise_multiplier, steps in zip(sampling_probabilities,
+                                        noise_multipliers, steps_list):
+    rdp += compute_rdp(q, noise_multiplier, steps, orders)
+
+  return rdp
+
+
 def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
   """Compute delta (or eps) for given eps (or delta) from RDP values.
 

@@ -79,6 +79,16 @@ class TestGaussianMoments(parameterized.TestCase):
     return a_alpha
 
   # TEST ROUTINES
+  def test_compute_heterogeneous_rdp_different_sampling_probabilities(self):
+    sampling_probabilities = [0, 1]
+    noise_multipliers = [10, 10]
+    steps_list = [1, 1]
+    orders = 20
+    self.assertEqual(
+        rdp_accountant.compute_heterogenous_rdp(sampling_probabilities,
+                                                noise_multipliers, steps_list,
+                                                orders), 0.1)
+
   def test_compute_rdp_no_data(self):
     # q = 0
     self.assertEqual(rdp_accountant.compute_rdp(0, 10, 1, 20), 0)
