@@ -65,7 +65,7 @@ def make_optimizer_class(cls):
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._dp_sum_query = dp_sum_query
       self._num_microbatches = num_microbatches
-      self._global_state = self._dp_sum_query.initial_global_state()
+      self._global_state = None
       # TODO(b/122613513): Set unroll_microbatches=True to avoid this bug.
       # Beware: When num_microbatches is large (>100), enabling this parameter
       # may cause an OOM error.
@@ -81,6 +81,9 @@ def make_optimizer_class(cls):
                           grad_loss=None,
                           gradient_tape=None):
       self._was_compute_gradients_called = True
+      if self._global_state is None:
+        self._global_state = self._dp_sum_query.initial_global_state()
+
       if callable(loss):
         # TF is running in Eager mode, check we received a vanilla tape.
         if not gradient_tape:
