@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsDFColumns
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import ENTIRE_DATASET_SLICE_STR
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyMetric
@@ -29,7 +30,7 @@ EPOCH_STR = 'Epoch'
 TRAIN_ACCURACY_STR = 'Train accuracy'
 
 
-def plot_by_epochs(results: Iterable[AttackResults],
+def plot_by_epochs(results: AttackResultsCollection,
                    privacy_metrics: Iterable[PrivacyMetric]) -> plt.Figure:
   """Plots privacy vulnerabilities vs epoch numbers for a single model variant.
 
@@ -43,8 +44,9 @@ def plot_by_epochs(results: Iterable[AttackResults],
     A pyplot figure with privacy vs accuracy plots.
   """
 
-  _validate_results(results)
-  all_results_df = _calculate_combined_df_with_metadata(results)
+  _validate_results(results.attack_results_list)
+  all_results_df = _calculate_combined_df_with_metadata(
+      results.attack_results_list)
   return _generate_subplots(
       all_results_df=all_results_df,
       x_axis_metric='Epoch',
@@ -53,7 +55,7 @@ def plot_by_epochs(results: Iterable[AttackResults],
 
 
 def plot_privacy_vs_accuracy_single_model(
-    results: Iterable[AttackResults], privacy_metrics: Iterable[PrivacyMetric]):
+    results: AttackResultsCollection, privacy_metrics: Iterable[PrivacyMetric]):
   """Plots privacy vulnerabilities vs accuracy plots for a single model variant.
 
   In case multiple privacy metrics are specified, the plot will feature
@@ -66,8 +68,9 @@ def plot_privacy_vs_accuracy_single_model(
     A pyplot figure with privacy vs accuracy plots.
 
   """
-  _validate_results(results)
-  all_results_df = _calculate_combined_df_with_metadata(results)
+  _validate_results(results.attack_results_list)
+  all_results_df = _calculate_combined_df_with_metadata(
+      results.attack_results_list)
   return _generate_subplots(
       all_results_df=all_results_df,
       x_axis_metric='Train accuracy',

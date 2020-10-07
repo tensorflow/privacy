@@ -20,6 +20,7 @@ import numpy as np
 from tensorflow_privacy.privacy.membership_inference_attack import privacy_report
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
   PrivacyReportMetadata
@@ -80,12 +81,14 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_plot_by_epochs_no_metadata(self):
     # Raise error if metadata is missing
-    self.assertRaises(ValueError, privacy_report.plot_by_epochs,
-                      (self.attack_results_no_metadata,), ['AUC'])
+    self.assertRaises(
+        ValueError, privacy_report.plot_by_epochs,
+        AttackResultsCollection((self.attack_results_no_metadata,)), ['AUC'])
 
   def test_single_metric_plot_by_epochs(self):
     fig = privacy_report.plot_by_epochs(
-        (self.results_epoch_10, self.results_epoch_15), ['AUC'])
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
+        ['AUC'])
     # extract data from figure.
     auc_data = fig.gca().lines[0].get_data()
     # X axis lists epoch values
@@ -97,7 +100,7 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_multiple_metrics_plot_by_epochs(self):
     fig = privacy_report.plot_by_epochs(
-        (self.results_epoch_10, self.results_epoch_15),
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
         ['AUC', 'Attacker advantage'])
     # extract data from figure.
     auc_data = fig.axes[0].lines[0].get_data()
@@ -113,8 +116,9 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_multiple_metrics_plot_by_epochs_multiple_models(self):
     fig = privacy_report.plot_by_epochs(
-        (self.results_epoch_10, self.results_epoch_15,
-         self.results_epoch_15_model_2), ['AUC', 'Attacker advantage'])
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15,
+                                 self.results_epoch_15_model_2)),
+        ['AUC', 'Attacker advantage'])
     # extract data from figure.
     # extract data from figure.
     auc_data_model_1 = fig.axes[0].lines[0].get_data()
@@ -136,13 +140,14 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_plot_privacy_vs_accuracy_single_model_no_metadata(self):
     # Raise error if metadata is missing
-    self.assertRaises(ValueError,
-                      privacy_report.plot_privacy_vs_accuracy_single_model,
-                      (self.attack_results_no_metadata,), ['AUC'])
+    self.assertRaises(
+        ValueError, privacy_report.plot_privacy_vs_accuracy_single_model,
+        AttackResultsCollection((self.attack_results_no_metadata,)), ['AUC'])
 
   def test_single_metric_plot_privacy_vs_accuracy_single_model(self):
     fig = privacy_report.plot_privacy_vs_accuracy_single_model(
-        (self.results_epoch_10, self.results_epoch_15), ['AUC'])
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
+        ['AUC'])
     # extract data from figure.
     auc_data = fig.gca().lines[0].get_data()
     # X axis lists epoch values
@@ -154,7 +159,7 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_multiple_metrics_plot_privacy_vs_accuracy_single_model(self):
     fig = privacy_report.plot_privacy_vs_accuracy_single_model(
-        (self.results_epoch_10, self.results_epoch_15),
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
         ['AUC', 'Attacker advantage'])
     # extract data from figure.
     auc_data = fig.axes[0].lines[0].get_data()
@@ -170,8 +175,9 @@ class PrivacyReportTest(absltest.TestCase):
 
   def test_multiple_metrics_plot_privacy_vs_accuracy_multiple_model(self):
     fig = privacy_report.plot_privacy_vs_accuracy_single_model(
-        (self.results_epoch_10, self.results_epoch_15,
-         self.results_epoch_15_model_2), ['AUC', 'Attacker advantage'])
+        AttackResultsCollection((self.results_epoch_10, self.results_epoch_15,
+                                 self.results_epoch_15_model_2)),
+        ['AUC', 'Attacker advantage'])
     # extract data from figure.
     auc_data_model_1 = fig.axes[0].lines[0].get_data()
     auc_data_model_2 = fig.axes[0].lines[1].get_data()

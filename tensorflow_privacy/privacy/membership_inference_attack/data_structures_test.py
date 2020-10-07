@@ -23,7 +23,9 @@ import pandas as pd
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import _log_value
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
@@ -204,6 +206,62 @@ class SingleAttackResultTest(absltest.TestCase):
         attack_type=AttackType.THRESHOLD_ATTACK)
 
     self.assertEqual(result.get_attacker_advantage(), 0.0)
+
+
+class AttackResultsCollectionTest(absltest.TestCase):
+
+  def __init__(self, *args, **kwargs):
+    super(AttackResultsCollectionTest, self).__init__(*args, **kwargs)
+
+    self.some_attack_result = SingleAttackResult(
+        slice_spec=SingleSliceSpec(None),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        roc_curve=RocCurve(
+            tpr=np.array([0.0, 0.5, 1.0]),
+            fpr=np.array([0.0, 0.5, 1.0]),
+            thresholds=np.array([0, 1, 2])))
+
+    self.results_epoch_10 = AttackResults(
+        single_attack_results=[self.some_attack_result],
+        privacy_report_metadata=PrivacyReportMetadata(
+            accuracy_train=0.4,
+            accuracy_test=0.3,
+            epoch_num=10,
+            model_variant_label='default'))
+
+    self.results_epoch_15 = AttackResults(
+        single_attack_results=[self.some_attack_result],
+        privacy_report_metadata=PrivacyReportMetadata(
+            accuracy_train=0.5,
+            accuracy_test=0.4,
+            epoch_num=15,
+            model_variant_label='default'))
+
+    self.attack_results_no_metadata = AttackResults(
+        single_attack_results=[self.some_attack_result])
+
+    self.collection_with_metadata = AttackResultsCollection(
+        [self.results_epoch_10, self.results_epoch_15])
+
+    self.collection_no_metadata = AttackResultsCollection(
+        [self.attack_results_no_metadata, self.attack_results_no_metadata])
+
+  def test_save_with_metadata(self):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+      self.collection_with_metadata.save(tmpdirname)
+      loaded_collection = AttackResultsCollection.load(tmpdirname)
+
+    self.assertEqual(
+        repr(self.collection_with_metadata), repr(loaded_collection))
+    self.assertLen(loaded_collection.attack_results_list, 2)
+
+  def test_save_no_metadata(self):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+      self.collection_no_metadata.save(tmpdirname)
+      loaded_collection = AttackResultsCollection.load(tmpdirname)
+
+    self.assertEqual(repr(self.collection_no_metadata), repr(loaded_collection))
+    self.assertLen(loaded_collection.attack_results_list, 2)
 
 
 class AttackResultsTest(absltest.TestCase):

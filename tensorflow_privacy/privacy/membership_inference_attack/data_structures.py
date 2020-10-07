@@ -15,6 +15,8 @@
 # Lint as: python3
 """Data structures representing attack inputs, configuration, outputs."""
 import enum
+import glob
+import os
 import pickle
 from typing import Any, Iterable, Union
 
@@ -575,6 +577,41 @@ class AttackResults:
     """Loads AttackResults from a pickle file."""
     with open(filepath, 'rb') as inp:
       return pickle.load(inp)
+
+
+@dataclass
+class AttackResultsCollection:
+  """A collection of AttackResults."""
+  attack_results_list: Iterable[AttackResults]
+
+  def append(self, attack_results: AttackResults):
+    self.attack_results_list.append(attack_results)
+
+  def save(self, dirname):
+    """Saves self to a pickle file."""
+    for i, attack_results in enumerate(self.attack_results_list):
+      filepath = os.path.join(dirname,
+                              _get_attack_results_filename(attack_results, i))
+
+      attack_results.save(filepath)
+
+  @classmethod
+  def load(cls, dirname):
+    """Loads AttackResultsCollection from all files in a directory."""
+    loaded_collection = AttackResultsCollection([])
+    for filepath in sorted(glob.glob('%s/*' % dirname)):
+      with open(filepath, 'rb') as inp:
+        loaded_collection.attack_results_list.append(pickle.load(inp))
+    return loaded_collection
+
+
+def _get_attack_results_filename(attack_results: AttackResults, index: int):
+  """Creates a filename for a specific set of AttackResults."""
+  metadata = attack_results.privacy_report_metadata
+  if metadata is not None:
+    return '%s_%s_%s.pickle' % (metadata.model_variant_label,
+                                metadata.epoch_num, index)
+  return '%s.pickle' % index
 
 
 def get_flattened_attack_metrics(results: AttackResults):

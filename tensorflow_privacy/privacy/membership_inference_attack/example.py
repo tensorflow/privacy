@@ -32,6 +32,7 @@ from tensorflow_privacy.privacy.membership_inference_attack import membership_in
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyMetric
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
@@ -119,7 +120,7 @@ def crossentropy(true_labels, predictions):
 
 
 def main(unused_argv):
-  epoch_results = []
+  epoch_results = AttackResultsCollection([])
 
   num_epochs = 2
   models = {
