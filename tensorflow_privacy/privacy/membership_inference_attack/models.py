@@ -43,7 +43,8 @@ class AttackerData:
 
 
 def create_attacker_data(attack_input_data: AttackInputData,
-                         test_fraction: float = 0.25) -> AttackerData:
+                         test_fraction: float = 0.25,
+                         balance: bool = True) -> AttackerData:
   """Prepare AttackInputData to train ML attackers.
 
   Combines logits and losses and performs a random train-test split.
@@ -51,6 +52,10 @@ def create_attacker_data(attack_input_data: AttackInputData,
   Args:
     attack_input_data: Original AttackInputData
     test_fraction: Fraction of the dataset to include in the test split.
+    balance: Whether the training and test sets for the membership inference
+              attacker should have a balanced (roughly equal) number of samples
+              from the training and test sets used to develop the model
+              under attack.
 
   Returns:
     AttackerData.
@@ -60,18 +65,31 @@ def create_attacker_data(attack_input_data: AttackInputData,
   attack_input_test = _column_stack(attack_input_data.logits_or_probs_test,
                                     attack_input_data.get_loss_test())
 
+  if balance:
+    min_size = min(attack_input_data.get_train_size(),
+                   attack_input_data.get_test_size())
+    attack_input_train = _sample_multidimensional_array(attack_input_train,
+                                                        min_size)
+    attack_input_test = _sample_multidimensional_array(attack_input_test,
+                                                       min_size)
+
   features_all = np.concatenate((attack_input_train, attack_input_test))
 
-  labels_all = np.concatenate(((np.zeros(attack_input_data.get_train_size())),
-                               (np.ones(attack_input_data.get_test_size()))))
+  labels_all = np.concatenate(
+      ((np.zeros(len(attack_input_train))), (np.ones(len(attack_input_test)))))
 
   # Perform a train-test split
   features_train, features_test, \
   is_training_labels_train, is_training_labels_test = \
     model_selection.train_test_split(
-        features_all, labels_all, test_size=test_fraction)
+        features_all, labels_all, test_size=test_fraction, stratify=labels_all)
   return AttackerData(features_train, is_training_labels_train, features_test,
                       is_training_labels_test)
+
+
+def _sample_multidimensional_array(array, size):
+  indices = np.random.choice(len(array), size, replace=False)
+  return array[indices]
 
 
 def _column_stack(logits, loss):

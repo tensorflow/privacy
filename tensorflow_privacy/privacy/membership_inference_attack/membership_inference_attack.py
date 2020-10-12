@@ -43,7 +43,9 @@ def _get_slice_spec(data: AttackInputData) -> SingleSliceSpec:
   return SingleSliceSpec()
 
 
-def _run_trained_attack(attack_input: AttackInputData, attack_type: AttackType):
+def _run_trained_attack(attack_input: AttackInputData,
+                        attack_type: AttackType,
+                        balance_attacker_training: bool = True):
   """Classification attack done by ML models."""
   attacker = None
 
@@ -59,7 +61,8 @@ def _run_trained_attack(attack_input: AttackInputData, attack_type: AttackType):
     raise NotImplementedError('Attack type %s not implemented yet.' %
                               attack_type)
 
-  prepared_attacker_data = models.create_attacker_data(attack_input)
+  prepared_attacker_data = models.create_attacker_data(
+      attack_input, balance=balance_attacker_training)
 
   attacker.train_model(prepared_attacker_data.features_train,
                        prepared_attacker_data.is_training_labels_train)
@@ -94,19 +97,23 @@ def _run_threshold_attack(attack_input: AttackInputData):
       roc_curve=roc_curve)
 
 
-def _run_attack(attack_input: AttackInputData, attack_type: AttackType):
+def _run_attack(attack_input: AttackInputData,
+                attack_type: AttackType,
+                balance_attacker_training: bool = True):
   attack_input.validate()
   if attack_type.is_trained_attack:
-    return _run_trained_attack(attack_input, attack_type)
+    return _run_trained_attack(attack_input, attack_type,
+                               balance_attacker_training)
 
   return _run_threshold_attack(attack_input)
 
 
-def run_attacks(
-    attack_input: AttackInputData,
-    slicing_spec: SlicingSpec = None,
-    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
-    privacy_report_metadata: PrivacyReportMetadata = None) -> AttackResults:
+def run_attacks(attack_input: AttackInputData,
+                slicing_spec: SlicingSpec = None,
+                attack_types: Iterable[AttackType] = (
+                    AttackType.THRESHOLD_ATTACK,),
+                privacy_report_metadata: PrivacyReportMetadata = None,
+                balance_attacker_training: bool = True) -> AttackResults:
   """Runs membership inference attacks on a classification model.
 
   It runs attacks specified by attack_types on each attack_input slice which is
@@ -117,6 +124,10 @@ def run_attacks(
     slicing_spec: specifies attack_input slices to run attack on
     attack_types: attacks to run
     privacy_report_metadata: the metadata of the model under attack.
+    balance_attacker_training: Whether the training and test sets for the
+          membership inference attacker should have a balanced (roughly equal)
+          number of samples from the training and test sets used to develop
+          the model under attack.
 
   Returns:
     the attack result.
@@ -131,7 +142,9 @@ def run_attacks(
   for single_slice_spec in input_slice_specs:
     attack_input_slice = get_slice(attack_input, single_slice_spec)
     for attack_type in attack_types:
-      attack_results.append(_run_attack(attack_input_slice, attack_type))
+      attack_results.append(
+          _run_attack(attack_input_slice, attack_type,
+                      balance_attacker_training))
 
   privacy_report_metadata = _compute_missing_privacy_report_metadata(
       privacy_report_metadata, attack_input)
