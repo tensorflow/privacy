@@ -30,7 +30,11 @@ In addition to TensorFlow and its dependencies, other prerequisites are:
 
 ### Installing TensorFlow Privacy
 
-First, clone this GitHub repository into a directory of your choice:
+If you only want to use TensorFlow Privacy as a library, you can simply execute
+
+`pip install tensorflow-privacy`
+
+Otherwise, you can clone this GitHub repository into a directory of your choice:
 
 ```
 git clone https://github.com/tensorflow/privacy
@@ -96,10 +100,12 @@ directory, but rather intended as a convenient archive.
 
 ## TensorFlow 2.x
 
-At the moment, TensorFlow Privacy does not generally work with TensorFlow 2.x.
-However, as of 2020-04-24. there is a [RFC to revamp Keras optimizers](https://github.com/tensorflow/community/pull/234)
-that will enable this. Once this is done, we will update TensorFlow Privacy
-as soon as possible. Thank you for your patience.
+TensorFlow Privacy now works with TensorFlow 2! You can use the new
+Keras-based estimators found in
+`privacy/tensorflow_privacy/privacy/optimizers/dp_optimizer_keras.py`.
+
+For this to work with `tf.keras.Model` and `tf.estimator.Estimator`, however,
+you need to install TensorFlow 2.4 or later.
 
 ## Remarks
 
