@@ -20,7 +20,7 @@ the model are used (e.g., losses, logits, predictions). Neither model internals
 
 ### Codelab
 
-The easiest way to get started is to go through [the introductory codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/codelab.ipynb).
+The easiest way to get started is to go through [the introductory codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/codelabs/codelab.ipynb).
 This trains a simple image classification model and tests it against a series
 of membership inference attacks.
 

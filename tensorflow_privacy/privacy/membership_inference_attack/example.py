@@ -169,7 +169,7 @@ def main(unused_argv):
   epoch_figure = privacy_report.plot_by_epochs(
       epoch_results, [PrivacyMetric.ATTACKER_ADVANTAGE, PrivacyMetric.AUC])
   epoch_figure.show()
-  privacy_utility_figure = privacy_report.plot_privacy_vs_accuracy_single_model(
+  privacy_utility_figure = privacy_report.plot_privacy_vs_accuracy(
       epoch_results, [PrivacyMetric.ATTACKER_ADVANTAGE, PrivacyMetric.AUC])
   privacy_utility_figure.show()
 

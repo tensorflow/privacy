@@ -141,11 +141,11 @@ class PrivacyReportTest(absltest.TestCase):
   def test_plot_privacy_vs_accuracy_single_model_no_metadata(self):
     # Raise error if metadata is missing
     self.assertRaises(
-        ValueError, privacy_report.plot_privacy_vs_accuracy_single_model,
+        ValueError, privacy_report.plot_privacy_vs_accuracy,
         AttackResultsCollection((self.attack_results_no_metadata,)), ['AUC'])
 
   def test_single_metric_plot_privacy_vs_accuracy_single_model(self):
-    fig = privacy_report.plot_privacy_vs_accuracy_single_model(
+    fig = privacy_report.plot_privacy_vs_accuracy(
         AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
         ['AUC'])
     # extract data from figure.
@@ -158,7 +158,7 @@ class PrivacyReportTest(absltest.TestCase):
     self.assertEqual(fig._suptitle.get_text(), 'Privacy vs Utility Analysis')
 
   def test_multiple_metrics_plot_privacy_vs_accuracy_single_model(self):
-    fig = privacy_report.plot_privacy_vs_accuracy_single_model(
+    fig = privacy_report.plot_privacy_vs_accuracy(
         AttackResultsCollection((self.results_epoch_10, self.results_epoch_15)),
         ['AUC', 'Attacker advantage'])
     # extract data from figure.
@@ -174,7 +174,7 @@ class PrivacyReportTest(absltest.TestCase):
     self.assertEqual(fig._suptitle.get_text(), 'Privacy vs Utility Analysis')
 
   def test_multiple_metrics_plot_privacy_vs_accuracy_multiple_model(self):
-    fig = privacy_report.plot_privacy_vs_accuracy_single_model(
+    fig = privacy_report.plot_privacy_vs_accuracy(
         AttackResultsCollection((self.results_epoch_10, self.results_epoch_15,
                                  self.results_epoch_15_model_2)),
         ['AUC', 'Attacker advantage'])

@@ -32,10 +32,11 @@ TRAIN_ACCURACY_STR = 'Train accuracy'
 
 def plot_by_epochs(results: AttackResultsCollection,
                    privacy_metrics: Iterable[PrivacyMetric]) -> plt.Figure:
-  """Plots privacy vulnerabilities vs epoch numbers for a single model variant.
+  """Plots privacy vulnerabilities vs epoch numbers.
 
   In case multiple privacy metrics are specified, the plot will feature
-  multiple subplots (one subplot per metrics).
+  multiple subplots (one subplot per metrics). Multiple model variants
+  are supported.
   Args:
     results: AttackResults for the plot
     privacy_metrics: List of enumerated privacy metrics that should be plotted.
@@ -54,12 +55,13 @@ def plot_by_epochs(results: AttackResultsCollection,
       privacy_metrics=privacy_metrics)
 
 
-def plot_privacy_vs_accuracy_single_model(
-    results: AttackResultsCollection, privacy_metrics: Iterable[PrivacyMetric]):
-  """Plots privacy vulnerabilities vs accuracy plots for a single model variant.
+def plot_privacy_vs_accuracy(results: AttackResultsCollection,
+                             privacy_metrics: Iterable[PrivacyMetric]):
+  """Plots privacy vulnerabilities vs accuracy plots.
 
   In case multiple privacy metrics are specified, the plot will feature
-  multiple subplots (one subplot per metrics).
+  multiple subplots (one subplot per metrics). Multiple model variants
+  are supported.
   Args:
     results: AttackResults for the plot
     privacy_metrics: List of enumerated privacy metrics that should be plotted.
@@ -106,7 +108,8 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
                        figure_title: str,
                        privacy_metrics: Iterable[PrivacyMetric]):
   """Create one subplot per privacy metric for a specified x_axis_metric."""
-  fig, axes = plt.subplots(1, len(privacy_metrics))
+  fig, axes = plt.subplots(
+      1, len(privacy_metrics), figsize=(5 * len(privacy_metrics), 5))
   # Set a title for the entire group of subplots.
   fig.suptitle(figure_title)
   if len(privacy_metrics) == 1:
@@ -116,11 +119,12 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
     for legend_label in legend_labels:
       single_label_results = all_results_df.loc[all_results_df[LEGEND_LABEL_STR]
                                                 == legend_label]
-      axes[i].plot(single_label_results[x_axis_metric],
-                   single_label_results[str(privacy_metric)])
-    axes[i].legend(legend_labels)
+      sorted_label_results = single_label_results.sort_values(x_axis_metric)
+      axes[i].plot(sorted_label_results[x_axis_metric],
+                   sorted_label_results[str(privacy_metric)])
+    axes[i].legend(legend_labels, loc='lower right')
     axes[i].set_xlabel(x_axis_metric)
-    axes[i].set_title('%s for Entire dataset' % ENTIRE_DATASET_SLICE_STR)
+    axes[i].set_title('%s for %s' % (privacy_metric, ENTIRE_DATASET_SLICE_STR))
 
   return fig
 

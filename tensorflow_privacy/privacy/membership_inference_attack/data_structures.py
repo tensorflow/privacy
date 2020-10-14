@@ -609,8 +609,8 @@ def _get_attack_results_filename(attack_results: AttackResults, index: int):
   """Creates a filename for a specific set of AttackResults."""
   metadata = attack_results.privacy_report_metadata
   if metadata is not None:
-    return '%s_%s_%s.pickle' % (metadata.model_variant_label,
-                                metadata.epoch_num, index)
+    return '%s_%s_epoch_%s.pickle' % (metadata.model_variant_label, index,
+                                      metadata.epoch_num)
   return '%s.pickle' % index
 
 
