@@ -39,11 +39,6 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-if LooseVersion(tf.__version__) < LooseVersion('2.0.0'):
-  GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-else:
-  GradientDescentOptimizer = tf.optimizers.SGD  # pylint: disable=invalid-name
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean(
@@ -66,10 +61,10 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   logits = tf.layers.dense(
       inputs=input_layer,
       units=nclasses,
-      kernel_regularizer=tf.contrib.layers.l2_regularizer(
-          scale=FLAGS.regularizer),
-      bias_regularizer=tf.contrib.layers.l2_regularizer(
-          scale=FLAGS.regularizer))
+      kernel_regularizer=tf.keras.regularizers.l2(
+          l=FLAGS.regularizer),
+      bias_regularizer=tf.keras.regularizers.l2(
+          l=FLAGS.regularizer))
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -91,7 +86,8 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
           learning_rate=FLAGS.learning_rate)
       opt_loss = vector_loss
     else:
-      optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
+      optimizer = tf.train.GradientDescentOptimizer(
+          learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
@@ -169,14 +165,17 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
        np.linspace(20, 100, num=81)])
   delta = 1e-5
   for p in (.5, .9, .99):
-    steps = math.ceil(steps_per_epoch * p)  # Steps in the last epoch.
-    coef = 2 * (noise_multiplier * batch_size)**-2 * (
-        # Accounting for privacy loss
-        (epochs - 1) / steps_per_epoch +  # ... from all-but-last epochs
-        1 / (steps_per_epoch - steps + 1))  # ... due to the last epoch
+    steps = math.ceil(steps_per_epoch * p)  # Steps in the last epoch
+    # compute rdp coeff for a single differing batch
+    coeff = 2 * (noise_multiplier * batch_size)**-2
+    # amplification by iteration from all-but-last-epochs
+    amp_part1 = (epochs - 1) / steps_per_epoch
+    # min amplification by iteration for at least p items due to last epoch
+    amp_part2 = 1 / (steps_per_epoch - steps + 1)
+    # compute rdp of output model
+    rdp = [coeff * order * (amp_part1 + amp_part2) for order in orders]
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
-    rdp = [order * coef for order in orders]
     eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(
         p * 100, eps, delta))
