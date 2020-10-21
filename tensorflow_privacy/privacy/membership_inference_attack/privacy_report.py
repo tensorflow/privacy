@@ -109,7 +109,7 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
                        privacy_metrics: Iterable[PrivacyMetric]):
   """Create one subplot per privacy metric for a specified x_axis_metric."""
   fig, axes = plt.subplots(
-      1, len(privacy_metrics), figsize=(5 * len(privacy_metrics), 5))
+      1, len(privacy_metrics), figsize=(5 * len(privacy_metrics) + 3, 5))
   # Set a title for the entire group of subplots.
   fig.suptitle(figure_title)
   if len(privacy_metrics) == 1:
@@ -122,9 +122,10 @@ def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
       sorted_label_results = single_label_results.sort_values(x_axis_metric)
       axes[i].plot(sorted_label_results[x_axis_metric],
                    sorted_label_results[str(privacy_metric)])
-    axes[i].legend(legend_labels, loc='lower right')
     axes[i].set_xlabel(x_axis_metric)
     axes[i].set_title('%s for %s' % (privacy_metric, ENTIRE_DATASET_SLICE_STR))
+  plt.legend(legend_labels, loc='upper left', bbox_to_anchor=(1.02, 1))
+  fig.tight_layout(rect=[0, 0, 1, 0.93])  # Leave space for suptitle.
 
   return fig
 
