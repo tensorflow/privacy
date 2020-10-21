@@ -114,11 +114,12 @@ class AttackType(enum.Enum):
   RANDOM_FOREST = 'rf'
   K_NEAREST_NEIGHBORS = 'knn'
   THRESHOLD_ATTACK = 'threshold'
+  THRESHOLD_ENTROPY_ATTACK = 'threshold-entropy'
 
   @property
   def is_trained_attack(self):
     """Returns whether this type of attack requires training a model."""
-    return self != AttackType.THRESHOLD_ATTACK
+    return (self != AttackType.THRESHOLD_ATTACK) & (self != AttackType.THRESHOLD_ENTROPY_ATTACK)
 
   def __str__(self):
     """Returns LOGISTIC_REGRESSION instead of AttackType.LOGISTIC_REGRESSION."""

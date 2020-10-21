@@ -96,6 +96,19 @@ def _run_threshold_attack(attack_input: AttackInputData):
       attack_type=AttackType.THRESHOLD_ATTACK,
       roc_curve=roc_curve)
 
+def _run_threshold_entropy_attack(attack_input: AttackInputData):
+  fpr, tpr, thresholds = metrics.roc_curve(
+      np.concatenate((np.zeros(attack_input.get_train_size()),
+                      np.ones(attack_input.get_test_size()))),
+      np.concatenate(
+          (attack_input.get_entropy_train(), attack_input.get_entropy_test())))
+
+  roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
+
+  return SingleAttackResult(
+      slice_spec=_get_slice_spec(attack_input),
+      attack_type=AttackType.THRESHOLD_ENTROPY_ATTACK,
+      roc_curve=roc_curve)
 
 def _run_attack(attack_input: AttackInputData,
                 attack_type: AttackType,
@@ -104,7 +117,8 @@ def _run_attack(attack_input: AttackInputData,
   if attack_type.is_trained_attack:
     return _run_trained_attack(attack_input, attack_type,
                                balance_attacker_training)
-
+  if attack_type == AttackType.THRESHOLD_ENTROPY_ATTACK:
+    return _run_threshold_entropy_attack(attack_input)
   return _run_threshold_attack(attack_input)
 
 
