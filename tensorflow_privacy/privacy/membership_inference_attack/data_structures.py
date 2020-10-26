@@ -114,11 +114,13 @@ class AttackType(enum.Enum):
   RANDOM_FOREST = 'rf'
   K_NEAREST_NEIGHBORS = 'knn'
   THRESHOLD_ATTACK = 'threshold'
+  THRESHOLD_ENTROPY_ATTACK = 'threshold-entropy'
 
   @property
   def is_trained_attack(self):
     """Returns whether this type of attack requires training a model."""
-    return self != AttackType.THRESHOLD_ATTACK
+    return (self != AttackType.THRESHOLD_ATTACK) and (
+        self != AttackType.THRESHOLD_ENTROPY_ATTACK)
 
   def __str__(self):
     """Returns LOGISTIC_REGRESSION instead of AttackType.LOGISTIC_REGRESSION."""
@@ -278,12 +280,16 @@ class AttackInputData:
     """Returns size of the training set."""
     if self.loss_train is not None:
       return self.loss_train.size
+    if self.entropy_train is not None:
+      return self.entropy_train.size
     return self.logits_or_probs_train.shape[0]
 
   def get_test_size(self):
     """Returns size of the test set."""
     if self.loss_test is not None:
       return self.loss_test.size
+    if self.entropy_test is not None:
+      return self.entropy_test.size
     return self.logits_or_probs_test.shape[0]
 
   def validate(self):
