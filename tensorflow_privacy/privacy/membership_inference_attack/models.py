@@ -23,6 +23,7 @@ from sklearn import linear_model
 from sklearn import model_selection
 from sklearn import neighbors
 from sklearn import neural_network
+from typing import Iterator, List
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import Seq2SeqAttackInputData
@@ -134,8 +135,8 @@ def create_seq2seq_attacker_data(attack_input_data: Seq2SeqAttackInputData,
   attack_input_test = _get_average_ranks(attack_input_data.logits_test, attack_input_data.labels_test)
 
   if balance:
-    min_size = min(attack_input_data.train_size,
-                   attack_input_data.test_size)
+    min_size = min(len(attack_input_train),
+                   len(attack_input_test))
     attack_input_train = _sample_multidimensional_array(attack_input_train,
                                                         min_size)
     attack_input_test = _sample_multidimensional_array(attack_input_test,
@@ -159,7 +160,8 @@ def create_seq2seq_attacker_data(attack_input_data: Seq2SeqAttackInputData,
                       is_training_labels_test)
 
 
-def _get_average_ranks(logits, labels):
+def _get_average_ranks(logits: Iterator[np.ndarray],
+                       labels: Iterator[np.ndarray]) -> np.ndarray:
   """Returns the average rank of tokens in a batch of sequences.
 
   Args:
@@ -180,7 +182,8 @@ def _get_average_ranks(logits, labels):
   return np.array(ranks)
 
 
-def _get_ranks_for_sequence(logits, labels):
+def _get_ranks_for_sequence(logits: np.ndarray,
+                            labels: np.ndarray) -> List:
   """Returns ranks for a sequence.
 
   Args:
@@ -190,11 +193,10 @@ def _get_ranks_for_sequence(logits, labels):
   Returns:
     An array of ranks for tokens in the sequence, dim = (num_tokens, 1).
   """
-  scores = -logits
-  all_ranks = np.empty_like(scores)
-  for i, s in enumerate(scores):
-    all_ranks[i] = rankdata(s, method='min') - 1
-  sequence_ranks = all_ranks[np.arange(len(all_ranks)), labels.astype(int)].tolist()
+  sequence_ranks = []
+  for logit, label in zip(logits, labels.astype(int)):
+    rank = rankdata(-logit, method='min')[label] - 1.0
+    sequence_ranks.append(rank)
 
   return sequence_ranks
 

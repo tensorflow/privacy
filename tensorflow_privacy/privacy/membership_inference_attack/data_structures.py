@@ -374,10 +374,10 @@ def _append_array_shape(arr: np.array, arr_name: str, result):
     result.append(' %s with shape: %s,' % (arr_name, arr.shape))
 
 
-def _is_generator(gen, gen_name):
-  """Checks whether gen is a generator."""
-  if gen is not None and not isinstance(gen, Iterator):
-    raise ValueError('%s should be a generator.' % gen_name)
+def _is_iterator(obj, obj_name):
+  """Checks whether obj is a generator."""
+  if obj is not None and not isinstance(obj, Iterator):
+    raise ValueError('%s should be a generator.' % obj_name)
 
 
 @dataclass
@@ -393,7 +393,7 @@ class Seq2SeqAttackInputData:
   labels_train: Iterator[np.ndarray] = None
   labels_test: Iterator[np.ndarray] = None
 
-  # Denotes size of the target sequence vocabulary.
+  # Size of the target sequence vocabulary.
   vocab_size: int = None
 
   # Train, test size = number of batches in training, test set.
@@ -431,10 +431,10 @@ class Seq2SeqAttackInputData:
     if self.test_size is not None and not int:
       raise ValueError('test_size should be of integer type')
 
-    _is_generator(self.logits_train, 'logits_train')
-    _is_generator(self.logits_test, 'logits_test')
-    _is_generator(self.labels_train, 'labels_train')
-    _is_generator(self.labels_test, 'labels_test')
+    _is_iterator(self.logits_train, 'logits_train')
+    _is_iterator(self.logits_test, 'logits_test')
+    _is_iterator(self.labels_train, 'labels_train')
+    _is_iterator(self.labels_test, 'labels_test')
 
   def __str__(self):
     """Return the shapes of variables that are not None."""

@@ -36,20 +36,18 @@ def get_test_input(n_train, n_test):
 
 
 def get_seq2seq_test_input(n_train, n_test, max_seq_in_batch, max_tokens_in_sequence, vocab_size, seed=None):
-  """Get example inputs for attacks on seq2seq models."""
+  """Returns example inputs for attacks on seq2seq models."""
   if seed is not None:
     np.random.seed(seed=seed)
 
-  logits_train = []
-  labels_train = []
+  logits_train, labels_train = [], []
   for i in range(n_train):
     num_sequences = np.random.choice(max_seq_in_batch, 1)[0] + 1
     batch_logits, batch_labels = _get_batch_logits_and_labels(num_sequences, max_tokens_in_sequence, vocab_size)
     logits_train.append(batch_logits)
     labels_train.append(batch_labels)
 
-  logits_test = []
-  labels_test = []
+  logits_test, labels_test = [], []
   for i in range(n_test):
     num_sequences = np.random.choice(max_seq_in_batch, 1)[0] + 1
     batch_logits, batch_labels = _get_batch_logits_and_labels(num_sequences, max_tokens_in_sequence, vocab_size)
