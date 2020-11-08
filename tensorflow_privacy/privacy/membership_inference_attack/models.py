@@ -183,7 +183,7 @@ def _get_average_ranks(logits: Iterator[np.ndarray],
 
 
 def _get_ranks_for_sequence(logits: np.ndarray,
-                            labels: np.ndarray) -> List:
+                            labels: np.ndarray) -> List[float]:
   """Returns ranks for a sequence.
 
   Args:
