@@ -82,6 +82,16 @@ class AttackInputDataTest(absltest.TestCase):
     np.testing.assert_equal(attack_input.get_loss_test().tolist(),
                             [1.0, 4.0, 6.0])
 
+  def test_get_probs_sizes(self):
+    attack_input = AttackInputData(
+        probs_train=np.array([[0.1, 0.1, 0.8], [0.8, 0.2, 0]]),
+        probs_test=np.array([[0, 0.0001, 0.9999]]),
+        labels_train=np.array([1, 0]),
+        labels_test=np.array([0]))
+
+    np.testing.assert_equal(attack_input.get_train_size(), 2)
+    np.testing.assert_equal(attack_input.get_test_size(), 1)
+
   def test_get_entropy(self):
     attack_input = AttackInputData(
         logits_train=np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]),

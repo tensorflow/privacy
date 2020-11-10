@@ -76,17 +76,18 @@ def _slice_by_percentiles(data: AttackInputData, from_percentile: float,
   return _slice_data_by_indices(data, idx_train, idx_test)
 
 
-def _indices_by_classification(logits, labels, correctly_classified):
-  idx_correct = labels == np.argmax(logits, axis=1)
+def _indices_by_classification(logits_or_probs, labels, correctly_classified):
+  idx_correct = labels == np.argmax(logits_or_probs, axis=1)
   return idx_correct if correctly_classified else np.invert(idx_correct)
 
 
 def _slice_by_classification_correctness(data: AttackInputData,
                                          correctly_classified: bool):
-  idx_train = _indices_by_classification(data.logits_train, data.labels_train,
+  idx_train = _indices_by_classification(data.logits_or_probs_train,
+                                         data.labels_train,
                                          correctly_classified)
-  idx_test = _indices_by_classification(data.logits_test, data.labels_test,
-                                        correctly_classified)
+  idx_test = _indices_by_classification(data.logits_or_probs_test,
+                                        data.labels_test, correctly_classified)
   return _slice_data_by_indices(data, idx_train, idx_test)
 
 

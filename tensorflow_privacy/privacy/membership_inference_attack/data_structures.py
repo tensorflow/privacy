@@ -207,12 +207,16 @@ class AttackInputData:
   @property
   def logits_or_probs_train(self):
     """Returns train logits or probs whatever is not None."""
-    return self.probs_train or self.logits_train
+    if self.logits_train is not None:
+      return self.logits_train
+    return self.probs_train
 
   @property
   def logits_or_probs_test(self):
     """Returns test logits or probs whatever is not None."""
-    return self.probs_test or self.logits_test
+    if self.logits_test is not None:
+      return self.logits_test
+    return self.probs_test
 
   @staticmethod
   def _get_entropy(logits: np.ndarray, true_labels: np.ndarray):
