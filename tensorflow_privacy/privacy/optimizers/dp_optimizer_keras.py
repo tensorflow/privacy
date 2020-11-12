@@ -62,6 +62,7 @@ def make_keras_optimizer_class(cls):
           l2_norm_clip, l2_norm_clip * noise_multiplier)
       self._global_state = None
       self._was_dp_gradients_called = False
+      self._base_optimizer_class = cls
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP version of superclass method."""
@@ -168,6 +169,23 @@ def make_keras_optimizer_class(cls):
           'optimizer.')
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
+
+    def get_config(self):
+      """Creates configuration for Keras serialization.
+      This method will be called when Keras creates model checkpoints
+      and is necessary so that deserialization can be performed.
+      Returns:
+        A dict object storing arguments to be passed to the __init__ method
+        upon deserialization.
+      """
+
+      config = self._base_optimizer_class.get_config(self)
+      config.update({
+          'l2_norm_clip': self._l2_norm_clip,
+          'noise_multiplier': self._noise_multiplier,
+          'num_microbatches': self._num_microbatches})
+
+      return config
 
   return DPOptimizerClass
 
