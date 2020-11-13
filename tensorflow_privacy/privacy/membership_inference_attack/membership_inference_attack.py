@@ -188,6 +188,10 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
     the attack result.
   """
   attack_input.validate()
+  
+  # The attacker uses the average rank (a single number) of a seq2seq dataset 
+  # record to determine membership. Hence, only Logistic Regression is supported, 
+  # as it makes the most sense for single-number features. 
   attacker = models.LogisticRegressionAttacker()
 
   prepared_attacker_data = models.create_seq2seq_attacker_data(
