@@ -19,7 +19,6 @@ import numpy as np
 
 from tensorflow_privacy.privacy.membership_inference_attack import models
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import Seq2SeqAttackInputData
 
 
 class TrainedAttackerTest(absltest.TestCase):
@@ -56,65 +55,6 @@ class TrainedAttackerTest(absltest.TestCase):
       expected = feature[:2] not in attack_input.logits_train
       self.assertEqual(attacker_data.is_training_labels_train[i], expected)
 
-  def test_create_seq2seq_attacker_data_logits_and_labels(self):
-    attack_input = Seq2SeqAttackInputData(
-        logits_train=iter([
-            np.array([
-                np.array([[0.1, 0.1, 0.8], [0.7, 0.3, 0]], dtype=np.float32),
-                np.array([[0.4, 0.5, 0.1]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array(
-                [np.array([[0.25, 0.6, 0.15], [1, 0, 0]], dtype=np.float32)],
-                dtype=object),
-            np.array([
-                np.array([[0.9, 0, 0.1], [0.25, 0.5, 0.25]], dtype=np.float32),
-                np.array([[0, 1, 0], [0.2, 0.1, 0.7]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        logits_test=iter([
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.3, 0.3, 0.4], [0.4, 0.4, 0.2]], dtype=np.float32),
-                np.array([[0.3, 0.35, 0.35]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_train=iter([
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([1, 0], dtype=np.float32)], dtype=object),
-            np.array([
-                np.array([0, 1], dtype=np.float32),
-                np.array([1, 2], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_test=iter([
-            np.array([np.array([2, 1], dtype=np.float32)]),
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        vocab_size=3,
-        train_size=3,
-        test_size=2)
-    attacker_data = models.create_seq2seq_attacker_data(
-        attack_input, 0.25, balance=False)
-    self.assertLen(attacker_data.features_train, 3)
-    self.assertLen(attacker_data.features_test, 2)
-
-    for _, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 1)  # each feature has one average rank
 
   def test_balanced_create_attacker_data_loss_and_logits(self):
     attack_input = AttackInputData(
@@ -131,70 +71,7 @@ class TrainedAttackerTest(absltest.TestCase):
       expected = feature[:2] not in attack_input.logits_train
       self.assertEqual(attacker_data.is_training_labels_train[i], expected)
 
-  def test_balanced_create_seq2seq_attacker_data_logits_and_labels(self):
-    attack_input = Seq2SeqAttackInputData(
-        logits_train=iter([
-            np.array([
-                np.array([[0.1, 0.1, 0.8], [0.7, 0.3, 0]], dtype=np.float32),
-                np.array([[0.4, 0.5, 0.1]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array(
-                [np.array([[0.25, 0.6, 0.15], [1, 0, 0]], dtype=np.float32)],
-                dtype=object),
-            np.array([
-                np.array([[0.9, 0, 0.1], [0.25, 0.5, 0.25]], dtype=np.float32),
-                np.array([[0, 1, 0], [0.2, 0.1, 0.7]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        logits_test=iter([
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.3, 0.3, 0.4], [0.4, 0.4, 0.2]], dtype=np.float32),
-                np.array([[0.3, 0.35, 0.35]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_train=iter([
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([1, 0], dtype=np.float32)], dtype=object),
-            np.array([
-                np.array([0, 1], dtype=np.float32),
-                np.array([1, 2], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_test=iter([
-            np.array([np.array([2, 1], dtype=np.float32)]),
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([2, 1], dtype=np.float32)])
-        ]),
-        vocab_size=3,
-        train_size=3,
-        test_size=3)
-    attacker_data = models.create_seq2seq_attacker_data(
-        attack_input, 0.33, balance=True)
-    self.assertLen(attacker_data.features_train, 4)
-    self.assertLen(attacker_data.features_test, 2)
 
-    for _, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 1)  # each feature has one average rank
 
 
 if __name__ == '__main__':
