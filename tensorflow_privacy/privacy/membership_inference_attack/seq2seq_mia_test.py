@@ -17,7 +17,7 @@
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType, PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.seq2seq_mia import Seq2SeqAttackInputData, \
   create_seq2seq_attacker_data, run_seq2seq_attack
 
@@ -145,12 +145,22 @@ class Seq2SeqTrainedAttackerTest(absltest.TestCase):
         vocab_size=3,
         train_size=3,
         test_size=2)
-    attacker_data = create_seq2seq_attacker_data(attack_input, 0.25, balance=False)
+    privacy_report_metadata = PrivacyReportMetadata()
+    attacker_data = create_seq2seq_attacker_data(attack_input_data=attack_input,
+                                                 test_fraction=0.25,
+                                                 balance=False,
+                                                 privacy_report_metadata=privacy_report_metadata)
     self.assertLen(attacker_data.features_train, 3)
     self.assertLen(attacker_data.features_test, 2)
 
     for _, feature in enumerate(attacker_data.features_train):
       self.assertLen(feature, 1)  # each feature has one average rank
+
+    # Tests that fields of PrivacyReportMetadata are populated.
+    self.assertIsNotNone(privacy_report_metadata.loss_train)
+    self.assertIsNotNone(privacy_report_metadata.loss_test)
+    self.assertIsNotNone(privacy_report_metadata.accuracy_train)
+    self.assertIsNotNone(privacy_report_metadata.accuracy_test)
 
 
   def test_balanced_create_seq2seq_attacker_data_logits_and_labels(self):
@@ -210,12 +220,22 @@ class Seq2SeqTrainedAttackerTest(absltest.TestCase):
         vocab_size=3,
         train_size=3,
         test_size=3)
-    attacker_data = create_seq2seq_attacker_data(attack_input, 0.33, balance=True)
+    privacy_report_metadata = PrivacyReportMetadata()
+    attacker_data = create_seq2seq_attacker_data(attack_input_data=attack_input,
+                                                 test_fraction=0.33,
+                                                 balance=True,
+                                                 privacy_report_metadata=privacy_report_metadata)
     self.assertLen(attacker_data.features_train, 4)
     self.assertLen(attacker_data.features_test, 2)
 
     for _, feature in enumerate(attacker_data.features_train):
       self.assertLen(feature, 1)  # each feature has one average rank
+
+    # Tests that fields of PrivacyReportMetadata are populated.
+    self.assertIsNotNone(privacy_report_metadata.loss_train)
+    self.assertIsNotNone(privacy_report_metadata.loss_test)
+    self.assertIsNotNone(privacy_report_metadata.accuracy_train)
+    self.assertIsNotNone(privacy_report_metadata.accuracy_test)
 
 
 def _get_batch_logits_and_labels(num_sequences, max_tokens_in_sequence,
@@ -314,6 +334,21 @@ class RunSeq2SeqAttackTest(absltest.TestCase):
     seq2seq_result = list(result.single_attack_results)[0]
     np.testing.assert_almost_equal(
         seq2seq_result.roc_curve.get_auc(), 0.63, decimal=2)
+
+  def test_run_seq2seq_attack_calculates_correct_metadata(self):
+    result = run_seq2seq_attack(get_seq2seq_test_input(
+      n_train=20,
+      n_test=10,
+      max_seq_in_batch=3,
+      max_tokens_in_sequence=5,
+      vocab_size=3,
+      seed=12345),
+      balance_attacker_training=False)
+    metadata = result.privacy_report_metadata
+    np.testing.assert_almost_equal(metadata.loss_train, 1.11, decimal=2)
+    np.testing.assert_almost_equal(metadata.loss_test, 1.10, decimal=2)
+    np.testing.assert_almost_equal(metadata.accuracy_train, 0.40, decimal=2)
+    np.testing.assert_almost_equal(metadata.accuracy_test, 0.34, decimal=2)
 
 
 if __name__ == '__main__':
