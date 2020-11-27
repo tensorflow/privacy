@@ -162,7 +162,6 @@ class Seq2SeqTrainedAttackerTest(absltest.TestCase):
     self.assertIsNotNone(privacy_report_metadata.accuracy_train)
     self.assertIsNotNone(privacy_report_metadata.accuracy_test)
 
-
   def test_balanced_create_seq2seq_attacker_data_logits_and_labels(self):
     attack_input = Seq2SeqAttackInputData(
         logits_train=iter([
@@ -345,8 +344,8 @@ class RunSeq2SeqAttackTest(absltest.TestCase):
       seed=12345),
       balance_attacker_training=False)
     metadata = result.privacy_report_metadata
-    np.testing.assert_almost_equal(metadata.loss_train, 1.11, decimal=2)
-    np.testing.assert_almost_equal(metadata.loss_test, 1.10, decimal=2)
+    np.testing.assert_almost_equal(metadata.loss_train, 2.08, decimal=2)
+    np.testing.assert_almost_equal(metadata.loss_test, 2.02, decimal=2)
     np.testing.assert_almost_equal(metadata.accuracy_train, 0.40, decimal=2)
     np.testing.assert_almost_equal(metadata.accuracy_test, 0.34, decimal=2)
 
