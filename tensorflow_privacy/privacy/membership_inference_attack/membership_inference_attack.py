@@ -34,6 +34,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleRiskScoreResult
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_single_slice_specs
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_slice
 
@@ -219,6 +220,56 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
   ]
 
   return AttackResults(single_attack_results=attack_results)
+
+
+def _compute_privacy_risk_score(attack_input: AttackInputData,
+                                num_bins: int = 15):
+  """compute each individual point's likelihood of being a member (https://arxiv.org/abs/2003.10595)
+  Args:
+    attack_input: input data for compute privacy risk scores
+    num_bins: the number of bins used to compute the training/test histogram; we set the default as 15
+  
+  Returns:
+    privacy risk score results
+  """
+  
+  # If the loss or the entropy is provided, just use it; 
+  # Otherwise, call the function to compute the loss (you can also choose to compute entropy) 
+  if attack_input.loss_train is not None and attack_input.loss_test is not None:
+    train_values, test_values = attack_input.loss_train, attack_input.loss_test
+  elif attack_input.entropy_train is not None and attack_input.entropy_test is not None:
+    train_values, test_values = attack_input.entropy_train, attack_input.entropy_test
+  else:
+    train_values, test_values = attack_input.get_loss_train(), attack_input.get_loss_test()
+  
+  # Compute the histogram in the log scale
+  small_value = 1e-10
+  train_log_values = np.log(np.maximum(train_values, small_value))
+  test_log_values = np.log(np.maximum(test_values, small_value))
+  
+  min_log_value = np.amin(np.concatenate((train_log_values, test_log_values)))
+  max_log_value = np.amax(np.concatenate((train_log_values, test_log_values)))
+  bins_hist = np.linspace(min_log_value, max_log_value, num_bins+1)
+  
+  train_hist, _ = np.histogram(train_log_values, bins=bins_hist)
+  train_hist = train_hist/(len(train_log_values)+0.0)
+  train_hist_indices = np.fmin(np.digitize(train_log_values, bins=bins_hist),num_bins)-1
+  
+  test_hist, _ = np.histogram(test_log_values, bins=bins_hist)
+  test_hist = test_hist/(len(test_log_values)+0.0)
+  test_hist_indices = np.fmin(np.digitize(test_log_values, bins=bins_hist),num_bins)-1
+  
+  combined_hist = train_hist+test_hist
+  combined_hist[combined_hist==0] = small_value
+  privacy_risk_list = train_hist/(combined_hist+0.0)
+  train_risk_scores = privacy_risk_list[train_hist_indices]
+  test_risk_scores = privacy_risk_list[test_hist_indices]
+  
+  
+  
+  return SingleRiskScoreResult(slice_spec=_get_slice_spec(attack_input),
+                               train_risk_scores=train_risk_scores,
+                               test_risk_scores=test_risk_scores)
 
 
 def _compute_missing_privacy_report_metadata(
