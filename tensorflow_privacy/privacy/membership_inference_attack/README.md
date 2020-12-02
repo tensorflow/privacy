@@ -213,6 +213,8 @@ import tensorflow_privacy.privacy.membership_inference_attack.plotting as plotti
 
 figure = plotting.plot_roc_curve(max_auc_attacker.roc_curve)
 ```
+which would give a figure like the one below
+![roc_fig](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/membership_inference_attack/codelab_roc_fig.png?raw=true)
 
 Additionally, we provide funcitonality to convert the attack results into Pandas
 data frame:
