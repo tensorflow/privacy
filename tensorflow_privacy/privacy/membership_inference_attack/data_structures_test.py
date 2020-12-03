@@ -29,6 +29,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import Seq2SeqAttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleRiskScoreResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingFeature
 
@@ -287,7 +288,21 @@ class SingleAttackResultTest(absltest.TestCase):
 
     self.assertEqual(result.get_attacker_advantage(), 0.0)
 
+    
+class SingleRiskScoreResultTest(absltest.TestCase):
 
+  # Only a basic test to check the attack by setting a threshold on risk score.
+  def test_attack_with_varied_thresholds(self):
+
+    result = SingleRiskScoreResult(
+        slice_spec=SingleSliceSpec(None),
+        train_risk_scores=np.array([0.91,1,0.92,0.82,0.75]),
+        test_risk_scores=np.array([0.81,0.7,0.75,0.25,0.3]))
+
+    self.assertEqual(result.attack_with_varied_thresholds([0.8,0.7])[1], [0.8,0.625])
+    self.assertEqual(result.attack_with_varied_thresholds([0.8,0.7])[2], [0.8,1])
+    
+    
 class AttackResultsCollectionTest(absltest.TestCase):
 
   def __init__(self, *args, **kwargs):

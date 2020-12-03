@@ -196,6 +196,15 @@ class RunAttacksTest(absltest.TestCase):
     np.testing.assert_almost_equal(
         seq2seq_result.roc_curve.get_auc(), 0.63, decimal=2)
 
+  def test_run_compute_privacy_risk_score_correct_score(self):
+    result = mia._compute_privacy_risk_score(
+        AttackInputData(
+            loss_train=np.array([1, 1, 1, 10, 100]),
+            loss_test=np.array([10, 100, 100, 1000, 10000])))
+
+    np.testing.assert_almost_equal(result.train_risk_scores, [1,1,1,0.5,0.33], decimal=2)
+    np.testing.assert_almost_equal(result.test_risk_scores, [0.5,0.33,0.33,0,0], decimal=2)
+    
 
 if __name__ == '__main__':
   absltest.main()
