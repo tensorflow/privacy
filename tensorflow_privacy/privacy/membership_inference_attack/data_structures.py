@@ -566,7 +566,7 @@ class SingleRiskScoreResult:
     """
     meaningful_threshold_list, precision_list, recall_list = self.attack_with_varied_thresholds(threshold_list)
     summary = []
-    summary.append('Privacy risk score analysis over slice: \"%s\"' %
+    summary.append('\nPrivacy risk score analysis over slice: \"%s\"' %
                    str(self.slice_spec))
     for i in range(len(meaningful_threshold_list)):
       summary.append('  with %.5f as the threshold on privacy risk score, the precision-recall pair is (%.5f, %.5f)' %
