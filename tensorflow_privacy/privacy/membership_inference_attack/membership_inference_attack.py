@@ -35,6 +35,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleRiskScoreResult
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RiskScoreResults
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_single_slice_specs
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_slice
 
@@ -223,7 +224,7 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
 
 
 def _compute_privacy_risk_score(attack_input: AttackInputData,
-                                num_bins: int = 15):
+                                num_bins: int = 15) -> SingleRiskScoreResult:
   """compute each individual point's likelihood of being a member (https://arxiv.org/abs/2003.10595)
   Args:
     attack_input: input data for compute privacy risk scores
@@ -270,6 +271,34 @@ def _compute_privacy_risk_score(attack_input: AttackInputData,
   return SingleRiskScoreResult(slice_spec=_get_slice_spec(attack_input),
                                train_risk_scores=train_risk_scores,
                                test_risk_scores=test_risk_scores)
+
+
+def privacy_risk_score_analysis(attack_input: AttackInputData,
+                                slicing_spec: SlicingSpec = None) -> RiskScoreResults:
+    
+  """Perform privacy risk score analysis on all given slice types
+
+  Args:
+    attack_input: input data for compute privacy risk scores
+    slicing_spec: specifies attack_input slices
+
+  Returns:
+    the privacy risk score results.
+  """
+  attack_input.validate()
+  risk_score_results = []
+
+  if slicing_spec is None:
+    slicing_spec = SlicingSpec(entire_dataset=True)
+  num_classes = None
+  if slicing_spec.by_class:
+    num_classes = attack_input.num_classes
+  input_slice_specs = get_single_slice_specs(slicing_spec, num_classes)
+  for single_slice_spec in input_slice_specs:
+    attack_input_slice = get_slice(attack_input, single_slice_spec)
+    risk_score_results.append(_compute_privacy_risk_score(attack_input_slice))
+    
+  return RiskScoreResults(risk_score_results=risk_score_results)
 
 
 def _compute_missing_privacy_report_metadata(

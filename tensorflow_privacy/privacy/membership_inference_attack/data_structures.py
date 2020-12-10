@@ -559,15 +559,37 @@ class SingleRiskScoreResult:
           recall_list.append(true_positive_normalized)
     return np.array(meaningful_threshold_list), np.array(precision_list), np.array(recall_list)
   
-  def print_results(self, threshold_list=np.array([1,0.9,0.8,0.7,0.6,0.5])):
+  def collect_results(self, threshold_list=np.array([1,0.9,0.8,0.7,0.6,0.5])):
     """ The privacy risk score (from 0 to 1) represents each sample's probability of being in the training set.
     Here, we choose a list of threshold values from 0.5 (uncertain of training or test) to 1 (100% certain of training)
     to compute corresponding attack precision and recall.
     """
     meaningful_threshold_list, precision_list, recall_list = self.attack_with_varied_thresholds(threshold_list)
+    summary = []
+    summary.append('\nPrivacy risk score analysis over slice: \"%s\"' %
+                   str(self.slice_spec))
     for i in range(len(meaningful_threshold_list)):
-      print(f"with {meaningful_threshold_list[i]} as the threshold on privacy risk score, the precision-recall pair is {(precision_list[i], recall_list[i])}")
-    return
+      summary.append('  with %.5f as the threshold on privacy risk score, the precision-recall pair is (%.5f, %.5f)' %
+                     (meaningful_threshold_list[i], precision_list[i], recall_list[i]))
+    return summary
+
+
+@dataclass
+class RiskScoreResults:
+  """Privacy risk score results from multiple data slices.
+  """
+
+  risk_score_results: Iterable[SingleRiskScoreResult]
+    
+  def summary(self):
+    """ return the summary of privacy risk score analysis on all given data slices
+    """
+    summary = []
+    for single_result in self.risk_score_results:
+      single_summary = single_result.collect_results()
+      for line in single_summary:
+        summary.append(line)
+    return '\n'.join(summary)
 
 
 @dataclass
