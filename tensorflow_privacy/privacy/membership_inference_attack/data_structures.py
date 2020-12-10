@@ -589,7 +589,6 @@ class RiskScoreResults:
       single_summary = single_result.collect_results()
       for line in single_summary:
         summary.append(line)
-      summary.append('\n')
     return '\n'.join(summary)
 
 
