@@ -134,5 +134,5 @@ def _validate_results(results: Iterable[AttackResults]):
   for attack_results in results:
     if not attack_results or not attack_results.privacy_report_metadata:
       raise ValueError('Privacy metadata is not defined.')
-    if not attack_results.privacy_report_metadata.epoch_num:
+    if attack_results.privacy_report_metadata.epoch_num is None:
       raise ValueError('epoch_num in metadata is not defined.')

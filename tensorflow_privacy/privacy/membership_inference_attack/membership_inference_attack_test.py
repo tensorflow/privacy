@@ -16,6 +16,7 @@
 """Tests for tensorflow_privacy.privacy.membership_inference_attack.utils."""
 from absl.testing import absltest
 import numpy as np
+
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
@@ -97,6 +98,7 @@ class RunAttacksTest(absltest.TestCase):
     self.assertEqual(mia._get_accuracy(logits, labels), 2 / 3)
     # If accuracy is already present, simply return it.
     self.assertIsNone(mia._get_accuracy(None, labels))
+
 
   def test_run_compute_privacy_risk_score_correct_score(self):
     result = mia._compute_privacy_risk_score(
