@@ -252,6 +252,7 @@ def privacy_risk_score_analysis(attack_input: AttackInputData,
   return RiskScoreResults(risk_score_results=risk_score_results)
 
 
+
 def _compute_missing_privacy_report_metadata(
     metadata: PrivacyReportMetadata,
     attack_input: AttackInputData) -> PrivacyReportMetadata:
