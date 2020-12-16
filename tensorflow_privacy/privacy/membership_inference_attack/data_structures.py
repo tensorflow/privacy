@@ -471,7 +471,7 @@ class SingleRiskScoreResult:
     precision_list = []
     recall_list = []
     meaningful_threshold_list = []
-    max_risk_score = max(train_risk_scores.max(), test_risk_scores.max())
+    max_risk_score = max(self.train_risk_scores.max(), self.test_risk_scores.max())
     for threshold in threshold_list:
       if threshold <= max_risk_score:
         idx = np.argwhere(thresholds>=threshold)[-1][0]
