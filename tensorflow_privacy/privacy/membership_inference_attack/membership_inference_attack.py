@@ -176,10 +176,13 @@ def run_attacks(attack_input: AttackInputData,
 
 def _compute_privacy_risk_score(attack_input: AttackInputData,
                                 num_bins: int = 15) -> SingleRiskScoreResult:
-  """compute each individual point's likelihood of being a member (https://arxiv.org/abs/2003.10595)
+  """Computes each individual point's likelihood of being a member (https://arxiv.org/abs/2003.10595).
+  For an individual sample, its privacy risk score is computed as the posterior probability of being in the training set 
+  after observing its prediction output by the target machine learning model.
+  
   Args:
     attack_input: input data for compute privacy risk scores
-    num_bins: the number of bins used to compute the training/test histogram; we set the default as 15
+    num_bins: the number of bins used to compute the training/test histogram
   
   Returns:
     privacy risk score results
@@ -188,28 +191,31 @@ def _compute_privacy_risk_score(attack_input: AttackInputData,
   # If the loss or the entropy is provided, just use it; 
   # Otherwise, call the function to compute the loss (you can also choose to compute entropy) 
   if attack_input.loss_train is not None and attack_input.loss_test is not None:
-    train_values, test_values = attack_input.loss_train, attack_input.loss_test
+    train_values = attack_input.loss_train
+    test_values = attack_input.loss_test
   elif attack_input.entropy_train is not None and attack_input.entropy_test is not None:
-    train_values, test_values = attack_input.entropy_train, attack_input.entropy_test
+    train_values = attack_input.entropy_train
+    test_values = attack_input.entropy_test
   else:
-    train_values, test_values = attack_input.get_loss_train(), attack_input.get_loss_test()
+    train_values = attack_input.get_loss_train()
+    test_values = attack_input.get_loss_test()
   
   # Compute the histogram in the log scale
   small_value = 1e-10
-  train_log_values = np.log(np.maximum(train_values, small_value))
-  test_log_values = np.log(np.maximum(test_values, small_value))
+  train_values = np.maximum(train_values, small_value)
+  test_values = np.maximum(test_values, small_value)
   
-  min_log_value = np.amin(np.concatenate((train_log_values, test_log_values)))
-  max_log_value = np.amax(np.concatenate((train_log_values, test_log_values)))
-  bins_hist = np.linspace(min_log_value, max_log_value, num_bins+1)
+  min_value = min(train_values.min(), test_values.min())
+  max_value = max(train_values.max(), test_values.max())
+  bins_hist = np.logspace(np.log10(min_value), np.log10(max_value), num_bins+1)
   
-  train_hist, _ = np.histogram(train_log_values, bins=bins_hist)
-  train_hist = train_hist/(len(train_log_values)+0.0)
-  train_hist_indices = np.fmin(np.digitize(train_log_values, bins=bins_hist),num_bins)-1
+  train_hist, _ = np.histogram(train_values, bins=bins_hist)
+  train_hist = train_hist/(len(train_values)+0.0)
+  train_hist_indices = np.fmin(np.digitize(train_values, bins=bins_hist),num_bins)-1
   
-  test_hist, _ = np.histogram(test_log_values, bins=bins_hist)
-  test_hist = test_hist/(len(test_log_values)+0.0)
-  test_hist_indices = np.fmin(np.digitize(test_log_values, bins=bins_hist),num_bins)-1
+  test_hist, _ = np.histogram(test_values, bins=bins_hist)
+  test_hist = test_hist/(len(test_values)+0.0)
+  test_hist_indices = np.fmin(np.digitize(test_values, bins=bins_hist),num_bins)-1
   
   combined_hist = train_hist+test_hist
   combined_hist[combined_hist==0] = small_value
@@ -224,8 +230,8 @@ def _compute_privacy_risk_score(attack_input: AttackInputData,
                                test_risk_scores=test_risk_scores)
 
 
-def privacy_risk_score_analysis(attack_input: AttackInputData,
-                                slicing_spec: SlicingSpec = None) -> RiskScoreResults:
+def run_privacy_risk_score_analysis(attack_input: AttackInputData,
+                                    slicing_spec: SlicingSpec = None) -> RiskScoreResults:
     
   """Perform privacy risk score analysis on all given slice types
 

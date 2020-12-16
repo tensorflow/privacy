@@ -462,21 +462,28 @@ class SingleRiskScoreResult:
     and further compute precision and recall values.
     We skip the threshold value if it is larger than every sample's privacy risk score.
     """
+    fpr, tpr, thresholds = metrics.roc_curve(
+      np.concatenate((np.ones(len(self.train_risk_scores)),
+                      np.zeros(len(self.test_risk_scores)))),
+      np.concatenate((self.train_risk_scores, self.test_risk_scores)),
+      drop_intermediate=False)
+    
     precision_list = []
     recall_list = []
     meaningful_threshold_list = []
+    max_risk_score = max(train_risk_scores.max(), test_risk_scores.max())
     for threshold in threshold_list:
-        true_positive_normalized = np.sum(self.train_risk_scores>=threshold)/(len(self.train_risk_scores)+0.0)
-        false_positive_normalized = np.sum(self.test_risk_scores>=threshold)/(len(self.test_risk_scores)+0.0)
-        if true_positive_normalized+false_positive_normalized>0:
-          meaningful_threshold_list.append(threshold)
-          precision_list.append(true_positive_normalized/(true_positive_normalized+false_positive_normalized+0.0))
-          recall_list.append(true_positive_normalized)
+      if threshold <= max_risk_score:
+        idx = np.argwhere(thresholds>=threshold)[-1][0]
+        meaningful_threshold_list.append(threshold)
+        precision_list.append(tpr[idx]/(tpr[idx]+fpr[idx]))
+        recall_list.append(tpr[idx])
+    
     return np.array(meaningful_threshold_list), np.array(precision_list), np.array(recall_list)
   
-  def collect_results(self, threshold_list=np.array([1,0.9,0.8,0.7,0.6,0.5])):
+  def collect_results(self, threshold_list):
     """ The privacy risk score (from 0 to 1) represents each sample's probability of being in the training set.
-    Here, we choose a list of threshold values from 0.5 (uncertain of training or test) to 1 (100% certain of training)
+    Usually, we choose a list of threshold values from 0.5 (uncertain of training or test) to 1 (100% certain of training)
     to compute corresponding attack precision and recall.
     """
     meaningful_threshold_list, precision_list, recall_list = self.attack_with_varied_thresholds(threshold_list)
@@ -496,14 +503,13 @@ class RiskScoreResults:
 
   risk_score_results: Iterable[SingleRiskScoreResult]
     
-  def summary(self):
+  def summary(self, threshold_list):
     """ return the summary of privacy risk score analysis on all given data slices
     """
     summary = []
     for single_result in self.risk_score_results:
-      single_summary = single_result.collect_results()
-      for line in single_summary:
-        summary.append(line)
+      single_summary = single_result.collect_results(threshold_list)
+      summary.extend(single_summary)
     return '\n'.join(summary)
 
 
