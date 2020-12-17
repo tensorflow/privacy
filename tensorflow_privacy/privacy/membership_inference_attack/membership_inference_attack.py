@@ -33,8 +33,8 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleRiskScoreResult
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RiskScoreResults
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleMembershipProbabilityResult
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import MembershipProbabilityResults
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_single_slice_specs
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_slice
 
@@ -174,18 +174,18 @@ def run_attacks(attack_input: AttackInputData,
       privacy_report_metadata=privacy_report_metadata)
 
 
-def _compute_privacy_risk_score(attack_input: AttackInputData,
-                                num_bins: int = 15) -> SingleRiskScoreResult:
-  """Computes each individual point's likelihood of being a member (https://arxiv.org/abs/2003.10595).
+def _compute_membership_probability(attack_input: AttackInputData,
+                                    num_bins: int = 15) -> SingleMembershipProbabilityResult:
+  """Computes each individual point's likelihood of being a member (denoted as privacy risk score in https://arxiv.org/abs/2003.10595).
   For an individual sample, its privacy risk score is computed as the posterior probability of being in the training set 
   after observing its prediction output by the target machine learning model.
   
   Args:
-    attack_input: input data for compute privacy risk scores
+    attack_input: input data for compute membership probability
     num_bins: the number of bins used to compute the training/test histogram
   
   Returns:
-    privacy risk score results
+    membership probability results
   """
   
   # If the loss or the entropy is provided, just use it; 
@@ -219,31 +219,31 @@ def _compute_privacy_risk_score(attack_input: AttackInputData,
   
   combined_hist = train_hist+test_hist
   combined_hist[combined_hist==0] = small_value
-  privacy_risk_list = train_hist/(combined_hist+0.0)
-  train_risk_scores = privacy_risk_list[train_hist_indices]
-  test_risk_scores = privacy_risk_list[test_hist_indices]
+  membership_prob_list = train_hist/(combined_hist+0.0)
+  train_membership_probs = membership_prob_list[train_hist_indices]
+  test_membership_probs = membership_prob_list[test_hist_indices]
   
   
   
-  return SingleRiskScoreResult(slice_spec=_get_slice_spec(attack_input),
-                               train_risk_scores=train_risk_scores,
-                               test_risk_scores=test_risk_scores)
+  return SingleMembershipProbabilityResult(slice_spec=_get_slice_spec(attack_input),
+                                           train_membership_probs=train_membership_probs,
+                                           test_membership_probs=test_membership_probs)
 
 
-def run_privacy_risk_score_analysis(attack_input: AttackInputData,
-                                    slicing_spec: SlicingSpec = None) -> RiskScoreResults:
+def run_membership_probability_analysis(attack_input: AttackInputData,
+                                        slicing_spec: SlicingSpec = None) -> MembershipProbabilityResults:
     
-  """Perform privacy risk score analysis on all given slice types
+  """Perform membership probability analysis on all given slice types
 
   Args:
-    attack_input: input data for compute privacy risk scores
+    attack_input: input data for compute membership probabilities
     slicing_spec: specifies attack_input slices
 
   Returns:
-    the privacy risk score results.
+    the membership probability results.
   """
   attack_input.validate()
-  risk_score_results = []
+  membership_prob_results = []
 
   if slicing_spec is None:
     slicing_spec = SlicingSpec(entire_dataset=True)
@@ -253,9 +253,9 @@ def run_privacy_risk_score_analysis(attack_input: AttackInputData,
   input_slice_specs = get_single_slice_specs(slicing_spec, num_classes)
   for single_slice_spec in input_slice_specs:
     attack_input_slice = get_slice(attack_input, single_slice_spec)
-    risk_score_results.append(_compute_privacy_risk_score(attack_input_slice))
+    membership_prob_results.append(_compute_membership_probability(attack_input_slice))
     
-  return RiskScoreResults(risk_score_results=risk_score_results)
+  return MembershipProbabilityResults(membership_prob_results=membership_prob_results)
 
 
 

@@ -445,35 +445,35 @@ class SingleAttackResult:
 
 
 @dataclass
-class SingleRiskScoreResult:
-  """Results from computing privacy risk scores.
-  this part shows how to leverage privacy risk score to perform attacks with thresholding on risk score
+class SingleMembershipProbabilityResult:
+  """Results from computing membership probabilities (denoted as privacy risk score in https://arxiv.org/abs/2003.10595).
+  this part shows how to leverage membership probabilities to perform attacks with thresholding on them.
   """
 
   # Data slice this result was calculated for.
   slice_spec: SingleSliceSpec
 
-  train_risk_scores: np.ndarray 
+  train_membership_probs: np.ndarray 
   
-  test_risk_scores: np.ndarray
+  test_membership_probs: np.ndarray
   
   def attack_with_varied_thresholds(self, threshold_list):
-    """ For each threshold value, we count how many training and test samples with privacy risk scores larger than the threshold
+    """ For each threshold value, we count how many training and test samples with membership probabilities larger than the threshold
     and further compute precision and recall values.
-    We skip the threshold value if it is larger than every sample's privacy risk score.
+    We skip the threshold value if it is larger than every sample's membership probability.
     """
     fpr, tpr, thresholds = metrics.roc_curve(
-      np.concatenate((np.ones(len(self.train_risk_scores)),
-                      np.zeros(len(self.test_risk_scores)))),
-      np.concatenate((self.train_risk_scores, self.test_risk_scores)),
+      np.concatenate((np.ones(len(self.train_membership_probs)),
+                      np.zeros(len(self.test_membership_probs)))),
+      np.concatenate((self.train_membership_probs, self.test_membership_probs)),
       drop_intermediate=False)
     
     precision_list = []
     recall_list = []
     meaningful_threshold_list = []
-    max_risk_score = max(self.train_risk_scores.max(), self.test_risk_scores.max())
+    max_prob = max(self.train_membership_probs.max(), self.test_membership_probs.max())
     for threshold in threshold_list:
-      if threshold <= max_risk_score:
+      if threshold <= max_prob:
         idx = np.argwhere(thresholds>=threshold)[-1][0]
         meaningful_threshold_list.append(threshold)
         precision_list.append(tpr[idx]/(tpr[idx]+fpr[idx]))
@@ -482,40 +482,40 @@ class SingleRiskScoreResult:
     return np.array(meaningful_threshold_list), np.array(precision_list), np.array(recall_list)
   
   def collect_results(self, threshold_list, return_roc_results=True):
-    """ The privacy risk score (from 0 to 1) represents each sample's probability of being in the training set.
+    """ The membership probability (from 0 to 1) represents each sample's probability of being in the training set.
     Usually, we choose a list of threshold values from 0.5 (uncertain of training or test) to 1 (100% certain of training)
     to compute corresponding attack precision and recall.
     """
     meaningful_threshold_list, precision_list, recall_list = self.attack_with_varied_thresholds(threshold_list)
     summary = []
-    summary.append('\nPrivacy risk score analysis over slice: \"%s\"' %
+    summary.append('\nMembership probability analysis over slice: \"%s\"' %
                    str(self.slice_spec))
     for i in range(len(meaningful_threshold_list)):
-      summary.append('  with %.5f as the threshold on privacy risk score, the precision-recall pair is (%.5f, %.5f)' %
+      summary.append('  with %.4f as the threshold on membership probability, the precision-recall pair is (%.4f, %.4f)' %
                      (meaningful_threshold_list[i], precision_list[i], recall_list[i]))
     if return_roc_results:
       fpr, tpr, thresholds = metrics.roc_curve(
-        np.concatenate((np.ones(len(self.train_risk_scores)),
-                        np.zeros(len(self.test_risk_scores)))),
-        np.concatenate((self.train_risk_scores, self.test_risk_scores)))
+        np.concatenate((np.ones(len(self.train_membership_probs)),
+                        np.zeros(len(self.test_membership_probs)))),
+        np.concatenate((self.train_membership_probs, self.test_membership_probs)))
       roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
-      summary.append('  thresholding on privacy risk score achieved an AUC of %.2f' %(roc_curve.get_auc()))
-      summary.append('  thresholding on privacy risk score achieved an advantage of %.2f' %(roc_curve.get_attacker_advantage()))
+      summary.append('  thresholding on membership probability achieved an AUC of %.2f' %(roc_curve.get_auc()))
+      summary.append('  thresholding on membership probability achieved an advantage of %.2f' %(roc_curve.get_attacker_advantage()))
     return summary
 
 
 @dataclass
-class RiskScoreResults:
-  """Privacy risk score results from multiple data slices.
+class MembershipProbabilityResults:
+  """Membership probability results from multiple data slices.
   """
 
-  risk_score_results: Iterable[SingleRiskScoreResult]
+  membership_prob_results: Iterable[SingleMembershipProbabilityResult]
     
   def summary(self, threshold_list):
-    """ return the summary of privacy risk score analysis on all given data slices
+    """ return the summary of membership probability analysis on all given data slices
     """
     summary = []
-    for single_result in self.risk_score_results:
+    for single_result in self.membership_prob_results:
       single_summary = single_result.collect_results(threshold_list)
       summary.extend(single_summary)
     return '\n'.join(summary)
