@@ -27,10 +27,12 @@ from tensorflow_privacy.privacy.membership_inference_attack import models
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import MembershipProbabilityResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
   PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleMembershipProbabilityResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_single_slice_specs
@@ -180,6 +182,96 @@ def run_attacks(attack_input: AttackInputData,
   return AttackResults(
       single_attack_results=attack_results,
       privacy_report_metadata=privacy_report_metadata)
+
+
+def _compute_membership_probability(
+    attack_input: AttackInputData,
+    num_bins: int = 15) -> SingleMembershipProbabilityResult:
+  """Computes each individual point's likelihood of being a member (denoted as privacy risk score in https://arxiv.org/abs/2003.10595).
+
+  For an individual sample, its privacy risk score is computed as the posterior
+  probability of being in the training set
+  after observing its prediction output by the target machine learning model.
+
+  Args:
+    attack_input: input data for compute membership probability
+    num_bins: the number of bins used to compute the training/test histogram
+
+  Returns:
+    membership probability results
+  """
+
+  # Uses the provided loss or entropy. Otherwise computes the loss.
+  if attack_input.loss_train is not None and attack_input.loss_test is not None:
+    train_values = attack_input.loss_train
+    test_values = attack_input.loss_test
+  elif attack_input.entropy_train is not None and attack_input.entropy_test is not None:
+    train_values = attack_input.entropy_train
+    test_values = attack_input.entropy_test
+  else:
+    train_values = attack_input.get_loss_train()
+    test_values = attack_input.get_loss_test()
+
+  # Compute the histogram in the log scale
+  small_value = 1e-10
+  train_values = np.maximum(train_values, small_value)
+  test_values = np.maximum(test_values, small_value)
+
+  min_value = min(train_values.min(), test_values.min())
+  max_value = max(train_values.max(), test_values.max())
+  bins_hist = np.logspace(
+      np.log10(min_value), np.log10(max_value), num_bins + 1)
+
+  train_hist, _ = np.histogram(train_values, bins=bins_hist)
+  train_hist = train_hist / (len(train_values) + 0.0)
+  train_hist_indices = np.fmin(
+      np.digitize(train_values, bins=bins_hist), num_bins) - 1
+
+  test_hist, _ = np.histogram(test_values, bins=bins_hist)
+  test_hist = test_hist / (len(test_values) + 0.0)
+  test_hist_indices = np.fmin(
+      np.digitize(test_values, bins=bins_hist), num_bins) - 1
+
+  combined_hist = train_hist + test_hist
+  combined_hist[combined_hist == 0] = small_value
+  membership_prob_list = train_hist / (combined_hist + 0.0)
+  train_membership_probs = membership_prob_list[train_hist_indices]
+  test_membership_probs = membership_prob_list[test_hist_indices]
+
+  return SingleMembershipProbabilityResult(
+      slice_spec=_get_slice_spec(attack_input),
+      train_membership_probs=train_membership_probs,
+      test_membership_probs=test_membership_probs)
+
+
+def run_membership_probability_analysis(
+    attack_input: AttackInputData,
+    slicing_spec: SlicingSpec = None) -> MembershipProbabilityResults:
+  """Perform membership probability analysis on all given slice types.
+
+  Args:
+    attack_input: input data for compute membership probabilities
+    slicing_spec: specifies attack_input slices
+
+  Returns:
+    the membership probability results.
+  """
+  attack_input.validate()
+  membership_prob_results = []
+
+  if slicing_spec is None:
+    slicing_spec = SlicingSpec(entire_dataset=True)
+  num_classes = None
+  if slicing_spec.by_class:
+    num_classes = attack_input.num_classes
+  input_slice_specs = get_single_slice_specs(slicing_spec, num_classes)
+  for single_slice_spec in input_slice_specs:
+    attack_input_slice = get_slice(attack_input, single_slice_spec)
+    membership_prob_results.append(
+        _compute_membership_probability(attack_input_slice))
+
+  return MembershipProbabilityResults(
+      membership_prob_results=membership_prob_results)
 
 
 def _compute_missing_privacy_report_metadata(

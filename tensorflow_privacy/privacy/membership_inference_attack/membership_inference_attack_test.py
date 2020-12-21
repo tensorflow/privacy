@@ -112,6 +112,17 @@ class RunAttacksTest(absltest.TestCase):
     # If accuracy is already present, simply return it.
     self.assertIsNone(mia._get_accuracy(None, labels))
 
+  def test_run_compute_membership_probability_correct_probs(self):
+    result = mia._compute_membership_probability(
+        AttackInputData(
+            loss_train=np.array([1, 1, 1, 10, 100]),
+            loss_test=np.array([10, 100, 100, 1000, 10000])))
+
+    np.testing.assert_almost_equal(
+        result.train_membership_probs, [1, 1, 1, 0.5, 0.33], decimal=2)
+    np.testing.assert_almost_equal(
+        result.test_membership_probs, [0.5, 0.33, 0.33, 0, 0], decimal=2)
+
 
 if __name__ == '__main__':
   absltest.main()
