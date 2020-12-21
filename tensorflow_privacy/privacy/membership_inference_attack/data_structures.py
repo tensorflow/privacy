@@ -425,7 +425,31 @@ class SingleAttackResult:
   slice_spec: SingleSliceSpec
 
   attack_type: AttackType
-  roc_curve: RocCurve  # for drawing and metrics calculation
+
+  # NOTE: roc_curve could theoretically be derived from membership scores.
+  # Currently, we store it explicitly since not all attack types support
+  # membership scores.
+  # TODO(b/175870479): Consider deriving ROC curve from the membership scores.
+
+  # ROC curve representing the accuracy of the attacker
+  roc_curve: RocCurve
+
+  # Membership score is some measure of confidence of this attacker that
+  # a particular sample is a member of the training set.
+  #
+  # This is NOT necessarily probability. The nature of this score depends on
+  # the type of attacker. Scores from different attacker types are not directly
+  # comparable, but can be compared in relative terms (e.g. considering order
+  # imposed by this measure).
+  #
+
+  # Membership scores for the training set samples. For a perfect attacker,
+  # all training samples will have higher scores than test samples.
+  membership_scores_train: np.ndarray = None
+
+  # Membership scores for the test set samples. For a perfect attacker, all
+  # test set samples will have lower scores than the training set samples.
+  membership_scores_test: np.ndarray = None
 
   def get_attacker_advantage(self):
     return self.roc_curve.get_attacker_advantage()

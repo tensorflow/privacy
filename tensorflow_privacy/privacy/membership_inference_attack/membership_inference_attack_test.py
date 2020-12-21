@@ -62,6 +62,20 @@ class RunAttacksTest(absltest.TestCase):
 
     self.assertEqual(result.attack_type, AttackType.THRESHOLD_ENTROPY_ATTACK)
 
+  def test_run_attack_threshold_sets_membership_scores(self):
+    result = mia._run_attack(
+        get_test_input(100, 50), AttackType.THRESHOLD_ATTACK)
+
+    self.assertLen(result.membership_scores_train, 100)
+    self.assertLen(result.membership_scores_test, 50)
+
+  def test_run_attack_threshold_entropy_sets_membership_scores(self):
+    result = mia._run_attack(
+        get_test_input(100, 50), AttackType.THRESHOLD_ENTROPY_ATTACK)
+
+    self.assertLen(result.membership_scores_train, 100)
+    self.assertLen(result.membership_scores_test, 50)
+
   def test_run_attack_threshold_calculates_correct_auc(self):
     result = mia._run_attack(
         AttackInputData(

@@ -76,6 +76,12 @@ def _run_trained_attack(attack_input: AttackInputData,
 
   roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
 
+  # NOTE: In the current setup we can't obtain membership scores for all
+  # samples, since some of them were used to train the attacker. This can be
+  # fixed by training several attackers to ensure each sample was left out
+  # in exactly one attacker (basically, this means performing cross-validation).
+  # TODO(b/175870479): Implement membership scores for predicted attackers.
+
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
       attack_type=attack_type,
@@ -94,6 +100,8 @@ def _run_threshold_attack(attack_input: AttackInputData):
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
       attack_type=AttackType.THRESHOLD_ATTACK,
+      membership_scores_train=-attack_input.get_loss_train(),
+      membership_scores_test=-attack_input.get_loss_test(),
       roc_curve=roc_curve)
 
 
@@ -109,6 +117,8 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
       attack_type=AttackType.THRESHOLD_ENTROPY_ATTACK,
+      membership_scores_train=-attack_input.get_entropy_train(),
+      membership_scores_test=-attack_input.get_entropy_test(),
       roc_curve=roc_curve)
 
 
