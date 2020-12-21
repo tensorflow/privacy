@@ -85,6 +85,11 @@ def _log_print(logx):
     return "exp({})".format(logx)
 
 
+def _log_comb(n, k):
+  return (special.gammaln(n + 1) -
+          special.gammaln(k + 1) - special.gammaln(n - k + 1))
+
+
 def _compute_log_a_int(q, sigma, alpha):
   """Compute log(A_alpha) for integer alpha. 0 < q < 1."""
   assert isinstance(alpha, six.integer_types)
@@ -94,8 +99,7 @@ def _compute_log_a_int(q, sigma, alpha):
 
   for i in range(alpha + 1):
     log_coef_i = (
-        math.log(special.binom(alpha, i)) + i * math.log(q) +
-        (alpha - i) * math.log(1 - q))
+        _log_comb(alpha, i) + i * math.log(q) + (alpha - i) * math.log(1 - q))
 
     s = log_coef_i + (i * i - i) / (2 * (sigma**2))
     log_a = _log_add(log_a, s)
