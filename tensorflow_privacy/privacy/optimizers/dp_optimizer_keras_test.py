@@ -22,6 +22,7 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
+from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras_vectorized
 
 
 class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
@@ -37,9 +38,18 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1,
        [-2.5, -2.5], [-0.5]),
-      ('DPAdam 2', dp_optimizer_keras.DPKerasAdamOptimizer, 2,
-       [-2.5, -2.5], [-0.5]),
+      ('DPAdam 2', dp_optimizer_keras.DPKerasAdamOptimizer, 2, [-2.5, -2.5
+                                                               ], [-0.5]),
       ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
+       [-2.5, -2.5], [-0.5]),
+      ('DPGradientDescentVectorized 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdamVectorized 2',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdagradVectorized 4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
        [-2.5, -2.5], [-0.5]),
   )
   def testBaselineWithCallableLoss(self, cls, num_microbatches, expected_grad0,
@@ -70,6 +80,15 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
                                                                ], [-0.5]),
       ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
        [-2.5, -2.5], [-0.5]),
+      ('DPGradientDescentVectorized 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdamVectorized 2',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdagradVectorized 4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
+       [-2.5, -2.5], [-0.5]),
   )
   def testBaselineWithTensorLoss(self, cls, num_microbatches, expected_grad0,
                                  expected_grad1):
@@ -94,7 +113,10 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
 
   @parameterized.named_parameters(
-      ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),)
+      ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),
+      ('DPGradientDescentVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),
+  )
   def testClippingNorm(self, cls):
     var0 = tf.Variable([0.0, 0.0])
     data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
@@ -115,6 +137,12 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
        4.0, 1),
       ('DPGradientDescent 4 1 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4.0,
        1.0, 4),
+      ('DPGradientDescentVectorized 2 4 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2.0, 4.0,
+       1),
+      ('DPGradientDescentVectorized 4 1 4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 4.0, 1.0,
+       4),
   )
   def testNoiseMultiplier(self, cls, l2_norm_clip, noise_multiplier,
                           num_microbatches):
@@ -138,7 +166,14 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),
       ('DPAdagrad', dp_optimizer_keras.DPKerasAdagradOptimizer),
-      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer))
+      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer),
+      ('DPGradientDescentVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),
+      ('DPAdagradVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer),
+      ('DPAdamVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer),
+  )
   def testAssertOnNoCallOfComputeGradients(self, cls):
     """Tests that assertion fails when DP gradients are not computed."""
     opt = cls(
@@ -202,7 +237,14 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
       ('DPGradientDescent 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
-      ('DPGradientDescent 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),)
+      ('DPGradientDescent 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
+      ('DPGradientDescentVectorized 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
+      ('DPGradientDescentVectorized 2',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2),
+      ('DPGradientDescentVectorized 4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 4),
+  )
   def testBaseline(self, cls, num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
@@ -233,7 +275,10 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
   # Parameters for testing: optimizer, num_microbatches.
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),)
+      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPGradientDescentVectorized 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
+  )
   def testClippingNorm(self, cls, num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
@@ -279,6 +324,15 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
        2.0, 4),
       ('DPGradientDescent 8 6 8', dp_optimizer_keras.DPKerasSGDOptimizer, 8.0,
        6.0, 8),
+      ('DPGradientDescentVectorized 2 4 1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2.0, 4.0,
+       1),
+      ('DPGradientDescentVectorized 3 2 4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 3.0, 2.0,
+       4),
+      ('DPGradientDescentVectorized 8 6 8',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 8.0, 6.0,
+       8),
   )
   def testNoiseMultiplier(self, cls, l2_norm_clip, noise_multiplier,
                           num_microbatches):
@@ -312,7 +366,14 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('DPGradientDescent', dp_optimizer_keras.DPKerasSGDOptimizer),
       ('DPAdagrad', dp_optimizer_keras.DPKerasAdagradOptimizer),
-      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer))
+      ('DPAdam', dp_optimizer_keras.DPKerasAdamOptimizer),
+      ('DPGradientDescentVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),
+      ('DPAdagradVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer),
+      ('DPAdamVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer),
+  )
   def testAssertOnNoCallOfGetGradients(self, cls):
     """Tests that assertion fails when DP gradients are not computed."""
     opt = cls(
