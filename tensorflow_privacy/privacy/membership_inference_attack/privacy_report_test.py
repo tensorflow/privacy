@@ -22,6 +22,7 @@ from tensorflow_privacy.privacy.membership_inference_attack import privacy_repor
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
   PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
@@ -41,7 +42,8 @@ class PrivacyReportTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])))
+            thresholds=np.array([0, 1, 2])),
+        data_size=DataSize(ntrain=1, ntest=1))
 
     # Classifier that achieves an AUC of 1.0.
     self.perfect_classifier_result = SingleAttackResult(
@@ -50,7 +52,8 @@ class PrivacyReportTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 1.0, 1.0]),
             fpr=np.array([1.0, 1.0, 0.0]),
-            thresholds=np.array([0, 1, 2])))
+            thresholds=np.array([0, 1, 2])),
+        data_size=DataSize(ntrain=1, ntest=1))
 
     self.results_epoch_0 = AttackResults(
         single_attack_results=[self.imperfect_classifier_result],

@@ -20,6 +20,7 @@ import numpy as np
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingFeature
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
@@ -122,6 +123,15 @@ class RunAttacksTest(absltest.TestCase):
         result.train_membership_probs, [1, 1, 1, 0.5, 0.33], decimal=2)
     np.testing.assert_almost_equal(
         result.test_membership_probs, [0.5, 0.33, 0.33, 0, 0], decimal=2)
+
+  def test_run_attack_data_size(self):
+    result = mia.run_attacks(
+        get_test_input(100, 80), SlicingSpec(by_class=True),
+        (AttackType.THRESHOLD_ATTACK,))
+    self.assertEqual(result.single_attack_results[0].data_size,
+                     DataSize(ntrain=100, ntest=80))
+    self.assertEqual(result.single_attack_results[3].data_size,
+                     DataSize(ntrain=20, ntest=16))
 
 
 if __name__ == '__main__':

@@ -24,6 +24,7 @@ from sklearn import neighbors
 from sklearn import neural_network
 
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 
 
 @dataclass
@@ -40,6 +41,8 @@ class AttackerData:
   features_test: np.ndarray = None
   # element-wise boolean array denoting if the example was part of training.
   is_training_labels_test: np.ndarray = None
+
+  data_size: DataSize = None
 
 
 def create_attacker_data(attack_input_data: AttackInputData,
@@ -72,11 +75,11 @@ def create_attacker_data(attack_input_data: AttackInputData,
                                                         min_size)
     attack_input_test = _sample_multidimensional_array(attack_input_test,
                                                        min_size)
+  ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
 
   features_all = np.concatenate((attack_input_train, attack_input_test))
 
-  labels_all = np.concatenate(
-      ((np.zeros(len(attack_input_train))), (np.ones(len(attack_input_test)))))
+  labels_all = np.concatenate(((np.zeros(ntrain)), (np.ones(ntest))))
 
   # Perform a train-test split
   features_train, features_test, \
@@ -84,7 +87,8 @@ def create_attacker_data(attack_input_data: AttackInputData,
     model_selection.train_test_split(
         features_all, labels_all, test_size=test_fraction, stratify=labels_all)
   return AttackerData(features_train, is_training_labels_train, features_test,
-                      is_training_labels_test)
+                      is_training_labels_test,
+                      DataSize(ntrain=ntrain, ntest=ntest))
 
 
 def _sample_multidimensional_array(array, size):

@@ -25,6 +25,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
@@ -200,7 +201,8 @@ class SingleAttackResultTest(absltest.TestCase):
     result = SingleAttackResult(
         roc_curve=roc,
         slice_spec=SingleSliceSpec(None),
-        attack_type=AttackType.THRESHOLD_ATTACK)
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        data_size=DataSize(ntrain=1, ntest=1))
 
     self.assertEqual(result.get_auc(), 0.5)
 
@@ -214,7 +216,8 @@ class SingleAttackResultTest(absltest.TestCase):
     result = SingleAttackResult(
         roc_curve=roc,
         slice_spec=SingleSliceSpec(None),
-        attack_type=AttackType.THRESHOLD_ATTACK)
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        data_size=DataSize(ntrain=1, ntest=1))
 
     self.assertEqual(result.get_attacker_advantage(), 0.0)
 
@@ -249,7 +252,8 @@ class AttackResultsCollectionTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])))
+            thresholds=np.array([0, 1, 2])),
+        data_size=DataSize(ntrain=1, ntest=1))
 
     self.results_epoch_10 = AttackResults(
         single_attack_results=[self.some_attack_result],
@@ -308,7 +312,8 @@ class AttackResultsTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 1.0, 1.0]),
             fpr=np.array([1.0, 1.0, 0.0]),
-            thresholds=np.array([0, 1, 2])))
+            thresholds=np.array([0, 1, 2])),
+        data_size=DataSize(ntrain=1, ntest=1))
 
     # ROC curve of a random classifier
     self.random_classifier_result = SingleAttackResult(
@@ -317,7 +322,8 @@ class AttackResultsTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])))
+            thresholds=np.array([0, 1, 2])),
+        data_size=DataSize(ntrain=1, ntest=1))
 
   def test_get_result_with_max_auc_first(self):
     results = AttackResults(
@@ -349,16 +355,20 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(
         results.summary(by_slices=True),
         'Best-performing attacks over all slices\n' +
-        '  THRESHOLD_ATTACK achieved an AUC of 1.00 ' +
-        'on slice CORRECTLY_CLASSIFIED=True\n' +
-        '  THRESHOLD_ATTACK achieved an advantage of 1.00 ' +
-        'on slice CORRECTLY_CLASSIFIED=True\n\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n\n' +
         'Best-performing attacks over slice: "CORRECTLY_CLASSIFIED=True"\n' +
-        '  THRESHOLD_ATTACK achieved an AUC of 1.00\n' +
-        '  THRESHOLD_ATTACK achieved an advantage of 1.00\n\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' AUC of 1.00\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' advantage of 1.00\n\n' +
         'Best-performing attacks over slice: "Entire dataset"\n' +
-        '  THRESHOLD_ATTACK achieved an AUC of 0.50\n' +
-        '  THRESHOLD_ATTACK achieved an advantage of 0.00')
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' AUC of 0.50\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' advantage of 0.00')
 
   def test_summary_without_slices(self):
     results = AttackResults(
@@ -366,10 +376,10 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(
         results.summary(by_slices=False),
         'Best-performing attacks over all slices\n' +
-        '  THRESHOLD_ATTACK achieved an AUC of 1.00 ' +
-        'on slice CORRECTLY_CLASSIFIED=True\n' +
-        '  THRESHOLD_ATTACK achieved an advantage of 1.00 ' +
-        'on slice CORRECTLY_CLASSIFIED=True')
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True')
 
   def test_save_load(self):
     results = AttackResults(
@@ -391,6 +401,8 @@ class AttackResultsTest(absltest.TestCase):
     df_expected = pd.DataFrame({
         'slice feature': ['correctly_classified', 'Entire dataset'],
         'slice value': ['True', ''],
+        'train size': [1, 1],
+        'test size': [1, 1],
         'attack type': ['THRESHOLD_ATTACK', 'THRESHOLD_ATTACK'],
         'Attacker advantage': [1.0, 0.0],
         'AUC': [1.0, 0.5]

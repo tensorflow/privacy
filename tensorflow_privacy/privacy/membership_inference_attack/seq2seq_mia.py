@@ -31,6 +31,7 @@ import tensorflow as tf
 from tensorflow_privacy.privacy.membership_inference_attack import models
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
@@ -293,12 +294,12 @@ def create_seq2seq_attacker_data(
                                                        min_size)
 
   features_all = np.concatenate((attack_input_train, attack_input_test))
+  ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
 
   # Reshape for classifying one-dimensional features
   features_all = features_all.reshape(-1, 1)
 
-  labels_all = np.concatenate(
-      ((np.zeros(len(attack_input_train))), (np.ones(len(attack_input_test)))))
+  labels_all = np.concatenate(((np.zeros(ntrain)), (np.ones(ntest))))
 
   # Perform a train-test split
   features_train, features_test, \
@@ -313,7 +314,8 @@ def create_seq2seq_attacker_data(
   privacy_report_metadata.accuracy_test = accuracy_test
 
   return AttackerData(features_train, is_training_labels_train, features_test,
-                      is_training_labels_test)
+                      is_training_labels_test,
+                      DataSize(ntrain=ntrain, ntest=ntest))
 
 
 def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
@@ -362,7 +364,8 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
       SingleAttackResult(
           slice_spec=SingleSliceSpec(),
           attack_type=AttackType.LOGISTIC_REGRESSION,
-          roc_curve=roc_curve)
+          roc_curve=roc_curve,
+          data_size=prepared_attacker_data.data_size)
   ]
 
   return AttackResults(

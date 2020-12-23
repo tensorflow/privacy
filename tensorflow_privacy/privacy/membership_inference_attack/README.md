@@ -57,8 +57,8 @@ Then, we can view the attack results by:
 print(attacks_result.summary())
 # Example output:
 # -> Best-performing attacks over all slices
-#      THRESHOLD_ATTACK achieved an AUC of 0.60 on slice Entire dataset
-#      THRESHOLD_ATTACK achieved an advantage of 0.22 on slice Entire dataset
+#      THRESHOLD_ATTACK (with 50000 training and 10000 test examples) achieved an AUC of 0.59 on slice Entire dataset
+#      THRESHOLD_ATTACK (with 50000 training and 10000 test examples) achieved an advantage of 0.20 on slice Entire dataset
 ```
 
 ### Advanced usage / Other codelabs

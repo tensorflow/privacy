@@ -14,12 +14,12 @@
 
 # Lint as: python3
 """Data structures representing attack inputs, configuration, outputs."""
+import collections
 import enum
 import glob
 import os
 import pickle
 from typing import Any, Iterable, Union
-
 from dataclasses import dataclass
 import numpy as np
 import pandas as pd
@@ -417,6 +417,10 @@ class RocCurve:
     ])
 
 
+# (no. of training examples, no. of test examples) for the test.
+DataSize = collections.namedtuple('DataSize', 'ntrain ntest')
+
+
 @dataclass
 class SingleAttackResult:
   """Results from running a single attack."""
@@ -424,6 +428,8 @@ class SingleAttackResult:
   # Data slice this result was calculated for.
   slice_spec: SingleSliceSpec
 
+  # (no. of training examples, no. of test examples) for the test.
+  data_size: DataSize
   attack_type: AttackType
 
   # NOTE: roc_curve could theoretically be derived from membership scores.
@@ -462,6 +468,8 @@ class SingleAttackResult:
     return '\n'.join([
         'SingleAttackResult(',
         '  SliceSpec: %s' % str(self.slice_spec),
+        '  DataSize: (ntrain=%d, ntest=%d)' % (self.data_size.ntrain,
+                                               self.data_size.ntest),
         '  AttackType: %s' % str(self.attack_type),
         '  AUC: %.2f' % self.get_auc(),
         '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
@@ -593,6 +601,8 @@ class AttackResultsDFColumns(enum.Enum):
   """Columns for the Pandas DataFrame that stores AttackResults metrics."""
   SLICE_FEATURE = 'slice feature'
   SLICE_VALUE = 'slice value'
+  DATA_SIZE_TRAIN = 'train size'
+  DATA_SIZE_TEST = 'test size'
   ATTACK_TYPE = 'attack type'
 
   def __str__(self):
@@ -611,6 +621,8 @@ class AttackResults:
     """Returns all metrics as a Pandas DataFrame."""
     slice_features = []
     slice_values = []
+    data_size_train = []
+    data_size_test = []
     attack_types = []
     advantages = []
     aucs = []
@@ -623,6 +635,8 @@ class AttackResults:
         slice_feature, slice_value = slice_spec.feature.value, slice_spec.value
       slice_features.append(str(slice_feature))
       slice_values.append(str(slice_value))
+      data_size_train.append(attack_result.data_size.ntrain)
+      data_size_test.append(attack_result.data_size.ntest)
       attack_types.append(str(attack_result.attack_type))
       advantages.append(float(attack_result.get_attacker_advantage()))
       aucs.append(float(attack_result.get_auc()))
@@ -630,6 +644,8 @@ class AttackResults:
     df = pd.DataFrame({
         str(AttackResultsDFColumns.SLICE_FEATURE): slice_features,
         str(AttackResultsDFColumns.SLICE_VALUE): slice_values,
+        str(AttackResultsDFColumns.DATA_SIZE_TRAIN): data_size_train,
+        str(AttackResultsDFColumns.DATA_SIZE_TEST): data_size_test,
         str(AttackResultsDFColumns.ATTACK_TYPE): attack_types,
         str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
         str(PrivacyMetric.AUC): aucs
@@ -653,30 +669,43 @@ class AttackResults:
     max_auc_result_all = self.get_result_with_max_attacker_advantage()
     summary.append('Best-performing attacks over all slices')
     summary.append(
-        '  %s achieved an AUC of %.2f on slice %s' %
-        (max_auc_result_all.attack_type, max_auc_result_all.get_auc(),
-         max_auc_result_all.slice_spec))
+        '  %s (with %d training and %d test examples) achieved an AUC of %.2f on slice %s'
+        % (max_auc_result_all.attack_type,
+           max_auc_result_all.data_size.ntrain,
+           max_auc_result_all.data_size.ntest,
+           max_auc_result_all.get_auc(),
+           max_auc_result_all.slice_spec))
 
     max_advantage_result_all = self.get_result_with_max_attacker_advantage()
-    summary.append('  %s achieved an advantage of %.2f on slice %s' %
-                   (max_advantage_result_all.attack_type,
-                    max_advantage_result_all.get_attacker_advantage(),
-                    max_advantage_result_all.slice_spec))
+    summary.append(
+        '  %s (with %d training and %d test examples) achieved an advantage of %.2f on slice %s'
+        % (max_advantage_result_all.attack_type,
+           max_advantage_result_all.data_size.ntrain,
+           max_advantage_result_all.data_size.ntest,
+           max_advantage_result_all.get_attacker_advantage(),
+           max_advantage_result_all.slice_spec))
 
     slice_dict = self._group_results_by_slice()
 
-    if len(slice_dict.keys()) > 1 and by_slices:
+    if by_slices and len(slice_dict.keys()) > 1:
       for slice_str in slice_dict:
         results = slice_dict[slice_str]
         summary.append('\nBest-performing attacks over slice: \"%s\"' %
                        slice_str)
         max_auc_result = results.get_result_with_max_auc()
-        summary.append('  %s achieved an AUC of %.2f' %
-                       (max_auc_result.attack_type, max_auc_result.get_auc()))
+        summary.append(
+            '  %s (with %d training and %d test examples) achieved an AUC of %.2f'
+            % (max_auc_result.attack_type,
+               max_auc_result.data_size.ntrain,
+               max_auc_result.data_size.ntest,
+               max_auc_result.get_auc()))
         max_advantage_result = results.get_result_with_max_attacker_advantage()
-        summary.append('  %s achieved an advantage of %.2f' %
-                       (max_advantage_result.attack_type,
-                        max_advantage_result.get_attacker_advantage()))
+        summary.append(
+            '  %s (with %d training and %d test examples) achieved an advantage of %.2f'
+            % (max_advantage_result.attack_type,
+               max_advantage_result.data_size.ntrain,
+               max_auc_result.data_size.ntest,
+               max_advantage_result.get_attacker_advantage()))
 
     return '\n'.join(summary)
 

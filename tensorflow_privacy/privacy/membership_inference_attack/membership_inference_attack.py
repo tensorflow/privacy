@@ -27,6 +27,7 @@ from tensorflow_privacy.privacy.membership_inference_attack import models
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import MembershipProbabilityResults
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
   PrivacyReportMetadata
@@ -86,14 +87,15 @@ def _run_trained_attack(attack_input: AttackInputData,
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
+      data_size=prepared_attacker_data.data_size,
       attack_type=attack_type,
       roc_curve=roc_curve)
 
 
 def _run_threshold_attack(attack_input: AttackInputData):
+  ntrain, ntest = attack_input.get_train_size(), attack_input.get_test_size()
   fpr, tpr, thresholds = metrics.roc_curve(
-      np.concatenate((np.zeros(attack_input.get_train_size()),
-                      np.ones(attack_input.get_test_size()))),
+      np.concatenate((np.zeros(ntrain), np.ones(ntest))),
       np.concatenate(
           (attack_input.get_loss_train(), attack_input.get_loss_test())))
 
@@ -101,6 +103,7 @@ def _run_threshold_attack(attack_input: AttackInputData):
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
+      data_size=DataSize(ntrain=ntrain, ntest=ntest),
       attack_type=AttackType.THRESHOLD_ATTACK,
       membership_scores_train=-attack_input.get_loss_train(),
       membership_scores_test=-attack_input.get_loss_test(),
@@ -108,9 +111,9 @@ def _run_threshold_attack(attack_input: AttackInputData):
 
 
 def _run_threshold_entropy_attack(attack_input: AttackInputData):
+  ntrain, ntest = attack_input.get_train_size(), attack_input.get_test_size()
   fpr, tpr, thresholds = metrics.roc_curve(
-      np.concatenate((np.zeros(attack_input.get_train_size()),
-                      np.ones(attack_input.get_test_size()))),
+      np.concatenate((np.zeros(ntrain), np.ones(ntest))),
       np.concatenate(
           (attack_input.get_entropy_train(), attack_input.get_entropy_test())))
 
@@ -118,6 +121,7 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
+      data_size=DataSize(ntrain=ntrain, ntest=ntest),
       attack_type=AttackType.THRESHOLD_ENTROPY_ATTACK,
       membership_scores_train=-attack_input.get_entropy_train(),
       membership_scores_test=-attack_input.get_entropy_test(),
@@ -126,8 +130,27 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
 
 def _run_attack(attack_input: AttackInputData,
                 attack_type: AttackType,
-                balance_attacker_training: bool = True):
+                balance_attacker_training: bool = True,
+                min_num_samples: int = 1):
+  """Runs membership inference attacks for specified input and type.
+
+  Args:
+    attack_input: input data for running an attack
+    attack_type: the attack to run
+    balance_attacker_training: Whether the training and test sets for the
+          membership inference attacker should have a balanced (roughly equal)
+          number of samples from the training and test sets used to develop
+          the model under attack.
+    min_num_samples: minimum number of examples in either training or test data.
+
+  Returns:
+    the attack result.
+  """
   attack_input.validate()
+  if min(attack_input.get_train_size(),
+         attack_input.get_test_size()) < min_num_samples:
+    return None
+
   if attack_type.is_trained_attack:
     return _run_trained_attack(attack_input, attack_type,
                                balance_attacker_training)
@@ -141,7 +164,8 @@ def run_attacks(attack_input: AttackInputData,
                 attack_types: Iterable[AttackType] = (
                     AttackType.THRESHOLD_ATTACK,),
                 privacy_report_metadata: PrivacyReportMetadata = None,
-                balance_attacker_training: bool = True) -> AttackResults:
+                balance_attacker_training: bool = True,
+                min_num_samples: int = 1) -> AttackResults:
   """Runs membership inference attacks on a classification model.
 
   It runs attacks specified by attack_types on each attack_input slice which is
@@ -156,6 +180,7 @@ def run_attacks(attack_input: AttackInputData,
           membership inference attacker should have a balanced (roughly equal)
           number of samples from the training and test sets used to develop
           the model under attack.
+    min_num_samples: minimum number of examples in either training or test data.
 
   Returns:
     the attack result.
@@ -172,9 +197,11 @@ def run_attacks(attack_input: AttackInputData,
   for single_slice_spec in input_slice_specs:
     attack_input_slice = get_slice(attack_input, single_slice_spec)
     for attack_type in attack_types:
-      attack_results.append(
-          _run_attack(attack_input_slice, attack_type,
-                      balance_attacker_training))
+      attack_result = _run_attack(attack_input_slice, attack_type,
+                                  balance_attacker_training,
+                                  min_num_samples)
+      if attack_result is not None:
+        attack_results.append(attack_result)
 
   privacy_report_metadata = _compute_missing_privacy_report_metadata(
       privacy_report_metadata, attack_input)
