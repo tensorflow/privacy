@@ -9,6 +9,16 @@ The TensorFlow Privacy library is under continual development, always welcoming
 contributions. In particular, we always welcome help towards resolving the
 issues currently open.
 
+## Latest Updates
+
+2020-12-21: A new
+[vectorized version of the TF 2 optimizer](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/optimizers/dp_optimizer_keras_vectorized.py)
+is available, which can deliver much faster performance. We recommend trying it
+first, and to fall back to using the original non-vectorized version only if
+this fails. We are thankful to the
+[authors of this paper](https://arxiv.org/abs/2010.09063) for spurring this
+change.
+
 ## Setting up TensorFlow Privacy
 
 ### Dependencies
