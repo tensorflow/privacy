@@ -102,7 +102,7 @@ def main(unused_argv):
   x_train, y_train, x_test, y_test = load_cifar10()
 
   # Instantiate the tf.Estimator.
-  mnist_classifier = tf.estimator.Estimator(
+  classifier = tf.estimator.Estimator(
       model_fn=small_cnn_fn, model_dir=FLAGS.model_dir)
 
   # A function to construct input_fn given (data, label), to be used by the
@@ -112,7 +112,7 @@ def main(unused_argv):
 
   # Get hook for membership inference attack.
   mia_hook = MembershipInferenceTrainingHook(
-      mnist_classifier,
+      classifier,
       (x_train, y_train),
       (x_test, y_test),
       input_fn_constructor,
@@ -133,20 +133,20 @@ def main(unused_argv):
       x={'x': x_test}, y=y_test, num_epochs=1, shuffle=False)
 
   # Training loop.
-  steps_per_epoch = 60000 // FLAGS.batch_size
+  steps_per_epoch = 50000 // FLAGS.batch_size
   for epoch in range(1, FLAGS.epochs + 1):
     # Train the model, with the membership inference hook.
-    mnist_classifier.train(
+    classifier.train(
         input_fn=train_input_fn, steps=steps_per_epoch, hooks=[mia_hook])
 
     # Evaluate the model and print results
-    eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
+    eval_results = classifier.evaluate(input_fn=eval_input_fn)
     test_accuracy = eval_results['accuracy']
     print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
 
   print('End of training attack')
   attack_results = run_attack_on_tf_estimator_model(
-      mnist_classifier, (x_train, y_train), (x_test, y_test),
+      classifier, (x_train, y_train), (x_test, y_test),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
       attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]

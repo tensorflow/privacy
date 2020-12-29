@@ -19,7 +19,7 @@ import os
 from typing import Iterable
 from absl import logging
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
@@ -27,7 +27,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.membership_inference_attack.utils import log_loss
-from tensorflow_privacy.privacy.membership_inference_attack.utils_tensorboard import write_results_to_tensorboard
+from tensorflow_privacy.privacy.membership_inference_attack.utils_tensorboard import write_results_to_tensorboard_tf2 as write_results_to_tensorboard
 
 
 def calculate_losses(model, data, labels):
@@ -76,14 +76,12 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
     if tensorboard_dir:
       if tensorboard_merge_classifiers:
         self._writers = {}
-        with tf.Graph().as_default():
-          for attack_type in attack_types:
-            self._writers[attack_type.name] = tf.summary.FileWriter(
-                os.path.join(tensorboard_dir, 'MI', attack_type.name))
+        for attack_type in attack_types:
+          self._writers[attack_type.name] = tf.summary.create_file_writer(
+              os.path.join(tensorboard_dir, 'MI', attack_type.name))
       else:
-        with tf.Graph().as_default():
-          self._writers = tf.summary.FileWriter(
-              os.path.join(tensorboard_dir, 'MI'))
+        self._writers = tf.summary.create_file_writer(
+            os.path.join(tensorboard_dir, 'MI'))
       logging.info('Will write to tensorboard.')
     else:
       self._writers = None
