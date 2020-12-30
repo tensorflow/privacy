@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import math
 import sys
 
 from absl.testing import absltest
@@ -130,19 +131,36 @@ class TestGaussianMoments(parameterized.TestCase):
 
   def test_get_privacy_spent_check_target_delta(self):
     orders = range(2, 33)
-    rdp = rdp_accountant.compute_rdp(0.01, 4, 10000, orders)
+    rdp = [1.1 for o in orders]  # Constant corresponds to pure DP.
     eps, _, opt_order = rdp_accountant.get_privacy_spent(
         orders, rdp, target_delta=1e-5)
-    self.assertAlmostEqual(eps, 1.258575, places=5)
-    self.assertEqual(opt_order, 20)
+    # Since rdp is constant, it should always pick the largest order.
+    self.assertEqual(opt_order, 32)
+    # Knowing the optimal order, we can calculate eps by hand.
+    self.assertAlmostEqual(eps, 1.32783806176)
+
+    # Second test for Gaussian noise (with no subsampling):
+    orders = [0.001*i for i in range(1000, 100000)]  # Pick fine set of orders.
+    rdp = rdp_accountant.compute_rdp(1, 4.530877117, 1, orders)
+    # Scale is chosen to obtain exactly (1,1e-6)-DP.
+    eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-6)
+    self.assertAlmostEqual(eps, 1)
 
   def test_get_privacy_spent_check_target_eps(self):
     orders = range(2, 33)
-    rdp = rdp_accountant.compute_rdp(0.01, 4, 10000, orders)
+    rdp = [1.1 for o in orders]  # Constant corresponds to pure DP.
     _, delta, opt_order = rdp_accountant.get_privacy_spent(
-        orders, rdp, target_eps=1.258575)
+        orders, rdp, target_eps=1.32783806176)
+    # Since rdp is constant, it should always pick the largest order.
+    self.assertEqual(opt_order, 32)
     self.assertAlmostEqual(delta, 1e-5)
-    self.assertEqual(opt_order, 20)
+
+    # Second test for Gaussian noise (with no subsampling):
+    orders = [0.001*i for i in range(1000, 100000)]  # Pick fine set of order.
+    rdp = rdp_accountant.compute_rdp(1, 4.530877117, 1, orders)
+    # Scale is chosen to obtain exactly (1,1e-6)-DP.
+    _, delta, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_eps=1)
+    self.assertAlmostEqual(delta, 1e-6)
 
   def test_check_composition(self):
     orders = (1.25, 1.5, 1.75, 2., 2.5, 3., 4., 5., 6., 7., 8., 10., 12., 14.,
@@ -153,17 +171,59 @@ class TestGaussianMoments(parameterized.TestCase):
                                      steps=40000,
                                      orders=orders)
 
-    eps, _, opt_order = rdp_accountant.get_privacy_spent(orders, rdp,
-                                                         target_delta=1e-6)
+    eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-6)
 
     rdp += rdp_accountant.compute_rdp(q=0.1,
                                       noise_multiplier=2,
                                       steps=100,
                                       orders=orders)
-    eps, _, opt_order = rdp_accountant.get_privacy_spent(orders, rdp,
-                                                         target_delta=1e-5)
-    self.assertAlmostEqual(eps, 8.509656, places=5)
-    self.assertEqual(opt_order, 2.5)
+    eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-5)
+    # These tests use the old RDP -> approx DP conversion
+    # self.assertAlmostEqual(eps, 8.509656, places=5)
+    # self.assertEqual(opt_order, 2.5)
+    # But these still provide an upper bound
+    self.assertLessEqual(eps, 8.509656)
+
+  def test_get_privacy_spent_consistency(self):
+    orders = range(2, 50)  # Large range of orders (helps test for overflows).
+    for q in [0.01, 0.1, 0.8, 1.]:  # Different subsampling rates.
+      for multiplier in [0.1, 1., 3., 10., 100.]:  # Different noise scales.
+        rdp = rdp_accountant.compute_rdp(q, multiplier, 1, orders)
+        for delta in [.9, .5, .1, .01, 1e-3, 1e-4, 1e-5, 1e-6, 1e-9, 1e-12]:
+          eps1, delta1, ord1 = rdp_accountant.get_privacy_spent(
+              orders, rdp, target_delta=delta)
+          eps2, delta2, ord2 = rdp_accountant.get_privacy_spent(
+              orders, rdp, target_eps=eps1)
+          self.assertEqual(delta1, delta)
+          self.assertEqual(eps2, eps1)
+          if eps1 != 0:
+            self.assertEqual(ord1, ord2)
+            self.assertAlmostEqual(delta, delta2)
+          else:  # This is a degenerate case; we won't have consistency.
+            self.assertLessEqual(delta2, delta)
+
+  def test_get_privacy_spent_gaussian(self):
+    # Compare the optimal bound for Gaussian with the one derived from RDP.
+    # Also compare the RDP upper bound with the "standard" upper bound.
+    orders = [0.1*x for x in range(10, 505)]
+    eps_vec = [0.1*x for x in range(500)]
+    rdp = rdp_accountant.compute_rdp(1, 1, 1, orders)
+    for eps in eps_vec:
+      _, delta, _ = rdp_accountant.get_privacy_spent(orders, rdp,
+                                                     target_eps=eps)
+      # For comparison, we compute the optimal guarantee for Gaussian
+      # using https://arxiv.org/abs/1805.06530 Theorem 8 (in v2).
+      delta0 = math.erfc((eps-.5)/math.sqrt(2))/2
+      delta0 = delta0 - math.exp(eps)*math.erfc((eps+.5)/math.sqrt(2))/2
+      self.assertLessEqual(delta0, delta+1e-300)  # need tolerance 10^-300
+
+      # Compute the "standard" upper bound, which should be an upper bound.
+      # Note, if orders is too sparse, this will NOT be an upper bound.
+      if eps >= 0.5:
+        delta1 = math.exp(-0.5*(eps-0.5)**2)
+      else:
+        delta1 = 1
+      self.assertLessEqual(delta, delta1+1e-300)
 
   def test_compute_rdp_from_ledger(self):
     orders = range(2, 33)

@@ -188,12 +188,34 @@ def _compute_delta(orders, rdp, eps):
   orders_vec = np.atleast_1d(orders)
   rdp_vec = np.atleast_1d(rdp)
 
+  if eps < 0:
+    raise ValueError("Value of privacy loss bound epsilon must be >=0.")
   if len(orders_vec) != len(rdp_vec):
     raise ValueError("Input lists must have the same length.")
 
-  deltas = np.exp((rdp_vec - eps) * (orders_vec - 1))
-  idx_opt = np.argmin(deltas)
-  return min(deltas[idx_opt], 1.), orders_vec[idx_opt]
+  # Basic bound (see https://arxiv.org/abs/1702.07476 Proposition 3 in v3):
+  #   delta = min( np.exp((rdp_vec - eps) * (orders_vec - 1)) )
+
+  # Improved bound from https://arxiv.org/abs/2004.00010 Proposition 12 (in v4):
+  logdeltas = []  # work in log space to avoid overflows
+  for (a, r) in zip(orders_vec, rdp_vec):
+    if a < 1: raise ValueError("Renyi divergence order must be >=1.")
+    if r < 0: raise ValueError("Renyi divergence must be >=0.")
+    # For small alpha, we are better of with bound via KL divergence:
+    # delta <= sqrt(1-exp(-KL)).
+    # Take a min of the two bounds.
+    logdelta = 0.5*math.log1p(-math.exp(-r))
+    if a > 1.01:
+      # This bound is not numerically stable as alpha->1.
+      # Thus we have a min value for alpha.
+      # The bound is also not useful for small alpha, so doesn't matter.
+      rdp_bound = (a - 1) * (r - eps + math.log1p(-1/a)) - math.log(a)
+      logdelta = min(logdelta, rdp_bound)
+
+    logdeltas.append(logdelta)
+
+  idx_opt = np.argmin(logdeltas)
+  return min(math.exp(logdeltas[idx_opt]), 1.), orders_vec[idx_opt]
 
 
 def _compute_eps(orders, rdp, delta):
@@ -214,13 +236,37 @@ def _compute_eps(orders, rdp, delta):
   orders_vec = np.atleast_1d(orders)
   rdp_vec = np.atleast_1d(rdp)
 
+  if delta <= 0:
+    raise ValueError("Privacy failure probability bound delta must be >0.")
   if len(orders_vec) != len(rdp_vec):
     raise ValueError("Input lists must have the same length.")
 
-  eps = rdp_vec - math.log(delta) / (orders_vec - 1)
+  # Basic bound (see https://arxiv.org/abs/1702.07476 Proposition 3 in v3):
+  #   eps = min( rdp_vec - math.log(delta) / (orders_vec - 1) )
 
-  idx_opt = np.nanargmin(eps)  # Ignore NaNs
-  return eps[idx_opt], orders_vec[idx_opt]
+  # Improved bound from https://arxiv.org/abs/2004.00010 Proposition 12 (in v4).
+  # Also appears in https://arxiv.org/abs/2001.05990 Equation 20 (in v1).
+  eps_vec = []
+  for (a, r) in zip(orders_vec, rdp_vec):
+    if a < 1: raise ValueError("Renyi divergence order must be >=1.")
+    if r < 0: raise ValueError("Renyi divergence must be >=0.")
+
+    if delta**2 + math.expm1(-r) >= 0:
+      # In this case, we can simply bound via KL divergence:
+      # delta <= sqrt(1-exp(-KL)).
+      eps = 0  # No need to try further computation if we have eps = 0.
+    elif a > 1.01:
+      # This bound is not numerically stable as alpha->1.
+      # Thus we have a min value of alpha.
+      # The bound is also not useful for small alpha, so doesn't matter.
+      eps = r + math.log1p(-1/a) - math.log(delta * a) / (a - 1)
+    else:
+      # In this case we can't do anything. E.g., asking for delta = 0.
+      eps = np.inf
+    eps_vec.append(eps)
+
+  idx_opt = np.argmin(eps_vec)
+  return max(0, eps_vec[idx_opt]), orders_vec[idx_opt]
 
 
 def _compute_rdp(q, sigma, alpha):
