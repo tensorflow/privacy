@@ -27,7 +27,7 @@ def make_dp_model_class(cls):
         noise = tf.random.normal(
             tf.shape(input=summed_grads), stddev=noise_stddev)
         noised_grads = summed_grads + noise
-        return noised_grads / tf.cast(stacked_grads.shape[0], noised_grads.dtype)
+        return noised_grads / tf.cast(stacked_grads.shape[0], tf.float32)
 
     def compute_per_example_grads(self, data):
         x, y = data
@@ -35,23 +35,24 @@ def make_dp_model_class(cls):
             # We need to add the extra dimension to x and y because model
             # expects batched input.
             y_pred = self(x[None], training=True)
-            loss = self.compiled_loss(y[None], y_pred, 
+            loss = self.compiled_loss(y[None], y_pred,
                                       regularization_losses=self.losses)
-        
+
         grads_list = tape.gradient(loss, self.trainable_variables)
         clipped_grads = self.process_per_example_grads(grads_list)
         return tf.squeeze(y_pred, axis=0), loss, clipped_grads
-    
+
     def train_step(self, data):
         x, y = data
         y_pred, per_eg_loss, per_eg_grads = tf.vectorized_map(
             self.compute_per_example_grads, data)
         loss = tf.reduce_mean(per_eg_loss, axis=0)
-        grads = tf.nest.map_structure(self.reduce_per_example_grads, per_eg_grads)
+        grads = tf.nest.map_structure(
+            self.reduce_per_example_grads, per_eg_grads)
         self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
         self.compiled_metrics.update_state(y, y_pred)
         return {m.name: m.result() for m in self.metrics}
-  
+
   return DPModelClass
 
 
