@@ -1,3 +1,7 @@
+'''
+Keras Model for vectorized dpsgd with XLA acceleration
+'''
+
 import tensorflow as tf
 
 
