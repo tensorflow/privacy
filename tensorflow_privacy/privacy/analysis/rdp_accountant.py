@@ -193,30 +193,126 @@ def _compute_delta(orders, rdp, eps):
 
 
 def _compute_eps(orders, rdp, delta):
-  """Compute epsilon given a list of RDP values and target delta.
-
-  Args:
+    """Compute epsilon given a list of RDP values and target delta using method by Asoodeh et. al'2020.
+    (see Lemma 1 in https://arxiv.org/pdf/2008.06529.pdf)
+    Args:
     orders: An array (or a scalar) of orders.
     rdp: A list (or a scalar) of RDP guarantees.
     delta: The target delta.
-
-  Returns:
+    Returns:
     Pair of (eps, optimal_order).
-
-  Raises:
+    Raises:
     ValueError: If input is malformed.
+    """
+    orders_vec = np.atleast_1d(orders)
+    rdp_vec = np.atleast_1d(rdp)  
+    
+    if len(orders_vec) != len(rdp_vec):
+        raise ValueError("Input lists must have the same length.")
+    if delta == 0:
+        raise ValueError("delta must be positive.")
+    alpha_max = np.max(orders_vec)
+    if alpha_max < 1/delta:
+        [eps_bound1, opt_order1] = g_bound(orders_vec, rdp_vec, delta)
+        [eps_bound2, opt_order2] = f_bound(orders_vec, rdp_vec, delta)
+        # return minimum of f and g bounds in Lemma 1
+        if eps_bound1 > eps_bound2:
+            opt_order = opt_order2
+            eps =  eps_bound2
+        else:
+            opt_order = opt_order1
+            eps =  eps_bound1  
+    else:      
+        mask1 = orders_vec < (1/delta)
+        mask2 = orders_vec >= (1/delta)
+        orders_vec1 = orders_vec[mask1]
+        orders_vec2 = orders_vec[mask2]
+        rdp_vec1 = rdp_vec[mask1]
+        rdp_vec2 = rdp_vec[mask2]
+        [eps_bound11, opt_order11] = g_bound(orders_vec1, rdp_vec1, delta)
+        [eps_bound12, opt_order12] = f_bound(orders_vec1, rdp_vec1, delta)
+        [eps_bound2, idx] = h_bound(rdp_vec2, delta)
+        opt_order2 = orders_vec2[idx]
+        eps = np.min([eps_bound11, eps_bound12, eps_bound2])
+        if eps == eps_bound11:
+            opt_order = opt_order11
+        elif  eps == eps_bound12:
+            opt_order = opt_order12
+        else: 
+            opt_order = opt_order2
+    return eps, opt_order
+    
+   
+def f_bound(orders, rdp, delta):
+    """Compute f_bound in ALCKS'2020.
+    Args:
+    orders: An array (or a scalar) of orders.
+    rdp: A list (or a scalar) of RDP guarantees.
+    delta: The target delta.
+    Returns:
+    Pair of (eps, optimal_order).
+    Raises:
+    ValueError: If input is malformed.
+    """    
+    orders_vec = np.atleast_1d(orders)
+    rdp_vec = np.atleast_1d(rdp)  
+    
+    if len(orders_vec) != len(rdp_vec):
+        raise ValueError("Input lists must have the same length.")
+    
+    part1 = _log1mexp((orders_vec - 1)*rdp_vec-np.log1p(-delta*orders_vec))
+    
+    eps_bound = rdp_vec + (part1-np.log(delta*orders_vec)) / (orders_vec - 1)
+    
+    idx_opt_bound = np.nanargmin(eps_bound)
+    
+    return np.max([0,eps_bound[idx_opt_bound]]), orders_vec[idx_opt_bound]
 
-  """
-  orders_vec = np.atleast_1d(orders)
-  rdp_vec = np.atleast_1d(rdp)
 
-  if len(orders_vec) != len(rdp_vec):
-    raise ValueError("Input lists must have the same length.")
+def g_bound(orders, rdp, delta):
+    """Compute g_bound in ALCKS'2020.
+    Args:
+    orders: An array (or a scalar) of orders.
+    rdp: A list (or a scalar) of RDP guarantees.
+    delta: The target delta.
+    Returns:
+    Pair of (eps, optimal_order).
+    Raises:
+    ValueError: If input is malformed.
+    """    
 
-  eps = rdp_vec - math.log(delta) / (orders_vec - 1)
+    orders_vec = np.atleast_1d(orders)
+    rdp_vec = np.atleast_1d(rdp)  
+    
+    if len(orders_vec) != len(rdp_vec):
+        raise ValueError("Input lists must have the same length.")
+        
+    zeta = (1/orders_vec) * ((1-(1/orders_vec))**(orders_vec - 1))
+    
+    eps_bound =  rdp_vec - np.log(delta/zeta) / (orders_vec - 1)
+    
+    idx_opt_bound = np.nanargmin(eps_bound)
+    
+    return np.max([0,eps_bound[idx_opt_bound]]), orders_vec[idx_opt_bound]
 
-  idx_opt = np.nanargmin(eps)  # Ignore NaNs
-  return eps[idx_opt], orders_vec[idx_opt]
+
+
+def h_bound(rdp, delta):
+    """Compute the exact value of optimal epsilon when alpha*delta>1; see Lemma 1 in Asoodeh et al 2020.
+    Args:
+    rdp: A list (or a scalar) of RDP guarantees.
+    delta: The target delta.
+    Returns:
+    Pair of (eps, optimal_order).
+    """
+     
+    rdp_vec = np.atleast_1d(rdp)  
+        
+    eps_bound =  rdp_vec + np.log(1-delta)
+    
+    idx_opt_bound = np.nanargmin(eps_bound)
+    
+    return np.max([0,eps_bound[idx_opt_bound]]), idx_opt_bound
 
 
 def _compute_rdp(q, sigma, alpha):
