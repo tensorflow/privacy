@@ -26,14 +26,15 @@ from tensorflow_privacy.privacy.analysis import compute_noise_from_budget_lib
 class ComputeNoiseFromBudgetTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
-      ('Test0', 60000, 150, 0.941870567, 15, 1e-5, 1.3),
-      ('Test1', 100000, 100, 1.70928734, 30, 1e-7, 1.0),
-      ('Test2', 100000000, 1024, 5907984.81339406, 10, 1e-7, 0.1),
+      ('Test0', 60000, 150, 0.941870567, 15, 1e-5, 1e-5, 1.3),
+      ('Test1', 100000, 100, 1.70928734, 30, 1e-7, 1e-6, 1.0),
+      ('Test2', 100000000, 1024, 5907984.81339406, 10, 1e-7, 1e-5, 0.1),
+      ('Test3', 100000000, 1024, 5907984.81339406, 10, 1e-7, 1, 0),
   )
   def test_compute_noise(self, n, batch_size, target_epsilon, epochs,
-                         delta, expected_noise):
+                         delta, min_noise, expected_noise):
     target_noise = compute_noise_from_budget_lib.compute_noise(
-        n, batch_size, target_epsilon, epochs, delta)
+        n, batch_size, target_epsilon, epochs, delta, min_noise)
     self.assertAlmostEqual(target_noise, expected_noise)
 
 if __name__ == '__main__':

@@ -18,12 +18,13 @@ The script applies the RDP accountant to estimate privacy budget of an iterated
 Sampled Gaussian Mechanism. The mechanism's parameters are controlled by flags.
 
 Example:
-  compute_dp_sgd_privacy
+  compute_noise_from_budget
     --N=60000 \
     --batch_size=256 \
     --epsilon=2.92 \
     --epochs=60 \
-    --delta=1e-5
+    --delta=1e-5 \
+    --min_noise=1e-6
 
 The output states that DP-SGD with these parameters should
 use a noise multiplier of 1.12.
@@ -50,6 +51,7 @@ flags.DEFINE_integer('batch_size', None, 'Batch size')
 flags.DEFINE_float('epsilon', None, 'Target epsilon for DP-SGD')
 flags.DEFINE_float('epochs', None, 'Number of epochs (may be fractional)')
 flags.DEFINE_float('delta', 1e-6, 'Target delta')
+flags.DEFINE_float('min_noise', 1e-5, 'Minimum noise level for search.')
 
 
 def main(argv):
@@ -60,7 +62,7 @@ def main(argv):
   assert FLAGS.epsilon is not None, 'Flag epsilon is missing.'
   assert FLAGS.epochs is not None, 'Flag epochs is missing.'
   compute_noise(FLAGS.N, FLAGS.batch_size, FLAGS.epsilon,
-                FLAGS.epochs, FLAGS.delta)
+                FLAGS.epochs, FLAGS.delta, FLAGS.min_noise)
 
 
 if __name__ == '__main__':
