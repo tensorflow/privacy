@@ -165,6 +165,19 @@ def _log_erfc(x):
     else:
       return math.log(r)
 
+def _log1mexp(x):
+    """Compute log(1-exp(-|x|))
+    Uses method in https://cran.r-project.org/web/packages/Rmpfr/vignettes/log1mexp-note.pdf
+    """
+    a = np.abs(x)
+    
+    return np.where(a<= np.log(2),
+                   np.log(-np.expm1(-a)),
+                   np.log1p(-np.exp(-a))
+                   )
+
+
+
 
 def _compute_delta(orders, rdp, eps):
   """Compute delta given a list of RDP values and target epsilon.
