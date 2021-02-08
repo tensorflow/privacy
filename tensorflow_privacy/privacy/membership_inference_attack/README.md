@@ -18,6 +18,12 @@ the model are used (e.g., losses, logits, predictions). Neither model internals
 
 ## How to use
 
+### Installation notes
+
+To use the latest version of the MIA library, please install TF Privacy with
+"pip install -U git+https://github.com/tensorflow/privacy". See
+https://github.com/tensorflow/privacy/issues/151 for more details.
+
 ### Basic usage
 
 The simplest possible usage is
@@ -235,6 +241,17 @@ print(attacks_result.calculate_pd_dataframe())
 # 25  correctly_classfied       False          lr            0.370713  0.737148
 ```
 
+### External guides / press mentions
+
+* [Introductory blog post](https://franziska-boenisch.de/posts/2021/01/membership-inference/)
+to the theory and the library by Franziska Boenisch from the Fraunhofer AISEC
+institute.
+* [Google AI Blog Post](https://ai.googleblog.com/2021/01/google-research-looking-back-at-2020.html#ResponsibleAI)
+* [TensorFlow Blog Post](https://blog.tensorflow.org/2020/06/introducing-new-privacy-testing-library.html)
+* [VentureBeat article](https://venturebeat.com/2020/06/24/google-releases-experimental-tensorflow-module-that-tests-the-privacy-of-ai-models/)
+* [Tech Xplore article](https://techxplore.com/news/2020-06-google-tensorflow-privacy-module.html)
+
+
 ## Contact / Feedback
 
 Fill out this
@@ -249,4 +266,4 @@ If you wish to add novel attacks to the attack library, please check our
 
 ## Copyright
 
-Copyright 2020 - Google LLC
+Copyright 2021 - Google LLC
