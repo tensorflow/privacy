@@ -102,6 +102,13 @@ class TestGaussianMoments(parameterized.TestCase):
     rdp_scalar = rdp_accountant.compute_rdp(0.1, 2, 10, 5)
     self.assertAlmostEqual(rdp_scalar, 0.07737, places=5)
 
+  def test_compute_rdp_sequence_without_replacement(self):
+    rdp_vec = rdp_accountant.compute_rdp_sample_without_replacement(0.01, 2.5, 50,
+                                         [1.001, 1.5, 2.5, 5, 50, 100, np.inf])
+    self.assertSequenceAlmostEqual(
+        rdp_vec, [0.003470,0.003470, 0.004638, 0.0087633, 0.09847, 167.766388, np.inf],
+        delta=1e-5)
+
   def test_compute_rdp_sequence(self):
     rdp_vec = rdp_accountant.compute_rdp(0.01, 2.5, 50,
                                          [1.5, 2.5, 5, 50, 100, np.inf])
