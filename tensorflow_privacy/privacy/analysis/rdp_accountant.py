@@ -45,7 +45,7 @@ import sys
 import numpy as np
 from scipy import special
 import six
-import rdp_utils
+
 
 ########################
 # LOG-SPACE ARITHMETIC #
