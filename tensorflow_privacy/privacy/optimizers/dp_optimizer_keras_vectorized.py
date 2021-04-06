@@ -62,9 +62,9 @@ def make_vectorized_keras_optimizer_class(cls):
       """Initialize the DPOptimizerClass.
 
       Args:
-        l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients)
-        noise_multiplier: Ratio of the standard deviation to the clipping norm
-        num_microbatches: The number of microbatches into which each minibatch
+        l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
+        noise_multiplier: Ratio of the standard deviation to the clipping norm.
+        num_microbatches: Number of microbatches into which each minibatch
           is split.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
@@ -177,6 +177,8 @@ def make_vectorized_keras_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
+  DPOptimizerClass.__doc__ = ('Vectorized DP subclass of {} using Gaussian '
+                              'averaging.').format(cls.__name__)
   return DPOptimizerClass
 
 

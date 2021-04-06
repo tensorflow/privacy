@@ -51,10 +51,10 @@ def make_vectorized_optimizer_class(cls):
       """Initialize the DPOptimizerClass.
 
       Args:
-        l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients)
-        noise_multiplier: Ratio of the standard deviation to the clipping norm
-        num_microbatches: How many microbatches into which the minibatch is
-          split. If None, will default to the size of the minibatch, and
+        l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
+        noise_multiplier: Ratio of the standard deviation to the clipping norm.
+        num_microbatches: Number of microbatches into which each minibatch is
+          split. If `None`, will default to the size of the minibatch, and
           per-example gradients will be computed.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
@@ -136,6 +136,8 @@ def make_vectorized_optimizer_class(cls):
 
         return list(zip(final_grads, var_list))
 
+  DPOptimizerClass.__doc__ = ('Vectorized DP subclass of {} using Gaussian '
+                              'averaging.').format(cls.__name__)
   return DPOptimizerClass
 
 

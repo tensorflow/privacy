@@ -53,14 +53,14 @@ def make_optimizer_class(cls):
       """Initialize the DPOptimizerClass.
 
       Args:
-        dp_sum_query: DPQuery object, specifying differential privacy
+        dp_sum_query: `DPQuery` object, specifying differential privacy
           mechanism to use.
-        num_microbatches: How many microbatches into which the minibatch is
-          split. If None, will default to the size of the minibatch, and
+        num_microbatches: Number of microbatches into which each minibatch is
+          split. If `None`, will default to the size of the minibatch, and
           per-example gradients will be computed.
         unroll_microbatches: If true, processes microbatches within a Python
-          loop instead of a tf.while_loop. Can be used if using a tf.while_loop
-          raises an exception.
+          loop instead of a `tf.while_loop`. Can be used if using a
+          `tf.while_loop` raises an exception.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._dp_sum_query = dp_sum_query
@@ -205,6 +205,8 @@ def make_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
+  DPOptimizerClass.__doc__ = ('DP subclass of {}.').format(cls.__name__)
+
   return DPOptimizerClass
 
 
@@ -264,6 +266,9 @@ def make_gaussian_optimizer_class(cls):
     @property
     def ledger(self):
       return self._dp_sum_query.ledger
+
+  DPGaussianOptimizerClass.__doc__ = ('DP subclass of {} using Gaussian '
+                                      'averaging.').format(cls.__name__)
 
   return DPGaussianOptimizerClass
 
