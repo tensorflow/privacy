@@ -25,7 +25,7 @@ from tensorflow_estimator.python.estimator.canned import dnn
 
 
 class DNNClassifier(tf.estimator.Estimator):
-  """DP version of DNNClassifier."""
+  """DP version of `tf.estimator.DNNClassifier`."""
 
   def __init__(
       self,
