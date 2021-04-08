@@ -169,8 +169,9 @@ def make_keras_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
-  DPOptimizerClass.__doc__ = ('DP subclass of {} using Gaussian '
-                              'averaging.').format(cls.__name__)
+  DPOptimizerClass.__doc__ = (
+      'DP subclass of `tf.keras.optimizers.{}` using Gaussian averaging.'
+  ).format(cls.__name__)
 
   return DPOptimizerClass
 

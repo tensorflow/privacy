@@ -136,8 +136,9 @@ def make_vectorized_optimizer_class(cls):
 
         return list(zip(final_grads, var_list))
 
-  DPOptimizerClass.__doc__ = ('Vectorized DP subclass of {} using Gaussian '
-                              'averaging.').format(cls.__name__)
+  DPOptimizerClass.__doc__ = (
+      'Vectorized DP subclass of `tf.compat.v1.train.{}` using '
+      'Gaussian averaging.').format(cls.__name__)
   return DPOptimizerClass
 
 

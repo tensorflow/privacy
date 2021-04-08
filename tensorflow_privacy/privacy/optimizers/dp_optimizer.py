@@ -205,7 +205,8 @@ def make_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
-  DPOptimizerClass.__doc__ = ('DP subclass of {}.').format(cls.__name__)
+  DPOptimizerClass.__doc__ = ('DP subclass of `tf.compat.v1.train.{}`.').format(
+      cls.__name__)
 
   return DPOptimizerClass
 
@@ -267,8 +268,9 @@ def make_gaussian_optimizer_class(cls):
     def ledger(self):
       return self._dp_sum_query.ledger
 
-  DPGaussianOptimizerClass.__doc__ = ('DP subclass of {} using Gaussian '
-                                      'averaging.').format(cls.__name__)
+  DPGaussianOptimizerClass.__doc__ = (
+      'DP subclass of `tf.train.{}` using Gaussian averaging.').format(
+          cls.__name__)
 
   return DPGaussianOptimizerClass
 
