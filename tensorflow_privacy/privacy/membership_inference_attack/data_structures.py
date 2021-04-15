@@ -249,8 +249,14 @@ class AttackInputData:
       return np.sum(np.multiply(modified_probs, modified_log_probs), axis=1)
 
   def get_loss_train(self):
-    """Calculates (if needed) cross-entropy losses for the training set."""
+    """Calculates (if needed) cross-entropy losses for the training set.
+
+    Returns:
+      Loss (or None if neither the loss nor the labels are present).
+    """
     if self.loss_train is None:
+      if self.labels_train is None:
+        return None
       if self.logits_train is not None:
         self.loss_train = utils.log_loss_from_logits(self.labels_train,
                                                      self.logits_train)
@@ -259,9 +265,15 @@ class AttackInputData:
     return self.loss_train
 
   def get_loss_test(self):
-    """Calculates (if needed)  cross-entropy losses for the test set."""
+    """Calculates (if needed) cross-entropy losses for the test set.
+
+    Returns:
+      Loss (or None if neither the loss nor the labels are present).
+    """
     if self.loss_test is None:
-      if self.logits_train is not None:
+      if self.labels_test is None:
+        return None
+      if self.logits_test is not None:
         self.loss_test = utils.log_loss_from_logits(self.labels_test,
                                                     self.logits_test)
       else:

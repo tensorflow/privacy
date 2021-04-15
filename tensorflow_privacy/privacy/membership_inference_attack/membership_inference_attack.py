@@ -29,8 +29,7 @@ from tensorflow_privacy.privacy.membership_inference_attack.data_structures impo
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import MembershipProbabilityResults
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import \
-  PrivacyReportMetadata
+from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleAttackResult
 from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleMembershipProbabilityResult
@@ -93,11 +92,15 @@ def _run_trained_attack(attack_input: AttackInputData,
 
 
 def _run_threshold_attack(attack_input: AttackInputData):
+  """Runs a threshold attack on loss."""
   ntrain, ntest = attack_input.get_train_size(), attack_input.get_test_size()
+  loss_train = attack_input.get_loss_train()
+  loss_test = attack_input.get_loss_test()
+  if loss_train is None or loss_test is None:
+    raise ValueError('Not possible to run threshold attack without losses.')
   fpr, tpr, thresholds = metrics.roc_curve(
       np.concatenate((np.zeros(ntrain), np.ones(ntest))),
-      np.concatenate(
-          (attack_input.get_loss_train(), attack_input.get_loss_test())))
+      np.concatenate((loss_train, loss_test)))
 
   roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
 
@@ -313,10 +316,12 @@ def _compute_missing_privacy_report_metadata(
   if metadata.accuracy_test is None:
     metadata.accuracy_test = _get_accuracy(attack_input.logits_test,
                                            attack_input.labels_test)
-  if metadata.loss_train is None:
-    metadata.loss_train = np.average(attack_input.get_loss_train())
-  if metadata.loss_test is None:
-    metadata.loss_test = np.average(attack_input.get_loss_test())
+  loss_train = attack_input.get_loss_train()
+  loss_test = attack_input.get_loss_test()
+  if metadata.loss_train is None and loss_train is not None:
+    metadata.loss_train = np.average(loss_train)
+  if metadata.loss_test is None and loss_test is not None:
+    metadata.loss_test = np.average(loss_test)
   return metadata
 
 

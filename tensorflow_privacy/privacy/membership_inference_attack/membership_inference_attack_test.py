@@ -36,6 +36,14 @@ def get_test_input(n_train, n_test):
       labels_test=np.array([i % 5 for i in range(n_test)]))
 
 
+def get_test_input_logits_only(n_train, n_test):
+  """Get example input logits for attacks."""
+  rng = np.random.RandomState(4)
+  return AttackInputData(
+      logits_train=rng.randn(n_train, 5) + 0.2,
+      logits_test=rng.randn(n_test, 5) + 0.2)
+
+
 class RunAttacksTest(absltest.TestCase):
 
   def test_run_attacks_size(self):
@@ -44,6 +52,13 @@ class RunAttacksTest(absltest.TestCase):
         (AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION))
 
     self.assertLen(result.single_attack_results, 2)
+
+  def test_trained_attacks_logits_only_size(self):
+    result = mia.run_attacks(
+        get_test_input_logits_only(100, 100), SlicingSpec(),
+        (AttackType.LOGISTIC_REGRESSION,))
+
+    self.assertLen(result.single_attack_results, 1)
 
   def test_run_attack_trained_sets_attack_type(self):
     result = mia._run_attack(
