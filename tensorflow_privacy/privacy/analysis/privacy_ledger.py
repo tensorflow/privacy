@@ -60,16 +60,16 @@ class PrivacyLedger(object):
   def __init__(self,
                population_size,
                selection_probability):
-    """Initialize the PrivacyLedger.
+    """Initializes the PrivacyLedger.
 
     Args:
       population_size: An integer (may be variable) specifying the size of the
         population, i.e. size of the training data used in each epoch.
-      selection_probability: A float (may be variable) specifying the
-        probability each record is included in a sample.
+      selection_probability: A floating point value (may be variable) specifying
+        the probability each record is included in a sample.
 
     Raises:
-      ValueError: If selection_probability is 0.
+      ValueError: If `selection_probability` is 0.
     """
     self._population_size = population_size
     self._selection_probability = selection_probability
@@ -141,7 +141,7 @@ class PrivacyLedger(object):
       sess: The tensorflow session in which the ledger was created.
 
     Returns:
-      The query ledger as a list of SampleEntries.
+      The query ledger as a list of `SampleEntry` instances.
     """
     sample_array = sess.run(self._sample_buffer.values)
     query_array = sess.run(self._query_buffer.values)
@@ -152,7 +152,7 @@ class PrivacyLedger(object):
     """Gets the formatted query ledger.
 
     Returns:
-      The query ledger as a list of SampleEntries.
+      The query ledger as a list of `SampleEntry` instances.
     """
     sample_array = self._sample_buffer.values.numpy()
     query_array = self._query_buffer.values.numpy()
@@ -161,21 +161,21 @@ class PrivacyLedger(object):
 
 
 class QueryWithLedger(dp_query.DPQuery):
-  """A class for DP queries that record events to a PrivacyLedger.
+  """A class for DP queries that record events to a `PrivacyLedger`.
 
-  QueryWithLedger should be the top-level query in a structure of queries that
+  `QueryWithLedger` should be the top-level query in a structure of queries that
   may include sum queries, nested queries, etc. It should simply wrap another
   query and contain a reference to the ledger. Any contained queries (including
   those contained in the leaves of a nested query) should also contain a
   reference to the same ledger object.
 
-  For example usage, see privacy_ledger_test.py.
+  For example usage, see `privacy_ledger_test.py`.
   """
 
   def __init__(self, query,
                population_size=None, selection_probability=None,
                ledger=None):
-    """Initializes the QueryWithLedger.
+    """Initializes the `QueryWithLedger`.
 
     Args:
       query: The query whose events should be recorded to the ledger. Any
@@ -183,12 +183,12 @@ class QueryWithLedger(dp_query.DPQuery):
         contain a reference to the same ledger given here.
       population_size: An integer (may be variable) specifying the size of the
         population, i.e. size of the training data used in each epoch. May be
-        None if `ledger` is specified.
-      selection_probability: A float (may be variable) specifying the
-        probability each record is included in a sample. May be None if `ledger`
-        is specified.
-      ledger: A PrivacyLedger to use. Must be specified if either of
-        `population_size` or `selection_probability` is None.
+        `None` if `ledger` is specified.
+      selection_probability: A floating point value (may be variable) specifying
+        the probability each record is included in a sample. May be `None` if
+        `ledger` is specified.
+      ledger: A `PrivacyLedger` to use. Must be specified if either of
+        `population_size` or `selection_probability` is `None`.
     """
     self._query = query
     if population_size is not None and selection_probability is not None:

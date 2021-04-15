@@ -29,7 +29,15 @@ GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
 
 
 def make_vectorized_optimizer_class(cls):
-  """Constructs a vectorized DP optimizer class from an existing one."""
+  """Given a subclass of `tf.compat.v1.train.Optimizer`, returns a vectorized DP-SGD subclass of it.
+
+  Args:
+    cls: Class from which to derive a DP subclass. Should be a subclass of
+      `tf.compat.v1.train.Optimizer`.
+
+  Returns:
+    A DP-SGD subclass of `cls`.
+  """
   child_code = cls.compute_gradients.__code__
   if child_code is not parent_code:
     logging.warning(
@@ -38,8 +46,11 @@ def make_vectorized_optimizer_class(cls):
         'make_optimizer_class() does not interfere with overridden version.',
         cls.__name__)
 
-  class DPOptimizerClass(cls):
-    """Differentially private subclass of given class cls."""
+  class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
+    __doc__ = (
+        'Vectorized DP subclass of `tf.compat.v1.train.{}` using Gaussian '
+        'averaging.'
+    ).format(cls.__name__)
 
     def __init__(
         self,
@@ -56,6 +67,8 @@ def make_vectorized_optimizer_class(cls):
         num_microbatches: Number of microbatches into which each minibatch is
           split. If `None`, will default to the size of the minibatch, and
           per-example gradients will be computed.
+        *args: These will be passed on to the base class `__init__` method.
+        **kwargs: These will be passed on to the base class `__init__` method.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
@@ -70,6 +83,7 @@ def make_vectorized_optimizer_class(cls):
                           colocate_gradients_with_ops=False,
                           grad_loss=None,
                           gradient_tape=None):
+      """DP-SGD version of base class method."""
       if callable(loss):
         # TF is running in Eager mode
         raise NotImplementedError('Vectorized optimizer unavailable for TF2.')
@@ -136,9 +150,6 @@ def make_vectorized_optimizer_class(cls):
 
         return list(zip(final_grads, var_list))
 
-  DPOptimizerClass.__doc__ = (
-      'Vectorized DP subclass of `tf.compat.v1.train.{}` using '
-      'Gaussian averaging.').format(cls.__name__)
   return DPOptimizerClass
 
 

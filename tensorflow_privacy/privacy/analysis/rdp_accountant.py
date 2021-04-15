@@ -293,7 +293,7 @@ def _compute_rdp(q, sigma, alpha):
 
 
 def compute_rdp(q, noise_multiplier, steps, orders):
-  """Compute RDP of the Sampled Gaussian Mechanism.
+  """Computes RDP of the Sampled Gaussian Mechanism.
 
   Args:
     q: The sampling rate.
@@ -303,7 +303,7 @@ def compute_rdp(q, noise_multiplier, steps, orders):
     orders: An array (or a scalar) of RDP orders.
 
   Returns:
-    The RDPs at all orders, can be np.inf.
+    The RDPs at all orders. Can be `np.inf`.
   """
   if np.isscalar(orders):
     rdp = _compute_rdp(q, noise_multiplier, orders)
@@ -316,7 +316,7 @@ def compute_rdp(q, noise_multiplier, steps, orders):
 
 def compute_heterogenous_rdp(sampling_probabilities, noise_multipliers,
                              steps_list, orders):
-  """Compute RDP of Heteregoneous Applications of Sampled Gaussian Mechanisms.
+  """Computes RDP of Heteregoneous Applications of Sampled Gaussian Mechanisms.
 
   Args:
     sampling_probabilities: A list containing the sampling rates.
@@ -328,7 +328,7 @@ def compute_heterogenous_rdp(sampling_probabilities, noise_multipliers,
     orders: An array (or a scalar) of RDP orders.
 
   Returns:
-    The RDPs at all orders, can be np.inf.
+    The RDPs at all orders. Can be `np.inf`.
   """
   assert len(sampling_probabilities) == len(noise_multipliers)
 
@@ -341,18 +341,19 @@ def compute_heterogenous_rdp(sampling_probabilities, noise_multipliers,
 
 
 def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
-  """Compute delta (or eps) for given eps (or delta) from RDP values.
+  """Computes delta (or eps) for given eps (or delta) from RDP values.
 
   Args:
     orders: An array (or a scalar) of RDP orders.
     rdp: An array of RDP values. Must be of the same length as the orders list.
-    target_eps: If not None, the epsilon for which we compute the corresponding
-              delta.
-    target_delta: If not None, the delta for which we compute the corresponding
-              epsilon. Exactly one of target_eps and target_delta must be None.
+    target_eps: If not `None`, the epsilon for which we compute the
+      corresponding delta.
+    target_delta: If not `None`, the delta for which we compute the
+      corresponding epsilon. Exactly one of `target_eps` and `target_delta`
+      must be `None`.
 
   Returns:
-    eps, delta, opt_order.
+    A tuple of epsilon, delta, and the optimal order.
 
   Raises:
     ValueError: If target_eps and target_delta are messed up.
@@ -374,14 +375,14 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
 
 
 def compute_rdp_from_ledger(ledger, orders):
-  """Compute RDP of Sampled Gaussian Mechanism from ledger.
+  """Computes RDP of Sampled Gaussian Mechanism from ledger.
 
   Args:
     ledger: A formatted privacy ledger.
     orders: An array (or a scalar) of RDP orders.
 
   Returns:
-    RDP at all orders, can be np.inf.
+    RDP at all orders. Can be `np.inf`.
   """
   total_rdp = np.zeros_like(orders, dtype=float)
   for sample in ledger:

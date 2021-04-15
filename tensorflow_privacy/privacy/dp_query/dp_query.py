@@ -159,7 +159,7 @@ class DPQuery(object):
 
     Returns:
       The updated sample state. In standard DP-SGD training, the set of
-      previous mcrobatch gradients with the addition of the record argument.
+      previous microbatch gradients with the addition of the record argument.
     """
     preprocessed_record = self.preprocess_record(params, record)
     return self.accumulate_preprocessed_record(

@@ -26,7 +26,15 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 
 
 def make_optimizer_class(cls):
-  """Constructs a DP optimizer class from an existing one."""
+  """Given a subclass of `tf.compat.v1.train.Optimizer`, returns a DP-SGD subclass of it.
+
+  Args:
+    cls: Class from which to derive a DP subclass. Should be a subclass of
+      `tf.compat.v1.train.Optimizer`.
+
+  Returns:
+    A DP-SGD subclass of `cls`.
+  """
   parent_code = tf.train.Optimizer.compute_gradients.__code__
 
   has_compute_gradients = hasattr(cls, 'compute_gradients')
@@ -40,8 +48,8 @@ def make_optimizer_class(cls):
         'make_optimizer_class() does not interfere with overridden version.',
         cls.__name__)
 
-  class DPOptimizerClass(cls):
-    """Differentially private subclass of given class cls."""
+  class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
+    __doc__ = ('DP subclass of `tf.compat.v1.train.{}`.').format(cls.__name__)
 
     def __init__(
         self,
@@ -50,7 +58,7 @@ def make_optimizer_class(cls):
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
         **kwargs):
-      """Initialize the DPOptimizerClass.
+      """Initializes the DPOptimizerClass.
 
       Args:
         dp_sum_query: `DPQuery` object, specifying differential privacy
@@ -61,6 +69,8 @@ def make_optimizer_class(cls):
         unroll_microbatches: If true, processes microbatches within a Python
           loop instead of a `tf.while_loop`. Can be used if using a
           `tf.while_loop` raises an exception.
+        *args: These will be passed on to the base class `__init__` method.
+        **kwargs: These will be passed on to the base class `__init__` method.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._dp_sum_query = dp_sum_query
@@ -80,6 +90,7 @@ def make_optimizer_class(cls):
                           colocate_gradients_with_ops=False,
                           grad_loss=None,
                           gradient_tape=None):
+      """DP-SGD version of base class method."""
       self._was_compute_gradients_called = True
       if self._global_state is None:
         self._global_state = self._dp_sum_query.initial_global_state()
@@ -124,7 +135,7 @@ def make_optimizer_class(cls):
         return grads_and_vars
 
       else:
-        # TF is running in graph mode, check we did not receive a gradient tape.
+        # TF is running in graph mode. Check we did not receive a gradient tape.
         if gradient_tape:
           raise ValueError('When in graph mode, a tape should not be passed.')
 
@@ -197,6 +208,8 @@ def make_optimizer_class(cls):
         return list(zip(final_grads, var_list))
 
     def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+      # pylint: disable=g-doc-args, g-doc-return-or-yield
+      """DP-SGD version of base class method."""
       assert self._was_compute_gradients_called, (
           'compute_gradients() on the differentially private optimizer was not'
           ' called. Which means that the training is not differentially '
@@ -205,17 +218,24 @@ def make_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
-  DPOptimizerClass.__doc__ = ('DP subclass of `tf.compat.v1.train.{}`.').format(
-      cls.__name__)
-
   return DPOptimizerClass
 
 
 def make_gaussian_optimizer_class(cls):
-  """Constructs a DP optimizer with Gaussian averaging of updates."""
+  """Given a subclass of `tf.compat.v1.train.Optimizer`, returns a subclass using DP-SGD with Gaussian averaging.
 
-  class DPGaussianOptimizerClass(make_optimizer_class(cls)):
-    """DP subclass of given class cls using Gaussian averaging."""
+  Args:
+    cls: Class from which to derive a DP subclass. Should be a subclass of
+      `tf.compat.v1.train.Optimizer`.
+
+  Returns:
+    A subclass of `cls` using DP-SGD with Gaussian averaging.
+  """
+
+  class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=empty-docstring
+    __doc__ = (
+        'DP subclass of `tf.compat.v1.train.{}` using Gaussian averaging.'
+    ).format(cls.__name__)
 
     def __init__(
         self,
@@ -226,6 +246,21 @@ def make_gaussian_optimizer_class(cls):
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg
         **kwargs):
+      """Initializes the `DPGaussianOptimizerClass`.
+
+      Args:
+        l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
+        noise_multiplier: Ratio of the standard deviation to the clipping norm.
+        num_microbatches: Number of microbatches into which each minibatch is
+          split. If `None`, will default to the size of the minibatch, and
+          per-example gradients will be computed.
+        ledger: Defaults to `None`. An instance of `tf_privacy.PrivacyLedger`.
+        unroll_microbatches: If true, processes microbatches within a Python
+          loop instead of a `tf.while_loop`. Can be used if using a
+          `tf.while_loop` raises an exception.
+        *args: These will be passed on to the base class `__init__` method.
+        **kwargs: These will be passed on to the base class `__init__` method.
+      """
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
@@ -267,10 +302,6 @@ def make_gaussian_optimizer_class(cls):
     @property
     def ledger(self):
       return self._dp_sum_query.ledger
-
-  DPGaussianOptimizerClass.__doc__ = (
-      'DP subclass of `tf.train.{}` using Gaussian averaging.').format(
-          cls.__name__)
 
   return DPGaussianOptimizerClass
 

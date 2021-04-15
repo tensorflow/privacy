@@ -43,6 +43,7 @@ class DNNClassifier(tf.estimator.Estimator):
       loss_reduction=tf.keras.losses.Reduction.NONE,
       batch_norm=False,
   ):
+    """See `tf.estimator.DNNClassifier`."""
     head = head_utils.binary_or_multi_class_head(
         n_classes,
         weight_column=weight_column,

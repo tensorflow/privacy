@@ -19,8 +19,8 @@ import tensorflow as tf
 def make_dp_model_class(cls):
   """Given a subclass of `tf.keras.Model`, returns a DP-SGD version of it."""
 
-  class DPModelClass(cls):
-    """A DP version of `cls`, which should be a subclass of `tf.keras.Model`."""
+  class DPModelClass(cls):  # pylint: disable=empty-docstring
+    __doc__ = ('DP subclass of `tf.keras.{}`.').format(cls.__name__)
 
     def __init__(
         self,
@@ -37,6 +37,9 @@ def make_dp_model_class(cls):
             noise_multiplier: Ratio of the standard deviation to the clipping
               norm.
             use_xla: If `True`, compiles train_step to XLA.
+            *args: These will be passed on to the base class `__init__` method.
+            **kwargs: These will be passed on to the base class `__init__`
+              method.
       """
       super(DPModelClass, self).__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
@@ -78,6 +81,7 @@ def make_dp_model_class(cls):
       return tf.squeeze(y_pred, axis=0), loss, clipped_grads
 
     def train_step(self, data):
+      """DP-SGD version of base class method."""
       _, y = data
       y_pred, _, per_eg_grads = tf.vectorized_map(
           self._compute_per_example_grads, data)
@@ -86,8 +90,6 @@ def make_dp_model_class(cls):
       self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
       self.compiled_metrics.update_state(y, y_pred)
       return {m.name: m.result() for m in self.metrics}
-
-  DPModelClass.__doc__ = ('DP subclass of `tf.keras.{}`.').format(cls.__name__)
 
   return DPModelClass
 

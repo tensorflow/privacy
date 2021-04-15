@@ -41,6 +41,7 @@ class DNNClassifier(tf.estimator.Estimator):
       loss_reduction=tf.compat.v1.losses.Reduction.SUM,
       batch_norm=False,
   ):
+    """See `tf.compat.v1.estimator.DNNClassifier`."""
     head = head_lib._binary_logistic_or_multi_class_head(  # pylint: disable=protected-access
         n_classes, weight_column, label_vocabulary, loss_reduction)
     estimator._canned_estimator_api_gauge.get_cell('Classifier').set('DNN')

@@ -37,10 +37,18 @@ def clip_gradients_vmap(g, l2_norm_clip):
 
 
 def make_vectorized_keras_optimizer_class(cls):
-  """Constructs a DP Keras optimizer class from an existing one."""
+  """Given a subclass of `tf.keras.optimizers.Optimizer`, returns a vectorized DP-SGD subclass of it.
 
-  class DPOptimizerClass(cls):
-    """Differentially private subclass of given class cls.
+  Args:
+    cls: Class from which to derive a DP subclass. Should be a subclass of
+      `tf.keras.optimizers.Optimizer`.
+
+  Returns:
+    A vectorized DP-SGD subclass of `cls`.
+  """
+
+  class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
+    __doc__ = """Vectorized differentially private subclass of given class `tf.keras.optimizers.{}.
 
     The class tf.keras.optimizers.Optimizer has two methods to compute
     gradients, `_compute_gradients` and `get_gradients`. The first works
@@ -50,7 +58,7 @@ def make_vectorized_keras_optimizer_class(cls):
     Internally, DPOptimizerClass stores hyperparameters both individually
     and encapsulated in a `GaussianSumQuery` object for these two use cases.
     However, this should be invisible to users of this class.
-    """
+    """.format(cls.__name__)
 
     def __init__(
         self,
@@ -66,6 +74,8 @@ def make_vectorized_keras_optimizer_class(cls):
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
         num_microbatches: Number of microbatches into which each minibatch
           is split.
+        *args: These will be passed on to the base class `__init__` method.
+        **kwargs: These will be passed on to the base class `__init__` method.
       """
       super(DPOptimizerClass, self).__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
@@ -77,7 +87,7 @@ def make_vectorized_keras_optimizer_class(cls):
       self._was_dp_gradients_called = False
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
-      """DP version of superclass method."""
+      """DP-SGD version of base class method."""
 
       self._was_dp_gradients_called = True
       # Compute loss.
@@ -130,7 +140,7 @@ def make_vectorized_keras_optimizer_class(cls):
       return list(zip(final_gradients, var_list))
 
     def get_gradients(self, loss, params):
-      """DP version of superclass method."""
+      """DP-SGD version of base class method."""
 
       self._was_dp_gradients_called = True
       if self._global_state is None:
@@ -168,6 +178,8 @@ def make_vectorized_keras_optimizer_class(cls):
       return final_grads
 
     def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+      """DP-SGD version of base class method."""
+
       assert self._was_dp_gradients_called, (
           'Neither _compute_gradients() or get_gradients() on the '
           'differentially private optimizer was called. This means the '
@@ -177,9 +189,6 @@ def make_vectorized_keras_optimizer_class(cls):
       return super(DPOptimizerClass,
                    self).apply_gradients(grads_and_vars, global_step, name)
 
-  DPOptimizerClass.__doc__ = (
-      'Vectorized DP subclass of `tf.keras.optimizers.{}` using Gaussian '
-      'averaging.').format(cls.__name__)
   return DPOptimizerClass
 
 
