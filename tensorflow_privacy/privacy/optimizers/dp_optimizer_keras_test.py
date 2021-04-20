@@ -51,6 +51,9 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdagradVectorized 4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
        [-2.5, -2.5], [-0.5]),
+      ('DPAdagradVectorized None',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None,
+       [-2.5, -2.5], [-0.5]),
   )
   def testBaselineWithCallableLoss(self, cls, num_microbatches, expected_grad0,
                                    expected_grad1):
@@ -88,6 +91,9 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
        [-2.5, -2.5], [-0.5]),
       ('DPAdagradVectorized 4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
+       [-2.5, -2.5], [-0.5]),
+      ('DPAdagradVectorized None',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None,
        [-2.5, -2.5], [-0.5]),
   )
   def testBaselineWithTensorLoss(self, cls, num_microbatches, expected_grad0,
@@ -244,6 +250,8 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2),
       ('DPGradientDescentVectorized 4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 4),
+      ('DPGradientDescentVectorized None',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, None),
   )
   def testBaseline(self, cls, num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
