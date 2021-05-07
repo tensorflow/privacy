@@ -77,8 +77,7 @@ def _log_sub(logx, logy):
     return logx
 
 def _log_sub_sign(logx, logy):
-  # ensure that x > y
-  # this function returns the stable version of log(exp(logx)-exp(logy)) if logx > logy
+  """Returns log(exp(logx)-exp(logy)) and its sign."""
   if logx > logy:
     s = True
     mag = logx + np.log(1 - np.exp(logy - logx))
@@ -286,18 +285,19 @@ def _compute_eps(orders, rdp, delta):
 def _stable_inplace_diff_in_log(vec, signs, n=-1):
 
   """ This function replaces the first n-1 dimension of vec with the log of abs difference operator
-   Input:
-      - `vec` is a numpy array of floats with size larger than 'n'
-      - `signs` is a numpy array of bools with the same size as vec
-      - `n` is an optional argument in case one needs to compute partial differences
-          `vec` and `signs` jointly  describe a vector of real numbers' sign and abs in log scale.
-   Output:
-      The first n-1 dimension of vec and signs will store the log-abs and sign of the difference.
-   """
-  #
-  # And the first n-1 dimension of signs with the sign of the differences.
-  # the sign is assigned to True to break symmetry if the diff is 0
-  # Input:
+
+  Args:
+    vec: is a numpy array of floats with size larger than 'n'
+    signs: is a numpy array of bools with the same size as vec is an optional argument in case one needs to compute partial differences
+  vec and signs jointly  describe a vector of real numbers' sign and abs in log scale.
+
+  Returns:
+    The first n-1 dimension of vec and signs will store the log-abs and sign of the difference.
+
+  Raises:
+    ValueError: If input is malformed.
+  """
+
   assert (vec.shape == signs.shape)
   if n < 0:
     n = np.max(vec.shape) - 1
@@ -306,7 +306,7 @@ def _stable_inplace_diff_in_log(vec, signs, n=-1):
   for j in range(0, n, 1):
     if signs[j] == signs[j + 1]:  # When the signs are the same
       # if the signs are both positive, then we can just use the standard one
-      signs[j], vec[j] = _log_sub_sign(vec[j + 1],vec[j])
+      signs[j], vec[j] = _log_sub_sign(vec[j + 1], vec[j])
       # otherwise, we do that but toggle the sign
       if signs[j + 1] == False:
         signs[j] = ~signs[j]
@@ -428,9 +428,7 @@ def _compute_rdp_sample_without_replacement_scalar(q, sigma, alpha):
   if np.isinf(alpha):
     return np.inf
 
-
-
-  if isinstance(alpha, six.integer_types):
+  if float(alpha).is_integer():
     return _compute_rdp_sample_without_replacement_int(q, sigma, alpha) / (alpha - 1)
   else:
     # When alpha not an integer, we apply Corollary 10 of [WBK19] to interpolate the
@@ -454,7 +452,7 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
     RDP at alpha, can be np.inf.
   """
 
-  max_alpha = 100
+  max_alpha = 256
   assert isinstance(alpha, six.integer_types)
 
   if np.isinf(alpha):
@@ -470,23 +468,28 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
     # Return the rdp of Gaussian mechanism
     return 1.0*(x)/(2.0*sigma**2)
 
-  # We need forward differences of exp(cgf)
-  # The following line is the numerically stable way of implementing it.
-  # The output is in polar form with logarithmic magnitude
-  deltas, signs_deltas = _get_forward_diffs(cgf, alpha)
 
 
   # Initialize with 1 in the log space.
   log_a = 0
+  # Calculates the log term when alpha = 2
+  log_f2m1 = func(2.0) + np.log(1 - np.exp(-func(2.0)))
   if alpha <= max_alpha:
+    # We need forward differences of exp(cgf)
+    # The following line is the numerically stable way of implementing it.
+    # The output is in polar form with logarithmic magnitude
+    deltas, signs_deltas = _get_forward_diffs(cgf, alpha)
     # Compute the bound exactly requires book keeping of O(alpha**2)
 
     for i in range(2, alpha+1):
       if i == 2:
-        s = 2 * np.log(q) + _log_comb(alpha, 2)  + np.minimum(np.log(4) + func(2.0) + np.log(1 - np.exp(-func(2.0))),func(2.0) + np.log(2))
+        s = 2 * np.log(q) + _log_comb(alpha, 2)  + np.minimum(np.log(4) + log_f2m1, func(2.0) + np.log(2))
       elif i > 2:
-        s = np.minimum(np.log(4) + 0.5*deltas[int(2*np.floor(i/2.0))-1]+ 0.5*deltas[int(2*np.ceil(i/2.0))-1],np.log(2)+ cgf(i - 1)) \
-                                                 + i * np.log(q) +_log_comb(alpha, i)
+        delta_lo = deltas[int(2*np.floor(i/2.0))-1]
+        delta_hi = deltas[int(2 * np.ceil(i / 2.0)) - 1]
+        s = np.log(4) + 0.5 * (delta_lo + delta_hi)
+        s = np.minimum(s, np.log(2) + cgf(i - 1))
+        s += i * np.log(q) + _log_comb(alpha, i)
       log_a = _log_add(log_a,s)
     return float(log_a)
   else:
@@ -494,7 +497,7 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
     for i in range(2, alpha + 1):
       if i == 2:
         s = 2 * np.log(q) + _log_comb(alpha,2) + np.minimum(
-          np.log(4) + func(2.0) + np.log(1 - np.exp(-func(2.0))), func(2.0) + np.log(2))
+          np.log(4) + log_f2m1, func(2.0) + np.log(2))
       else:
         s = np.log(2) + cgf(i-1) + i*np.log(q) + _log_comb(alpha, i)
       log_a = _log_add(log_a, s)
@@ -580,3 +583,4 @@ def compute_rdp_from_ledger(ledger, orders):
     total_rdp += compute_rdp(
         sample.selection_probability, effective_z, 1, orders)
   return total_rdp
+
