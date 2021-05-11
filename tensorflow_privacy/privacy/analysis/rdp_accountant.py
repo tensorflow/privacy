@@ -273,7 +273,7 @@ def _compute_eps(orders, rdp, delta):
       # This bound is not numerically stable as alpha->1.
       # Thus we have a min value of alpha.
       # The bound is also not useful for small alpha, so doesn't matter.
-      eps = r + math.log1p(-1/a) - math.log(delta * a) / (a - 1)
+      eps = r + math.log1p(-1 / a) - math.log(delta * a) / (a - 1)
     else:
       # In this case we can't do anything. E.g., asking for delta = 0.
       eps = np.inf
@@ -330,7 +330,7 @@ def _get_forward_diffs(fun, n):
     func_vec[i] = fun(1.0 * (i - 1))
   for i in range(0, n + 2, 1):
     # Diff in log scale
-    _stable_inplace_diff_in_log(func_vec, signs_func_vec, n=n + 2 - i)
+    _stable_inplace_diff_in_log(func_vec, signs_func_vec, n = n + 2 - i)
     deltas[i] = func_vec[0]
     signs_deltas[i] = signs_func_vec[0]
   return deltas, signs_deltas
@@ -462,11 +462,11 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
 
   def cgf(x):
     # Return rdp(x+1)*x, the rdp of Gaussian mechanism is alpha/(2*sigma**2)
-    return x*1.0*(x+1)/(2.0*sigma**2)
+    return x * 1.0 * (x + 1) / (2.0 * sigma**2)
 
   def func(x):
     # Return the rdp of Gaussian mechanism
-    return 1.0*(x)/(2.0*sigma**2)
+    return 1.0 * x / (2.0 * sigma**2)
 
 
 
@@ -485,7 +485,7 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
       if i == 2:
         s = 2 * np.log(q) + _log_comb(alpha, 2)  + np.minimum(np.log(4) + log_f2m1, func(2.0) + np.log(2))
       elif i > 2:
-        delta_lo = deltas[int(2*np.floor(i/2.0))-1]
+        delta_lo = deltas[int(2 * np.floor( i / 2.0))-1]
         delta_hi = deltas[int(2 * np.ceil(i / 2.0)) - 1]
         s = np.log(4) + 0.5 * (delta_lo + delta_hi)
         s = np.minimum(s, np.log(2) + cgf(i - 1))
@@ -496,10 +496,10 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
     # Compute the bound with stirling approximation. Everything is O(x) now.
     for i in range(2, alpha + 1):
       if i == 2:
-        s = 2 * np.log(q) + _log_comb(alpha,2) + np.minimum(
+        s = 2 * np.log(q) + _log_comb(alpha, 2) + np.minimum(
           np.log(4) + log_f2m1, func(2.0) + np.log(2))
       else:
-        s = np.log(2) + cgf(i-1) + i*np.log(q) + _log_comb(alpha, i)
+        s = np.log(2) + cgf(i - 1) + i*np.log(q) + _log_comb(alpha, i)
       log_a = _log_add(log_a, s)
 
     return log_a
