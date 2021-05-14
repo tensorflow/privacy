@@ -1,50 +1,88 @@
 # TODO(b/181782485): Switch to the main book for launch - /responsible_ai/_book.yaml
 book_path: /responsible_ai/privacy/_book.yaml
 project_path: /responsible_ai/_project.yaml
+title: TensorFlow Privacy
 description: >
- Page description used for search and social.
+ Overview of TensorFlow Privacy library.
 landing_page:
   nav: left
   custom_css_path: /site-assets/css/style.css
   rows:
-  - heading: TensorFlow Privacy does something great.
+  - heading: Privacy in Machine Learning
     items:
     - classname: devsite-landing-row-50
       description: >
-        This is a description of PROJECT_NAME. Lorem ipsum dolor sit amet,
-        consectetur adipiscing elit, sed do eiusmod tempor incididunt ut
-        labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud
-        exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+        <p>
+        Preventing ML models from exposing potentially sensitive information is a critical part of
+        using AI responsibly. To that end, <i>differentially private stochastic gradient descent
+        (DP-SGD)</i> is a modification to the standard stochastic gradient descent (SGD) algorithm
+        in machine learning. </p>
+        <p>Models trained with DP-SGD have provable differential privacy (DP)
+        guarantees, mitigating the risk of exposing sensitive training data. Intuitively, a model
+        trained with differential privacy should not be affected by any single training example in
+        its data set. DP-SGD techniques can also be used in federated learning to provide user-level
+        differential privacy. You can learn more about differentially private deep learning in <a
+        href="https://arxiv.org/pdf/1607.00133.pdf">the original paper</a>.
+        </p>
 
-      code_block: |
+    - code_block: |
         <pre class = "prettyprint">
         import tensorflow as tf
-        import PROJECT_NAME
+        from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
 
-        # This is a short code snippet that shows off your project.
-        # Launch a Colab notebook to run this example.
-        print("Hello, PROJECT_NAME")
-        </pre>
-        {% dynamic if request.tld != 'cn' %}
-        <a class="colab-button" target="_blank" href="https://colab.research.google.com/github/tensorflow/docs/blob/master/site/en/tutorials/_index.ipynb">Run in a <span>Notebook</span></a>
-        {% dynamic endif %}
+        # Select your differentially private optimizer
+        optimizer = tensorflow_privacy.DPKerasSGDOptimizer(
+            l2_norm_clip=l2_norm_clip,
+            noise_multiplier=noise_multiplier,
+            num_microbatches=num_microbatches,
+            learning_rate=learning_rate)
+
+        # Select your loss function
+        loss = tf.keras.losses.CategoricalCrossentropy(
+            from_logits=True, reduction=tf.losses.Reduction.NONE)
+
+        # Compile your model
+        model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
+
+        # Fit your model
+        model.fit(train_data, train_labels,
+          epochs=epochs,
+          validation_data=(test_data, test_labels),
+          batch_size=batch_size)
+          </pre>
+
+  - classname: devsite-landing-row-100
+  - heading: TensorFlow Privacy
+    options:
+    - description-100
+    items:
+    - classname: devsite-landing-row-100
+      description: >
+        <p>Tensorflow Privacy (TF Privacy) is an open source library developed by teams in Google
+        Research. The library includes implementations of commonly used TensorFlow Optimizers for
+        training ML models with DP. The goal is to enable ML practitioners using standard Tensorflow
+        APIs to train privacy-preserving models by changing only a few lines of code.</p>
+        <p> The differentially private Optimizers can be used in conjunction with high-level APIs
+        that use the Optimizer class, especially Keras. Additionally, you can find differentially
+        private implementations of some Keras models. All of the Optimizers and models can be found
+        in the <a href="./privacy/api">API Documentation</a>.</p>
 
   - classname: devsite-landing-row-cards
     items:
-    - heading: "Introducing PROJECT_NAME"
+    - heading: "Introducing TensorFlow Privacy"
       image_path: /resources/images/tf-logo-card-16x9.png
-      path: https://blog.tensorflow.org
+      path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-privacy-learning.html
       buttons:
       - label: "Read on TensorFlow blog"
-        path: https://blog.tensorflow.org
-    - heading: "PROJECT_NAME video"
-      youtube_id: 3d34Hkf7KXA
+        path: https://blog.tensorflow.org/2019/03/introducing-tensorflow-privacy-learning.html
+    - heading: "TensorFlow Privacy at TF Dev Summit 2020"
+      youtube_id: UEECKh6PLhI
       buttons:
       - label: Watch the video
-        path: https://www.youtube.com/watch?v=3d34Hkf7KXA
-    - heading: "PROJECT_NAME on GitHub"
+        path: https://www.youtube.com/watch?v=UEECKh6PLhI
+    - heading: "TensorFlow Privacy on GitHub"
       image_path: /resources/images/github-card-16x9.png
-      path: https://github.com/tensorflow/PROJECT_NAME
+      path: https://github.com/tensorflow/privacy
       buttons:
       - label: "View on GitHub"
-        path: https://github.com/tensorflow/PROJECT_NAME
+        path: https://github.com/tensorflow/privacy
