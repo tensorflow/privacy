@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Implements DPQuery interface for Gaussian average queries.
-"""
+"""Implements DPQuery interface for Gaussian sum queries."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -25,7 +23,6 @@ import distutils
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
-from tensorflow_privacy.privacy.dp_query import normalized_query
 
 
 class GaussianSumQuery(dp_query.SumAggregationDPQuery):
@@ -35,8 +32,8 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   """
 
   # pylint: disable=invalid-name
-  _GlobalState = collections.namedtuple(
-      '_GlobalState', ['l2_norm_clip', 'stddev'])
+  _GlobalState = collections.namedtuple('_GlobalState',
+                                        ['l2_norm_clip', 'stddev'])
 
   def __init__(self, l2_norm_clip, stddev):
     """Initializes the GaussianSumQuery.
@@ -55,8 +52,8 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
 
   def make_global_state(self, l2_norm_clip, stddev):
     """Creates a global state from the given parameters."""
-    return self._GlobalState(tf.cast(l2_norm_clip, tf.float32),
-                             tf.cast(stddev, tf.float32))
+    return self._GlobalState(
+        tf.cast(l2_norm_clip, tf.float32), tf.cast(stddev, tf.float32))
 
   def initial_global_state(self):
     return self.make_global_state(self._l2_norm_clip, self._stddev)
@@ -94,48 +91,17 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
         return v + tf.random.normal(
             tf.shape(input=v), stddev=global_state.stddev, dtype=v.dtype)
     else:
-      random_normal = tf.random_normal_initializer(
-          stddev=global_state.stddev)
+      random_normal = tf.random_normal_initializer(stddev=global_state.stddev)
 
       def add_noise(v):
         return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
 
     if self._ledger:
       dependencies = [
-          self._ledger.record_sum_query(
-              global_state.l2_norm_clip, global_state.stddev)
+          self._ledger.record_sum_query(global_state.l2_norm_clip,
+                                        global_state.stddev)
       ]
     else:
       dependencies = []
     with tf.control_dependencies(dependencies):
       return tf.nest.map_structure(add_noise, sample_state), global_state
-
-
-class GaussianAverageQuery(normalized_query.NormalizedQuery):
-  """Implements DPQuery interface for Gaussian average queries.
-
-  Accumulates clipped vectors, adds Gaussian noise, and normalizes.
-
-  Note that we use "fixed-denominator" estimation: the denominator should be
-  specified as the expected number of records per sample. Accumulating the
-  denominator separately would also be possible but would be produce a higher
-  variance estimator.
-  """
-
-  def __init__(self,
-               l2_norm_clip,
-               sum_stddev,
-               denominator):
-    """Initializes the GaussianAverageQuery.
-
-    Args:
-      l2_norm_clip: The clipping norm to apply to the global norm of each
-        record.
-      sum_stddev: The stddev of the noise added to the sum (before
-        normalization).
-      denominator: The normalization constant (applied after noise is added to
-        the sum).
-    """
-    super(GaussianAverageQuery, self).__init__(
-        numerator_query=GaussianSumQuery(l2_norm_clip, sum_stddev),
-        denominator=denominator)

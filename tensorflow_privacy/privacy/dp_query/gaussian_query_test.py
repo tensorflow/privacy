@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Tests for GaussianAverageQuery."""
+"""Tests for GaussianSumQuery."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -34,8 +33,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = tf.constant([2.0, 0.0])
       record2 = tf.constant([-1.0, 1.0])
 
-      query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip=10.0, stddev=0.0)
+      query = gaussian_query.GaussianSumQuery(l2_norm_clip=10.0, stddev=0.0)
       query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
@@ -46,8 +44,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1 = tf.constant([-6.0, 8.0])  # Clipped to [-3.0, 4.0].
       record2 = tf.constant([4.0, -3.0])  # Not clipped.
 
-      query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip=5.0, stddev=0.0)
+      query = gaussian_query.GaussianSumQuery(l2_norm_clip=5.0, stddev=0.0)
       query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1.0, 1.0]
@@ -80,8 +77,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       record1, record2 = 2.71828, 3.14159
       stddev = 1.0
 
-      query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip=5.0, stddev=stddev)
+      query = gaussian_query.GaussianSumQuery(l2_norm_clip=5.0, stddev=stddev)
       query_result, _ = test_utils.run_query(query, [record1, record2])
 
       noised_sums = []
@@ -108,44 +104,13 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
     sample_state_2 = get_sample_state(records2)
 
     merged = gaussian_query.GaussianSumQuery(10.0, 1.0).merge_sample_states(
-        sample_state_1,
-        sample_state_2)
+        sample_state_1, sample_state_2)
 
     with self.cached_session() as sess:
       result = sess.run(merged)
 
     expected = [3.0, 10.0]
     self.assertAllClose(result, expected)
-
-  def test_gaussian_average_no_noise(self):
-    with self.cached_session() as sess:
-      record1 = tf.constant([5.0, 0.0])   # Clipped to [3.0, 0.0].
-      record2 = tf.constant([-1.0, 2.0])  # Not clipped.
-
-      query = gaussian_query.GaussianAverageQuery(
-          l2_norm_clip=3.0, sum_stddev=0.0, denominator=2.0)
-      query_result, _ = test_utils.run_query(query, [record1, record2])
-      result = sess.run(query_result)
-      expected_average = [1.0, 1.0]
-      self.assertAllClose(result, expected_average)
-
-  def test_gaussian_average_with_noise(self):
-    with self.cached_session() as sess:
-      record1, record2 = 2.71828, 3.14159
-      sum_stddev = 1.0
-      denominator = 2.0
-
-      query = gaussian_query.GaussianAverageQuery(
-          l2_norm_clip=5.0, sum_stddev=sum_stddev, denominator=denominator)
-      query_result, _ = test_utils.run_query(query, [record1, record2])
-
-      noised_averages = []
-      for _ in range(1000):
-        noised_averages.append(sess.run(query_result))
-
-      result_stddev = np.std(noised_averages)
-      avg_stddev = sum_stddev / denominator
-      self.assertNear(result_stddev, avg_stddev, 0.1)
 
   @parameterized.named_parameters(
       ('type_mismatch', [1.0], (1.0,), TypeError),

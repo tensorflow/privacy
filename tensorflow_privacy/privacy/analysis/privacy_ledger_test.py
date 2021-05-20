@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tests for PrivacyLedger."""
 
 from __future__ import absolute_import
@@ -57,10 +56,9 @@ class PrivacyLedgerTest(tf.test.TestCase):
     population_size = tf.Variable(0)
     selection_probability = tf.Variable(1.0)
 
-    query = gaussian_query.GaussianSumQuery(
-        l2_norm_clip=10.0, stddev=0.0)
-    query = privacy_ledger.QueryWithLedger(
-        query, population_size, selection_probability)
+    query = gaussian_query.GaussianSumQuery(l2_norm_clip=10.0, stddev=0.0)
+    query = privacy_ledger.QueryWithLedger(query, population_size,
+                                           selection_probability)
 
     # First sample.
     tf.assign(population_size, 10)
@@ -93,14 +91,12 @@ class PrivacyLedgerTest(tf.test.TestCase):
     population_size = tf.Variable(0)
     selection_probability = tf.Variable(1.0)
 
-    query1 = gaussian_query.GaussianAverageQuery(
-        l2_norm_clip=4.0, sum_stddev=2.0, denominator=5.0)
-    query2 = gaussian_query.GaussianAverageQuery(
-        l2_norm_clip=5.0, sum_stddev=1.0, denominator=5.0)
+    query1 = gaussian_query.GaussianSumQuery(l2_norm_clip=4.0, stddev=2.0)
+    query2 = gaussian_query.GaussianSumQuery(l2_norm_clip=5.0, stddev=1.0)
 
     query = nested_query.NestedQuery([query1, query2])
-    query = privacy_ledger.QueryWithLedger(
-        query, population_size, selection_probability)
+    query = privacy_ledger.QueryWithLedger(query, population_size,
+                                           selection_probability)
 
     record1 = [1.0, [12.0, 9.0]]
     record2 = [5.0, [1.0, 2.0]]

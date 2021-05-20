@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Tests for GaussianAverageQuery."""
+"""Tests for NormalizedQuery."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -32,8 +31,7 @@ class NormalizedQueryTest(tf.test.TestCase):
       record1 = tf.constant([-6.0, 8.0])  # Clipped to [-3.0, 4.0].
       record2 = tf.constant([4.0, -3.0])  # Not clipped.
 
-      sum_query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip=5.0, stddev=0.0)
+      sum_query = gaussian_query.GaussianSumQuery(l2_norm_clip=5.0, stddev=0.0)
       query = normalized_query.NormalizedQuery(
           numerator_query=sum_query, denominator=2.0)
 
