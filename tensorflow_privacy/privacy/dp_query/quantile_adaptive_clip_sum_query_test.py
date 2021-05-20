@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Tests for QuantileAdaptiveClipSumQuery."""
 
 from __future__ import absolute_import
@@ -30,8 +29,8 @@ from tensorflow_privacy.privacy.dp_query import test_utils
 tf.enable_eager_execution()
 
 
-class QuantileAdaptiveClipSumQueryTest(
-    tf.test.TestCase, parameterized.TestCase):
+class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase,
+                                       parameterized.TestCase):
 
   def test_sum_no_clip_no_noise(self):
     record1 = tf.constant([2.0, 0.0])
@@ -87,47 +86,6 @@ class QuantileAdaptiveClipSumQueryTest(
     result_stddev = np.std(noised_sums)
     self.assertNear(result_stddev, stddev, 0.1)
 
-  def test_average_no_noise(self):
-    record1 = tf.constant([5.0, 0.0])   # Clipped to [3.0, 0.0].
-    record2 = tf.constant([-1.0, 2.0])  # Not clipped.
-
-    query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipAverageQuery(
-        initial_l2_norm_clip=3.0,
-        noise_multiplier=0.0,
-        denominator=2.0,
-        target_unclipped_quantile=1.0,
-        learning_rate=0.0,
-        clipped_count_stddev=0.0,
-        expected_num_records=2.0)
-    query_result, _ = test_utils.run_query(query, [record1, record2])
-    result = query_result.numpy()
-    expected_average = [1.0, 1.0]
-    self.assertAllClose(result, expected_average)
-
-  def test_average_with_noise(self):
-    record1, record2 = 2.71828, 3.14159
-    sum_stddev = 1.0
-    denominator = 2.0
-    clip = 3.0
-
-    query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipAverageQuery(
-        initial_l2_norm_clip=clip,
-        noise_multiplier=sum_stddev / clip,
-        denominator=denominator,
-        target_unclipped_quantile=1.0,
-        learning_rate=0.0,
-        clipped_count_stddev=0.0,
-        expected_num_records=2.0)
-
-    noised_averages = []
-    for _ in range(1000):
-      query_result, _ = test_utils.run_query(query, [record1, record2])
-      noised_averages.append(query_result.numpy())
-
-    result_stddev = np.std(noised_averages)
-    avg_stddev = sum_stddev / denominator
-    self.assertNear(result_stddev, avg_stddev, 0.1)
-
   def test_adaptation_target_zero(self):
     record1 = tf.constant([8.5])
     record2 = tf.constant([-7.25])
@@ -154,8 +112,8 @@ class QuantileAdaptiveClipSumQueryTest(
     expected_sums = [1.25, 1.25, 0.75, 0.25, 0.0]
     expected_clips = [9.0, 8.0, 7.5, 7.0, 7.0]
     for expected_sum, expected_clip in zip(expected_sums, expected_clips):
-      actual_sum, global_state = test_utils.run_query(
-          query, [record1, record2], global_state)
+      actual_sum, global_state = test_utils.run_query(query, [record1, record2],
+                                                      global_state)
 
       actual_clip = global_state.sum_state.l2_norm_clip
 
@@ -170,7 +128,7 @@ class QuantileAdaptiveClipSumQueryTest(
         initial_l2_norm_clip=16.0,
         noise_multiplier=0.0,
         target_unclipped_quantile=0.0,
-        learning_rate=np.log(2.0),      # Geometric steps in powers of 2.
+        learning_rate=np.log(2.0),  # Geometric steps in powers of 2.
         clipped_count_stddev=0.0,
         expected_num_records=2.0,
         geometric_update=True)
@@ -185,13 +143,13 @@ class QuantileAdaptiveClipSumQueryTest(
     # 4 / sqrt(2.0). Still only one record is clipped, so it reduces to 2.0.
     # Now both records are clipped, and the clip norm stays there (at 2.0).
 
-    four_div_root_two = 4 / np.sqrt(2.0)   # approx 2.828
+    four_div_root_two = 4 / np.sqrt(2.0)  # approx 2.828
 
     expected_sums = [2.5, 2.5, 1.5, four_div_root_two - 2.5, 0.0]
     expected_clips = [8.0, 4.0, four_div_root_two, 2.0, 2.0]
     for expected_sum, expected_clip in zip(expected_sums, expected_clips):
-      actual_sum, global_state = test_utils.run_query(
-          query, [record1, record2], global_state)
+      actual_sum, global_state = test_utils.run_query(query, [record1, record2],
+                                                      global_state)
 
       actual_clip = global_state.sum_state.l2_norm_clip
 
@@ -224,8 +182,8 @@ class QuantileAdaptiveClipSumQueryTest(
     expected_sums = [0.0, 0.0, 0.5, 1.0, 1.25]
     expected_clips = [1.0, 2.0, 2.5, 3.0, 3.0]
     for expected_sum, expected_clip in zip(expected_sums, expected_clips):
-      actual_sum, global_state = test_utils.run_query(
-          query, [record1, record2], global_state)
+      actual_sum, global_state = test_utils.run_query(query, [record1, record2],
+                                                      global_state)
 
       actual_clip = global_state.sum_state.l2_norm_clip
 
@@ -240,7 +198,7 @@ class QuantileAdaptiveClipSumQueryTest(
         initial_l2_norm_clip=0.5,
         noise_multiplier=0.0,
         target_unclipped_quantile=1.0,
-        learning_rate=np.log(2.0),      # Geometric steps in powers of 2.
+        learning_rate=np.log(2.0),  # Geometric steps in powers of 2.
         clipped_count_stddev=0.0,
         expected_num_records=2.0,
         geometric_update=True)
@@ -255,30 +213,31 @@ class QuantileAdaptiveClipSumQueryTest(
     # multiplied by sqrt(2.0). Still only one is clipped so it increases to 4.0.
     # Now both records are clipped, and the clip norm stays there (at 4.0).
 
-    two_times_root_two = 2 * np.sqrt(2.0)   # approx 2.828
+    two_times_root_two = 2 * np.sqrt(2.0)  # approx 2.828
 
     expected_sums = [0.0, 0.0, 0.5, two_times_root_two - 1.5, 1.5]
     expected_clips = [1.0, 2.0, two_times_root_two, 4.0, 4.0]
     for expected_sum, expected_clip in zip(expected_sums, expected_clips):
-      actual_sum, global_state = test_utils.run_query(
-          query, [record1, record2], global_state)
+      actual_sum, global_state = test_utils.run_query(query, [record1, record2],
+                                                      global_state)
 
       actual_clip = global_state.sum_state.l2_norm_clip
 
       self.assertAllClose(actual_clip.numpy(), expected_clip)
       self.assertAllClose(actual_sum.numpy(), (expected_sum,))
 
-  @parameterized.named_parameters(
-      ('start_low_arithmetic', True, False),
-      ('start_low_geometric', True, True),
-      ('start_high_arithmetic', False, False),
-      ('start_high_geometric', False, True))
+  @parameterized.named_parameters(('start_low_arithmetic', True, False),
+                                  ('start_low_geometric', True, True),
+                                  ('start_high_arithmetic', False, False),
+                                  ('start_high_geometric', False, True))
   def test_adaptation_linspace(self, start_low, geometric):
     # 100 records equally spaced from 0 to 10 in 0.1 increments.
     # Test that we converge to the correct median value and bounce around it.
     num_records = 21
-    records = [tf.constant(x) for x in np.linspace(
-        0.0, 10.0, num=num_records, dtype=np.float32)]
+    records = [
+        tf.constant(x)
+        for x in np.linspace(0.0, 10.0, num=num_records, dtype=np.float32)
+    ]
 
     query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipSumQuery(
         initial_l2_norm_clip=(1.0 if start_low else 10.0),
@@ -299,11 +258,10 @@ class QuantileAdaptiveClipSumQueryTest(
       if t > 40:
         self.assertNear(actual_clip, 5.0, 0.25)
 
-  @parameterized.named_parameters(
-      ('start_low_arithmetic', True, False),
-      ('start_low_geometric', True, True),
-      ('start_high_arithmetic', False, False),
-      ('start_high_geometric', False, True))
+  @parameterized.named_parameters(('start_low_arithmetic', True, False),
+                                  ('start_low_geometric', True, True),
+                                  ('start_high_arithmetic', False, False),
+                                  ('start_high_geometric', False, True))
   def test_adaptation_all_equal(self, start_low, geometric):
     # 20 equal records. Test that we converge to that record and bounce around
     # it. Unlike the linspace test, the quantile-matching objective is very
@@ -349,8 +307,8 @@ class QuantileAdaptiveClipSumQueryTest(
         expected_num_records=2.0,
         geometric_update=False)
 
-    query = privacy_ledger.QueryWithLedger(
-        query, population_size, selection_probability)
+    query = privacy_ledger.QueryWithLedger(query, population_size,
+                                           selection_probability)
 
     # First sample.
     tf.assign(population_size, 10)
