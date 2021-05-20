@@ -88,21 +88,23 @@ def make_keras_optimizer_class(cls):
             tape.watch(var_list)
 
           loss = loss()
-          batch_size = tf.shape(input=loss)[0]
           if self._num_microbatches is None:
-            self._num_microbatches = batch_size
+            num_microbatches = tf.shape(input=loss)[0]
+          else:
+            num_microbatches = self._num_microbatches
           microbatch_losses = tf.reduce_mean(
-              tf.reshape(loss, [self._num_microbatches, -1]), axis=1)
+              tf.reshape(loss, [num_microbatches, -1]), axis=1)
 
           if callable(var_list):
             var_list = var_list()
       else:
         with tape:
-          batch_size = tf.shape(input=loss)[0]
           if self._num_microbatches is None:
-            self._num_microbatches = batch_size
+            num_microbatches = tf.shape(input=loss)[0]
+          else:
+            num_microbatches = self._num_microbatches
           microbatch_losses = tf.reduce_mean(
-              tf.reshape(loss, [self._num_microbatches, -1]), axis=1)
+              tf.reshape(loss, [num_microbatches, -1]), axis=1)
 
       var_list = tf.nest.flatten(var_list)
 
@@ -128,7 +130,7 @@ def make_keras_optimizer_class(cls):
 
           # Normalize by number of microbatches and return.
           return tf.truediv(noised_gradient,
-                            tf.cast(self._num_microbatches, tf.float32))
+                            tf.cast(num_microbatches, tf.float32))
 
         final_gradients = tf.nest.map_structure(reduce_noise_normalize_batch,
                                                 clipped_gradients)
