@@ -29,12 +29,13 @@ from mpmath import log
 from mpmath import npdf
 from mpmath import quad
 import numpy as np
+import tensorflow as tf
 
 from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.analysis import rdp_accountant
 
 
-class TestGaussianMoments(parameterized.TestCase):
+class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
   #################################
   # HELPER FUNCTIONS:             #
   # Exact computations using      #
@@ -102,12 +103,23 @@ class TestGaussianMoments(parameterized.TestCase):
     rdp_scalar = rdp_accountant.compute_rdp(0.1, 2, 10, 5)
     self.assertAlmostEqual(rdp_scalar, 0.07737, places=5)
 
+  def test_compute_rdp_sequence_without_replacement(self):
+    rdp_vec = rdp_accountant.compute_rdp_sample_without_replacement(
+        0.01, 2.5, 50, [1.001, 1.5, 2.5, 5, 50, 100, 256, 512, 1024, np.inf])
+    self.assertAllClose(
+        rdp_vec, [
+            3.4701e-3, 3.4701e-3, 4.6386e-3, 8.7634e-3, 9.8474e-2, 1.6776e2,
+            7.9297e2, 1.8174e3, 3.8656e3, np.inf
+        ],
+        rtol=1e-4)
+
   def test_compute_rdp_sequence(self):
     rdp_vec = rdp_accountant.compute_rdp(0.01, 2.5, 50,
                                          [1.5, 2.5, 5, 50, 100, np.inf])
-    self.assertSequenceAlmostEqual(
-        rdp_vec, [0.00065, 0.001085, 0.00218075, 0.023846, 167.416307, np.inf],
-        delta=1e-5)
+    self.assertAllClose(
+        rdp_vec,
+        [6.5007e-04, 1.0854e-03, 2.1808e-03, 2.3846e-02, 1.6742e+02, np.inf],
+        rtol=1e-4)
 
   params = ({'q': 1e-7, 'sigma': .1, 'order': 1.01},
             {'q': 1e-6, 'sigma': .1, 'order': 256},
