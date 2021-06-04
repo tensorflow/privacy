@@ -19,6 +19,9 @@ import os
 from absl import app
 from absl import flags
 
+import tensorflow as tf
+
+from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 
@@ -44,10 +47,35 @@ PROJECT_SHORT_NAME = 'tf_privacy'
 PROJECT_FULL_NAME = 'TensorFlow Privacy'
 
 
+def _hide_layer_and_module_methods():
+  """Hide methods and properties defined in the base classes of keras layers."""
+  # __dict__ only sees attributes defined in *this* class, not on parent classes
+  # Needed to ignore redudant subclass documentation
+  model_contents = list(tf.keras.Model.__dict__.items())
+  layer_contents = list(tf.keras.layers.Layer.__dict__.items())
+  module_contents = list(tf.Module.__dict__.items())
+
+  for name, obj in model_contents + layer_contents + module_contents:
+    if name == '__init__':
+      continue
+
+    if isinstance(obj, property):
+      obj = obj.fget
+
+    if isinstance(obj, (staticmethod, classmethod)):
+      obj = obj.__func__
+
+    try:
+      doc_controls.do_not_doc_in_subclasses(obj)
+    except AttributeError:
+      pass
+
+
 def gen_api_docs():
   """Generates api docs for the tensorflow docs package."""
   output_dir = FLAGS.output_dir
 
+  _hide_layer_and_module_methods()
   doc_generator = generate_lib.DocGenerator(
       root_title=PROJECT_FULL_NAME,
       py_modules=[(PROJECT_SHORT_NAME, tf_privacy)],

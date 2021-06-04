@@ -27,6 +27,7 @@ if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
   # Analysis
+  from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
   from tensorflow_privacy.privacy.analysis.privacy_ledger import GaussianSumQueryEntry
   from tensorflow_privacy.privacy.analysis.privacy_ledger import PrivacyLedger
   from tensorflow_privacy.privacy.analysis.privacy_ledger import QueryWithLedger

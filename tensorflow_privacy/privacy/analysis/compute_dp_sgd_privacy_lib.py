@@ -55,7 +55,18 @@ def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
 
 
 def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
-  """Compute epsilon based on the given hyperparameters."""
+  """Compute epsilon based on the given hyperparameters.
+
+  Args:
+    n: Number of examples in the training data.
+    batch_size: Batch size used in training.
+    noise_multiplier: Noise multiplier used in training.
+    epochs: Number of epochs in training.
+    delta: Value of delta for which to compute epsilon.
+
+  Returns:
+    Value of epsilon corresponding to input hyperparameters.
+  """
   q = batch_size / n  # q - the sampling ratio.
   if q > 1:
     raise app.UsageError('n must be larger than the batch size.')
