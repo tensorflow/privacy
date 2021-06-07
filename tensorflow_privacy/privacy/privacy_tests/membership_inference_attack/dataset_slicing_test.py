@@ -13,17 +13,17 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing."""
+"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.dataset_slicing."""
 
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingFeature
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
-from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_single_slice_specs
-from tensorflow_privacy.privacy.membership_inference_attack.dataset_slicing import get_slice
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleSliceSpec
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingFeature
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.dataset_slicing import get_single_slice_specs
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.dataset_slicing import get_slice
 
 
 def _are_all_fields_equal(lhs, rhs) -> bool:

@@ -13,12 +13,12 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for tensorflow_privacy.privacy.membership_inference_attack.data_structures."""
+"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures."""
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_privacy.privacy.membership_inference_attack import models
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 
 
 class TrainedAttackerTest(absltest.TestCase):

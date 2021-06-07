@@ -11,8 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Lint as: python3
-"""Moved to privacy_attack/membership_inference_attack."""
-
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.models import *  # pylint: disable=wildcard-import

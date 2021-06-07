@@ -13,17 +13,17 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for tensorflow_privacy.privacy.membership_inference_attack.keras_evaluation."""
+"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.keras_evaluation."""
 
 from absl.testing import absltest
 
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.membership_inference_attack import keras_evaluation
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import keras_evaluation
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
 
 
 class UtilsTest(absltest.TestCase):

@@ -13,15 +13,15 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for tensorflow_privacy.privacy.membership_inference_attack.seq2seq_mia."""
+"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia."""
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import PrivacyReportMetadata
-from tensorflow_privacy.privacy.membership_inference_attack.seq2seq_mia import create_seq2seq_attacker_data
-from tensorflow_privacy.privacy.membership_inference_attack.seq2seq_mia import run_seq2seq_attack
-from tensorflow_privacy.privacy.membership_inference_attack.seq2seq_mia import Seq2SeqAttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import create_seq2seq_attacker_data
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import run_seq2seq_attack
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import Seq2SeqAttackInputData
 
 
 class Seq2SeqAttackInputDataTest(absltest.TestCase):

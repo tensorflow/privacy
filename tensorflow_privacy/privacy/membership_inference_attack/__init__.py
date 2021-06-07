@@ -11,3 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""The old location of Membership Inference Attack sources."""
+
+import warnings
+
+warnings.warn(
+    "\nMembership inference attack sources were moved. Please replace"
+    "\nimport tensorflow_privacy.privacy.membership_inference_attack\n"
+    "\nwith"
+    "\nimport tensorflow_privacy.privacy.privacy_tests.membership_inference_attack"
+)

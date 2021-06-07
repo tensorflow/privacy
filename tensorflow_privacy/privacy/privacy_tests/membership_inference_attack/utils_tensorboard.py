@@ -19,8 +19,8 @@ from typing import Union
 
 import tensorflow as tf2
 import tensorflow.compat.v1 as tf1
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackResults
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import get_flattened_attack_metrics
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
 
 
 def write_to_tensorboard(writers, tags, values, step):

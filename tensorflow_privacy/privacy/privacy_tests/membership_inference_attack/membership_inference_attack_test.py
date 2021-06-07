@@ -13,17 +13,17 @@
 # limitations under the License.
 
 # Lint as: python3
-"""Tests for tensorflow_privacy.privacy.membership_inference_attack.utils."""
+"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.utils."""
 from absl.testing import absltest
 import numpy as np
 
-from tensorflow_privacy.privacy.membership_inference_attack import membership_inference_attack as mia
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackInputData
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import DataSize
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SingleSliceSpec
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingFeature
-from tensorflow_privacy.privacy.membership_inference_attack.data_structures import SlicingSpec
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleSliceSpec
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingFeature
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
 
 
 def get_test_input(n_train, n_test):
