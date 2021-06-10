@@ -678,7 +678,7 @@ class AttackResults:
     summary = []
 
     # Summary over all slices
-    max_auc_result_all = self.get_result_with_max_attacker_advantage()
+    max_auc_result_all = self.get_result_with_max_auc()
     summary.append('Best-performing attacks over all slices')
     summary.append(
         '  %s (with %d training and %d test examples) achieved an AUC of %.2f on slice %s'
