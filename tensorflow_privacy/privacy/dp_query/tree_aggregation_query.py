@@ -68,7 +68,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
     `TreeCumulativeSumQuery` with L2 norm clipping and Gaussian noise.
 
     Args:
-      record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
+      record_specs: A nested structure of `tf.TensorSpec`s specifying structure
+        and shapes of records.
       noise_generator: `tree_aggregation.ValueGenerator` to generate the noise
         value for a tree node. Should be coupled with clipping norm to guarantee
         privacy.
@@ -89,7 +90,7 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       self._tree_aggregator = tree_aggregation.TreeAggregator(noise_generator)
 
   def initial_global_state(self):
-    """Returns initial global state."""
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     initial_tree_state = self._tree_aggregator.init_state()
     initial_samples_cumulative_sum = tf.nest.map_structure(
         lambda spec: tf.zeros(spec.shape), self._record_specs)
@@ -100,10 +101,11 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
     return initial_state
 
   def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return global_state.clip_value
 
   def preprocess_record(self, params, record):
-    """Returns the clipped record using `clip_fn` and params.
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
 
     Args:
       params: `clip_value` for the record.
@@ -118,14 +120,16 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
     return tf.nest.pack_sequence_as(record, clipped_as_list)
 
   def get_noised_result(self, sample_state, global_state):
-    """Updates tree, state, and returns noised cumulative sum and updated state.
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`.
 
-    Computes new cumulative sum, and returns its noised value. Grows tree_state
+    Updates tree state, and returns noised cumulative sum and updated state.
+
+    Computes new cumulative sum, and returns its noised value. Grows tree state
     by one new leaf, and returns the new state.
 
     Args:
       sample_state: Sum of clipped records for this round.
-      global_state: Global state with current samples cumulative sum and tree
+      global_state: Global state with current sample's cumulative sum and tree
         state.
 
     Returns:
@@ -157,7 +161,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         `clip_norm`.
       noise_multiplier: The effective noise multiplier for the sum of records.
         Noise standard deviation is `clip_norm*noise_multiplier`.
-      record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
+      record_specs: A nested structure of `tf.TensorSpec`s specifying structure
+        and shapes of records.
       noise_seed: Integer seed for the Gaussian noise generator. If `None`, a
         nondeterministic seed based on system time will be generated.
       use_efficient: Boolean indicating the usage of the efficient tree
@@ -204,9 +209,10 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
   Attributes:
     clip_fn: Callable that specifies clipping function. `clip_fn` receives two
       arguments: a flat list of vars in a record and a `clip_value` to clip the
-        corresponding record, e.g. clip_fn(flat_record, clip_value).
+      corresponding record, e.g. clip_fn(flat_record, clip_value).
     clip_value: float indicating the value at which to clip the record.
-    record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
+    record_specs: A nested structure of `tf.TensorSpec`s specifying structure
+      and shapes of records.
     tree_aggregator: `tree_aggregation.TreeAggregator` initialized with user
       defined `noise_generator`. `noise_generator` is a
       `tree_aggregation.ValueGenerator` to generate the noise value for a tree
@@ -242,7 +248,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
     `TreeResidualSumQuery` with L2 norm clipping and Gaussian noise.
 
     Args:
-      record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
+      record_specs: A nested structure of `tf.TensorSpec`s specifying structure
+        and shapes of records.
       noise_generator: `tree_aggregation.ValueGenerator` to generate the noise
         value for a tree node. Should be coupled with clipping norm to guarantee
         privacy.
@@ -263,7 +270,7 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       self._tree_aggregator = tree_aggregation.TreeAggregator(noise_generator)
 
   def initial_global_state(self):
-    """Returns initial global state."""
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     initial_tree_state = self._tree_aggregator.init_state()
     initial_noise = tf.nest.map_structure(lambda spec: tf.zeros(spec.shape),
                                           self._record_specs)
@@ -273,10 +280,11 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         previous_tree_noise=initial_noise)
 
   def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return global_state.clip_value
 
   def preprocess_record(self, params, record):
-    """Returns the clipped record using `clip_fn` and params.
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
 
     Args:
       params: `clip_value` for the record.
@@ -291,7 +299,9 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
     return tf.nest.pack_sequence_as(record, clipped_as_list)
 
   def get_noised_result(self, sample_state, global_state):
-    """Updates tree state, and returns residual of noised cumulative sum.
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`.
+
+    Updates tree state, and returns residual of noised cumulative sum.
 
     Args:
       sample_state: Sum of clipped records for this round.
@@ -324,7 +334,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         `clip_norm`.
       noise_multiplier: The effective noise multiplier for the sum of records.
         Noise standard deviation is `clip_norm*noise_multiplier`.
-      record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
+      record_specs: A nested structure of `tf.TensorSpec`s specifying structure
+        and shapes of records.
       noise_seed: Integer seed for the Gaussian noise generator. If `None`, a
         nondeterministic seed based on system time will be generated.
       use_efficient: Boolean indicating the usage of the efficient tree

@@ -27,29 +27,63 @@ import tensorflow as tf
 
 
 class ValueGenerator(metaclass=abc.ABCMeta):
-  """Base class establishing interface for stateful value generation."""
+  """Base class establishing interface for stateful value generation.
+
+  A `ValueGenerator` maintains a state, and each time `next` is called, a new
+  value is generated and the state is advanced.
+  """
 
   @abc.abstractmethod
   def initialize(self):
-    """Returns initialized state."""
+    """Makes an initialized state for the ValueGenerator.
+
+    Returns:
+      An initial state.
+    """
 
   @abc.abstractmethod
   def next(self, state):
-    """Returns tree node value and updated state."""
+    """Gets next value and advances the ValueGenerator.
+
+    Args:
+      state: The current state.
+
+    Returns:
+      A pair (value, new_state) where value is the next value and new_state
+        is the advanced state.
+    """
 
 
 class GaussianNoiseGenerator(ValueGenerator):
-  """Gaussian noise generator with counter as pseudo state."""
+  """Gaussian noise generator with counter as pseudo state.
+
+  Produces i.i.d. spherical Gaussian noise at each step shaped according to a
+  nested structure of `tf.TensorSpec`s.
+  """
 
   def __init__(self,
                noise_std: float,
                specs: Collection[tf.TensorSpec],
                seed: Optional[int] = None):
+    """Initializes the GaussianNoiseGenerator.
+
+    Args:
+      noise_std: The standard deviation of the noise.
+      specs: A nested structure of `tf.TensorSpec`s specifying the shape of the
+        noise to generate.
+      seed: An optional integer seed. If None, generator is seeded from the
+        clock.
+    """
     self.noise_std = noise_std
     self.specs = specs
     self.seed = seed
 
   def initialize(self):
+    """Makes an initial state for the GaussianNoiseGenerator.
+
+    Returns:
+      An initial state.
+    """
     if self.seed is None:
       return tf.cast(
           tf.stack([
@@ -61,6 +95,15 @@ class GaussianNoiseGenerator(ValueGenerator):
       return tf.constant(self.seed, dtype=tf.int64, shape=(2,))
 
   def next(self, state):
+    """Gets next value and advances the GaussianNoiseGenerator.
+
+    Args:
+      state: The current state.
+
+    Returns:
+      A pair (sample, new_state) where sample is a new sample and new_state
+        is the advanced state.
+    """
     flat_structure = tf.nest.flatten(self.specs)
     flat_seeds = [state + i for i in range(len(flat_structure))]
     nest_seeds = tf.nest.pack_sequence_as(self.specs, flat_seeds)
@@ -74,15 +117,34 @@ class GaussianNoiseGenerator(ValueGenerator):
 
 
 class StatelessValueGenerator(ValueGenerator):
-  """A wrapper for stateless value generator initialized by a no-arg function."""
+  """A wrapper for stateless value generator that calls a no-arg function."""
 
   def __init__(self, value_fn):
+    """Initializes the StatelessValueGenerator.
+
+    Args:
+      value_fn: The function to call to generate values.
+    """
     self.value_fn = value_fn
 
   def initialize(self):
+    """Makes an initialized state for the StatelessValueGenerator.
+
+    Returns:
+      An initial state (empty, because stateless).
+    """
     return ()
 
   def next(self, state):
+    """Gets next value.
+
+    Args:
+      state: The current state (simply passed through).
+
+    Returns:
+      A pair (value, new_state) where value is the next value and new_state
+        is the advanced state.
+    """
     return self.value_fn(), state
 
 
@@ -127,7 +189,12 @@ class TreeAggregator():
   """
 
   def __init__(self, value_generator: Union[ValueGenerator, Callable[[], Any]]):
-    """Initialize the aggregator with a noise generator."""
+    """Initialize the aggregator with a noise generator.
+
+    Args:
+      value_generator: A `ValueGenerator` or a no-arg function to generate a
+        noise value for each tree node.
+    """
     if isinstance(value_generator, ValueGenerator):
       self.value_generator = value_generator
     else:
@@ -235,7 +302,7 @@ class EfficientTreeAggregator():
 
   This class implements the efficient tree aggregation algorithm based on
   Honaker 2015 "Efficient Use of Differentially Private Binary Trees".
-  The noise standard deviation for the note at depth d is roughly
+  The noise standard deviation for a node at depth d is roughly
   `sigma * sqrt(2^{d-1}/(2^d-1))`. which becomes `sigma / sqrt(2)` when
   the tree is very tall.
 
@@ -245,7 +312,12 @@ class EfficientTreeAggregator():
   """
 
   def __init__(self, value_generator: Union[ValueGenerator, Callable[[], Any]]):
-    """Initialize the aggregator with a noise generator."""
+    """Initialize the aggregator with a noise generator.
+
+    Args:
+      value_generator: A `ValueGenerator` or a no-arg function to generate a
+        noise value for each tree node.
+    """
     if isinstance(value_generator, ValueGenerator):
       self.value_generator = value_generator
     else:
@@ -257,6 +329,9 @@ class EfficientTreeAggregator():
     Initializes `TreeState` for a tree of a single leaf node: the respective
     initial node value in `TreeState.level_buffer` is generated by the value
     generator function, and the node index is 0.
+
+    Returns:
+      An initialized `TreeState`.
     """
     value_generator_state = self.value_generator.initialize()
     level_buffer_idx = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True)

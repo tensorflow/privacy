@@ -32,12 +32,18 @@ class NestedQuery(dp_query.DPQuery):
   NestedQuery evaluates arbitrary nested structures of queries. Records must be
   nested structures of tensors that are compatible (in type and arity) with the
   query structure, but are allowed to have deeper structure within each leaf of
-  the query structure. For example, the nested query [q1, q2] is compatible with
-  the record [t1, t2] or [t1, (t2, t3)], but not with (t1, t2), [t1] or
-  [t1, t2, t3]. The entire substructure of each record corresponding to a leaf
-  node of the query structure is routed to the corresponding query. If the same
-  tensor should be consumed by multiple sub-queries, it can be replicated in the
-  record, for example [t1, t1].
+  the query structure. The entire substructure of each record corresponding to a
+  leaf node of the query structure is routed to the corresponding query.
+
+  For example, a nested query with structure "[q1, q2]" is compatible with a
+  record of structure "[t1, (t2, t3)]": t1 would be processed by q1, and (t2,
+  t3) would be processed by q2. On the other hand, "[q1, q2]" is not compatible
+  with "(t1, t2)" (type mismatch), "[t1]" (arity-mismatch) or "[t1, t2, t3]"
+  (arity-mismatch).
+
+  It is possible for the same tensor to be consumed by multiple sub-queries, by
+  simply replicating it in the record, for example providing "[t1, t1]" to
+  "[q1, q2]".
 
   NestedQuery is intended to allow privacy mechanisms for groups as described in
   [McMahan & Andrew, 2018: "A General Approach to Adding Differential Privacy to
@@ -61,35 +67,43 @@ class NestedQuery(dp_query.DPQuery):
                                     *inputs)
 
   def set_ledger(self, ledger):
+    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
     self._map_to_queries('set_ledger', ledger=ledger)
 
   def initial_global_state(self):
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     return self._map_to_queries('initial_global_state')
 
   def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return self._map_to_queries('derive_sample_params', global_state)
 
   def initial_sample_state(self, template=None):
+    """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
     if template is None:
       return self._map_to_queries('initial_sample_state')
     else:
       return self._map_to_queries('initial_sample_state', template)
 
   def preprocess_record(self, params, record):
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     return self._map_to_queries('preprocess_record', params, record)
 
   def accumulate_preprocessed_record(
       self, sample_state, preprocessed_record):
+    """Implements `tensorflow_privacy.DPQuery.accumulate_preprocessed_record`."""
     return self._map_to_queries(
         'accumulate_preprocessed_record',
         sample_state,
         preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
+    """Implements `tensorflow_privacy.DPQuery.merge_sample_states`."""
     return self._map_to_queries(
         'merge_sample_states', sample_state_1, sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     estimates_and_new_global_states = self._map_to_queries(
         'get_noised_result', sample_state, global_state)
 
@@ -99,6 +113,7 @@ class NestedQuery(dp_query.DPQuery):
             tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
 
   def derive_metrics(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""
     metrics = collections.OrderedDict()
 
     def add_metrics(tuple_path, subquery, subquery_global_state):
@@ -122,6 +137,8 @@ class NestedSumQuery(NestedQuery, dp_query.SumAggregationDPQuery):
     Args:
       queries: A nested structure of queries that must all be
         SumAggregationDPQueries.
+
+    Raises: TypeError if any of the subqueries are not SumAggregationDPQueries.
     """
     def check(query):
       if not isinstance(query, dp_query.SumAggregationDPQuery):

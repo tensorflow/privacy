@@ -27,14 +27,22 @@ from tensorflow_privacy.privacy.dp_query import dp_query
 
 
 class NormalizedQuery(dp_query.SumAggregationDPQuery):
-  """DPQuery for queries with a DPQuery numerator and fixed denominator."""
+  """`DPQuery` for queries with a `DPQuery` numerator and fixed denominator.
+
+  If the number of records per round is a public constant R, `NormalizedQuery`
+  could be used with a sum query as the numerator and R as the denominator to
+  implement an average. Under some sampling schemes, such as Poisson
+  subsampling, the actual number of records in a sample is a private quantity,
+  so we cannot use it directly. Using this class with the expected number of
+  records as the denominator gives an unbiased estimate of the average.
+  """
 
   # pylint: disable=invalid-name
   _GlobalState = collections.namedtuple(
       '_GlobalState', ['numerator_state', 'denominator'])
 
   def __init__(self, numerator_query, denominator):
-    """Initializer for NormalizedQuery.
+    """Initializes the NormalizedQuery.
 
     Args:
       numerator_query: A SumAggregationDPQuery for the numerator.
@@ -48,27 +56,30 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
     assert isinstance(self._numerator, dp_query.SumAggregationDPQuery)
 
   def set_ledger(self, ledger):
+    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
     self._numerator.set_ledger(ledger)
 
   def initial_global_state(self):
-    if self._denominator is not None:
-      denominator = tf.cast(self._denominator, tf.float32)
-    else:
-      denominator = None
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
+    denominator = tf.cast(self._denominator, tf.float32)
     return self._GlobalState(
         self._numerator.initial_global_state(), denominator)
 
   def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return self._numerator.derive_sample_params(global_state.numerator_state)
 
   def initial_sample_state(self, template):
+    """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
     # NormalizedQuery has no sample state beyond the numerator state.
     return self._numerator.initial_sample_state(template)
 
   def preprocess_record(self, params, record):
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     return self._numerator.preprocess_record(params, record)
 
   def get_noised_result(self, sample_state, global_state):
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
         sample_state, global_state.numerator_state)
     def normalize(v):
@@ -78,4 +89,5 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
             self._GlobalState(new_sum_global_state, global_state.denominator))
 
   def derive_metrics(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""
     return self._numerator.derive_metrics(global_state.numerator_state)

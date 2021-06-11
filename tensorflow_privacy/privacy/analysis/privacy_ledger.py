@@ -54,7 +54,31 @@ class PrivacyLedger(object):
   """Class for keeping a record of private queries.
 
   The PrivacyLedger keeps a record of all queries executed over a given dataset
-  for the purpose of computing privacy guarantees.
+  for the purpose of computing privacy guarantees. To use it, it must be
+  associated with a `DPQuery` object via a `QueryWithLedger`.
+
+  The current implementation works only with DPQueries that consist of composing
+  Gaussian sum mechanism with Poisson subsampling.
+
+  Example usage:
+
+  ```
+  import tensorflow_privacy as tfp
+
+  dp_query = tfp.QueryWithLedger(
+    tensorflow_privacy.GaussianSumQuery(
+      l2_norm_clip=1.0, stddev=1.0),
+    population_size=10000,
+    selection_probability=0.01)
+
+  # Use dp_query here in training loop.
+
+  formatted_ledger = dp_query.ledger.get_formatted_ledger_eager()
+  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
+          list(range(5, 64)) + [128, 256, 512])
+  total_rdp = tfp.compute_rdp_from_ledger(formatted_ledger, orders)
+  epsilon = tfp.get_privacy_spent(orders, total_rdp, target_delta=1e-5)
+  ```
   """
 
   def __init__(self,
@@ -106,7 +130,8 @@ class PrivacyLedger(object):
       noise_stddev: The standard deviation of the noise applied to the sum.
 
     Returns:
-      An operation recording the sum query to the ledger.
+      An operation recording the sum query to the ledger. This should be called
+      for every Gaussian sum query that is issued on a sample.
     """
 
     def _do_record_query():
@@ -118,7 +143,15 @@ class PrivacyLedger(object):
     return self._cs.execute(_do_record_query)
 
   def finalize_sample(self):
-    """Finalizes sample and records sample ledger entry."""
+    """Finalizes sample and records sample ledger entry.
+
+    This should be called once per application of the mechanism on a sample,
+    after all sum queries have been recorded.
+
+    Returns:
+      An operation recording the complete mechanism (sampling and sum
+      estimation) to the ledger.
+    """
     with tf.control_dependencies([
         tf.assign(self._sample_var, [
             self._population_size, self._selection_probability,
@@ -132,6 +165,7 @@ class PrivacyLedger(object):
         return self._sample_buffer.append(self._sample_var)
 
   def get_unformatted_ledger(self):
+    """Returns the raw sample and query values."""
     return self._sample_buffer.values, self._query_buffer.values
 
   def get_formatted_ledger(self, sess):
@@ -169,7 +203,10 @@ class QueryWithLedger(dp_query.DPQuery):
   those contained in the leaves of a nested query) should also contain a
   reference to the same ledger object.
 
-  For example usage, see `privacy_ledger_test.py`.
+  Only composed Gaussian sum queries with Poisson subsampling are supported.
+  This includes `GaussianSumQuery`, `QuantileEstimatorQuery`, and
+  `QuantileAdaptiveClipSumQuery`, as well as `NestedQuery` or `NormalizedQuery`
+  objects that contain the previous mentioned query types.
   """
 
   def __init__(self, query,
@@ -185,8 +222,8 @@ class QueryWithLedger(dp_query.DPQuery):
         population, i.e. size of the training data used in each epoch. May be
         `None` if `ledger` is specified.
       selection_probability: A floating point value (may be variable) specifying
-        the probability each record is included in a sample. May be `None` if
-        `ledger` is specified.
+        the probability each record is included in a sample under Poisson
+        subsampling. May be `None` if `ledger` is specified.
       ledger: A `PrivacyLedger` to use. Must be specified if either of
         `population_size` or `selection_probability` is `None`.
     """
@@ -201,46 +238,62 @@ class QueryWithLedger(dp_query.DPQuery):
 
   @property
   def ledger(self):
+    """Gets the ledger that all inner queries record to."""
     return self._ledger
 
   def set_ledger(self, ledger):
+    """Sets a new ledger."""
     self._ledger = ledger
     self._query.set_ledger(ledger)
 
   def initial_global_state(self):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     return self._query.initial_global_state()
 
   def derive_sample_params(self, global_state):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return self._query.derive_sample_params(global_state)
 
   def initial_sample_state(self, template):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
     return self._query.initial_sample_state(template)
 
   def preprocess_record(self, params, record):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     return self._query.preprocess_record(params, record)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.accumulate_preprocessed_record`."""
     return self._query.accumulate_preprocessed_record(
         sample_state, preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.merge_sample_states`."""
     return self._query.merge_sample_states(sample_state_1, sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
-    """Ensures sample is recorded to the ledger and returns noised result."""
+    """Implements `tensorflow_privacy.DPQuery.derive_metrics`.
+
+    Besides noising and returning the result of the inner query, ensures that
+    the sample is recorded to the ledger.
+
+    Args:
+      sample_state: The sample state after all records have been accumulated.
+      global_state: The global state, storing long-term privacy bookkeeping.
+
+    Returns:
+      A tuple (result, new_global_state) where "result" is the result of the
+      query and "new_global_state" is the updated global state.
+    """
     # Ensure sample_state is fully aggregated before calling get_noised_result.
     with tf.control_dependencies(tf.nest.flatten(sample_state)):
       result, new_global_state = self._query.get_noised_result(
           sample_state, global_state)
+
     # Ensure inner queries have recorded before finalizing.
     with tf.control_dependencies(tf.nest.flatten(result)):
       finalize = self._ledger.finalize_sample()
+
     # Ensure finalizing happens.
     with tf.control_dependencies([finalize]):
       return tf.nest.map_structure(tf.identity, result), new_global_state

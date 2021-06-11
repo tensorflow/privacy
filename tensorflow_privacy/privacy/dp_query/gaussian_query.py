@@ -28,7 +28,7 @@ from tensorflow_privacy.privacy.dp_query import dp_query
 class GaussianSumQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for Gaussian sum queries.
 
-  Accumulates clipped vectors, then adds Gaussian noise to the sum.
+  Clips records to bound the L2 norm, then adds Gaussian noise to the sum.
   """
 
   # pylint: disable=invalid-name
@@ -48,6 +48,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     self._ledger = None
 
   def set_ledger(self, ledger):
+    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
     self._ledger = ledger
 
   def make_global_state(self, l2_norm_clip, stddev):
@@ -56,9 +57,11 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
         tf.cast(l2_norm_clip, tf.float32), tf.cast(stddev, tf.float32))
 
   def initial_global_state(self):
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     return self.make_global_state(self._l2_norm_clip, self._stddev)
 
   def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return global_state.l2_norm_clip
 
   def preprocess_record_impl(self, params, record):
@@ -79,11 +82,12 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     return tf.nest.pack_sequence_as(record, clipped_as_list), norm
 
   def preprocess_record(self, params, record):
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     preprocessed_record, _ = self.preprocess_record_impl(params, record)
     return preprocessed_record
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     if distutils.version.LooseVersion(
         tf.__version__) < distutils.version.LooseVersion('2.0.0'):
 

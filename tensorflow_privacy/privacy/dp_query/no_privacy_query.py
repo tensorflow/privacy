@@ -34,13 +34,14 @@ class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
     self._ledger = None
 
   def set_ledger(self, ledger):
+    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
     warnings.warn(
         'Attempt to use NoPrivacySumQuery with privacy ledger. Privacy '
         'guarantees will be vacuous.')
     self._ledger = ledger
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
 
     if self._ledger:
       dependencies = [
@@ -57,35 +58,67 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
   """Implements DPQuery interface for an average query with no privacy.
 
   Accumulates vectors and normalizes by the total number of accumulated vectors.
+  Under some sampling schemes, such as Poisson subsampling, the number of
+  records in a sample is a private quantity, so we lose all privacy guarantees
+  by using the number of records directly to normalize.
+
+  Also allows weighted accumulation, unlike the base class DPQuery. In a private
+  implementation of weighted average, the weight would have to be itself
+  privatized.
   """
 
   def __init__(self):
+    """Initializes the NoPrivacyAverageQuery."""
     self._ledger = None
 
   def set_ledger(self, ledger):
+    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
     warnings.warn(
         'Attempt to use NoPrivacyAverageQuery with privacy ledger. Privacy '
         'guarantees will be vacuous.')
     self._ledger = ledger
 
   def initial_sample_state(self, template):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
     return (super(NoPrivacyAverageQuery, self).initial_sample_state(template),
             tf.constant(0.0))
 
   def preprocess_record(self, params, record, weight=1):
-    """Multiplies record by weight."""
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
+
+    Optional `weight` argument allows weighted accumulation.
+
+    Args:
+      params: The parameters for the sample.
+      record: The record to accumulate.
+      weight: Optional weight for the record.
+
+    Returns:
+      The preprocessed record.
+    """
     weighted_record = tf.nest.map_structure(lambda t: weight * t, record)
     return (weighted_record, tf.cast(weight, tf.float32))
 
   def accumulate_record(self, params, sample_state, record, weight=1):
-    """Accumulates record, multiplying by weight."""
+    """Implements `tensorflow_privacy.DPQuery.accumulate_record`.
+
+    Optional `weight` argument allows weighted accumulation.
+
+    Args:
+      params: The parameters for the sample.
+      sample_state: The current sample state.
+      record: The record to accumulate.
+      weight: Optional weight for the record.
+
+    Returns:
+      The updated sample state.
+    """
     weighted_record = tf.nest.map_structure(lambda t: weight * t, record)
     return self.accumulate_preprocessed_record(
         sample_state, (weighted_record, tf.cast(weight, tf.float32)))
 
   def get_noised_result(self, sample_state, global_state):
-    """See base class."""
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     sum_state, denominator = sample_state
 
     if self._ledger:
