@@ -116,7 +116,6 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
       self.assertArrayNear(result_stddev, expected_stddev, 0.1)
 
   @parameterized.named_parameters(
-      ('type_mismatch', [_basic_query], (1.0,), TypeError),
       ('too_many_queries', [_basic_query, _basic_query], [1.0], ValueError),
       ('query_too_deep', [_basic_query, [_basic_query]], [1.0, 1.0], TypeError))
   def test_record_incompatible_with_query(self, queries, record, error_type):
