@@ -23,6 +23,7 @@ setup(
     install_requires=[
         'scipy>=0.17',
         'tensorflow-estimator>=2.3.0',  # for DP versions of estimator.
+        'attrs>=21.2.0',  # for tree_aggregation_query.py.
         'mpmath',  # used in tests only
         'dm-tree~=0.1.1',  # used in tests only
     ],
