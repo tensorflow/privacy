@@ -179,6 +179,11 @@ def get_step_idx(state: TreeState) -> tf.Tensor:
   return step_idx
 
 
+# TODO(b/192464750): instead of saving noise `TreeState.level_buffer`, we can
+# save the random seed and online generate noise. This could save some memory
+# and disk.
+
+
 class TreeAggregator():
   """Tree aggregator to compute accumulated noise in private algorithms.
 
