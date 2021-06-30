@@ -365,5 +365,39 @@ class GaussianNoiseGeneratorTest(tf.test.TestCase):
       self.assertAllEqual(gstate, gstate2)
 
 
+class BuildTreeTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.product(
+      leaf_nodes_size=[1, 2, 3, 4, 5],
+      arity=[2, 3],
+      dtype=[tf.int32, tf.float32],
+  )
+  def test_build_tree_from_leaf(self, leaf_nodes_size, arity, dtype):
+    """Test whether `build_tree_from_leaf` will output the correct tree."""
+
+    leaf_nodes = tf.cast(tf.range(leaf_nodes_size), dtype)
+    depth = math.ceil(math.log(leaf_nodes_size, arity)) + 1
+
+    tree = tree_aggregation.build_tree_from_leaf(leaf_nodes, arity)
+
+    self.assertEqual(depth, tree.shape[0])
+
+    for layer in range(depth):
+      reverse_depth = tree.shape[0] - layer - 1
+      span_size = arity**reverse_depth
+      for idx in range(arity**layer):
+        left = idx * span_size
+        right = (idx + 1) * span_size
+        expected_value = sum(leaf_nodes[left:right])
+        self.assertEqual(tree[layer][idx], expected_value)
+
+  @parameterized.named_parameters(('negative_arity', [1], -1),
+                                  ('empty_hist', [], 2))
+  def test_value_error_raises(self, leaf_nodes, arity):
+    """Test whether `build_tree_from_leaf` will raise the correct error when the input is illegal."""
+    with self.assertRaises(ValueError):
+      tree_aggregation.build_tree_from_leaf(leaf_nodes, arity)
+
+
 if __name__ == '__main__':
   tf.test.main()
