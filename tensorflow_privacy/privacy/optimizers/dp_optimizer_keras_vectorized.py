@@ -48,17 +48,61 @@ def make_vectorized_keras_optimizer_class(cls):
   """
 
   class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
-    __doc__ = """Vectorized differentially private subclass of given class `tf.keras.optimizers.{}.
+    __doc__ = """Vectorized differentially private subclass of given class
+    `{base_class}`.
 
-    The class tf.keras.optimizers.Optimizer has two methods to compute
-    gradients, `_compute_gradients` and `get_gradients`. The first works
-    with eager execution, while the second runs in graph mode and is used
-    by canned estimators.
+    You can use this as a differentially private replacement for
+    `{base_class}`. This optimizer implements DP-SGD using
+    the standard Gaussian mechanism. It differs from `{dp_keras_class}` in that
+    it attempts to vectorize the gradient computation and clipping of
+    microbatches.
 
-    Internally, DPOptimizerClass stores hyperparameters both individually
-    and encapsulated in a `GaussianSumQuery` object for these two use cases.
-    However, this should be invisible to users of this class.
-    """.format(cls.__name__)
+    When instantiating this optimizer, you need to supply several
+    DP-related arguments followed by the standard arguments for
+    `{short_base_class}`.
+
+    Examples:
+
+    ```python
+    # Create optimizer.
+    opt = {dp_vectorized_keras_class}(l2_norm_clip=1.0, noise_multiplier=0.5, num_microbatches=1,
+            <standard arguments>)
+    ```
+
+    When using the optimizer, be sure to pass in the loss as a
+    rank-one tensor with one entry for each example.
+
+    The optimizer can be used directly via its `minimize` method, or
+    through a Keras `Model`.
+
+    ```python
+    # Compute loss as a tensor by using tf.losses.Reduction.NONE.
+    # Compute vector of per-example loss rather than its mean over a minibatch.
+    # (Side note: Always verify that the output shape when using
+    # tf.losses.Reduction.NONE-- it can sometimes be surprising.
+    loss = tf.keras.losses.CategoricalCrossentropy(
+        from_logits=True, reduction=tf.losses.Reduction.NONE)
+
+    # Use optimizer in a Keras model.
+    opt.minimize(loss, var_list=[var])
+    ```
+
+    ```python
+    # Compute loss as a tensor by using tf.losses.Reduction.NONE.
+    # Compute vector of per-example loss rather than its mean over a minibatch.
+    loss = tf.keras.losses.CategoricalCrossentropy(
+        from_logits=True, reduction=tf.losses.Reduction.NONE)
+
+    # Use optimizer in a Keras model.
+    model = tf.keras.Sequential(...)
+    model.compile(optimizer=opt, loss=loss, metrics=['accuracy'])
+    model.fit(...)
+    ```
+
+    """.format(base_class='tf.keras.optimizers.' + cls.__name__,
+               dp_keras_class='DPKeras' + cls.__name__,
+               short_base_class=cls.__name__,
+               dp_vectorized_keras_class='VectorizedDPKeras' + cls.__name__)
 
     def __init__(
         self,

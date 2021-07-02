@@ -47,10 +47,44 @@ def make_vectorized_optimizer_class(cls):
         cls.__name__)
 
   class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
-    __doc__ = (
-        'Vectorized DP subclass of `tf.compat.v1.train.{}` using Gaussian '
-        'averaging.'
-    ).format(cls.__name__)
+    __doc__ = ("""Vectorized DP subclass of `{base_class}` using Gaussian
+       averaging.
+
+       You can use this as a differentially private replacement for
+       `{base_class}`. This optimizer implements DP-SGD using
+       the standard Gaussian mechanism. It differs from `{dp_class}` in that
+       it attempts to vectorize the gradient computation and clipping of
+       microbatches.
+
+       When instantiating this optimizer, you need to supply several
+       DP-related arguments followed by the standard arguments for
+       `{short_base_class}`.
+
+       Examples:
+
+       ```python
+       # Create optimizer.
+       opt = {dp_vectorized_class}(l2_norm_clip=1.0, noise_multiplier=0.5, num_microbatches=1,
+                <standard arguments>)
+       ```
+
+       When using the optimizer, be sure to pass in the loss as a
+       rank-one tensor with one entry for each example.
+
+       ```python
+       # Compute loss as a tensor. Do not call tf.reduce_mean as you
+       # would with a standard optimizer.
+       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+           labels=labels, logits=logits)
+
+       train_op = opt.minimize(loss, global_step=global_step)
+       ```
+       """).format(
+           base_class='tf.compat.v1.train.' + cls.__name__,
+           dp_class='DP' +
+           cls.__name__.replace('Optimizer', 'GaussianOptimizer'),
+           short_base_class=cls.__name__,
+           dp_vectorized_class='VectorizedDP' + cls.__name__)
 
     def __init__(
         self,
@@ -153,6 +187,11 @@ def make_vectorized_optimizer_class(cls):
   return DPOptimizerClass
 
 
-VectorizedDPAdagrad = make_vectorized_optimizer_class(AdagradOptimizer)
-VectorizedDPAdam = make_vectorized_optimizer_class(AdamOptimizer)
-VectorizedDPSGD = make_vectorized_optimizer_class(GradientDescentOptimizer)
+VectorizedDPAdagradOptimizer = make_vectorized_optimizer_class(AdagradOptimizer)
+VectorizedDPAdamOptimizer = make_vectorized_optimizer_class(AdamOptimizer)
+VectorizedDPSGDOptimizer = make_vectorized_optimizer_class(
+    GradientDescentOptimizer)
+
+VectorizedDPAdagrad = VectorizedDPAdagradOptimizer
+VectorizedDPAdam = VectorizedDPAdamOptimizer
+VectorizedDPSGD = VectorizedDPSGDOptimizer

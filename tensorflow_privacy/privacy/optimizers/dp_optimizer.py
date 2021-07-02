@@ -49,7 +49,50 @@ def make_optimizer_class(cls):
         cls.__name__)
 
   class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
-    __doc__ = ('DP subclass of `tf.compat.v1.train.{}`.').format(cls.__name__)
+    __doc__ = ("""Differentially private subclass of `{base_class}`.
+
+       You can use this as a differentially private replacement for
+       `{base_class}`. Note that you must ensure
+       that any loss processed by this optimizer comes in vector
+       form.
+
+       This is the fully general form of the optimizer that allows you
+       to define your own privacy mechanism. If you are planning to use
+       the standard Gaussian mechanism, it is simpler to use the more
+       specific `{gaussian_class}` class instead.
+
+       When instantiating this optimizer, you need to supply several
+       DP-related arguments followed by the standard arguments for
+       `{short_base_class}`.
+
+       Examples:
+
+       ```python
+       # Create GaussianSumQuery.
+       dp_sum_query = gaussian_query.GaussianSumQuery(l2_norm_clip=1.0, stddev=0.5)
+
+       # Create optimizer.
+       opt = {dp_class}(dp_sum_query, 1, False, <standard arguments>)
+       ```
+
+       When using the optimizer, be sure to pass in the loss as a
+       rank-one tensor with one entry for each example.
+
+       ```python
+       # Compute loss as a tensor. Do not call tf.reduce_mean as you
+       # would with a standard optimizer.
+       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+           labels=labels, logits=logits)
+
+       train_op = opt.minimize(loss, global_step=global_step)
+       ```
+
+       """).format(
+           base_class='tf.compat.v1.train.' + cls.__name__,
+           gaussian_class='DP' +
+           cls.__name__.replace('Optimizer', 'GaussianOptimizer'),
+           short_base_class=cls.__name__,
+           dp_class='DP' + cls.__name__)
 
     def __init__(
         self,
@@ -233,9 +276,41 @@ def make_gaussian_optimizer_class(cls):
   """
 
   class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=empty-docstring
-    __doc__ = (
-        'DP subclass of `tf.compat.v1.train.{}` using Gaussian averaging.'
-    ).format(cls.__name__)
+    __doc__ = ("""DP subclass of `{}`.
+
+       You can use this as a differentially private replacement for 
+       `tf.compat.v1.train.{}`. This optimizer implements DP-SGD using
+       the standard Gaussian mechanism.
+
+       When instantiating this optimizer, you need to supply several
+       DP-related arguments followed by the standard arguments for
+       `{}`.
+
+       Examples:
+
+       ```python
+       # Create optimizer.
+       opt = {}(l2_norm_clip=1.0, noise_multiplier=0.5, num_microbatches=1, 
+                <standard arguments>)
+       ```
+
+       When using the optimizer, be sure to pass in the loss as a
+       rank-one tensor with one entry for each example.
+
+       ```python
+       # Compute loss as a tensor. Do not call tf.reduce_mean as you
+       # would with a standard optimizer.
+       loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+           labels=labels, logits=logits)
+
+       train_op = opt.minimize(loss, global_step=global_step)
+       ```
+
+       """).format(
+           'tf.compat.v1.train.' + cls.__name__,
+           cls.__name__,
+           cls.__name__,
+           'DP' + cls.__name__.replace('Optimizer', 'GaussianOptimizer'))
 
     def __init__(
         self,

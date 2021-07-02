@@ -51,11 +51,13 @@ def _hide_layer_and_module_methods():
   """Hide methods and properties defined in the base classes of keras layers."""
   # __dict__ only sees attributes defined in *this* class, not on parent classes
   # Needed to ignore redudant subclass documentation
-  model_contents = list(tf.keras.Model.__dict__.items())
   layer_contents = list(tf.keras.layers.Layer.__dict__.items())
+  model_contents = list(tf.keras.Model.__dict__.items())
   module_contents = list(tf.Module.__dict__.items())
+  optimizer_contents = list(tf.compat.v1.train.Optimizer.__dict__.items())
 
-  for name, obj in model_contents + layer_contents + module_contents:
+  for name, obj in model_contents + layer_contents + module_contents + optimizer_contents:
+
     if name == '__init__':
       continue
 
