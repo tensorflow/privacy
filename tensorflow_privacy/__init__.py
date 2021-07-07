@@ -26,9 +26,6 @@ from tensorflow_privacy.version import __version__  # pylint: disable=g-bad-impo
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  # TensorFlow v1 imports
-  import tensorflow_privacy.v1
-
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
   from tensorflow_privacy.privacy.analysis.privacy_ledger import GaussianSumQueryEntry
@@ -57,6 +54,7 @@ else:
 
   # Estimators
   from tensorflow_privacy.privacy.estimators.dnn import DNNClassifier
+  from tensorflow_privacy.privacy.estimators.v1.dnn import DNNClassifier as DNNClassifierV1
 
   # Keras Models
   from tensorflow_privacy.privacy.keras_models.dp_keras_model import DPModel
@@ -64,6 +62,14 @@ else:
   from tensorflow_privacy.privacy.keras_models.dp_keras_model import make_dp_model_class
 
   # Optimizers
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamGaussianOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer import make_optimizer_class
+
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasAdagradOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasAdamOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasSGDOptimizer
@@ -73,6 +79,15 @@ else:
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasAdamOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasSGDOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import make_vectorized_keras_optimizer_class
+
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagradOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdamOptimizer
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPSGDOptimizer
+
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagrad
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdam
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPSGD
+  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import make_vectorized_optimizer_class
 
   try:
     from tensorflow_privacy.privacy.bolt_on.models import BoltOnModel
