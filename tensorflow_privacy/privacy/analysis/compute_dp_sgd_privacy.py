@@ -32,15 +32,10 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import sys
-
 from absl import app
 from absl import flags
 
 from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
-
-# Opting out of loading all sibling packages and their dependencies.
-sys.skip_tf_privacy_import = True
 
 FLAGS = flags.FLAGS
 
