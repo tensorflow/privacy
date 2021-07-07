@@ -13,15 +13,14 @@
 # limitations under the License.
 """Tests for `tree_aggregation_query`."""
 
-from absl.testing import parameterized
+import math
 
+from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.dp_query import test_utils
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 from tensorflow_privacy.privacy.dp_query import tree_aggregation_query
-
 
 STRUCT_RECORD = [
     tf.constant([[2.0, 0.0], [0.0, 1.0]]),
@@ -55,6 +54,7 @@ def _get_noise_fn(specs, stddev=NOISE_STD, seed=1):
 
 def _get_no_noise_fn(specs):
   shape = tf.nest.map_structure(lambda spec: spec.shape, specs)
+
   def no_noise_fn():
     return tf.nest.map_structure(tf.zeros, shape)
 
@@ -73,6 +73,7 @@ def _get_l2_clip_fn():
 def _get_l_infty_clip_fn():
 
   def l_infty_clip_fn(record_as_list, clip_value):
+
     def clip(record):
       return tf.clip_by_value(
           record, clip_value_min=-clip_value, clip_value_max=clip_value)
@@ -393,6 +394,284 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
         use_efficient=use_efficient,
     )
     self.assertIsInstance(query._tree_aggregator, tree_class)
+
+
+class BuildTreeTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.product(
+      leaf_nodes_size=[1, 2, 3, 4, 5],
+      arity=[2, 3],
+      dtype=[tf.int32, tf.float32],
+  )
+  def test_build_tree_from_leaf(self, leaf_nodes_size, arity, dtype):
+    """Test whether `_build_tree_from_leaf` will output the correct tree."""
+
+    leaf_nodes = tf.cast(tf.range(leaf_nodes_size), dtype)
+    depth = math.ceil(math.log(leaf_nodes_size, arity)) + 1
+
+    tree = tree_aggregation_query._build_tree_from_leaf(leaf_nodes, arity)
+
+    self.assertEqual(depth, tree.shape[0])
+
+    for layer in range(depth):
+      reverse_depth = tree.shape[0] - layer - 1
+      span_size = arity**reverse_depth
+      for idx in range(arity**layer):
+        left = idx * span_size
+        right = (idx + 1) * span_size
+        expected_value = sum(leaf_nodes[left:right])
+        self.assertEqual(tree[layer][idx], expected_value)
+
+
+class CentralTreeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_initial_global_state_type(self):
+
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=NOISE_STD)
+    global_state = query.initial_global_state()
+    self.assertIsInstance(
+        global_state, tree_aggregation_query.CentralTreeSumQuery.GlobalState)
+
+  def test_derive_sample_params(self):
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=NOISE_STD)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    self.assertAllClose(params, 10.)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([1, 0, 0, 0], dtype=tf.int32)),
+      ('binary_test_float', 2, tf.constant([1., 0., 0., 0.], dtype=tf.float32)),
+      ('ternary_test_int', 3, tf.constant([1, 0, 0, 0], dtype=tf.int32)),
+      ('ternary_test_float', 3, tf.constant([1., 0., 0., 0.],
+                                            dtype=tf.float32)),
+  )
+  def test_preprocess_record(self, arity, record):
+    query = tree_aggregation_query.CentralTreeSumQuery(
+        stddev=NOISE_STD, arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+
+    self.assertAllClose(preprocessed_record, record)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.constant([5, 5, 0, 0], dtype=tf.int32)),
+      ('binary_test_float', 2, tf.constant(
+          [10., 10., 0., 0.],
+          dtype=tf.float32), tf.constant([5., 5., 0., 0.], dtype=tf.float32)),
+      ('ternary_test_int', 3, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.constant([5, 5, 0, 0], dtype=tf.int32)),
+      ('ternary_test_float', 3, tf.constant([10., 10., 0., 0.],
+                                            dtype=tf.float32),
+       tf.constant([5., 5., 0., 0.], dtype=tf.float32)),
+  )
+  def test_preprocess_record_clipped(self, arity, record,
+                                     expected_clipped_value):
+    query = tree_aggregation_query.CentralTreeSumQuery(
+        stddev=NOISE_STD, arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    self.assertAllClose(preprocessed_record, expected_clipped_value)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[1.], [1., 0.], [1., 0., 0., 0.]])),
+      ('binary_test_float', 2, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([[1.], [1., 0.], [1., 0., 0., 0.]])),
+      ('ternary_test_int', 3, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[1.], [1., 0., 0.],
+                           [1., 0., 0., 0., 0., 0., 0., 0., 0.]])),
+      ('ternary_test_float', 3, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([[1.], [1., 0., 0.],
+                           [1., 0., 0., 0., 0., 0., 0., 0., 0.]])),
+  )
+  def test_get_noised_result(self, arity, record, expected_tree):
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    sample_state, global_state = query.get_noised_result(
+        preprocessed_record, global_state)
+
+    self.assertAllClose(sample_state, expected_tree)
+
+  @parameterized.named_parameters(
+      ('stddev_0_01', 0.01, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
+      ('stddev_0_1', 0.1, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
+  )
+  def test_get_noised_result_with_noise(self, stddev, record, expected_tree):
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=stddev)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    sample_state_list = []
+    for _ in range(1000):
+      sample_state, _ = query.get_noised_result(preprocessed_record,
+                                                global_state)
+      sample_state_list.append(sample_state.flat_values.numpy())
+    expectation = np.mean(sample_state_list, axis=0)
+    variance = np.std(sample_state_list, axis=0)
+
+    self.assertAllClose(expectation, expected_tree, rtol=3 * stddev, atol=1e-4)
+    self.assertAllClose(
+        variance, np.ones(len(variance)) * stddev, rtol=0.1, atol=1e-4)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[10.], [10., 0.], [5., 5., 0., 0.]])),
+      ('binary_test_float', 2, tf.constant([10., 10., 0., 0.],
+                                           dtype=tf.float32),
+       tf.ragged.constant([[10.], [10., 0.], [5., 5., 0., 0.]])),
+      ('ternary_test_int', 3, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[10.], [10., 0., 0.],
+                           [5., 5., 0., 0., 0., 0., 0., 0., 0.]])),
+      ('ternary_test_float', 3, tf.constant([10., 10., 0., 0.],
+                                            dtype=tf.float32),
+       tf.ragged.constant([[10.], [10., 0., 0.],
+                           [5., 5., 0., 0., 0., 0., 0., 0., 0.]])),
+  )
+  def test_get_noised_result_clipped(self, arity, record, expected_tree):
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    sample_state, global_state = query.get_noised_result(
+        preprocessed_record, global_state)
+
+    self.assertAllClose(sample_state, expected_tree)
+
+
+class DistributedTreeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
+
+  def test_initial_global_state_type(self):
+
+    query = tree_aggregation_query.DistributedTreeSumQuery(stddev=NOISE_STD)
+    global_state = query.initial_global_state()
+    self.assertIsInstance(
+        global_state,
+        tree_aggregation_query.DistributedTreeSumQuery.GlobalState)
+
+  def test_derive_sample_params(self):
+    query = tree_aggregation_query.DistributedTreeSumQuery(stddev=NOISE_STD)
+    global_state = query.initial_global_state()
+    stddev, arity, l1_bound = query.derive_sample_params(
+        global_state)
+    self.assertAllClose(stddev, NOISE_STD)
+    self.assertAllClose(arity, 2)
+    self.assertAllClose(l1_bound, 10)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([1., 1., 0., 1., 0., 0., 0.])),
+      ('binary_test_float', 2, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([1., 1., 0., 1., 0., 0., 0.])),
+      ('ternary_test_int', 3, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([1., 1., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.
+                          ])),
+      ('ternary_test_float', 3, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([1., 1., 0., 0., 1., 0., 0., 0., 0., 0., 0., 0., 0.
+                          ])),
+  )
+  def test_preprocess_record(self, arity, record, expected_tree):
+    query = tree_aggregation_query.DistributedTreeSumQuery(
+        stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    self.assertAllClose(preprocessed_record, expected_tree)
+
+  @parameterized.named_parameters(
+      ('stddev_0_01', 0.01, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
+      ('stddev_0_1', 0.1, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
+  )
+  def test_preprocess_record_with_noise(self, stddev, record, expected_tree):
+    query = tree_aggregation_query.DistributedTreeSumQuery(stddev=stddev)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+
+    preprocessed_record_list = []
+    for _ in range(1000):
+      preprocessed_record = query.preprocess_record(params, record)
+      preprocessed_record_list.append(preprocessed_record.numpy())
+
+    expectation = np.mean(preprocessed_record_list, axis=0)
+    variance = np.std(preprocessed_record_list, axis=0)
+
+    self.assertAllClose(expectation, expected_tree, rtol=3 * stddev, atol=1e-4)
+    self.assertAllClose(
+        variance, np.ones(len(variance)) * stddev, rtol=0.1, atol=1e-4)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([10., 10., 0., 5., 5., 0., 0.])),
+      ('binary_test_float', 2, tf.constant([10., 10., 0., 0.],
+                                           dtype=tf.float32),
+       tf.ragged.constant([10., 10., 0., 5., 5., 0., 0.])),
+      ('ternary_test_int', 3, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant(
+           [10., 10., 0., 0., 5., 5., 0., 0., 0., 0., 0., 0., 0.])),
+      ('ternary_test_float', 3, tf.constant([10., 10., 0., 0.],
+                                            dtype=tf.float32),
+       tf.ragged.constant(
+           [10., 10., 0., 0., 5., 5., 0., 0., 0., 0., 0., 0., 0.])),
+  )
+  def test_preprocess_record_clipped(self, arity, record, expected_tree):
+    query = tree_aggregation_query.DistributedTreeSumQuery(
+        stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    self.assertAllClose(preprocessed_record, expected_tree)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[1.], [1., 0.], [1., 0., 0., 0.]])),
+      ('binary_test_float', 2, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([[1.], [1., 0.], [1., 0., 0., 0.]])),
+      ('ternary_test_int', 3, tf.constant([1, 0, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[1.], [1., 0., 0.],
+                           [1., 0., 0., 0., 0., 0., 0., 0., 0.]])),
+      ('ternary_test_float', 3, tf.constant([1., 0., 0., 0.], dtype=tf.float32),
+       tf.ragged.constant([[1.], [1., 0., 0.],
+                           [1., 0., 0., 0., 0., 0., 0., 0., 0.]])),
+  )
+  def test_get_noised_result(self, arity, record, expected_tree):
+    query = tree_aggregation_query.DistributedTreeSumQuery(
+        stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    sample_state, global_state = query.get_noised_result(
+        preprocessed_record, global_state)
+
+    self.assertAllClose(sample_state, expected_tree)
+
+  @parameterized.named_parameters(
+      ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[10.], [10., 0.], [5., 5., 0., 0.]])),
+      ('binary_test_float', 2, tf.constant([10., 10., 0., 0.],
+                                           dtype=tf.float32),
+       tf.ragged.constant([[10.], [10., 0.], [5., 5., 0., 0.]])),
+      ('ternary_test_int', 3, tf.constant([10, 10, 0, 0], dtype=tf.int32),
+       tf.ragged.constant([[10.], [10., 0., 0.],
+                           [5., 5., 0., 0., 0., 0., 0., 0., 0.]])),
+      ('ternary_test_float', 3, tf.constant([10., 10., 0., 0.],
+                                            dtype=tf.float32),
+       tf.ragged.constant([[10.], [10., 0., 0.],
+                           [5., 5., 0., 0., 0., 0., 0., 0., 0.]])),
+  )
+  def test_get_noised_result_clipped(self, arity, record, expected_tree):
+    query = tree_aggregation_query.DistributedTreeSumQuery(
+        stddev=0., arity=arity)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    preprocessed_record = query.preprocess_record(params, record)
+    sample_state, global_state = query.get_noised_result(
+        preprocessed_record, global_state)
+
+    self.assertAllClose(sample_state, expected_tree)
 
 
 if __name__ == '__main__':

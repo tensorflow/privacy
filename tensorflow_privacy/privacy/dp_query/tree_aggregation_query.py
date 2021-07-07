@@ -11,9 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""DPQuery for continual observation queries relying on `tree_aggregation`."""
+"""`DPQuery`s for differentially private tree aggregation protocols.
 
+`TreeCumulativeSumQuery` and `TreeResidualSumQuery` are `DPQuery`s for continual
+online observation queries relying on `tree_aggregation`. 'Online' means that
+the leaf nodes of the tree arrive one by one as the time proceeds. The leaves
+are vector records as defined in `dp_query.DPQuery`.
+
+`CentralTreeSumQuery` and `DistributedTreeSumQuery` are `DPQuery`s for
+central/distributed offline tree aggregation protocol. 'Offline' means all the
+leaf nodes are ready before the protocol starts. Each record, different from
+what is defined in `dp_query.DPQuery`, is a histogram (i.e. the leaf nodes).
+"""
+import distutils
+import math
 import attr
+
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
@@ -31,11 +44,11 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
   Attributes:
     clip_fn: Callable that specifies clipping function. `clip_fn` receives two
       arguments: a flat list of vars in a record and a `clip_value` to clip the
-      corresponding record, e.g. clip_fn(flat_record, clip_value).
+        corresponding record, e.g. clip_fn(flat_record, clip_value).
     clip_value: float indicating the value at which to clip the record.
     record_specs: `Collection[tf.TensorSpec]` specifying shapes of records.
-    tree_aggregator: `tree_aggregation.TreeAggregator` initialized with
-      user defined `noise_generator`. `noise_generator` is a
+    tree_aggregator: `tree_aggregation.TreeAggregator` initialized with user
+      defined `noise_generator`. `noise_generator` is a
       `tree_aggregation.ValueGenerator` to generate the noise value for a tree
       node. Noise stdandard deviation is specified outside the `dp_query` by the
       user when defining `noise_fn` and should have order
@@ -209,7 +222,7 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
   Attributes:
     clip_fn: Callable that specifies clipping function. `clip_fn` receives two
       arguments: a flat list of vars in a record and a `clip_value` to clip the
-      corresponding record, e.g. clip_fn(flat_record, clip_value).
+        corresponding record, e.g. clip_fn(flat_record, clip_value).
     clip_value: float indicating the value at which to clip the record.
     record_specs: A nested structure of `tf.TensorSpec`s specifying structure
       and shapes of records.
@@ -364,3 +377,297 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         record_specs=record_specs,
         noise_generator=gaussian_noise_generator,
         use_efficient=use_efficient)
+
+
+@tf.function
+def _build_tree_from_leaf(leaf_nodes: tf.Tensor, arity: int) -> tf.RaggedTensor:
+  """A function constructs a complete tree given all the leaf nodes.
+
+  The function takes a 1-D array representing the leaf nodes of a tree and the
+  tree's arity, and constructs a complete tree by recursively summing the
+  adjacent children to get the parent until reaching the root node. Because we
+  assume a complete tree, if the number of leaf nodes does not divide arity, the
+  leaf nodes will be padded with zeros.
+
+  Args:
+    leaf_nodes: A 1-D array storing the leaf nodes of the tree.
+    arity: A `int` for the branching factor of the tree, i.e. the number of
+      children for each internal node.
+
+  Returns:
+    `tf.RaggedTensor` representing the tree. For example, if
+    `leaf_nodes=tf.Tensor([1, 2, 3, 4])` and `arity=2`, then the returned value
+    should be `tree=tf.RaggedTensor([[10],[3,7],[1,2,3,4]])`. In this way,
+    `tree[layer][index]` can be used to access the node indexed by (layer,
+    index) in the tree,
+  """
+
+  def pad_zero(leaf_nodes, size):
+    paddings = [[0, size - len(leaf_nodes)]]
+    return tf.pad(leaf_nodes, paddings)
+
+  leaf_nodes_size = tf.constant(len(leaf_nodes), dtype=tf.float32)
+  num_layers = tf.math.ceil(
+      tf.math.log(leaf_nodes_size) /
+      tf.math.log(tf.cast(arity, dtype=tf.float32))) + 1
+  leaf_nodes = pad_zero(
+      leaf_nodes, tf.math.pow(tf.cast(arity, dtype=tf.float32), num_layers - 1))
+
+  def _shrink_layer(layer: tf.Tensor, arity: int) -> tf.Tensor:
+    return tf.reduce_sum((tf.reshape(layer, (-1, arity))), 1)
+
+  # The following `tf.while_loop` constructs the tree from bottom up by
+  # iteratively applying `_shrink_layer` to each layer of the tree. The reason
+  # for the choice of TF1.0-style `tf.while_loop` is that @tf.function does not
+  # support auto-translation from python loop to tf loop when loop variables
+  # contain a `RaggedTensor` whose shape changes across iterations.
+
+  idx = tf.identity(num_layers)
+  loop_cond = lambda i, h: tf.less_equal(2.0, i)
+
+  def _loop_body(i, h):
+    return [
+        tf.add(i, -1.0),
+        tf.concat(([_shrink_layer(h[0], arity)], h), axis=0)
+    ]
+
+  _, tree = tf.while_loop(
+      loop_cond,
+      _loop_body, [idx, tf.RaggedTensor.from_tensor([leaf_nodes])],
+      shape_invariants=[
+          idx.get_shape(),
+          tf.RaggedTensorSpec(dtype=leaf_nodes.dtype, ragged_rank=1)
+      ])
+
+  return tree
+
+
+def _get_add_noise(stddev):
+  """Utility function to decide which `add_noise` to use according to tf version."""
+  if distutils.version.LooseVersion(
+      tf.__version__) < distutils.version.LooseVersion('2.0.0'):
+
+    def add_noise(v):
+      return v + tf.random.normal(
+          tf.shape(input=v), stddev=stddev, dtype=v.dtype)
+  else:
+    random_normal = tf.random_normal_initializer(stddev=stddev)
+
+    def add_noise(v):
+      return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
+
+  return add_noise
+
+
+class CentralTreeSumQuery(dp_query.SumAggregationDPQuery):
+  """Implements dp_query for differentially private tree aggregation protocol.
+
+  Implements a central variant of the tree aggregation protocol from  the paper
+  "'Is interaction necessary for distributed private learning?.' Adam Smith,
+  Abhradeep Thakurta, Jalaj Upadhyay" by replacing their local randomizer with
+  gaussian mechanism. The first step is to clip the clients' local updates (i.e.
+  a 1-D array containing the leaf nodes of the tree) by L1 norm to make sure it
+  does not exceed a prespecified upper bound. The second step is to construct
+  the tree on the clipped update. The third step is to add independent gaussian
+  noise to each node in the tree. The returned tree can support efficient and
+  accurate range queries with differential privacy.
+  """
+
+  @attr.s(frozen=True)
+  class GlobalState(object):
+    """Class defining global state for `CentralTreeSumQuery`.
+
+    Attributes:
+      stddev: The stddev of the noise added to each node in the tree.
+      arity: The branching factor of the tree (i.e. the number of children each
+        internal node has).
+      l1_bound: An upper bound on the L1 norm of the input record. This is
+        needed to bound the sensitivity and deploy differential privacy.
+    """
+    stddev = attr.ib()
+    arity = attr.ib()
+    l1_bound = attr.ib()
+
+  def __init__(self, stddev: float, arity: int = 2, l1_bound: int = 10):
+    """Initializes the `CentralTreeSumQuery`.
+
+    Args:
+      stddev: The stddev of the noise added to each internal node of the
+        constructed tree.
+      arity: The branching factor of the tree.
+      l1_bound: An upper bound on the L1 norm of the input record. This is
+        needed to bound the sensitivity and deploy differential privacy.
+    """
+    self._stddev = stddev
+    self._arity = arity
+    self._l1_bound = l1_bound
+
+  def initial_global_state(self):
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
+    return CentralTreeSumQuery.GlobalState(
+        stddev=self._stddev, arity=self._arity, l1_bound=self._l1_bound)
+
+  def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
+    return global_state.l1_bound
+
+  def preprocess_record(self, params, record):
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
+    casted_record = tf.cast(record, tf.float32)
+    l1_norm = tf.norm(casted_record, ord=1)
+
+    l1_bound = tf.cast(params, tf.float32)
+
+    preprocessed_record, _ = tf.clip_by_global_norm([casted_record],
+                                                    l1_bound,
+                                                    use_norm=l1_norm)
+
+    return preprocessed_record[0]
+
+  def get_noised_result(self, sample_state, global_state):
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`.
+
+    Args:
+      sample_state: a frequency histogram.
+      global_state: hyper-parameters of the query.
+
+    Returns:
+      a `tf.RaggedTensor` representing the tree built on top of `sample_state`.
+      The jth node on the ith layer of the tree can be accessed by tree[i][j]
+      where tree is the returned value.
+    """
+    add_noise = _get_add_noise(self._stddev)
+    tree = _build_tree_from_leaf(sample_state, global_state.arity)
+    return tf.nest.map_structure(
+        add_noise, tree, expand_composites=True), global_state
+
+
+class DistributedTreeSumQuery(dp_query.SumAggregationDPQuery):
+  """Implements dp_query for differentially private tree aggregation protocol.
+
+  The difference from `CentralTreeSumQuery` is that the tree construction and
+  gaussian noise addition happen in `preprocess_records`. The difference only
+  takes effect when used together with
+  `tff.aggregators.DifferentiallyPrivateFactory`. In other cases, this class
+  should be treated as equal with `CentralTreeSumQuery`.
+
+  Implements a distributed version of the tree aggregation protocol from. "Is
+  interaction necessary for distributed private learning?." by replacing their
+  local randomizer with gaussian mechanism. The first step is to check the L1
+  norm of the clients' local updates (i.e. a 1-D array containing the leaf nodes
+  of the tree) to make sure it does not exceed a prespecified upper bound. The
+  second step is to construct the tree. The third step is to add independent
+  gaussian noise to each node in the tree. The returned tree can support
+  efficient and accurate range queries with differential privacy.
+  """
+
+  @attr.s(frozen=True)
+  class GlobalState(object):
+    """Class defining global state for DistributedTreeSumQuery.
+
+    Attributes:
+      stddev: The stddev of the noise added to each internal node in the
+        constructed tree.
+      arity: The branching factor of the tree (i.e. the number of children each
+        internal node has).
+      l1_bound: An upper bound on the L1 norm of the input record. This is
+        needed to bound the sensitivity and deploy differential privacy.
+    """
+    stddev = attr.ib()
+    arity = attr.ib()
+    l1_bound = attr.ib()
+
+  def __init__(self, stddev: float, arity: int = 2, l1_bound: int = 10):
+    """Initializes the `DistributedTreeSumQuery`.
+
+    Args:
+      stddev: The stddev of the noise added to each node in the tree.
+      arity: The branching factor of the tree.
+      l1_bound: An upper bound on the L1 norm of the input record. This is
+        needed to bound the sensitivity and deploy differential privacy.
+    """
+    self._stddev = stddev
+    self._arity = arity
+    self._l1_bound = l1_bound
+
+  def initial_global_state(self):
+    """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
+    return DistributedTreeSumQuery.GlobalState(
+        stddev=self._stddev, arity=self._arity, l1_bound=self._l1_bound)
+
+  def derive_sample_params(self, global_state):
+    """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
+    return (global_state.stddev, global_state.arity, global_state.l1_bound)
+
+  def preprocess_record(self, params, record):
+    """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
+
+    This method clips the input record by L1 norm, constructs a tree on top of
+    it, and adds gaussian noise to each node of the tree for differential
+    privacy. Unlike `get_noised_result` in `CentralTreeSumQuery`, this function
+    flattens the `tf.RaggedTensor` before outputting it. This is useful when
+    used inside `tff.aggregators.DifferentiallyPrivateFactory` because it does
+    not accept ragged output tensor.
+
+    Args:
+      params: hyper-parameters for preprocessing record, (stddev, aritry,
+        l1_bound)
+      record: leaf nodes for the tree.
+
+    Returns:
+      `tf.Tensor` representing the flattened version of the tree.
+    """
+    _, arity, l1_bound_ = params
+    l1_bound = tf.cast(l1_bound_, tf.float32)
+
+    casted_record = tf.cast(record, tf.float32)
+    l1_norm = tf.norm(casted_record, ord=1)
+
+    preprocessed_record, _ = tf.clip_by_global_norm([casted_record],
+                                                    l1_bound,
+                                                    use_norm=l1_norm)
+    preprocessed_record = preprocessed_record[0]
+
+    add_noise = _get_add_noise(self._stddev)
+    tree = _build_tree_from_leaf(preprocessed_record, arity)
+    noisy_tree = tf.nest.map_structure(add_noise, tree, expand_composites=True)
+
+    # The following codes reshape the output vector so the output shape of can
+    # be statically inferred. This is useful when used with
+    # `tff.aggregators.DifferentiallyPrivateFactory` because it needs to know
+    # the output shape of this function statically and explicitly.
+    flat_noisy_tree = noisy_tree.flat_values
+    flat_tree_shape = [
+        (self._arity**(math.ceil(math.log(record.shape[0], self._arity)) + 1) -
+         1) // (self._arity - 1)
+    ]
+    return tf.reshape(flat_noisy_tree, flat_tree_shape)
+
+  def get_noised_result(self, sample_state, global_state):
+    """Implements `tensorflow_privacy.DPQuery.get_noised_result`.
+
+    This function re-constructs the `tf.RaggedTensor` from the flattened tree
+    output by `preprocess_records.`
+
+    Args:
+      sample_state: `tf.Tensor` for the flattened tree.
+      global_state: hyper-parameters including noise multiplier, the branching
+        factor of the tree and the maximum records per user.
+
+    Returns:
+      a `tf.RaggedTensor` for the tree.
+    """
+    # The [0] is needed because of how tf.RaggedTensor.from_two_splits works.
+    # print(tf.RaggedTensor.from_row_splits(values=[3, 1, 4, 1, 5, 9, 2, 6],
+    #                                       row_splits=[0, 4, 4, 7, 8, 8]))
+    # <tf.RaggedTensor [[3, 1, 4, 1], [], [5, 9, 2], [6], []]>
+    # This part is not written in tensorflow and will be executed on the server
+    # side instead of the client side if used with
+    # tff.aggregators.DifferentiallyPrivateFactory for federated learning.
+    row_splits = [0] + [
+        (self._arity**(x + 1) - 1) // (self._arity - 1) for x in range(
+            math.floor(math.log(sample_state.shape[0], self._arity)) + 1)
+    ]
+    tree = tf.RaggedTensor.from_row_splits(
+        values=sample_state, row_splits=row_splits)
+    return tree, global_state
