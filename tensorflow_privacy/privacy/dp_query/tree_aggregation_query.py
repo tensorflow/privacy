@@ -25,10 +25,10 @@ what is defined in `dp_query.DPQuery`, is a histogram (i.e. the leaf nodes).
 """
 import distutils
 import math
+from typing import Optional
+
 import attr
-
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 
@@ -442,16 +442,20 @@ def _build_tree_from_leaf(leaf_nodes: tf.Tensor, arity: int) -> tf.RaggedTensor:
   return tree
 
 
-def _get_add_noise(stddev):
+def _get_add_noise(stddev, seed: int = None):
   """Utility function to decide which `add_noise` to use according to tf version."""
   if distutils.version.LooseVersion(
       tf.__version__) < distutils.version.LooseVersion('2.0.0'):
+
+    # The seed should be only used for testing purpose.
+    if seed is not None:
+      tf.random.set_seed(seed)
 
     def add_noise(v):
       return v + tf.random.normal(
           tf.shape(input=v), stddev=stddev, dtype=v.dtype)
   else:
-    random_normal = tf.random_normal_initializer(stddev=stddev)
+    random_normal = tf.random_normal_initializer(stddev=stddev, seed=seed)
 
     def add_noise(v):
       return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
@@ -478,17 +482,16 @@ class CentralTreeSumQuery(dp_query.SumAggregationDPQuery):
     """Class defining global state for `CentralTreeSumQuery`.
 
     Attributes:
-      stddev: The stddev of the noise added to each node in the tree.
-      arity: The branching factor of the tree (i.e. the number of children each
-        internal node has).
       l1_bound: An upper bound on the L1 norm of the input record. This is
         needed to bound the sensitivity and deploy differential privacy.
     """
-    stddev = attr.ib()
-    arity = attr.ib()
     l1_bound = attr.ib()
 
-  def __init__(self, stddev: float, arity: int = 2, l1_bound: int = 10):
+  def __init__(self,
+               stddev: float,
+               arity: int = 2,
+               l1_bound: int = 10,
+               seed: Optional[int] = None):
     """Initializes the `CentralTreeSumQuery`.
 
     Args:
@@ -497,15 +500,17 @@ class CentralTreeSumQuery(dp_query.SumAggregationDPQuery):
       arity: The branching factor of the tree.
       l1_bound: An upper bound on the L1 norm of the input record. This is
         needed to bound the sensitivity and deploy differential privacy.
+      seed: Random seed to generate Gaussian noise. Defaults to `None`. Only for
+        test purpose.
     """
     self._stddev = stddev
     self._arity = arity
     self._l1_bound = l1_bound
+    self._seed = seed
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
-    return CentralTreeSumQuery.GlobalState(
-        stddev=self._stddev, arity=self._arity, l1_bound=self._l1_bound)
+    return CentralTreeSumQuery.GlobalState(l1_bound=self._l1_bound)
 
   def derive_sample_params(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
@@ -536,10 +541,9 @@ class CentralTreeSumQuery(dp_query.SumAggregationDPQuery):
       The jth node on the ith layer of the tree can be accessed by tree[i][j]
       where tree is the returned value.
     """
-    add_noise = _get_add_noise(self._stddev)
-    tree = _build_tree_from_leaf(sample_state, global_state.arity)
-    return tf.nest.map_structure(
-        add_noise, tree, expand_composites=True), global_state
+    add_noise = _get_add_noise(self._stddev, self._seed)
+    tree = _build_tree_from_leaf(sample_state, self._arity)
+    return tf.map_fn(add_noise, tree), global_state
 
 
 class DistributedTreeSumQuery(dp_query.SumAggregationDPQuery):
@@ -577,7 +581,11 @@ class DistributedTreeSumQuery(dp_query.SumAggregationDPQuery):
     arity = attr.ib()
     l1_bound = attr.ib()
 
-  def __init__(self, stddev: float, arity: int = 2, l1_bound: int = 10):
+  def __init__(self,
+               stddev: float,
+               arity: int = 2,
+               l1_bound: int = 10,
+               seed: Optional[int] = None):
     """Initializes the `DistributedTreeSumQuery`.
 
     Args:
@@ -585,10 +593,13 @@ class DistributedTreeSumQuery(dp_query.SumAggregationDPQuery):
       arity: The branching factor of the tree.
       l1_bound: An upper bound on the L1 norm of the input record. This is
         needed to bound the sensitivity and deploy differential privacy.
+      seed: Random seed to generate Gaussian noise. Defaults to `None`. Only for
+        test purpose.
     """
     self._stddev = stddev
     self._arity = arity
     self._l1_bound = l1_bound
+    self._seed = seed
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
@@ -628,9 +639,9 @@ class DistributedTreeSumQuery(dp_query.SumAggregationDPQuery):
                                                     use_norm=l1_norm)
     preprocessed_record = preprocessed_record[0]
 
-    add_noise = _get_add_noise(self._stddev)
+    add_noise = _get_add_noise(self._stddev, self._seed)
     tree = _build_tree_from_leaf(preprocessed_record, arity)
-    noisy_tree = tf.nest.map_structure(add_noise, tree, expand_composites=True)
+    noisy_tree = tf.map_fn(add_noise, tree)
 
     # The following codes reshape the output vector so the output shape of can
     # be statically inferred. This is useful when used with

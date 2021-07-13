@@ -502,21 +502,15 @@ class CentralTreeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
       ('stddev_0_1', 0.1, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
   )
   def test_get_noised_result_with_noise(self, stddev, record, expected_tree):
-    query = tree_aggregation_query.CentralTreeSumQuery(stddev=stddev)
+    query = tree_aggregation_query.CentralTreeSumQuery(stddev=stddev, seed=0)
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
     preprocessed_record = query.preprocess_record(params, record)
-    sample_state_list = []
-    for _ in range(1000):
-      sample_state, _ = query.get_noised_result(preprocessed_record,
-                                                global_state)
-      sample_state_list.append(sample_state.flat_values.numpy())
-    expectation = np.mean(sample_state_list, axis=0)
-    variance = np.std(sample_state_list, axis=0)
 
-    self.assertAllClose(expectation, expected_tree, rtol=3 * stddev, atol=1e-4)
+    sample_state, _ = query.get_noised_result(preprocessed_record, global_state)
+
     self.assertAllClose(
-        variance, np.ones(len(variance)) * stddev, rtol=0.1, atol=1e-4)
+        sample_state.flat_values, expected_tree, atol=3 * stddev)
 
   @parameterized.named_parameters(
       ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
@@ -556,8 +550,7 @@ class DistributedTreeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_derive_sample_params(self):
     query = tree_aggregation_query.DistributedTreeSumQuery(stddev=NOISE_STD)
     global_state = query.initial_global_state()
-    stddev, arity, l1_bound = query.derive_sample_params(
-        global_state)
+    stddev, arity, l1_bound = query.derive_sample_params(global_state)
     self.assertAllClose(stddev, NOISE_STD)
     self.assertAllClose(arity, 2)
     self.assertAllClose(l1_bound, 10)
@@ -587,21 +580,14 @@ class DistributedTreeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
       ('stddev_0_1', 0.1, tf.constant([1, 0], dtype=tf.int32), [1., 1., 0.]),
   )
   def test_preprocess_record_with_noise(self, stddev, record, expected_tree):
-    query = tree_aggregation_query.DistributedTreeSumQuery(stddev=stddev)
+    query = tree_aggregation_query.DistributedTreeSumQuery(
+        stddev=stddev, seed=0)
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
 
-    preprocessed_record_list = []
-    for _ in range(1000):
-      preprocessed_record = query.preprocess_record(params, record)
-      preprocessed_record_list.append(preprocessed_record.numpy())
+    preprocessed_record = query.preprocess_record(params, record)
 
-    expectation = np.mean(preprocessed_record_list, axis=0)
-    variance = np.std(preprocessed_record_list, axis=0)
-
-    self.assertAllClose(expectation, expected_tree, rtol=3 * stddev, atol=1e-4)
-    self.assertAllClose(
-        variance, np.ones(len(variance)) * stddev, rtol=0.1, atol=1e-4)
+    self.assertAllClose(preprocessed_record, expected_tree, atol=3 * stddev)
 
   @parameterized.named_parameters(
       ('binary_test_int', 2, tf.constant([10, 10, 0, 0], dtype=tf.int32),
