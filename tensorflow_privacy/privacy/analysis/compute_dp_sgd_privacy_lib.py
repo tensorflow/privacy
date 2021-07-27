@@ -19,12 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import sys
 
 from absl import app
-
-# Opting out of loading all sibling packages and their dependencies.
-sys.skip_tf_privacy_import = True
 
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent

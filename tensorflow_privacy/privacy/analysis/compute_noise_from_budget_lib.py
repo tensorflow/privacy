@@ -19,16 +19,12 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import sys
 
 from absl import app
 from scipy.optimize import bisect
 
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
-
-# Opting out of loading all sibling packages and their dependencies.
-sys.skip_tf_privacy_import = True
 
 
 def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
