@@ -41,7 +41,7 @@ class DistributedDiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
 
     Args:
       l2_norm_bound: The L2 norm bound to verify for each record.
-      local_stddev: The scale/stddev of the local discrete Gaussian noise.
+      local_stddev: The stddev of the local discrete Gaussian noise.
     """
     self._l2_norm_bound = l2_norm_bound
     self._local_stddev = local_stddev
@@ -65,7 +65,7 @@ class DistributedDiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
 
     Args:
       record: The record to which we generate and add local noise.
-      local_stddev: The scale/stddev of the local discrete Gaussian noise.
+      local_stddev: The stddev of the local discrete Gaussian noise.
       shares: Number of shares of local noise to generate. Should be 1 for each
         record. This can be useful when we want to generate multiple noise
         shares at once.
@@ -84,7 +84,7 @@ class DistributedDiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
           scale=ceil_local_stddev, shape=shape, dtype=v.dtype)
       # Sum across the number of noise shares and add it.
       noised_v = v + tf.reduce_sum(dgauss_noise, axis=0)
-      # Ensure shape as TF shape inference may fail due to custom noise sampler.
+      # Set shape as TF shape inference may fail due to custom noise sampler.
       noised_v.set_shape(v.shape.as_list())
       return noised_v
 

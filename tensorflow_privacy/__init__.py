@@ -43,6 +43,7 @@ else:
   # DPQuery classes
   from tensorflow_privacy.privacy.dp_query.dp_query import DPQuery
   from tensorflow_privacy.privacy.dp_query.dp_query import SumAggregationDPQuery
+  from tensorflow_privacy.privacy.dp_query.discrete_gaussian_query import DiscreteGaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.distributed_discrete_gaussian_query import DistributedDiscreteGaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.gaussian_query import GaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.nested_query import NestedQuery

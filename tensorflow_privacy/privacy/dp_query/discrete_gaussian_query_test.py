@@ -11,16 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for DistributedDiscreteGaussianSumQuery."""
+"""Tests for DiscreteGaussianSumQuery."""
 
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow_privacy.privacy.dp_query import discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import discrete_gaussian_utils
-from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
-ddg_sum_query = distributed_discrete_gaussian_query.DistributedDiscreteGaussianSumQuery
+dg_sum_query = discrete_gaussian_query.DiscreteGaussianSumQuery
 
 
 def silence_tf_error_messages(func):
@@ -35,15 +35,14 @@ def silence_tf_error_messages(func):
   return wrapper
 
 
-class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
-                                           parameterized.TestCase):
+class DiscreteGaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_sum_no_noise(self):
     with self.cached_session() as sess:
       record1 = tf.constant([2, 0], dtype=tf.int32)
       record2 = tf.constant([-1, 1], dtype=tf.int32)
 
-      query = ddg_sum_query(l2_norm_bound=10, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=10, stddev=0.0)
       query_result, _ = test_utils.run_query(query, [record1, record2])
       result = sess.run(query_result)
       expected = [1, 1]
@@ -58,7 +57,7 @@ class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
       record = [t1, t2, t3]
       sample = [record] * sample_size
 
-      query = ddg_sum_query(l2_norm_bound=10, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=10, stddev=0.0)
       query_result, _ = test_utils.run_query(query, sample)
       expected = [sample_size * t1, sample_size * t2, sample_size * t3]
       result, expected = sess.run([query_result, expected])
@@ -75,7 +74,7 @@ class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
       record = [t1, dict(a=t2, b=[t3, (t4, t1)])]
       sample = [record] * sample_size
 
-      query = ddg_sum_query(l2_norm_bound=10, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=10, stddev=0.0)
       query_result, _ = test_utils.run_query(query, sample)
       result = sess.run(query_result)
 
@@ -88,7 +87,7 @@ class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
     with self.cached_session() as sess:
       record1 = tf.constant([2, 0], dtype=tf.float32)
       record2 = tf.constant([-1, 1], dtype=tf.float32)
-      query = ddg_sum_query(l2_norm_bound=10, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=10, stddev=0.0)
 
       with self.assertRaises(TypeError):
         query_result, _ = test_utils.run_query(query, [record1, record2])
@@ -99,7 +98,7 @@ class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
   def test_sum_raise_on_l2_norm_excess(self, l2_norm_bound):
     with self.cached_session() as sess:
       record = tf.constant([10, 10], dtype=tf.int32)
-      query = ddg_sum_query(l2_norm_bound=l2_norm_bound, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=l2_norm_bound, stddev=0.0)
 
       with self.assertRaises(tf.errors.InvalidArgumentError):
         query_result, _ = test_utils.run_query(query, [record])
@@ -111,54 +110,38 @@ class DistributedDiscreteGaussianQueryTest(tf.test.TestCase,
       # A casted/rounded norm bound would be insufficient.
       l2_norm_bound = 14.2
       record = tf.constant([10, 10], dtype=tf.int32)
-      query = ddg_sum_query(l2_norm_bound=l2_norm_bound, local_stddev=0.0)
+      query = dg_sum_query(l2_norm_bound=l2_norm_bound, stddev=0.0)
       query_result, _ = test_utils.run_query(query, [record])
       result = sess.run(query_result)
       expected = [10, 10]
       self.assertAllEqual(result, expected)
 
-  @parameterized.named_parameters([('2_local_stddev_1_record', 2, 1),
-                                   ('10_local_stddev_4_records', 10, 4),
-                                   ('1000_local_stddev_1_record', 1000, 1),
-                                   ('1000_local_stddev_25_records', 1000, 25)])
-  def test_sum_local_noise_shares(self, local_stddev, num_records):
-    """Test the noise level of the sum of discrete Gaussians applied locally.
-
-    The sum of discrete Gaussians is not a discrete Gaussian, but it will be
-    extremely close for sigma >= 2. We will thus compare the aggregated noise
-    to a central discrete Gaussian noise with appropriately scaled stddev with
-    some reasonable tolerance.
-
-    Args:
-      local_stddev: The stddev of the local discrete Gaussian noise.
-      num_records: The number of records to be aggregated.
-    """
-    # Aggregated local noises.
+  @parameterized.product(stddev=[10, 100, 1000])
+  def test_noisy_sum(self, stddev):
     num_trials = 1000
-    record = tf.zeros([num_trials], dtype=tf.int32)
-    sample = [record] * num_records
-    query = ddg_sum_query(l2_norm_bound=10.0, local_stddev=local_stddev)
-    query_result, _ = test_utils.run_query(query, sample)
+    record_1 = tf.zeros([num_trials], dtype=tf.int32)
+    record_2 = tf.ones([num_trials], dtype=tf.int32)
+    sample = [record_1, record_2]
+    query = dg_sum_query(l2_norm_bound=num_trials, stddev=stddev)
+    result, _ = test_utils.run_query(query, sample)
 
-    # Central discrete Gaussian noise.
-    central_stddev = np.sqrt(num_records) * local_stddev
-    central_noise = discrete_gaussian_utils.sample_discrete_gaussian(
-        scale=tf.cast(tf.round(central_stddev), record.dtype),
-        shape=tf.shape(record),
-        dtype=record.dtype)
+    sampled_noise = discrete_gaussian_utils.sample_discrete_gaussian(
+        scale=tf.cast(stddev, tf.int32), shape=[num_trials], dtype=tf.int32)
 
-    agg_noise, central_noise = self.evaluate([query_result, central_noise])
+    result, sampled_noise = self.evaluate([result, sampled_noise])
 
-    mean_stddev = central_stddev * np.sqrt(num_trials) / num_trials
-    atol = 3.5 * mean_stddev
+    # The standard error of the stddev should be roughly sigma / sqrt(2N - 2),
+    # (https://stats.stackexchange.com/questions/156518) so set a rtol to give
+    # < 0.01% of failure (within ~4 standard errors).
+    rtol = 4 / np.sqrt(2 * num_trials - 2)
+    self.assertAllClose(np.std(result), stddev, rtol=rtol)
 
-    # Use the atol for mean as a rough default atol for stddev/percentile.
-    self.assertAllClose(np.mean(agg_noise), np.mean(central_noise), atol=atol)
-    self.assertAllClose(np.std(agg_noise), np.std(central_noise), atol=atol)
+    # Use standard error of the mean to compare percentiles.
+    stderr = stddev / np.sqrt(num_trials)
     self.assertAllClose(
-        np.percentile(agg_noise, [25, 50, 75]),
-        np.percentile(central_noise, [25, 50, 75]),
-        atol=atol)
+        np.percentile(result, [25, 50, 75]),
+        np.percentile(sampled_noise, [25, 50, 75]),
+        atol=4 * stderr)
 
 
 if __name__ == '__main__':
