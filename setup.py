@@ -26,6 +26,7 @@ setup(
         'attrs>=21.2.0',  # for tree_aggregation_query.py.
         'mpmath',  # used in tests only
         'dm-tree~=0.1.1',  # used in tests only
+        'tensorflow-probability>=0.13.0',  # For discrete Gaussian.
     ],
     # Explicit dependence on TensorFlow is not supported.
     # See https://github.com/tensorflow/tensorflow/issues/7166

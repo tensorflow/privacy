@@ -4,3 +4,4 @@ tensorflow-estimator>=2.3.0
 attrs>=21.2.0
 mpmath
 dm-tree~=0.1.1
+tensorflow-probability>=0.13.0
