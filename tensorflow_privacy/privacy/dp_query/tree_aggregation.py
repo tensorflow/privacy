@@ -16,7 +16,10 @@
 `TreeAggregator` and `EfficientTreeAggregator` compute cumulative sums of noise
 based on tree aggregation. When using an appropriate noise function (e.g.,
 Gaussian noise), it allows for efficient differentially private algorithms under
-continual observation, without prior subsampling or shuffling assumptions.
+continual observation, without prior subsampling or shuffling assumptions. This
+module implements the core logic of tree aggregation in Tensorflow, which serves
+as helper functions for `tree_aggregation_query`. This module and helper
+functions are publicly accessible.
 """
 
 import abc
@@ -24,6 +27,10 @@ from typing import Any, Callable, Collection, Optional, Tuple, Union
 
 import attr
 import tensorflow as tf
+
+
+# TODO(b/192464750): find a proper place for the helper functions, privatize
+# the tree aggregation logic, and encourage users to use the DPQuery API.
 
 
 class ValueGenerator(metaclass=abc.ABCMeta):
@@ -40,6 +47,7 @@ class ValueGenerator(metaclass=abc.ABCMeta):
     Returns:
       An initial state.
     """
+    raise NotImplementedError
 
   @abc.abstractmethod
   def next(self, state):
@@ -52,6 +60,7 @@ class ValueGenerator(metaclass=abc.ABCMeta):
       A pair (value, new_state) where value is the next value and new_state
         is the advanced state.
     """
+    raise NotImplementedError
 
 
 class GaussianNoiseGenerator(ValueGenerator):
@@ -148,6 +157,78 @@ class StatelessValueGenerator(ValueGenerator):
     return self.value_fn(), state
 
 
+# TODO(b/192464750): define `RestartQuery` and move `RestartIndicator` to be
+# in the same module.
+
+
+class RestartIndicator(metaclass=abc.ABCMeta):
+  """Base class establishing interface for restarting the tree state.
+
+  A `RestartIndicator` maintains a state, and each time `next` is called, a bool
+  value is generated to indicate whether to restart, and the indicator state is
+  advanced.
+  """
+
+  @abc.abstractmethod
+  def initialize(self):
+    """Makes an initialized state for `RestartIndicator`.
+
+    Returns:
+      An initial state.
+    """
+    raise NotImplementedError
+
+  @abc.abstractmethod
+  def next(self, state):
+    """Gets next bool indicator and advances the `RestartIndicator` state.
+
+    Args:
+      state: The current state.
+
+    Returns:
+      A pair (value, new_state) where value is bool indicator and new_state
+        is the advanced state.
+    """
+    raise NotImplementedError
+
+
+class PeriodicRoundRestartIndicator(RestartIndicator):
+  """Indicator for resetting the tree state after every a few number of queries.
+
+  The indicator will maintain an internal counter as state.
+  """
+
+  def __init__(self, frequency: int):
+    """Construct the `PeriodicRoundRestartIndicator`.
+
+    Args:
+      frequency: The `next` function will return `True` every `frequency` number
+        of `next` calls.
+    """
+    if frequency < 1:
+      raise ValueError('Restart frequency should be equal or larger than 1 '
+                       f'got {frequency}')
+    self.frequency = tf.constant(frequency, tf.int32)
+
+  def initialize(self):
+    """Returns initialized state of 0 for `PeriodicRoundRestartIndicator`."""
+    return tf.constant(0, tf.int32)
+
+  def next(self, state):
+    """Gets next bool indicator and advances the state.
+
+    Args:
+      state: The current state.
+
+    Returns:
+      A pair (value, new_state) where value is the bool indicator and new_state
+        of `state+1`.
+    """
+    state = state + tf.constant(1, tf.int32)
+    flag = state % self.frequency == 0
+    return flag, state
+
+
 @attr.s(eq=False, frozen=True, slots=True)
 class TreeState(object):
   """Class defining state of the tree.
@@ -166,6 +247,7 @@ class TreeState(object):
   value_generator_state = attr.ib(type=Any)
 
 
+# TODO(b/192464750): move `get_step_idx` to be a property of `TreeState`.
 @tf.function
 def get_step_idx(state: TreeState) -> tf.Tensor:
   """Returns the current leaf node index based on `TreeState.level_buffer_idx`."""
@@ -188,6 +270,14 @@ class TreeAggregator():
   https://dl.acm.org/doi/pdf/10.1145/1806689.1806787. A buffer at the scale of
   tree depth is maintained and updated when a new conceptual leaf node arrives.
 
+  Example usage:
+    random_generator = GaussianNoiseGenerator(...)
+    tree_aggregator = TreeAggregator(random_generator)
+    state = tree_aggregator.init_state()
+    for leaf_node_idx in range(total_steps):
+      assert leaf_node_idx == get_step_idx(state))
+      noise, state = tree_aggregator.get_cumsum_and_update(state)
+
   Attributes:
     value_generator: A `ValueGenerator` or a no-arg function to generate a noise
       value for each tree node.
@@ -205,14 +295,8 @@ class TreeAggregator():
     else:
       self.value_generator = StatelessValueGenerator(value_generator)
 
-  def init_state(self) -> TreeState:
-    """Returns initial `TreeState`.
-
-    Initializes `TreeState` for a tree of a single leaf node: the respective
-    initial node value in `TreeState.level_buffer` is generated by the value
-    generator function, and the node index is 0.
-    """
-    value_generator_state = self.value_generator.initialize()
+  def _get_init_state(self, value_generator_state) -> TreeState:
+    """Returns initial `TreeState` given `value_generator_state`."""
     level_buffer_idx = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True)
     level_buffer_idx = level_buffer_idx.write(0, tf.constant(
         0, dtype=tf.int32)).stack()
@@ -224,11 +308,27 @@ class TreeAggregator():
         new_val)
     level_buffer = tf.nest.map_structure(lambda x, y: x.write(0, y).stack(),
                                          level_buffer_structure, new_val)
-
     return TreeState(
         level_buffer=level_buffer,
         level_buffer_idx=level_buffer_idx,
         value_generator_state=value_generator_state)
+
+  def init_state(self) -> TreeState:
+    """Returns initial `TreeState`.
+
+    Initializes `TreeState` for a tree of a single leaf node: the respective
+    initial node value in `TreeState.level_buffer` is generated by the value
+    generator function, and the node index is 0.
+
+    Returns:
+      An initialized `TreeState`.
+    """
+    value_generator_state = self.value_generator.initialize()
+    return self._get_init_state(value_generator_state)
+
+  def reset_state(self, state: TreeState) -> TreeState:
+    """Returns reset `TreeState` after restarting a new tree."""
+    return self._get_init_state(state.value_generator_state)
 
   @tf.function
   def _get_cumsum(self, level_buffer: Collection[tf.Tensor]) -> tf.Tensor:
@@ -238,7 +338,7 @@ class TreeAggregator():
   @tf.function
   def get_cumsum_and_update(self,
                             state: TreeState) -> Tuple[tf.Tensor, TreeState]:
-    """Returns tree aggregated value and updated `TreeState` for one step.
+    """Returns tree aggregated noise and updates `TreeState` for the next step.
 
     `TreeState` is updated to prepare for accepting the *next* leaf node. Note
     that `get_step_idx` can be called to get the current index of the leaf node
@@ -249,10 +349,20 @@ class TreeAggregator():
     Args:
       state: `TreeState` for the current leaf node, index can be queried by
         `tree_aggregation.get_step_idx(state.level_buffer_idx)`.
+
+    Returns:
+      Tuple of (noise, state) where `noise` is generated by tree aggregated
+      protocol for the cumulative sum of streaming data, and `state` is the
+      updated `TreeState`.
     """
 
     level_buffer_idx, level_buffer, value_generator_state = (
         state.level_buffer_idx, state.level_buffer, state.value_generator_state)
+    # We only publicize a combined function for updating state and returning
+    # noised results because this DPQuery is designed for the streaming data,
+    # and we only maintain a dynamic memory buffer of max size logT. Only the
+    # the most recent noised results can be queried, and the queries are
+    # expected to happen for every step in the streaming setting.
     cumsum = self._get_cumsum(level_buffer)
 
     new_level_buffer = tf.nest.map_structure(
@@ -311,6 +421,14 @@ class EfficientTreeAggregator():
   `sigma * sqrt(2^{d-1}/(2^d-1))`. which becomes `sigma / sqrt(2)` when
   the tree is very tall.
 
+  Example usage:
+    random_generator = GaussianNoiseGenerator(...)
+    tree_aggregator = EfficientTreeAggregator(random_generator)
+    state = tree_aggregator.init_state()
+    for leaf_node_idx in range(total_steps):
+      assert leaf_node_idx == get_step_idx(state))
+      noise, state = tree_aggregator.get_cumsum_and_update(state)
+
   Attributes:
     value_generator: A `ValueGenerator` or a no-arg function to generate a noise
       value for each tree node.
@@ -328,17 +446,8 @@ class EfficientTreeAggregator():
     else:
       self.value_generator = StatelessValueGenerator(value_generator)
 
-  def init_state(self) -> TreeState:
-    """Returns initial `TreeState`.
-
-    Initializes `TreeState` for a tree of a single leaf node: the respective
-    initial node value in `TreeState.level_buffer` is generated by the value
-    generator function, and the node index is 0.
-
-    Returns:
-      An initialized `TreeState`.
-    """
-    value_generator_state = self.value_generator.initialize()
+  def _get_init_state(self, value_generator_state):
+    """Returns initial buffer for `TreeState`."""
     level_buffer_idx = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True)
     level_buffer_idx = level_buffer_idx.write(0, tf.constant(
         0, dtype=tf.int32)).stack()
@@ -350,11 +459,27 @@ class EfficientTreeAggregator():
         new_val)
     level_buffer = tf.nest.map_structure(lambda x, y: x.write(0, y).stack(),
                                          level_buffer_structure, new_val)
-
     return TreeState(
         level_buffer=level_buffer,
         level_buffer_idx=level_buffer_idx,
         value_generator_state=value_generator_state)
+
+  def init_state(self) -> TreeState:
+    """Returns initial `TreeState`.
+
+    Initializes `TreeState` for a tree of a single leaf node: the respective
+    initial node value in `TreeState.level_buffer` is generated by the value
+    generator function, and the node index is 0.
+
+    Returns:
+      An initialized `TreeState`.
+    """
+    value_generator_state = self.value_generator.initialize()
+    return self._get_init_state(value_generator_state)
+
+  def reset_state(self, state: TreeState) -> TreeState:
+    """Returns reset `TreeState` after restarting a new tree."""
+    return self._get_init_state(state.value_generator_state)
 
   @tf.function
   def _get_cumsum(self, state: TreeState) -> tf.Tensor:
@@ -377,7 +502,7 @@ class EfficientTreeAggregator():
   @tf.function
   def get_cumsum_and_update(self,
                             state: TreeState) -> Tuple[tf.Tensor, TreeState]:
-    """Returns tree aggregated value and updated `TreeState` for one step.
+    """Returns tree aggregated noise and updates `TreeState` for the next step.
 
     `TreeState` is updated to prepare for accepting the *next* leaf node. Note
     that `get_step_idx` can be called to get the current index of the leaf node
@@ -390,7 +515,17 @@ class EfficientTreeAggregator():
     Args:
       state: `TreeState` for the current leaf node, index can be queried by
         `tree_aggregation.get_step_idx(state.level_buffer_idx)`.
+
+    Returns:
+      Tuple of (noise, state) where `noise` is generated by tree aggregated
+      protocol for the cumulative sum of streaming data, and `state` is the
+      updated `TreeState`..
     """
+    # We only publicize a combined function for updating state and returning
+    # noised results because this DPQuery is designed for the streaming data,
+    # and we only maintain a dynamic memory buffer of max size logT. Only the
+    # the most recent noised results can be queried, and the queries are
+    # expected to happen for every step in the streaming setting.
     cumsum = self._get_cumsum(state)
 
     level_buffer_idx, level_buffer, value_generator_state = (

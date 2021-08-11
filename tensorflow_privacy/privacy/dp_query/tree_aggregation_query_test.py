@@ -263,13 +263,13 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual(query_result, expected_sum)
 
   @parameterized.named_parameters(
-      ('s0t1step8', 0., 1., [1., 1., 2., 1., 2., 2., 3., 1.]),
-      ('s1t1step8', 1., 1., [2., 3., 5., 5., 7., 8., 10., 9.]),
-      ('s1t2step8', 1., 2., [3., 4., 7., 6., 9., 10., 13., 10.]),
+      ('s0t1', 0., 1.),
+      ('s1t1', 1., 1.),
+      ('s1t2', 1., 2.),
   )
   def test_partial_sum_scalar_tree_aggregation(self, scalar_value,
-                                               tree_node_value,
-                                               expected_values):
+                                               tree_node_value):
+    total_steps = 8
     query = tree_aggregation_query.TreeCumulativeSumQuery(
         clip_fn=_get_l2_clip_fn(),
         clip_value=scalar_value + 1.,  # no clip
@@ -279,14 +279,54 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     )
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
-    for val in expected_values:
-      # For each streaming step i , the expected value is roughly
-      # `scalar_value*i + tree_aggregation(tree_node_value, i)`
+    for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
       query_result, global_state = query.get_noised_result(
           sample_state, global_state)
-      self.assertEqual(query_result, val)
+      # For each streaming step i , the expected value is roughly
+      # `scalar_value*(i+1) + tree_aggregation(tree_node_value, i)`.
+      # The tree aggregation value can be inferred from the binary
+      # representation of the current step.
+      self.assertEqual(
+          query_result,
+          scalar_value * (i + 1) + tree_node_value * bin(i + 1)[2:].count('1'))
+
+  @parameterized.named_parameters(
+      ('s0t1f1', 0., 1., 1),
+      ('s0t1f2', 0., 1., 2),
+      ('s0t1f5', 0., 1., 5),
+      ('s1t1f5', 1., 1., 5),
+      ('s1t2f2', 1., 2., 2),
+      ('s1t5f6', 1., 5., 6),
+  )
+  def test_sum_scalar_tree_aggregation_reset(self, scalar_value,
+                                             tree_node_value, frequency):
+    total_steps = 20
+    indicator = tree_aggregation.PeriodicRoundRestartIndicator(frequency)
+    query = tree_aggregation_query.TreeCumulativeSumQuery(
+        clip_fn=_get_l2_clip_fn(),
+        clip_value=scalar_value + 1.,  # no clip
+        noise_generator=lambda: tree_node_value,
+        record_specs=tf.TensorSpec([]),
+        use_efficient=False,
+        restart_indicator=indicator,
+    )
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    for i in range(total_steps):
+      sample_state = query.initial_sample_state(scalar_value)
+      sample_state = query.accumulate_record(params, sample_state, scalar_value)
+      query_result, global_state = query.get_noised_result(
+          sample_state, global_state)
+      # Expected value is the combination of cumsum of signal; sum of trees
+      # that have been reset; current tree sum. The tree aggregation value can
+      # be inferred from the binary representation of the current step.
+      expected = (
+          scalar_value * (i + 1) +
+          i // frequency * tree_node_value * bin(frequency)[2:].count('1') +
+          tree_node_value * bin(i % frequency + 1)[2:].count('1'))
+      self.assertEqual(query_result, expected)
 
   @parameterized.named_parameters(
       ('efficient', True, tree_aggregation.EfficientTreeAggregator),
@@ -394,6 +434,42 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
         use_efficient=use_efficient,
     )
     self.assertIsInstance(query._tree_aggregator, tree_class)
+
+  @parameterized.named_parameters(
+      ('s0t1f1', 0., 1., 1),
+      ('s0t1f2', 0., 1., 2),
+      ('s0t1f5', 0., 1., 5),
+      ('s1t1f5', 1., 1., 5),
+      ('s1t2f2', 1., 2., 2),
+      ('s1t5f6', 1., 5., 6),
+  )
+  def test_scalar_tree_aggregation_reset(self, scalar_value, tree_node_value,
+                                         frequency):
+    total_steps = 20
+    indicator = tree_aggregation.PeriodicRoundRestartIndicator(frequency)
+    query = tree_aggregation_query.TreeResidualSumQuery(
+        clip_fn=_get_l2_clip_fn(),
+        clip_value=scalar_value + 1.,  # no clip
+        noise_generator=lambda: tree_node_value,
+        record_specs=tf.TensorSpec([]),
+        use_efficient=False,
+        restart_indicator=indicator,
+    )
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    for i in range(total_steps):
+      sample_state = query.initial_sample_state(scalar_value)
+      sample_state = query.accumulate_record(params, sample_state, scalar_value)
+      query_result, global_state = query.get_noised_result(
+          sample_state, global_state)
+      # Expected value is the signal of the current round plus the residual of
+      # two continous tree aggregation values. The tree aggregation value can
+      # be inferred from the binary representation of the current step.
+      expected = scalar_value + tree_node_value * (
+          bin(i % frequency + 1)[2:].count('1') -
+          bin(i % frequency)[2:].count('1'))
+      print(i, query_result, expected)
+      self.assertEqual(query_result, expected)
 
 
 class BuildTreeTest(tf.test.TestCase, parameterized.TestCase):

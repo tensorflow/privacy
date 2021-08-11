@@ -365,5 +365,26 @@ class GaussianNoiseGeneratorTest(tf.test.TestCase):
       self.assertAllEqual(gstate, gstate2)
 
 
+class RestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.named_parameters(('zero', 0), ('negative', -1))
+  def test_round_raise(self, frequency):
+    with self.assertRaisesRegex(
+        ValueError, 'Restart frequency should be equal or larger than 1'):
+      tree_aggregation.PeriodicRoundRestartIndicator(frequency)
+
+  @parameterized.named_parameters(('f1', 1), ('f2', 2), ('f4', 4), ('f5', 5))
+  def test_round_indicator(self, frequency):
+    total_steps = 20
+    indicator = tree_aggregation.PeriodicRoundRestartIndicator(frequency)
+    state = indicator.initialize()
+    for i in range(total_steps):
+      flag, state = indicator.next(state)
+      if i % frequency == frequency - 1:
+        self.assertTrue(flag)
+      else:
+        self.assertFalse(flag)
+
+
 if __name__ == '__main__':
   tf.test.main()

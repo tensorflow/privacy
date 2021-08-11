@@ -32,13 +32,35 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 
 
-class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
-  """Implements dp_query for adding correlated noise through tree structure.
+# TODO(b/192464750): define `RestartQuery` and move `RestartIndicator` to be
+# in the same module.
 
-  First clips and sums records in current sample, returns cumulative sum of
-  samples over time (instead of only current sample) with added noise for
-  cumulative sum proportional to log(T), T being the number of times the query
-  is called.
+
+class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
+  """Returns private cumulative sums by clipping and adding correlated noise.
+
+  Consider calling `get_noised_result` T times, and each (x_i, i=0,2,...,T-1) is
+  the private value returned by `accumulate_record`, i.e. x_i = sum_{j=0}^{n-1}
+  x_{i,j} where each x_{i,j} is a private record in the database. This class is
+  intended to make multiple queries, which release privatized values of the
+  cumulative sums s_i = sum_{k=0}^{i} x_k, for i=0,...,T-1.
+  Each call to `get_noised_result` releases the next cumulative sum s_i, which
+  is in contrast to the GaussianSumQuery that releases x_i. Noise for the
+  cumulative sums is accomplished using the tree aggregation logic in
+  `tree_aggregation`, which is proportional to log(T).
+
+  Example usage:
+    query = TreeCumulativeSumQuery(...)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    for i, samples in enumerate(streaming_samples):
+      sample_state = query.initial_sample_state(samples[0])
+      # Compute  x_i = sum_{j=0}^{n-1} x_{i,j}
+      for j,sample in enumerate(samples):
+        sample_state = query.accumulate_record(params, sample_state, sample)
+      # noised_cumsum is privatized estimate of s_i
+      noised_cumsum, global_state = query.get_noised_result(
+        sample_state, global_state)
 
   Attributes:
     clip_fn: Callable that specifies clipping function. `clip_fn` receives two
@@ -52,6 +74,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       node. Noise stdandard deviation is specified outside the `dp_query` by the
       user when defining `noise_fn` and should have order
       O(clip_norm*log(T)/eps) to guarantee eps-DP.
+    restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+      boolean indicator for resetting the tree state.
   """
 
   @attr.s(frozen=True)
@@ -63,17 +87,21 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         each level state.
       clip_value: The clipping value to be passed to clip_fn.
       samples_cumulative_sum: Noiseless cumulative sum of samples over time.
+      restarter_state: Current state of the restarter to indicate whether
+        the tree state will be reset.
     """
     tree_state = attr.ib()
     clip_value = attr.ib()
     samples_cumulative_sum = attr.ib()
+    restarter_state = attr.ib()
 
   def __init__(self,
                record_specs,
                noise_generator,
                clip_fn,
                clip_value,
-               use_efficient=True):
+               use_efficient=True,
+               restart_indicator=None):
     """Initializes the `TreeCumulativeSumQuery`.
 
     Consider using `build_l2_gaussian_query` for the construction of a
@@ -91,6 +119,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       use_efficient: Boolean indicating the usage of the efficient tree
         aggregation algorithm based on the paper "Efficient Use of
         Differentially Private Binary Trees".
+      restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+        boolean indicator for resetting the tree state.
     """
     self._clip_fn = clip_fn
     self._clip_value = clip_value
@@ -100,17 +130,21 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
           noise_generator)
     else:
       self._tree_aggregator = tree_aggregation.TreeAggregator(noise_generator)
+    self._restart_indicator = restart_indicator
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     initial_tree_state = self._tree_aggregator.init_state()
     initial_samples_cumulative_sum = tf.nest.map_structure(
         lambda spec: tf.zeros(spec.shape), self._record_specs)
-    initial_state = TreeCumulativeSumQuery.GlobalState(
+    restarter_state = None
+    if self._restart_indicator is not None:
+      restarter_state = self._restart_indicator.initialize()
+    return TreeCumulativeSumQuery.GlobalState(
         tree_state=initial_tree_state,
         clip_value=tf.constant(self._clip_value, tf.float32),
-        samples_cumulative_sum=initial_samples_cumulative_sum)
-    return initial_state
+        samples_cumulative_sum=initial_samples_cumulative_sum,
+        restarter_state=restarter_state)
 
   def derive_sample_params(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
@@ -151,13 +185,21 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         tf.add, global_state.samples_cumulative_sum, sample_state)
     cumulative_sum_noise, new_tree_state = self._tree_aggregator.get_cumsum_and_update(
         global_state.tree_state)
+    noised_cumulative_sum = tf.nest.map_structure(tf.add, new_cumulative_sum,
+                                                  cumulative_sum_noise)
+    restarter_state = global_state.restarter_state
+    if self._restart_indicator is not None:
+      restart_flag, restarter_state = self._restart_indicator.next(
+          restarter_state)
+      if restart_flag:
+        new_cumulative_sum = noised_cumulative_sum
+        new_tree_state = self._tree_aggregator.reset_state(new_tree_state)
     new_global_state = attr.evolve(
         global_state,
         samples_cumulative_sum=new_cumulative_sum,
-        tree_state=new_tree_state)
-    noised_cum_sum = tf.nest.map_structure(tf.add, new_cumulative_sum,
-                                           cumulative_sum_noise)
-    return noised_cum_sum, new_global_state
+        tree_state=new_tree_state,
+        restarter_state=restarter_state)
+    return noised_cumulative_sum, new_global_state
 
   @classmethod
   def build_l2_gaussian_query(cls,
@@ -165,7 +207,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
                               noise_multiplier,
                               record_specs,
                               noise_seed=None,
-                              use_efficient=True):
+                              use_efficient=True,
+                              restart_indicator=None):
     """Returns a query instance with L2 norm clipping and Gaussian noise.
 
     Args:
@@ -180,6 +223,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       use_efficient: Boolean indicating the usage of the efficient tree
         aggregation algorithm based on the paper "Efficient Use of
         Differentially Private Binary Trees".
+      restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+        boolean indicator for resetting the tree state.
     """
     if clip_norm <= 0:
       raise ValueError(f'`clip_norm` must be positive, got {clip_norm}.')
@@ -202,21 +247,47 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         clip_value=clip_norm,
         record_specs=record_specs,
         noise_generator=gaussian_noise_generator,
-        use_efficient=use_efficient)
+        use_efficient=use_efficient,
+        restart_indicator=restart_indicator)
 
 
 class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
-  """Implements dp_query for adding correlated noise through tree structure.
+  """Implements DPQuery for adding correlated noise through tree structure.
 
-  Clips and sums records in current sample; returns the current sample adding
-  the noise residual from tree aggregation. The returned value is conceptually
-  equivalent to the following: calculates cumulative sum of samples over time
-  (instead of only current sample) with added noise for cumulative sum
-  proportional to log(T), T being the number of times the query is called;
-  returns the residual between the current noised cumsum and the previous one
-  when the query is called. Combining this query with a SGD optimizer can be
-  used to implement the DP-FTRL algorithm in
+  Clips and sums records in current sample x_i = sum_{j=0}^{n-1} x_{i,j};
+  returns the current sample adding the noise residual from tree aggregation.
+  The returned value is conceptually equivalent to the following: calculates
+  cumulative sum of samples over time s_i = sum_{k=0}^i x_i (instead of only
+  current sample) with added noise by tree aggregation protocol that is
+  proportional to log(T), T being the number of times the query is called; r
+  eturns the residual between the current noised cumsum noised(s_i) and the
+  previous one noised(s_{i-1}) when the query is called.
+
+  This can be used as a drop-in replacement for `GaussianSumQuery`, and can
+  offer stronger utility/privacy tradeoffs when aplification-via-sampling is not
+  possible, or when privacy epsilon is relativly large.  This may result in
+  more noise by a log(T) factor in each individual estimate of x_i, but if the
+  x_i are used in the underlying code to compute cumulative sums, the noise in
+  those sums can be less. That is, this allows us to adapt code that was written
+  to use a regular `SumQuery` to benefit from the tree aggregation protocol.
+
+  Combining this query with a SGD optimizer can be used to implement the
+  DP-FTRL algorithm in
   "Practical and Private (Deep) Learning without Sampling or Shuffling".
+
+  Example usage:
+    query = TreeResidualSumQuery(...)
+    global_state = query.initial_global_state()
+    params = query.derive_sample_params(global_state)
+    for i, samples in enumerate(streaming_samples):
+      sample_state = query.initial_sample_state(samples[0])
+      # Compute  x_i = sum_{j=0}^{n-1} x_{i,j}
+      for j,sample in enumerate(samples):
+        sample_state = query.accumulate_record(params, sample_state, sample)
+      # noised_sum is privatized estimate of x_i by conceptually postprocessing
+      # noised cumulative sum s_i
+      noised_sum, global_state = query.get_noised_result(
+        sample_state, global_state)
 
   Attributes:
     clip_fn: Callable that specifies clipping function. `clip_fn` receives two
@@ -231,6 +302,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       node. Noise stdandard deviation is specified outside the `dp_query` by the
       user when defining `noise_fn` and should have order
       O(clip_norm*log(T)/eps) to guarantee eps-DP.
+    restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+      boolean indicator for resetting the tree state.
   """
 
   @attr.s(frozen=True)
@@ -243,21 +316,25 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       clip_value: The clipping value to be passed to clip_fn.
       previous_tree_noise: Cumulative noise by tree aggregation from the
         previous time the query is called on a sample.
+      restarter_state: Current state of the restarter to indicate whether
+        the tree state will be reset.
     """
     tree_state = attr.ib()
     clip_value = attr.ib()
     previous_tree_noise = attr.ib()
+    restarter_state = attr.ib()
 
   def __init__(self,
                record_specs,
                noise_generator,
                clip_fn,
                clip_value,
-               use_efficient=True):
-    """Initializes the `TreeResidualSumQuery`.
+               use_efficient=True,
+               restart_indicator=None):
+    """Initializes the `TreeCumulativeSumQuery`.
 
     Consider using `build_l2_gaussian_query` for the construction of a
-    `TreeResidualSumQuery` with L2 norm clipping and Gaussian noise.
+    `TreeCumulativeSumQuery` with L2 norm clipping and Gaussian noise.
 
     Args:
       record_specs: A nested structure of `tf.TensorSpec`s specifying structure
@@ -271,6 +348,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       use_efficient: Boolean indicating the usage of the efficient tree
         aggregation algorithm based on the paper "Efficient Use of
         Differentially Private Binary Trees".
+      restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+        boolean indicator for resetting the tree state.
     """
     self._clip_fn = clip_fn
     self._clip_value = clip_value
@@ -280,16 +359,23 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
           noise_generator)
     else:
       self._tree_aggregator = tree_aggregation.TreeAggregator(noise_generator)
+    self._restart_indicator = restart_indicator
+
+  def _zero_initial_noise(self):
+    return tf.nest.map_structure(lambda spec: tf.zeros(spec.shape),
+                                 self._record_specs)
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     initial_tree_state = self._tree_aggregator.init_state()
-    initial_noise = tf.nest.map_structure(lambda spec: tf.zeros(spec.shape),
-                                          self._record_specs)
+    restarter_state = None
+    if self._restart_indicator is not None:
+      restarter_state = self._restart_indicator.initialize()
     return TreeResidualSumQuery.GlobalState(
         tree_state=initial_tree_state,
         clip_value=tf.constant(self._clip_value, tf.float32),
-        previous_tree_noise=initial_noise)
+        previous_tree_noise=self._zero_initial_noise(),
+        restarter_state=restarter_state)
 
   def derive_sample_params(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
@@ -328,8 +414,18 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
     noised_sample = tf.nest.map_structure(lambda a, b, c: a + b - c,
                                           sample_state, tree_noise,
                                           global_state.previous_tree_noise)
+    restarter_state = global_state.restarter_state
+    if self._restart_indicator is not None:
+      restart_flag, restarter_state = self._restart_indicator.next(
+          restarter_state)
+      if restart_flag:
+        tree_noise = self._zero_initial_noise()
+        new_tree_state = self._tree_aggregator.reset_state(new_tree_state)
     new_global_state = attr.evolve(
-        global_state, previous_tree_noise=tree_noise, tree_state=new_tree_state)
+        global_state,
+        previous_tree_noise=tree_noise,
+        tree_state=new_tree_state,
+        restarter_state=restarter_state)
     return noised_sample, new_global_state
 
   @classmethod
@@ -338,7 +434,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
                               noise_multiplier,
                               record_specs,
                               noise_seed=None,
-                              use_efficient=True):
+                              use_efficient=True,
+                              restart_indicator=None):
     """Returns `TreeResidualSumQuery` with L2 norm clipping and Gaussian noise.
 
     Args:
@@ -353,6 +450,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       use_efficient: Boolean indicating the usage of the efficient tree
         aggregation algorithm based on the paper "Efficient Use of
         Differentially Private Binary Trees".
+      restart_indicator: `tree_aggregation.RestartIndicator` to generate the
+        boolean indicator for resetting the tree state.
     """
     if clip_norm <= 0:
       raise ValueError(f'`clip_norm` must be positive, got {clip_norm}.')
@@ -375,7 +474,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         clip_value=clip_norm,
         record_specs=record_specs,
         noise_generator=gaussian_noise_generator,
-        use_efficient=use_efficient)
+        use_efficient=use_efficient,
+        restart_indicator=restart_indicator)
 
 
 @tf.function
