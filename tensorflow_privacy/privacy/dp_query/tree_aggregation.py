@@ -94,10 +94,12 @@ class GaussianNoiseGenerator(ValueGenerator):
       An initial state.
     """
     if self.seed is None:
+      time_now = tf.timestamp()
+      residual = time_now - tf.math.floor(time_now)
       return tf.cast(
           tf.stack([
               tf.math.floor(tf.timestamp() * 1e6),
-              tf.math.floor(tf.math.log(tf.timestamp() * 1e6))
+              tf.math.floor(residual * 1e9)
           ]),
           dtype=tf.int64)
     else:
