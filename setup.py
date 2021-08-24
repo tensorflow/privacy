@@ -17,11 +17,10 @@ from setuptools import setup
 
 setup(
     name='tensorflow_privacy',
-    version='0.7.1',
+    version='0.7.2',
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
     install_requires=[
-        'tensorflow>=1.14',
         'scipy>=0.17',
         'tensorflow-estimator>=2.3.0',  # for DP versions of estimator.
         'attrs>=21.2.0',  # for tree_aggregation_query.py.
