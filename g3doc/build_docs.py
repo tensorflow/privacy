@@ -37,9 +37,6 @@ flags.DEFINE_string('site_path', 'responsible_ai/privacy/api_docs/python/',
                     'The location of the doc setin the site.')
 flags.DEFINE_bool('search_hints', True,
                   'Include metadata search hints in the generated files.')
-flags.DEFINE_bool('gen_report', False,
-                  ('Generate an API report containing the health of the'
-                   'docstrings of the public API.'))
 
 FLAGS = flags.FLAGS
 
@@ -85,8 +82,6 @@ def gen_api_docs():
       code_url_prefix=FLAGS.code_url_prefix,
       site_path=FLAGS.site_path,
       search_hints=FLAGS.search_hints,
-      private_map={},
-      gen_report=FLAGS.gen_report,
       # This callback cleans up a lot of aliases caused by internal imports.
       callbacks=[public_api.explicit_package_contents_filter])
 
