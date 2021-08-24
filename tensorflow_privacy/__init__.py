@@ -56,6 +56,7 @@ else:
   from tensorflow_privacy.privacy.dp_query import tree_aggregation
   from tensorflow_privacy.privacy.dp_query.tree_aggregation_query import TreeCumulativeSumQuery
   from tensorflow_privacy.privacy.dp_query.tree_aggregation_query import TreeResidualSumQuery
+  from tensorflow_privacy.privacy.dp_query.tree_range_query import TreeRangeSumQuery
 
   # Estimators
   from tensorflow_privacy.privacy.estimators.dnn import DNNClassifier

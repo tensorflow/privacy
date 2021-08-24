@@ -15,10 +15,9 @@
 
 `TreeCumulativeSumQuery` and `TreeResidualSumQuery` are `DPQuery`s for continual
 online observation queries relying on `tree_aggregation`. 'Online' means that
-the leaf nodes of the tree arrive one by one as the time proceeds.
-
-`TreeRangeSumQuery` is a `DPQuery`s for offline tree aggregation protocol.
-'Offline' means all the leaf nodes are ready before the protocol starts.
+the leaf nodes of the tree arrive one by one as the time proceeds. The core
+logic of tree aggregation is implemented in `tree_aggregation.TreeAggregator`
+and `tree_aggregation.EfficientTreeAggregator`.
 """
 import distutils
 import math
@@ -31,7 +30,7 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 
 
-# TODO(b/192464750): define `RestartQuery` and move `RestartIndicator` to be
+# TODO(b/193679963): define `RestartQuery` and move `RestartIndicator` to be
 # in the same module.
 
 
@@ -475,6 +474,10 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         noise_generator=gaussian_noise_generator,
         use_efficient=use_efficient,
         restart_indicator=restart_indicator)
+
+
+# TODO(b/197596864): Remove `TreeRangeSumQuery` from this file after the next
+# TFP release
 
 
 @tf.function
