@@ -62,14 +62,14 @@ class DpEventBuilder(object):
     """Builds and returns the composed DpEvent represented by the builder."""
     if not self._composed_event:
       self_composed_events = []
-      for event, num_self_compositions in self._events.items():
-        if num_self_compositions == 1:
+      for event, count in self._events.items():
+        if count == 1:
           self_composed_events.append(event)
         else:
           self_composed_events.append(
-              dp_event.SelfComposedDpEvent(event, num_self_compositions))
+              dp_event.SelfComposedDpEvent(event, count))
       if not self_composed_events:
-        return dp_event.NoOpDpEvent()
+        self._composed_event = dp_event.NoOpDpEvent()
       elif len(self_composed_events) == 1:
         self._composed_event = self_composed_events[0]
       else:
