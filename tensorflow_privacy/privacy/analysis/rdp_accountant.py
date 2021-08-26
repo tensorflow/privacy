@@ -47,7 +47,6 @@ import numpy as np
 from scipy import special
 import six
 
-
 ########################
 # LOG-SPACE ARITHMETIC #
 ########################
@@ -102,8 +101,8 @@ def _log_print(logx):
 
 
 def _log_comb(n, k):
-  return (special.gammaln(n + 1) -
-          special.gammaln(k + 1) - special.gammaln(n - k + 1))
+  return (special.gammaln(n + 1) - special.gammaln(k + 1) -
+          special.gammaln(n - k + 1))
 
 
 def _compute_log_a_int(q, sigma, alpha):
@@ -215,17 +214,19 @@ def _compute_delta(orders, rdp, eps):
   # Improved bound from https://arxiv.org/abs/2004.00010 Proposition 12 (in v4):
   logdeltas = []  # work in log space to avoid overflows
   for (a, r) in zip(orders_vec, rdp_vec):
-    if a < 1: raise ValueError("Renyi divergence order must be >=1.")
-    if r < 0: raise ValueError("Renyi divergence must be >=0.")
+    if a < 1:
+      raise ValueError("Renyi divergence order must be >=1.")
+    if r < 0:
+      raise ValueError("Renyi divergence must be >=0.")
     # For small alpha, we are better of with bound via KL divergence:
     # delta <= sqrt(1-exp(-KL)).
     # Take a min of the two bounds.
-    logdelta = 0.5*math.log1p(-math.exp(-r))
+    logdelta = 0.5 * math.log1p(-math.exp(-r))
     if a > 1.01:
       # This bound is not numerically stable as alpha->1.
       # Thus we have a min value for alpha.
       # The bound is also not useful for small alpha, so doesn't matter.
-      rdp_bound = (a - 1) * (r - eps + math.log1p(-1/a)) - math.log(a)
+      rdp_bound = (a - 1) * (r - eps + math.log1p(-1 / a)) - math.log(a)
       logdelta = min(logdelta, rdp_bound)
 
     logdeltas.append(logdelta)
@@ -264,8 +265,10 @@ def _compute_eps(orders, rdp, delta):
   # Also appears in https://arxiv.org/abs/2001.05990 Equation 20 (in v1).
   eps_vec = []
   for (a, r) in zip(orders_vec, rdp_vec):
-    if a < 1: raise ValueError("Renyi divergence order must be >=1.")
-    if r < 0: raise ValueError("Renyi divergence must be >=0.")
+    if a < 1:
+      raise ValueError("Renyi divergence order must be >=1.")
+    if r < 0:
+      raise ValueError("Renyi divergence must be >=0.")
 
     if delta**2 + math.expm1(-r) >= 0:
       # In this case, we can simply bound via KL divergence:
@@ -378,7 +381,7 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   Args:
     q: The sampling rate.
     noise_multiplier: The ratio of the standard deviation of the Gaussian noise
-        to the l2-sensitivity of the function to which it is added.
+      to the l2-sensitivity of the function to which it is added.
     steps: The number of steps.
     orders: An array (or a scalar) of RDP orders.
 
@@ -388,8 +391,8 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   if np.isscalar(orders):
     rdp = _compute_rdp(q, noise_multiplier, orders)
   else:
-    rdp = np.array([_compute_rdp(q, noise_multiplier, order)
-                    for order in orders])
+    rdp = np.array(
+        [_compute_rdp(q, noise_multiplier, order) for order in orders])
 
   return rdp * steps
 
@@ -572,8 +575,8 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
     target_eps: If not `None`, the epsilon for which we compute the
       corresponding delta.
     target_delta: If not `None`, the delta for which we compute the
-      corresponding epsilon. Exactly one of `target_eps` and `target_delta`
-      must be `None`.
+      corresponding epsilon. Exactly one of `target_eps` and `target_delta` must
+      be `None`.
 
   Returns:
     A tuple of epsilon, delta, and the optimal order.
@@ -595,24 +598,3 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
   else:
     eps, opt_order = _compute_eps(orders, rdp, target_delta)
     return eps, target_delta, opt_order
-
-
-def compute_rdp_from_ledger(ledger, orders):
-  """Computes RDP of Sampled Gaussian Mechanism from ledger.
-
-  Args:
-    ledger: A formatted privacy ledger.
-    orders: An array (or a scalar) of RDP orders.
-
-  Returns:
-    RDP at all orders. Can be `np.inf`.
-  """
-  total_rdp = np.zeros_like(orders, dtype=float)
-  for sample in ledger:
-    # Compute equivalent z from l2_clip_bounds and noise stddevs in sample.
-    # See https://arxiv.org/pdf/1812.06210.pdf for derivation of this formula.
-    effective_z = sum([
-        (q.noise_stddev / q.l2_norm_bound)**-2 for q in sample.queries])**-0.5
-    total_rdp += compute_rdp(
-        sample.selection_probability, effective_z, 1, orders)
-  return total_rdp

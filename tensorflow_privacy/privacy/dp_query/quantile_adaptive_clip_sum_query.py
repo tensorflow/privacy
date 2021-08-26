@@ -91,11 +91,6 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
     assert isinstance(self._quantile_estimator_query,
                       dp_query.SumAggregationDPQuery)
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._sum_query.set_ledger(ledger)
-    self._quantile_estimator_query.set_ledger(ledger)
-
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     return self._GlobalState(

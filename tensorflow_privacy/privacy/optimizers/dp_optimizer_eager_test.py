@@ -22,7 +22,6 @@ import numpy as np
 from six.moves import range
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
@@ -56,13 +55,9 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(
-          dp_sum_query, 1e6, num_microbatches / 1e6)
 
       opt = cls(
-          dp_sum_query,
-          num_microbatches=num_microbatches,
-          learning_rate=2.0)
+          dp_sum_query, num_microbatches=num_microbatches, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -85,7 +80,6 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
@@ -109,7 +103,6 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[0.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(4.0, 8.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 

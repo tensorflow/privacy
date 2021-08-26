@@ -31,7 +31,6 @@ from mpmath import quad
 import numpy as np
 import tensorflow as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.analysis import rdp_accountant
 
 
@@ -121,16 +120,47 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
         [6.5007e-04, 1.0854e-03, 2.1808e-03, 2.3846e-02, 1.6742e+02, np.inf],
         rtol=1e-4)
 
-  params = ({'q': 1e-7, 'sigma': .1, 'order': 1.01},
-            {'q': 1e-6, 'sigma': .1, 'order': 256},
-            {'q': 1e-5, 'sigma': .1, 'order': 256.1},
-            {'q': 1e-6, 'sigma': 1, 'order': 27},
-            {'q': 1e-4, 'sigma': 1., 'order': 1.5},
-            {'q': 1e-3, 'sigma': 1., 'order': 2},
-            {'q': .01, 'sigma': 10, 'order': 20},
-            {'q': .1, 'sigma': 100, 'order': 20.5},
-            {'q': .99, 'sigma': .1, 'order': 256},
-            {'q': .999, 'sigma': 100, 'order': 256.1})
+  params = ({
+      'q': 1e-7,
+      'sigma': .1,
+      'order': 1.01
+  }, {
+      'q': 1e-6,
+      'sigma': .1,
+      'order': 256
+  }, {
+      'q': 1e-5,
+      'sigma': .1,
+      'order': 256.1
+  }, {
+      'q': 1e-6,
+      'sigma': 1,
+      'order': 27
+  }, {
+      'q': 1e-4,
+      'sigma': 1.,
+      'order': 1.5
+  }, {
+      'q': 1e-3,
+      'sigma': 1.,
+      'order': 2
+  }, {
+      'q': .01,
+      'sigma': 10,
+      'order': 20
+  }, {
+      'q': .1,
+      'sigma': 100,
+      'order': 20.5
+  }, {
+      'q': .99,
+      'sigma': .1,
+      'order': 256
+  }, {
+      'q': .999,
+      'sigma': 100,
+      'order': 256.1
+  })
 
   # pylint:disable=undefined-variable
   @parameterized.parameters(p for p in params)
@@ -152,7 +182,8 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(eps, 1.32783806176)
 
     # Second test for Gaussian noise (with no subsampling):
-    orders = [0.001*i for i in range(1000, 100000)]  # Pick fine set of orders.
+    orders = [0.001 * i for i in range(1000, 100000)
+             ]  # Pick fine set of orders.
     rdp = rdp_accountant.compute_rdp(1, 4.530877117, 1, orders)
     # Scale is chosen to obtain exactly (1,1e-6)-DP.
     eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-6)
@@ -168,7 +199,7 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
     self.assertAlmostEqual(delta, 1e-5)
 
     # Second test for Gaussian noise (with no subsampling):
-    orders = [0.001*i for i in range(1000, 100000)]  # Pick fine set of order.
+    orders = [0.001 * i for i in range(1000, 100000)]  # Pick fine set of order.
     rdp = rdp_accountant.compute_rdp(1, 4.530877117, 1, orders)
     # Scale is chosen to obtain exactly (1,1e-6)-DP.
     _, delta, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_eps=1)
@@ -178,17 +209,13 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
     orders = (1.25, 1.5, 1.75, 2., 2.5, 3., 4., 5., 6., 7., 8., 10., 12., 14.,
               16., 20., 24., 28., 32., 64., 256.)
 
-    rdp = rdp_accountant.compute_rdp(q=1e-4,
-                                     noise_multiplier=.4,
-                                     steps=40000,
-                                     orders=orders)
+    rdp = rdp_accountant.compute_rdp(
+        q=1e-4, noise_multiplier=.4, steps=40000, orders=orders)
 
     eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-6)
 
-    rdp += rdp_accountant.compute_rdp(q=0.1,
-                                      noise_multiplier=2,
-                                      steps=100,
-                                      orders=orders)
+    rdp += rdp_accountant.compute_rdp(
+        q=0.1, noise_multiplier=2, steps=100, orders=orders)
     eps, _, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_delta=1e-5)
     # These tests use the old RDP -> approx DP conversion
     # self.assertAlmostEqual(eps, 8.509656, places=5)
@@ -217,42 +244,25 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
   def test_get_privacy_spent_gaussian(self):
     # Compare the optimal bound for Gaussian with the one derived from RDP.
     # Also compare the RDP upper bound with the "standard" upper bound.
-    orders = [0.1*x for x in range(10, 505)]
-    eps_vec = [0.1*x for x in range(500)]
+    orders = [0.1 * x for x in range(10, 505)]
+    eps_vec = [0.1 * x for x in range(500)]
     rdp = rdp_accountant.compute_rdp(1, 1, 1, orders)
     for eps in eps_vec:
-      _, delta, _ = rdp_accountant.get_privacy_spent(orders, rdp,
-                                                     target_eps=eps)
+      _, delta, _ = rdp_accountant.get_privacy_spent(
+          orders, rdp, target_eps=eps)
       # For comparison, we compute the optimal guarantee for Gaussian
       # using https://arxiv.org/abs/1805.06530 Theorem 8 (in v2).
-      delta0 = math.erfc((eps-.5)/math.sqrt(2))/2
-      delta0 = delta0 - math.exp(eps)*math.erfc((eps+.5)/math.sqrt(2))/2
-      self.assertLessEqual(delta0, delta+1e-300)  # need tolerance 10^-300
+      delta0 = math.erfc((eps - .5) / math.sqrt(2)) / 2
+      delta0 = delta0 - math.exp(eps) * math.erfc((eps + .5) / math.sqrt(2)) / 2
+      self.assertLessEqual(delta0, delta + 1e-300)  # need tolerance 10^-300
 
       # Compute the "standard" upper bound, which should be an upper bound.
       # Note, if orders is too sparse, this will NOT be an upper bound.
       if eps >= 0.5:
-        delta1 = math.exp(-0.5*(eps-0.5)**2)
+        delta1 = math.exp(-0.5 * (eps - 0.5)**2)
       else:
         delta1 = 1
-      self.assertLessEqual(delta, delta1+1e-300)
-
-  def test_compute_rdp_from_ledger(self):
-    orders = range(2, 33)
-    q = 0.1
-    n = 1000
-    l2_norm_clip = 3.14159
-    noise_stddev = 2.71828
-    steps = 3
-
-    query_entry = privacy_ledger.GaussianSumQueryEntry(
-        l2_norm_clip, noise_stddev)
-    ledger = [privacy_ledger.SampleEntry(n, q, [query_entry])] * steps
-
-    z = noise_stddev / l2_norm_clip
-    rdp = rdp_accountant.compute_rdp(q, z, steps, orders)
-    rdp_from_ledger = rdp_accountant.compute_rdp_from_ledger(ledger, orders)
-    self.assertSequenceAlmostEqual(rdp, rdp_from_ledger)
+      self.assertLessEqual(delta, delta1 + 1e-300)
 
 
 if __name__ == '__main__':

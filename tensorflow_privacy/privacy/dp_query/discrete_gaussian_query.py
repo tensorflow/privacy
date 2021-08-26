@@ -46,11 +46,6 @@ class DiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
     self._l2_norm_bound = l2_norm_bound
     self._stddev = stddev
 
-  def set_ledger(self, ledger):
-    del ledger  # Unused.
-    raise NotImplementedError('Ledger has not yet been implemented for'
-                              'DiscreteGaussianSumQuery!')
-
   def initial_global_state(self):
     return self._GlobalState(
         tf.cast(self._l2_norm_bound, tf.float32),

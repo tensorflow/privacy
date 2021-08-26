@@ -47,10 +47,6 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     self._stddev = stddev
     self._ledger = None
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._ledger = ledger
-
   def make_global_state(self, l2_norm_clip, stddev):
     """Creates a global state from the given parameters."""
     return self._GlobalState(

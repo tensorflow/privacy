@@ -22,7 +22,6 @@ from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import quantile_adaptive_clip_sum_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
@@ -290,53 +289,6 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase,
 
       if t > 40:
         self.assertNear(actual_clip, 5.0, 0.5)
-
-  def test_ledger(self):
-    record1 = tf.constant([8.5])
-    record2 = tf.constant([-7.25])
-
-    population_size = tf.Variable(0)
-    selection_probability = tf.Variable(1.0)
-
-    query = quantile_adaptive_clip_sum_query.QuantileAdaptiveClipSumQuery(
-        initial_l2_norm_clip=10.0,
-        noise_multiplier=1.0,
-        target_unclipped_quantile=0.0,
-        learning_rate=1.0,
-        clipped_count_stddev=0.0,
-        expected_num_records=2.0,
-        geometric_update=False)
-
-    query = privacy_ledger.QueryWithLedger(query, population_size,
-                                           selection_probability)
-
-    # First sample.
-    tf.assign(population_size, 10)
-    tf.assign(selection_probability, 0.1)
-    _, global_state = test_utils.run_query(query, [record1, record2])
-
-    expected_queries = [[10.0, 10.0], [0.5, 0.0]]
-    formatted = query.ledger.get_formatted_ledger_eager()
-    sample_1 = formatted[0]
-    self.assertAllClose(sample_1.population_size, 10.0)
-    self.assertAllClose(sample_1.selection_probability, 0.1)
-    self.assertAllClose(sample_1.queries, expected_queries)
-
-    # Second sample.
-    tf.assign(population_size, 20)
-    tf.assign(selection_probability, 0.2)
-    test_utils.run_query(query, [record1, record2], global_state)
-
-    formatted = query.ledger.get_formatted_ledger_eager()
-    sample_1, sample_2 = formatted
-    self.assertAllClose(sample_1.population_size, 10.0)
-    self.assertAllClose(sample_1.selection_probability, 0.1)
-    self.assertAllClose(sample_1.queries, expected_queries)
-
-    expected_queries_2 = [[9.0, 9.0], [0.5, 0.0]]
-    self.assertAllClose(sample_2.population_size, 20.0)
-    self.assertAllClose(sample_2.selection_probability, 0.2)
-    self.assertAllClose(sample_2.queries, expected_queries_2)
 
 
 if __name__ == '__main__':

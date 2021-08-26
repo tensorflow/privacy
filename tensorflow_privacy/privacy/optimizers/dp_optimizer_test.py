@@ -24,7 +24,6 @@ import numpy as np
 from six.moves import range
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
@@ -51,9 +50,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdam 2', dp_optimizer.DPAdamOptimizer, 2, [-2.5, -2.5]),
       ('DPAdam 4', dp_optimizer.DPAdamOptimizer, 4, [-2.5, -2.5]),
       ('DPRMSPropOptimizer 1', dp_optimizer.DPRMSPropOptimizer, 1,
-       [-2.5, -2.5]),
-      ('DPRMSPropOptimizer 2', dp_optimizer.DPRMSPropOptimizer, 2,
-       [-2.5, -2.5]),
+       [-2.5, -2.5]), ('DPRMSPropOptimizer 2', dp_optimizer.DPRMSPropOptimizer,
+                       2, [-2.5, -2.5]),
       ('DPRMSPropOptimizer 4', dp_optimizer.DPRMSPropOptimizer, 4, [-2.5, -2.5])
   )
   def testBaseline(self, cls, num_microbatches, expected_answer):
@@ -62,13 +60,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(
-          dp_sum_query, 1e6, num_microbatches / 1e6)
 
       opt = cls(
-          dp_sum_query,
-          num_microbatches=num_microbatches,
-          learning_rate=2.0)
+          dp_sum_query, num_microbatches=num_microbatches, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -91,7 +85,6 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
@@ -115,7 +108,6 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       data0 = tf.Variable([[0.0]])
 
       dp_sum_query = gaussian_query.GaussianSumQuery(4.0, 8.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
 
       opt = cls(dp_sum_query, num_microbatches=1, learning_rate=2.0)
 
@@ -157,11 +149,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       vector_loss = tf.math.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6, 1 / 1e6)
       optimizer = dp_optimizer.DPGradientDescentOptimizer(
-          dp_sum_query,
-          num_microbatches=1,
-          learning_rate=1.0)
+          dp_sum_query, num_microbatches=1, learning_rate=1.0)
       global_step = tf.train.get_global_step()
       train_op = optimizer.minimize(loss=vector_loss, global_step=global_step)
       return tf.estimator.EstimatorSpec(
@@ -201,8 +190,6 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       num_microbatches = 4
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(
-          dp_sum_query, 1e6, num_microbatches / 1e6)
 
       opt = cls(
           dp_sum_query,
@@ -283,8 +270,6 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       extra_variable = tf.Variable('foo', trainable=True, dtype=tf.string)
 
       dp_sum_query = gaussian_query.GaussianSumQuery(1.0e9, 0.0)
-      dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query, 1e6,
-                                                    num_microbatches / 1e6)
 
       opt = cls(
           dp_sum_query, num_microbatches=num_microbatches, learning_rate=2.0)
@@ -298,27 +283,26 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       sess.run(minimize_op)
 
   def _testWriteOutAndReload(self, optimizer_cls):
-    optimizer = optimizer_cls(l2_norm_clip=1.0,
-                              noise_multiplier=0.01,
-                              num_microbatches=1)
+    optimizer = optimizer_cls(
+        l2_norm_clip=1.0, noise_multiplier=0.01, num_microbatches=1)
 
     test_dir = self.get_temp_dir()
     model_path = os.path.join(test_dir, 'model')
 
-    model = tf.keras.Sequential([tf.keras.layers.InputLayer(input_shape=(1, 1)),
-                                 tf.keras.layers.Dense(units=1,
-                                                       activation='softmax')])
-    model.compile(optimizer=optimizer,
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(
-                      from_logits=True))
+    model = tf.keras.Sequential([
+        tf.keras.layers.InputLayer(input_shape=(1, 1)),
+        tf.keras.layers.Dense(units=1, activation='softmax')
+    ])
+    model.compile(
+        optimizer=optimizer,
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True))
 
-    tf.keras.models.save_model(model, filepath=model_path,
-                               include_optimizer=True)
+    tf.keras.models.save_model(
+        model, filepath=model_path, include_optimizer=True)
 
     optimizer_cls_str = optimizer_cls.__name__
-    tf.keras.models.load_model(model_path,
-                               custom_objects={
-                                   optimizer_cls_str: optimizer_cls})
+    tf.keras.models.load_model(
+        model_path, custom_objects={optimizer_cls_str: optimizer_cls})
 
     return
 

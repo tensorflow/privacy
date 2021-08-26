@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Implements DPQuery interface for normalized queries.
-"""
+"""Implements DPQuery interface for normalized queries."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -38,8 +36,8 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
   """
 
   # pylint: disable=invalid-name
-  _GlobalState = collections.namedtuple(
-      '_GlobalState', ['numerator_state', 'denominator'])
+  _GlobalState = collections.namedtuple('_GlobalState',
+                                        ['numerator_state', 'denominator'])
 
   def __init__(self, numerator_query, denominator):
     """Initializes the NormalizedQuery.
@@ -55,15 +53,11 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
 
     assert isinstance(self._numerator, dp_query.SumAggregationDPQuery)
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._numerator.set_ledger(ledger)
-
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     denominator = tf.cast(self._denominator, tf.float32)
-    return self._GlobalState(
-        self._numerator.initial_global_state(), denominator)
+    return self._GlobalState(self._numerator.initial_global_state(),
+                             denominator)
 
   def derive_sample_params(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
@@ -82,6 +76,7 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     noised_sum, new_sum_global_state = self._numerator.get_noised_result(
         sample_state, global_state.numerator_state)
+
     def normalize(v):
       return tf.truediv(v, global_state.denominator)
 

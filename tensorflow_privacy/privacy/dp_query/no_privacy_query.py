@@ -17,8 +17,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import warnings
-
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.dp_query import dp_query
@@ -33,20 +31,11 @@ class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
   def __init__(self):
     self._ledger = None
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    warnings.warn(
-        'Attempt to use NoPrivacySumQuery with privacy ledger. Privacy '
-        'guarantees will be vacuous.')
-    self._ledger = ledger
-
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
 
     if self._ledger:
-      dependencies = [
-          self._ledger.record_sum_query(float('inf'), 0.0)
-      ]
+      dependencies = [self._ledger.record_sum_query(float('inf'), 0.0)]
     else:
       dependencies = []
 
@@ -71,17 +60,10 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     """Initializes the NoPrivacyAverageQuery."""
     self._ledger = None
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    warnings.warn(
-        'Attempt to use NoPrivacyAverageQuery with privacy ledger. Privacy '
-        'guarantees will be vacuous.')
-    self._ledger = ledger
-
   def initial_sample_state(self, template):
     """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
-    return (super(NoPrivacyAverageQuery, self).initial_sample_state(template),
-            tf.constant(0.0))
+    return (super(NoPrivacyAverageQuery,
+                  self).initial_sample_state(template), tf.constant(0.0))
 
   def preprocess_record(self, params, record, weight=1):
     """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
@@ -122,9 +104,7 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     sum_state, denominator = sample_state
 
     if self._ledger:
-      dependencies = [
-          self._ledger.record_sum_query(float('inf'), 0.0)
-      ]
+      dependencies = [self._ledger.record_sum_query(float('inf'), 0.0)]
     else:
       dependencies = []
 

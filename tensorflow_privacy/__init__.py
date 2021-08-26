@@ -31,10 +31,6 @@ else:
 
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import GaussianSumQueryEntry
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import PrivacyLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import QueryWithLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import SampleEntry
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogenous_rdp
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_from_ledger

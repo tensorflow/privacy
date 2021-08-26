@@ -21,7 +21,6 @@ from absl import logging
 
 import tensorflow.compat.v1 as tf
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 
 
@@ -166,8 +165,8 @@ def make_optimizer_class(cls):
           sample_state = process_microbatch(idx, sample_state)
 
         grad_sums, self._global_state = (
-            self._dp_sum_query.get_noised_result(
-                sample_state, self._global_state))
+            self._dp_sum_query.get_noised_result(sample_state,
+                                                 self._global_state))
 
         def normalize(v):
           return v / tf.cast(self._num_microbatches, tf.float32)
@@ -197,8 +196,8 @@ def make_optimizer_class(cls):
           """Process one microbatch (record) with privacy helper."""
           self_super = super(DPOptimizerClass, self)
 
-          mean_loss = tf.reduce_mean(input_tensor=tf.gather(
-              microbatches_losses, [i]))
+          mean_loss = tf.reduce_mean(
+              input_tensor=tf.gather(microbatches_losses, [i]))
 
           if hasattr(self_super, 'compute_gradients'):
             # This case covers optimizers in tf.train.
@@ -208,8 +207,8 @@ def make_optimizer_class(cls):
             compute_gradients_fn = self_super._compute_gradients  # pylint: disable=protected-access
 
           grads, _ = zip(*compute_gradients_fn(
-              mean_loss, var_list, gate_gradients,
-              aggregation_method, colocate_gradients_with_ops, grad_loss))
+              mean_loss, var_list, gate_gradients, aggregation_method,
+              colocate_gradients_with_ops, grad_loss))
           grads_list = list(grads)
 
           sample_state = self._dp_sum_query.accumulate_record(
@@ -218,8 +217,8 @@ def make_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.trainable_variables() + tf.get_collection(
-                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.trainable_variables() +
+              tf.get_collection(tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         sample_state = self._dp_sum_query.initial_sample_state(var_list)
 
@@ -237,8 +236,8 @@ def make_optimizer_class(cls):
               cond=cond_fn, body=body_fn, loop_vars=[idx, sample_state])
 
         grad_sums, self._global_state = (
-            self._dp_sum_query.get_noised_result(
-                sample_state, self._global_state))
+            self._dp_sum_query.get_noised_result(sample_state,
+                                                 self._global_state))
 
         def normalize(v):
           try:
@@ -307,9 +306,7 @@ def make_gaussian_optimizer_class(cls):
        ```
 
        """).format(
-           'tf.compat.v1.train.' + cls.__name__,
-           cls.__name__,
-           cls.__name__,
+           'tf.compat.v1.train.' + cls.__name__, cls.__name__, cls.__name__,
            'DP' + cls.__name__.replace('Optimizer', 'GaussianOptimizer'))
 
     def __init__(
@@ -317,7 +314,6 @@ def make_gaussian_optimizer_class(cls):
         l2_norm_clip,
         noise_multiplier,
         num_microbatches=None,
-        ledger=None,
         unroll_microbatches=False,
         *args,  # pylint: disable=keyword-arg-before-vararg
         **kwargs):
@@ -329,7 +325,6 @@ def make_gaussian_optimizer_class(cls):
         num_microbatches: Number of microbatches into which each minibatch is
           split. If `None`, will default to the size of the minibatch, and
           per-example gradients will be computed.
-        ledger: Defaults to `None`. An instance of `tf_privacy.PrivacyLedger`.
         unroll_microbatches: If true, processes microbatches within a Python
           loop instead of a `tf.while_loop`. Can be used if using a
           `tf.while_loop` raises an exception.
@@ -344,16 +339,9 @@ def make_gaussian_optimizer_class(cls):
       dp_sum_query = gaussian_query.GaussianSumQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier)
 
-      if ledger:
-        dp_sum_query = privacy_ledger.QueryWithLedger(dp_sum_query,
-                                                      ledger=ledger)
-
-      super(DPGaussianOptimizerClass, self).__init__(
-          dp_sum_query,
-          num_microbatches,
-          unroll_microbatches,
-          *args,
-          **kwargs)
+      super(DPGaussianOptimizerClass,
+            self).__init__(dp_sum_query, num_microbatches, unroll_microbatches,
+                           *args, **kwargs)
 
     def get_config(self):
       """Creates configuration for Keras serialization.
@@ -370,7 +358,8 @@ def make_gaussian_optimizer_class(cls):
       config.update({
           'l2_norm_clip': self._l2_norm_clip,
           'noise_multiplier': self._noise_multiplier,
-          'num_microbatches': self._num_microbatches})
+          'num_microbatches': self._num_microbatches
+      })
 
       return config
 
@@ -379,6 +368,7 @@ def make_gaussian_optimizer_class(cls):
       return self._dp_sum_query.ledger
 
   return DPGaussianOptimizerClass
+
 
 AdagradOptimizer = tf.train.AdagradOptimizer
 AdamOptimizer = tf.train.AdamOptimizer

@@ -101,10 +101,6 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
             l2_norm_clip=0.5, stddev=below_estimate_stddev),
         denominator=expected_num_records)
 
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._below_estimate_query.set_ledger(ledger)
-
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
     return self._GlobalState(
