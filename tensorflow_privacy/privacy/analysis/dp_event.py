@@ -37,6 +37,27 @@ class NoOpDpEvent(DpEvent):
   """
 
 
+@attr.s(frozen=True)
+class NonPrivateDpEvent(DpEvent):
+  """A `DpEvent` to represent non-private operations.
+
+  This `DpEvent` should be used when an operation is performed that does not
+  satisfy (epsilon, delta)-DP. All `PrivacyAccountant`s should return infinite
+  epsilon/delta when encountering a `NonPrivateDpEvent`.
+  """
+
+
+@attr.s(frozen=True)
+class UnsupportedDpEvent(DpEvent):
+  """A `DpEvent` to represent as-yet unsupported operations.
+
+  This `DpEvent` should be used when an operation is performed that does not yet
+  have any associated DP description, or if the description is temporarily
+  inaccessible, for example, during development. All `PrivacyAccountant`s should
+  return `is_supported(event)` is `False` for `UnsupportedDpEvent`.
+  """
+
+
 @attr.s(frozen=True, slots=True, auto_attribs=True)
 class GaussianDpEvent(DpEvent):
   """The Gaussian mechanism."""
