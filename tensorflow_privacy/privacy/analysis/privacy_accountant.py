@@ -14,16 +14,33 @@
 """PrivacyAccountant abstract base class."""
 
 import abc
+import enum
 
 from tensorflow_privacy.privacy.dp_event import dp_event
 from tensorflow_privacy.privacy.dp_event import dp_event_builder
 
 
+class NeighboringRelation(enum.Enum):
+  ADD_OR_REMOVE_ONE = 1
+  REPLACE_ONE = 2
+
+
 class PrivacyAccountant(metaclass=abc.ABCMeta):
   """Abstract base class for privacy accountants."""
 
-  def __init__(self):
+  def __init__(self, neighboring_relation: NeighboringRelation):
+    self._neighboring_relation = neighboring_relation
     self._ledger = dp_event_builder.DpEventBuilder()
+
+  @property
+  def neighboring_relation(self) -> NeighboringRelation:
+    """The neighboring relation used by the accountant.
+
+    The neighboring relation is expected to remain constant after
+    initialization. Subclasses should not override this property or change the
+    value of the private attribute.
+    """
+    return self._neighboring_relation
 
   @abc.abstractmethod
   def is_supported(self, event: dp_event.DpEvent) -> bool:

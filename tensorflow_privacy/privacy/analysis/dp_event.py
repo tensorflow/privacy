@@ -85,8 +85,16 @@ class PoissonSampledDpEvent(DpEvent):
 
 
 @attr.s(frozen=True, slots=True, auto_attribs=True)
-class EqualBatchSampledDpEvent(DpEvent):
-  """An application of sampling exactly `batch_size` records."""
+class FixedBatchSampledWrDpEvent(DpEvent):
+  """Sampling exactly `batch_size` records with replacement."""
+  dataset_size: int
+  batch_size: int
+  event: DpEvent
+
+
+@attr.s(frozen=True, slots=True, auto_attribs=True)
+class FixedBatchSampledWorDpEvent(DpEvent):
+  """Sampling exactly `batch_size` records without replacement."""
   dataset_size: int
   batch_size: int
   event: DpEvent
