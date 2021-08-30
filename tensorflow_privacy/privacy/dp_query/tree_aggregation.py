@@ -21,8 +21,8 @@ module implements the core logic of tree aggregation in Tensorflow, which serves
 as helper functions for `tree_aggregation_query`. This module and helper
 functions are publicly accessible.
 """
-
 import abc
+import collections
 from typing import Any, Callable, Collection, Optional, Tuple, Union
 
 import attr
@@ -70,6 +70,9 @@ class GaussianNoiseGenerator(ValueGenerator):
   nested structure of `tf.TensorSpec`s.
   """
 
+  # pylint: disable=invalid-name
+  _GlobalState = collections.namedtuple('_GlobalState', ['seeds', 'stddev'])
+
   def __init__(self,
                noise_std: float,
                specs: Collection[tf.TensorSpec],
@@ -83,48 +86,57 @@ class GaussianNoiseGenerator(ValueGenerator):
       seed: An optional integer seed. If None, generator is seeded from the
         clock.
     """
-    self.noise_std = noise_std
-    self.specs = specs
-    self.seed = seed
+    self._noise_std = noise_std
+    self._specs = specs
+    self._seed = seed
 
   def initialize(self):
     """Makes an initial state for the GaussianNoiseGenerator.
 
     Returns:
-      An initial state.
+      A named tuple of (seeds, stddev).
     """
-    if self.seed is None:
+    if self._seed is None:
       time_now = tf.timestamp()
       residual = time_now - tf.math.floor(time_now)
-      return tf.cast(
-          tf.stack([
-              tf.math.floor(tf.timestamp() * 1e6),
-              tf.math.floor(residual * 1e9)
-          ]),
-          dtype=tf.int64)
+      return self._GlobalState(
+          tf.cast(
+              tf.stack([
+                  tf.math.floor(tf.timestamp() * 1e6),
+                  tf.math.floor(residual * 1e9)
+              ]),
+              dtype=tf.int64), tf.constant(self._noise_std, dtype=tf.float32))
     else:
-      return tf.constant(self.seed, dtype=tf.int64, shape=(2,))
+      return self._GlobalState(
+          tf.constant(self._seed, dtype=tf.int64, shape=(2,)),
+          tf.constant(self._noise_std, dtype=tf.float32))
 
   def next(self, state):
     """Gets next value and advances the GaussianNoiseGenerator.
 
     Args:
-      state: The current state.
+      state: The current state (seed, noise_std).
 
     Returns:
-      A pair (sample, new_state) where sample is a new sample and new_state
-        is the advanced state.
+      A tuple of (sample, new_state) where sample is a new sample and new_state
+        is the advanced state (seed+1, noise_std).
     """
-    flat_structure = tf.nest.flatten(self.specs)
-    flat_seeds = [state + i for i in range(len(flat_structure))]
-    nest_seeds = tf.nest.pack_sequence_as(self.specs, flat_seeds)
+    flat_structure = tf.nest.flatten(self._specs)
+    flat_seeds = [state.seeds + i for i in range(len(flat_structure))]
+    nest_seeds = tf.nest.pack_sequence_as(self._specs, flat_seeds)
 
     def _get_noise(spec, seed):
       return tf.random.stateless_normal(
-          shape=spec.shape, seed=seed, stddev=self.noise_std)
+          shape=spec.shape, seed=seed, stddev=state.stddev)
 
-    nest_noise = tf.nest.map_structure(_get_noise, self.specs, nest_seeds)
-    return nest_noise, flat_seeds[-1] + 1
+    nest_noise = tf.nest.map_structure(_get_noise, self._specs, nest_seeds)
+    return nest_noise, self._GlobalState(flat_seeds[-1] + 1, state.stddev)
+
+  def make_state(self, seeds: tf.Tensor, stddev: tf.Tensor):
+    """Returns a new named tuple of (seeds, stddev)."""
+    seeds = tf.ensure_shape(seeds, shape=(2,))
+    return self._GlobalState(
+        tf.cast(seeds, dtype=tf.int64), tf.cast(stddev, dtype=tf.float32))
 
 
 class StatelessValueGenerator(ValueGenerator):

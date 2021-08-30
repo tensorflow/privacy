@@ -13,6 +13,7 @@
 # limitations under the License.
 """Tests for `tree_aggregation`."""
 import math
+import random
 from absl.testing import parameterized
 
 import tensorflow as tf
@@ -297,7 +298,11 @@ class EfficientTreeAggregatorTest(tf.test.TestCase, parameterized.TestCase):
       tf.nest.map_structure(self.assertAllClose, val, expected_result)
 
 
-class GaussianNoiseGeneratorTest(tf.test.TestCase):
+class GaussianNoiseGeneratorTest(tf.test.TestCase, parameterized.TestCase):
+
+  def assertStateEqual(self, state1, state2):
+    for s1, s2 in zip(tf.nest.flatten(state1), tf.nest.flatten(state2)):
+      self.assertAllEqual(s1, s2)
 
   def test_random_generator_tf(self,
                                noise_mean=1.0,
@@ -330,12 +335,12 @@ class GaussianNoiseGeneratorTest(tf.test.TestCase):
     g2 = tree_aggregation.GaussianNoiseGenerator(
         noise_std=noise_std, specs=tf.TensorSpec([]), seed=seed)
     gstate2 = g.initialize()
-    self.assertAllEqual(gstate, gstate2)
+    self.assertStateEqual(gstate, gstate2)
     for _ in range(steps):
       value, gstate = g.next(gstate)
       value2, gstate2 = g2.next(gstate2)
       self.assertAllEqual(value, value2)
-      self.assertAllEqual(gstate, gstate2)
+      self.assertStateEqual(gstate, gstate2)
 
   def test_seed_state_nondeterministic(self, steps=32, noise_std=0.1):
     g = tree_aggregation.GaussianNoiseGenerator(
@@ -344,11 +349,12 @@ class GaussianNoiseGeneratorTest(tf.test.TestCase):
     g2 = tree_aggregation.GaussianNoiseGenerator(
         noise_std=noise_std, specs=tf.TensorSpec([]))
     gstate2 = g2.initialize()
+    self.assertNotAllEqual(gstate.seeds, gstate2.seeds)
     for _ in range(steps):
       value, gstate = g.next(gstate)
       value2, gstate2 = g2.next(gstate2)
       self.assertNotAllEqual(value, value2)
-      self.assertNotAllEqual(gstate, gstate2)
+      self.assertNotAllEqual(gstate.seeds, gstate2.seeds)
 
   def test_seed_state_structure(self, seed=1, steps=32, noise_std=0.1):
     specs = [tf.TensorSpec([]), tf.TensorSpec([1]), tf.TensorSpec([2, 2])]
@@ -358,11 +364,36 @@ class GaussianNoiseGeneratorTest(tf.test.TestCase):
     g2 = tree_aggregation.GaussianNoiseGenerator(
         noise_std=noise_std, specs=specs, seed=seed)
     gstate2 = g2.initialize()
+    self.assertStateEqual(gstate, gstate2)
     for _ in range(steps):
       value, gstate = g.next(gstate)
       value2, gstate2 = g2.next(gstate2)
       self.assertAllClose(value, value2)
-      self.assertAllEqual(gstate, gstate2)
+      self.assertStateEqual(gstate, gstate2)
+
+  @parameterized.named_parameters(
+      ('increase', range(10), 1),
+      ('decrease', range(30, 20, -2), 2),
+      ('flat', [3.0] * 5, 1),
+      ('small', [0.1**x for x in range(4)], 4),
+      ('random', [random.uniform(1, 10) for _ in range(5)], 4),
+  )
+  def test_adaptive_stddev(self, stddev_list, reset_frequency):
+    # The stddev estimation follows a chi distribution. The confidence for
+    # `sample_num` samples should be high, and we use a relatively large
+    # tolerance to guard the numerical stability for small stddev values.
+    sample_num, tolerance = 10000, 0.05
+    g = tree_aggregation.GaussianNoiseGenerator(
+        noise_std=1., specs=tf.TensorSpec([sample_num]), seed=2021)
+    gstate = g.initialize()
+    for stddev in stddev_list:
+      gstate = g.make_state(gstate.seeds, tf.constant(stddev, dtype=tf.float32))
+      for _ in range(reset_frequency):
+        prev_gstate = gstate
+        value, gstate = g.next(gstate)
+        print(tf.math.reduce_std(value), stddev)
+        self.assertAllClose(tf.math.reduce_std(value), stddev, rtol=tolerance)
+        self.assertNotAllEqual(gstate.seeds, prev_gstate.seeds)
 
 
 class RestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
