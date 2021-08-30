@@ -27,7 +27,7 @@ if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
   # TensorFlow v1 imports
-  import tensorflow_privacy.v1
+  from tensorflow_privacy import v1
 
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
