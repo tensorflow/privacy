@@ -86,9 +86,9 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
     steps_list = [1, 1]
     orders = 20
     self.assertEqual(
-        rdp_accountant.compute_heterogenous_rdp(sampling_probabilities,
-                                                noise_multipliers, steps_list,
-                                                orders), 0.1)
+        rdp_accountant.compute_heterogeneous_rdp(sampling_probabilities,
+                                                 noise_multipliers, steps_list,
+                                                 orders), 0.1)
 
   def test_compute_rdp_no_data(self):
     # q = 0

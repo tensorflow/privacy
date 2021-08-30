@@ -540,8 +540,8 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
     return log_a
 
 
-def compute_heterogenous_rdp(sampling_probabilities, noise_multipliers,
-                             steps_list, orders):
+def compute_heterogeneous_rdp(sampling_probabilities, noise_multipliers,
+                              steps_list, orders):
   """Computes RDP of Heteregoneous Applications of Sampled Gaussian Mechanisms.
 
   Args:
