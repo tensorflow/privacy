@@ -303,15 +303,12 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_sum_scalar_tree_aggregation_reset(self, scalar_value,
                                              tree_node_value, frequency):
     total_steps = 20
-    indicator = tree_aggregation.PeriodicRoundRestartIndicator(frequency)
     query = tree_aggregation_query.TreeCumulativeSumQuery(
         clip_fn=_get_l2_clip_fn(),
         clip_value=scalar_value + 1.,  # no clip
         noise_generator=lambda: tree_node_value,
         record_specs=tf.TensorSpec([]),
-        use_efficient=False,
-        restart_indicator=indicator,
-    )
+        use_efficient=False)
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
     for i in range(total_steps):
@@ -319,6 +316,8 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
       query_result, global_state = query.get_noised_result(
           sample_state, global_state)
+      if i % frequency == frequency - 1:
+        global_state = query.reset_state(query_result, global_state)
       # Expected value is the combination of cumsum of signal; sum of trees
       # that have been reset; current tree sum. The tree aggregation value can
       # be inferred from the binary representation of the current step.
@@ -446,15 +445,12 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_scalar_tree_aggregation_reset(self, scalar_value, tree_node_value,
                                          frequency):
     total_steps = 20
-    indicator = tree_aggregation.PeriodicRoundRestartIndicator(frequency)
     query = tree_aggregation_query.TreeResidualSumQuery(
         clip_fn=_get_l2_clip_fn(),
         clip_value=scalar_value + 1.,  # no clip
         noise_generator=lambda: tree_node_value,
         record_specs=tf.TensorSpec([]),
-        use_efficient=False,
-        restart_indicator=indicator,
-    )
+        use_efficient=False)
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
     for i in range(total_steps):
@@ -462,6 +458,8 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
       query_result, global_state = query.get_noised_result(
           sample_state, global_state)
+      if i % frequency == frequency - 1:
+        global_state = query.reset_state(query_result, global_state)
       # Expected value is the signal of the current round plus the residual of
       # two continous tree aggregation values. The tree aggregation value can
       # be inferred from the binary representation of the current step.
