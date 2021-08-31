@@ -29,6 +29,20 @@ else:
   # TensorFlow v1 imports
   from tensorflow_privacy import v1
 
+  # DpEvents
+  from tensorflow_privacy.privacy.analysis.dp_event import DpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import NoOpDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import NonPrivateDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import UnsupportedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import GaussianDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SelfComposedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import ComposedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import PoissonSampledDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import FixedBatchSampledWrDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import FixedBatchSampledWorDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import ShuffledDatasetDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import TreeAggregationDpEvent
+
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogeneous_rdp
