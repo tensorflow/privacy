@@ -1,5 +1,5 @@
 # TODO(b/181782485): Switch to the main book for launch - /responsible_ai/_book.yaml
-book_path: /responsible_ai/privacy/_book.yaml
+book_path: /responsible_ai/_book.yaml
 project_path: /responsible_ai/_project.yaml
 title: TensorFlow Privacy
 description: >

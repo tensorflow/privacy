@@ -1,7 +1,5 @@
 # Get Started
 
-Using TF Privacy
-
 This document assumes you are already familiar with differential privacy, and
 have determined that you would like to implement TF Privacy to achieve
 differential privacy guarantees in your model(s). If you’re not familiar with
