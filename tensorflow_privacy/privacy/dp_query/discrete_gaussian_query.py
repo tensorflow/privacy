@@ -16,6 +16,7 @@
 import collections
 
 import tensorflow as tf
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import discrete_gaussian_utils
 from tensorflow_privacy.privacy.dp_query import dp_query
 
@@ -81,4 +82,6 @@ class DiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
       # Ensure shape as TF shape inference may fail due to custom noise sampler.
       return tf.ensure_shape(noised_v, v.shape)
 
-    return tf.nest.map_structure(add_noise, sample_state), global_state
+    result = tf.nest.map_structure(add_noise, sample_state)
+    event = dp_event.UnsupportedDpEvent()
+    return result, global_state, event

@@ -21,6 +21,7 @@ import collections
 
 import tensorflow.compat.v1 as tf
 
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import quantile_estimator_query
@@ -123,11 +124,11 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    noised_vectors, sum_state = self._sum_query.get_noised_result(
+    noised_vectors, sum_state, sum_event = self._sum_query.get_noised_result(
         sample_state.sum_state, global_state.sum_state)
     del sum_state  # To be set explicitly later when we know the new clip.
 
-    new_l2_norm_clip, new_quantile_estimator_state = (
+    new_l2_norm_clip, new_quantile_estimator_state, quantile_event = (
         self._quantile_estimator_query.get_noised_result(
             sample_state.quantile_estimator_state,
             global_state.quantile_estimator_state))
@@ -141,7 +142,8 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
                                          new_sum_query_state,
                                          new_quantile_estimator_state)
 
-    return noised_vectors, new_global_state
+    event = dp_event.ComposedDpEvent(events=[sum_event, quantile_event])
+    return noised_vectors, new_global_state, event
 
   def derive_metrics(self, global_state):
     """Returns the current clipping norm as a metric."""

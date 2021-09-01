@@ -246,11 +246,14 @@ class DPQuery(object):
       global_state: The global state, storing long-term privacy bookkeeping.
 
     Returns:
-      A tuple (result, new_global_state) where "result" is the result of the
-      query and "new_global_state" is the updated global state. In standard
-      DP-SGD training, the result is a gradient update comprising a noised
-      average of the clipped gradients in the sample state---with the noise and
-      averaging performed in a manner that guarantees differential privacy.
+      A tuple `(result, new_global_state, event)` where:
+        * `result` is the result of the query,
+        * `new_global_state` is the updated global state, and
+        * `event` is the `DpEvent` that occurred.
+      In standard DP-SGD training, the result is a gradient update comprising a
+      noised average of the clipped gradients in the sample state---with the
+      noise and averaging performed in a manner that guarantees differential
+      privacy.
     """
     pass
 
@@ -297,7 +300,3 @@ class SumAggregationDPQuery(DPQuery):
   def merge_sample_states(self, sample_state_1, sample_state_2):
     """Implements `tensorflow_privacy.DPQuery.merge_sample_states`."""
     return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)
-
-  def get_noised_result(self, sample_state, global_state):
-    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    return sample_state, global_state

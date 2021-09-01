@@ -74,14 +74,16 @@ class NormalizedQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    noised_sum, new_sum_global_state = self._numerator.get_noised_result(
+    noised_sum, new_sum_global_state, event = self._numerator.get_noised_result(
         sample_state, global_state.numerator_state)
 
     def normalize(v):
       return tf.truediv(v, global_state.denominator)
 
+    # The denominator is constant so the privacy cost comes from the numerator.
     return (tf.nest.map_structure(normalize, noised_sum),
-            self._GlobalState(new_sum_global_state, global_state.denominator))
+            self._GlobalState(new_sum_global_state,
+                              global_state.denominator), event)
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""

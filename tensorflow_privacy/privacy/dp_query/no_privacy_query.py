@@ -19,6 +19,7 @@ from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
 
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 
 
@@ -28,19 +29,9 @@ class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
   Accumulates vectors without clipping or adding noise.
   """
 
-  def __init__(self):
-    self._ledger = None
-
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-
-    if self._ledger:
-      dependencies = [self._ledger.record_sum_query(float('inf'), 0.0)]
-    else:
-      dependencies = []
-
-    with tf.control_dependencies(dependencies):
-      return sample_state, global_state
+    return sample_state, global_state, dp_event.NonPrivateDpEvent()
 
 
 class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
@@ -55,10 +46,6 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
   implementation of weighted average, the weight would have to be itself
   privatized.
   """
-
-  def __init__(self):
-    """Initializes the NoPrivacyAverageQuery."""
-    self._ledger = None
 
   def initial_sample_state(self, template):
     """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
@@ -103,11 +90,5 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     sum_state, denominator = sample_state
 
-    if self._ledger:
-      dependencies = [self._ledger.record_sum_query(float('inf'), 0.0)]
-    else:
-      dependencies = []
-
-    with tf.control_dependencies(dependencies):
-      return (tf.nest.map_structure(lambda t: t / denominator,
-                                    sum_state), global_state)
+    result = tf.nest.map_structure(lambda t: t / denominator, sum_state)
+    return result, global_state, dp_event.NonPrivateDpEvent()

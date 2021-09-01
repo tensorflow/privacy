@@ -81,9 +81,10 @@ def make_keras_optimizer_class(cls):
     model.fit(...)
     ```
 
-    """.format(base_class='tf.keras.optimizers.' + cls.__name__,
-               short_base_class=cls.__name__,
-               dp_keras_class='DPKeras' + cls.__name__)
+    """.format(
+        base_class='tf.keras.optimizers.' + cls.__name__,
+        short_base_class=cls.__name__,
+        dp_keras_class='DPKeras' + cls.__name__)
 
     # The class tf.keras.optimizers.Optimizer has two methods to compute
     # gradients, `_compute_gradients` and `get_gradients`. The first works
@@ -106,8 +107,8 @@ def make_keras_optimizer_class(cls):
       Args:
         l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
-        num_microbatches: Number of microbatches into which each minibatch
-          is split.
+        num_microbatches: Number of microbatches into which each minibatch is
+          split.
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
@@ -210,7 +211,7 @@ def make_keras_optimizer_class(cls):
       sample_state = self._dp_sum_query.initial_sample_state(params)
       for idx in range(self._num_microbatches):
         sample_state = process_microbatch(idx, sample_state)
-      grad_sums, self._global_state = (
+      grad_sums, self._global_state, _ = (
           self._dp_sum_query.get_noised_result(sample_state,
                                                self._global_state))
 

@@ -24,11 +24,11 @@ import math
 
 import attr
 import tensorflow as tf
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
-
 
 # TODO(b/193679963): define `RestartQuery` and move `RestartIndicator` to be
 # in the same module.
@@ -57,7 +57,7 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       for j,sample in enumerate(samples):
         sample_state = query.accumulate_record(params, sample_state, sample)
       # noised_cumsum is privatized estimate of s_i
-      noised_cumsum, global_state = query.get_noised_result(
+      noised_cumsum, global_state, event = query.get_noised_result(
         sample_state, global_state)
 
   Attributes:
@@ -176,7 +176,8 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         global_state,
         samples_cumulative_sum=new_cumulative_sum,
         tree_state=new_tree_state)
-    return noised_cumulative_sum, new_global_state
+    event = dp_event.UnsupportedDpEvent()
+    return noised_cumulative_sum, new_global_state, event
 
   def reset_state(self, noised_results, global_state):
     """Returns state after resetting the tree.
@@ -281,7 +282,7 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         sample_state = query.accumulate_record(params, sample_state, sample)
       # noised_sum is privatized estimate of x_i by conceptually postprocessing
       # noised cumulative sum s_i
-      noised_sum, global_state = query.get_noised_result(
+      noised_sum, global_state, event = query.get_noised_result(
         sample_state, global_state)
 
   Attributes:
@@ -398,7 +399,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
                                           global_state.previous_tree_noise)
     new_global_state = attr.evolve(
         global_state, previous_tree_noise=tree_noise, tree_state=new_tree_state)
-    return noised_sample, new_global_state
+    event = dp_event.UnsupportedDpEvent()
+    return noised_sample, new_global_state, event
 
   def reset_state(self, noised_results, global_state):
     """Returns state after resetting the tree.
@@ -636,7 +638,7 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     # This part is not written in tensorflow and will be executed on the server
     # side instead of the client side if used with
     # tff.aggregators.DifferentiallyPrivateFactory for federated learning.
-    sample_state, inner_query_state = self._inner_query.get_noised_result(
+    sample_state, inner_query_state, _ = self._inner_query.get_noised_result(
         sample_state, global_state.inner_query_state)
     new_global_state = TreeRangeSumQuery.GlobalState(
         arity=global_state.arity, inner_query_state=inner_query_state)
@@ -647,7 +649,8 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     ]
     tree = tf.RaggedTensor.from_row_splits(
         values=sample_state, row_splits=row_splits)
-    return tree, new_global_state
+    event = dp_event.UnsupportedDpEvent()
+    return tree, new_global_state, event
 
   @classmethod
   def build_central_gaussian_query(cls,

@@ -164,7 +164,7 @@ def make_optimizer_class(cls):
         for idx in range(self._num_microbatches):
           sample_state = process_microbatch(idx, sample_state)
 
-        grad_sums, self._global_state = (
+        grad_sums, self._global_state, _ = (
             self._dp_sum_query.get_noised_result(sample_state,
                                                  self._global_state))
 
@@ -235,7 +235,7 @@ def make_optimizer_class(cls):
           _, sample_state = tf.while_loop(
               cond=cond_fn, body=body_fn, loop_vars=[idx, sample_state])
 
-        grad_sums, self._global_state = (
+        grad_sums, self._global_state, _ = (
             self._dp_sum_query.get_noised_result(sample_state,
                                                  self._global_state))
 
@@ -362,10 +362,6 @@ def make_gaussian_optimizer_class(cls):
       })
 
       return config
-
-    @property
-    def ledger(self):
-      return self._dp_sum_query.ledger
 
   return DPGaussianOptimizerClass
 

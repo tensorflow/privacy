@@ -134,14 +134,14 @@ class RestartQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    noised_results, inner_query_state = self._inner_query.get_noised_result(
+    noised_results, inner_state, event = self._inner_query.get_noised_result(
         sample_state, global_state.inner_query_state)
     restart_flag, indicator_state = self._restart_indicator.next(
         global_state.indicator_state)
     if restart_flag:
-      inner_query_state = self._inner_query.reset_state(noised_results,
-                                                        inner_query_state)
-    return noised_results, self._GlobalState(inner_query_state, indicator_state)
+      inner_state = self._inner_query.reset_state(noised_results, inner_state)
+    return (noised_results, self._GlobalState(inner_state,
+                                              indicator_state), event)
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""

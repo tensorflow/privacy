@@ -22,6 +22,7 @@ import distutils
 
 import tensorflow.compat.v1 as tf
 
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 
 
@@ -45,7 +46,6 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
     """
     self._l2_norm_clip = l2_norm_clip
     self._stddev = stddev
-    self._ledger = None
 
   def make_global_state(self, l2_norm_clip, stddev):
     """Creates a global state from the given parameters."""
@@ -96,12 +96,8 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
       def add_noise(v):
         return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
 
-    if self._ledger:
-      dependencies = [
-          self._ledger.record_sum_query(global_state.l2_norm_clip,
-                                        global_state.stddev)
-      ]
-    else:
-      dependencies = []
-    with tf.control_dependencies(dependencies):
-      return tf.nest.map_structure(add_noise, sample_state), global_state
+    result = tf.nest.map_structure(add_noise, sample_state)
+    noise_multiplier = global_state.stddev / global_state.l2_norm_clip
+    event = dp_event.GaussianDpEvent(noise_multiplier)
+
+    return result, global_state, event

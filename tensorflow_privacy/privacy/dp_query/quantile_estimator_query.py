@@ -135,7 +135,7 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    below_estimate_result, new_below_estimate_state = (
+    below_estimate_result, new_below_estimate_state, below_estimate_event = (
         self._below_estimate_query.get_noised_result(
             sample_state, global_state.below_estimate_state))
 
@@ -159,7 +159,7 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         current_estimate=new_estimate,
         below_estimate_state=new_below_estimate_state)
 
-    return new_estimate, new_global_state
+    return new_estimate, new_global_state, below_estimate_event
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""

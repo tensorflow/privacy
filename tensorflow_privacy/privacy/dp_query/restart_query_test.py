@@ -75,7 +75,7 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       # Expected value is the combination of cumsum of signal; sum of trees
       # that have been reset; current tree sum. The tree aggregation value can
@@ -110,7 +110,7 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       # Expected value is the signal of the current round plus the residual of
       # two continous tree aggregation values. The tree aggregation value can

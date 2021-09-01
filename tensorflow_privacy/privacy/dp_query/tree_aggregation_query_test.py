@@ -258,7 +258,7 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     for scalar, expected_sum in zip(streaming_scalars, partial_sum):
       sample_state = query.initial_sample_state(scalar)
       sample_state = query.accumulate_record(params, sample_state, scalar)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       self.assertEqual(query_result, expected_sum)
 
@@ -282,7 +282,7 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       # For each streaming step i , the expected value is roughly
       # `scalar_value*(i+1) + tree_aggregation(tree_node_value, i)`.
@@ -314,7 +314,7 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       if i % frequency == frequency - 1:
         global_state = query.reset_state(query_result, global_state)
@@ -456,7 +456,7 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       sample_state = query.initial_sample_state(scalar_value)
       sample_state = query.accumulate_record(params, sample_state, scalar_value)
-      query_result, global_state = query.get_noised_result(
+      query_result, global_state, _ = query.get_noised_result(
           sample_state, global_state)
       if i % frequency == frequency - 1:
         global_state = query.reset_state(query_result, global_state)
@@ -609,7 +609,7 @@ class TreeRangeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
     preprocessed_record = query.preprocess_record(params, record)
-    sample_state, global_state = query.get_noised_result(
+    sample_state, global_state, _ = query.get_noised_result(
         preprocessed_record, global_state)
 
     self.assertAllClose(sample_state, expected_tree)
@@ -621,7 +621,7 @@ class TreeRangeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     global_state = query.initial_global_state()
     params = query.derive_sample_params(global_state)
     preprocessed_record = query.preprocess_record(params, tf.constant([1., 0.]))
-    sample_state, global_state = query.get_noised_result(
+    sample_state, global_state, _ = query.get_noised_result(
         preprocessed_record, global_state)
 
     self.assertAllClose(

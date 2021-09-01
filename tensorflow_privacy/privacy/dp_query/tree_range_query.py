@@ -20,6 +20,7 @@ import math
 
 import attr
 import tensorflow as tf
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
@@ -189,7 +190,7 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     # This part is not written in tensorflow and will be executed on the server
     # side instead of the client side if used with
     # tff.aggregators.DifferentiallyPrivateFactory for federated learning.
-    sample_state, inner_query_state = self._inner_query.get_noised_result(
+    sample_state, inner_query_state, _ = self._inner_query.get_noised_result(
         sample_state, global_state.inner_query_state)
     new_global_state = TreeRangeSumQuery.GlobalState(
         arity=global_state.arity, inner_query_state=inner_query_state)
@@ -200,7 +201,8 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     ]
     tree = tf.RaggedTensor.from_row_splits(
         values=sample_state, row_splits=row_splits)
-    return tree, new_global_state
+    event = dp_event.UnsupportedDpEvent()
+    return tree, new_global_state, event
 
   @classmethod
   def build_central_gaussian_query(cls,

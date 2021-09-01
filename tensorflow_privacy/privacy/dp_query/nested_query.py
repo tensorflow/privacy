@@ -20,6 +20,8 @@ from __future__ import print_function
 import collections
 
 import tensorflow.compat.v1 as tf
+
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 import tree
 
@@ -96,13 +98,15 @@ class NestedQuery(dp_query.DPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    estimates_and_new_global_states = self._map_to_queries(
-        'get_noised_result', sample_state, global_state)
+    mapped_query_results = self._map_to_queries('get_noised_result',
+                                                sample_state, global_state)
 
-    flat_estimates, flat_new_global_states = zip(
-        *tree.flatten_up_to(self._queries, estimates_and_new_global_states))
+    flat_estimates, flat_new_global_states, flat_events = zip(
+        *tree.flatten_up_to(self._queries, mapped_query_results))
+
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
-            tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
+            tf.nest.pack_sequence_as(self._queries, flat_new_global_states),
+            dp_event.ComposedDpEvent(events=flat_events))
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""
