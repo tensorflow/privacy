@@ -2,12 +2,12 @@
 
 Differential privacy is a framework for measuring the privacy guarantees
 provided by an algorithm and can be expressed using the values ε (epsilon) and δ
-(delta). Of the two, ε is the more important and more sensitive to the choice of
+(delta). Of the two, ε is more important and more sensitive to the choice of
 hyperparameters. Roughly speaking, they mean the following:
 
 *   ε gives a ceiling on how much the probability of a particular output can
     increase by including (or removing) a single training example. You usually
-    want it to be a small constant (less than 10, or, for more stringent privacy
+    want it to be a small constant (less than 10, or for more stringent privacy
     guarantees, less than 1). However, this is only an upper bound, and a large
     value of epsilon may still mean good practical privacy.
 *   δ bounds the probability of an arbitrary change in model behavior. You can
@@ -30,17 +30,16 @@ dataset size and number of epochs. See the
 [classification privacy tutorial](../tutorials/classification_privacy.ipynb) to
 see the approach.
 
-For more detail, you can see
+For more detail, see
 [the original DP-SGD paper](https://arxiv.org/pdf/1607.00133.pdf).
 
-You can use `compute_dp_sgd_privacy`, to find out the epsilon given a fixed
-delta value for your model [../tutorials/classification_privacy.ipynb]:
+You can use `compute_dp_sgd_privacy` to find out the epsilon given a fixed delta
+value for your model [../tutorials/classification_privacy.ipynb]:
 
 *   `q` : the sampling ratio - the probability of an individual training point
     being included in a mini batch (`batch_size/number_of_examples`).
 *   `noise_multiplier` : A float that governs the amount of noise added during
     training. Generally, more noise results in better privacy and lower utility.
-    This generally
 *   `steps` : The number of global steps taken.
 
 A detailed writeup of the theory behind the computation of epsilon and delta is

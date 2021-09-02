@@ -1,11 +1,12 @@
 # Get Started
 
+
 This document assumes you are already familiar with differential privacy, and
-have determined that you would like to implement TF Privacy to achieve
-differential privacy guarantees in your model(s). If you’re not familiar with
-differential privacy, please review
+have determined that you would like to use TF Privacy to implement differential
+privacy guarantees in your model(s). If you’re not familiar with differential
+privacy, please review
 [the overview page](https://tensorflow.org/responsible_ai/privacy/guide). After
-installing TF Privacy get started by following these steps:
+installing TF Privacy, get started by following these steps:
 
 ## 1. Choose a differentially private version of an existing Optimizer
 
@@ -36,9 +37,9 @@ microbatches.
 Train your model using the DP Optimizer (step 1) and vectorized loss (step 2).
 There are two options for doing this:
 
--   Pass the optimizer and loss as arguments to `Model.compile` before calling
+*   Pass the optimizer and loss as arguments to `Model.compile` before calling
     `Model.fit`.
--   When writing a custom training loop, use `Optimizer.minimize()` on the
+*   When writing a custom training loop, use `Optimizer.minimize()` on the
     vectorized loss.
 
 Once this is done, it’s recommended that you tune your hyperparameters. For a
@@ -65,7 +66,7 @@ The three new DP-SGD hyperparameters have the following effects and tradeoffs:
     utility because it lowers the standard deviation of the noise. However, it
     will slow down training in terms of time.
 2.  The clipping norm $C$: Since the standard deviation of the noise scales with
-    C, it is probably best to set $C$ to be some quantile (e.g. median, 75th
+    $C$, it is probably best to set $C$ to be some quantile (e.g. median, 75th
     percentile, 90th percentile) of the gradient norms. Having too large a value
     of $C$ adds unnecessarily large amounts of noise.
 3.  The noise multiplier $σ$: Of the three hyperparameters, the amount of
