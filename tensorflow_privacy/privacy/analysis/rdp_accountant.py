@@ -42,6 +42,7 @@ from __future__ import print_function
 
 import math
 import sys
+from typing import Collection, Union
 
 import numpy as np
 from scipy import special
@@ -395,6 +396,64 @@ def compute_rdp(q, noise_multiplier, steps, orders):
         [_compute_rdp(q, noise_multiplier, order) for order in orders])
 
   return rdp * steps
+
+
+def _compute_rdp_tree(sigma, steps_list, max_participation, alpha):
+  """Computes RDP of the Tree Aggregation Protocol at order alpha."""
+  if np.isinf(alpha):
+    return np.inf
+  tree_depths = [
+      math.floor(math.log2(steps)) + 1 for steps in steps_list if steps > 0
+  ]
+  return alpha * max_participation * sum(tree_depths) / (2 * sigma**2)
+
+
+def compute_rdp_tree(
+    noise_multiplier: float, steps_list: Collection[float],
+    max_participation: int,
+    orders: Union[float, Collection[float]]) -> Collection[float]:
+  """Computes RDP of the Tree Aggregation Protocol for Gaussian Mechanism.
+
+  Args:
+    noise_multiplier: A non-negative float representing the ratio of the
+      standard deviation of the Gaussian noise to the l2-sensitivity of the
+      function to which it is added.
+    steps_list: A list of non-negative intergers representing the number of
+      steps between tree restarts.
+    max_participation: A positive integer representing maximum number of times a
+      sample may appear between tree restarts.
+    orders: An array (or a scalar) of RDP orders.
+
+  Returns:
+    The RDPs at all orders. Can be `np.inf`.
+  """
+  if noise_multiplier < 0:
+    raise ValueError(
+        f"Noise multiplier must be non-negative, got {noise_multiplier}")
+  elif noise_multiplier == 0:
+    return np.inf
+
+  if max_participation <= 0:
+    raise ValueError(
+        f"Max participation must be positive, got {max_participation}")
+
+  if not steps_list:
+    raise ValueError("List of steps must be non-empty.")
+
+  for steps in steps_list:
+    if steps < 0:
+      raise ValueError(f"List of steps must be non-negative, got {steps_list}")
+
+  if np.isscalar(orders):
+    rdp = _compute_rdp_tree(noise_multiplier, steps_list, max_participation,
+                            orders)
+  else:
+    rdp = np.array([
+        _compute_rdp_tree(noise_multiplier, steps_list, max_participation,
+                          alpha) for alpha in orders
+    ])
+
+  return rdp
 
 
 def compute_rdp_sample_without_replacement(q, noise_multiplier, steps, orders):
