@@ -394,6 +394,87 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       grads_and_vars = tf.Variable([0.0])
       opt.apply_gradients(grads_and_vars)
 
+  def testLargeBatchEmulationNoNoise(self):
+    # Test for emulation of large batch training.
+    # It tests that updates are only done every gradient_accumulation_steps
+    # steps.
+    # In this test we set noise multiplier to zero and clipping norm to high
+    # value, such that optimizer essentially behave as non-DP optimizer.
+    # This makes easier to check how values of variables are changing.
+    #
+    # This test optimizes loss var0*x + var1
+    # Gradients of this loss are computed as:
+    # d(loss)/d(var0) = x
+    # d(loss)/d(var1) = 1
+    var0 = tf.Variable([[1.0, 2.0]], dtype=tf.float32)
+    var1 = tf.Variable([3.0], dtype=tf.float32)
+    x1 = tf.constant([[2.0, 0.0], [0.0, 1.0]], dtype=tf.float32)
+    loss1 = lambda: tf.matmul(var0, x1, transpose_b=True) + var1
+    x2 = tf.constant([[4.0, 2.0], [2.0, 1.0]], dtype=tf.float32)
+    loss2 = lambda: tf.matmul(var0, x2, transpose_b=True) + var1
+
+    opt = dp_optimizer_keras.DPKerasSGDOptimizer(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        gradient_accumulation_steps=2,
+        learning_rate=1.0)
+
+    # before any call to optimizer
+    self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
+    self.assertAllCloseAccordingToType([3.0], var1)
+
+    opt.minimize(loss1, [var0, var1])
+    # After first call to optimizer values didn't change
+    self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
+    self.assertAllCloseAccordingToType([3.0], var1)
+
+    opt.minimize(loss2, [var0, var1])
+    # After second call to optimizer updates were applied
+    self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
+    self.assertAllCloseAccordingToType([2.0], var1)
+
+    opt.minimize(loss2, [var0, var1])
+    # After third call to optimizer values didn't change
+    self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
+    self.assertAllCloseAccordingToType([2.0], var1)
+
+    opt.minimize(loss2, [var0, var1])
+    # After fourth call to optimizer updates were applied again
+    self.assertAllCloseAccordingToType([[-4.0, -0.5]], var0)
+    self.assertAllCloseAccordingToType([1.0], var1)
+
+  @parameterized.named_parameters(
+      ('DPKerasSGDOptimizer 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPKerasSGDOptimizer 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
+      ('DPKerasSGDOptimizer 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
+      ('DPKerasAdamOptimizer 2',
+       dp_optimizer_keras.DPKerasAdamOptimizer, 1),
+      ('DPKerasAdagradOptimizer 2',
+       dp_optimizer_keras.DPKerasAdagradOptimizer, 2),
+  )
+  def testLargeBatchEmulation(self, cls, gradient_accumulation_steps):
+    # Tests various optimizers with large batch emulation.
+    # Uses clipping and noise, thus does not test specific values
+    # of the variables and only tests how often variables are updated.
+    var0 = tf.Variable([[1.0, 2.0]], dtype=tf.float32)
+    var1 = tf.Variable([3.0], dtype=tf.float32)
+    x = tf.constant([[2.0, 0.0], [0.0, 1.0]], dtype=tf.float32)
+    loss = lambda: tf.matmul(var0, x, transpose_b=True) + var1
+
+    opt = cls(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        learning_rate=1.0)
+
+    for _ in range(gradient_accumulation_steps):
+      self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
+      self.assertAllCloseAccordingToType([3.0], var1)
+      opt.minimize(loss, [var0, var1])
+
+    self.assertNotAllClose([[1.0, 2.0]], var0)
+    self.assertNotAllClose([3.0], var1)
+
 
 if __name__ == '__main__':
   tf.test.main()
