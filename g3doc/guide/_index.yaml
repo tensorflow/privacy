@@ -74,7 +74,7 @@ landing_page:
         The differentially private optimizers can be used in conjunction with high-level APIs
         that use the Optimizer class, especially Keras. Additionally, you can find differentially
         private implementations of some Keras models. All of the Optimizers and models can be found
-        in the <a href="./privacy/api_docs/python/tf_privacy">API Documentation</a>.</p>
+        in the <a href="../api_docs/python/tf_privacy">API Documentation</a>.</p>
         </p>
 
   - classname: devsite-landing-row-cards
