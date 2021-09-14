@@ -230,7 +230,7 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase,
                                   ('start_high_arithmetic', False, False),
                                   ('start_high_geometric', False, True))
   def test_adaptation_linspace(self, start_low, geometric):
-    # 100 records equally spaced from 0 to 10 in 0.1 increments.
+    # `num_records` records equally spaced from 0 to 10 in 0.1 increments.
     # Test that we converge to the correct median value and bounce around it.
     num_records = 21
     records = [
@@ -262,9 +262,10 @@ class QuantileAdaptiveClipSumQueryTest(tf.test.TestCase,
                                   ('start_high_arithmetic', False, False),
                                   ('start_high_geometric', False, True))
   def test_adaptation_all_equal(self, start_low, geometric):
-    # 20 equal records. Test that we converge to that record and bounce around
-    # it. Unlike the linspace test, the quantile-matching objective is very
-    # sharp at the optimum so a decaying learning rate is necessary.
+    # `num_records` equal records. Test that we converge to that record and
+    # bounce around it. Unlike the linspace test, the quantile-matching
+    # objective is very sharp at the optimum so a decaying learning rate is
+    # necessary.
     num_records = 20
     records = [tf.constant(5.0)] * num_records
 

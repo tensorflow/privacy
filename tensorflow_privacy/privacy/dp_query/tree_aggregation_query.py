@@ -360,6 +360,23 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""
     return global_state.clip_value
 
+  def preprocess_record_l2_impl(self, params, record):
+    """Clips the l2 norm, returning the clipped record and the l2 norm.
+
+    Args:
+      params: The parameters for the sample.
+      record: The record to be processed.
+
+    Returns:
+      A tuple (preprocessed_records, l2_norm) where `preprocessed_records` is
+        the structure of preprocessed tensors, and l2_norm is the total l2 norm
+        before clipping.
+    """
+    l2_norm_clip = params
+    record_as_list = tf.nest.flatten(record)
+    clipped_as_list, norm = tf.clip_by_global_norm(record_as_list, l2_norm_clip)
+    return tf.nest.pack_sequence_as(record, clipped_as_list), norm
+
   def preprocess_record(self, params, record):
     """Implements `tensorflow_privacy.DPQuery.preprocess_record`.
 
@@ -405,7 +422,7 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
     `get_noised_result` when the restarting condition is met.
 
     Args:
-      noised_results: Noised cumulative sum returned by `get_noised_result`.
+      noised_results: Noised results returned by `get_noised_result`.
       global_state: Updated global state returned by `get_noised_result`, which
         records noise for the conceptual cumulative sum of the current leaf
         node, and tree state for the next conceptual cumulative sum.
@@ -419,6 +436,17 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         global_state,
         previous_tree_noise=self._zero_initial_noise(),
         tree_state=new_tree_state)
+
+  def reset_l2_clip_gaussian_noise(self, global_state, clip_norm, stddev):
+    noise_generator_state = global_state.tree_state.value_generator_state
+    assert isinstance(self._tree_aggregator.value_generator,
+                      tree_aggregation.GaussianNoiseGenerator)
+    noise_generator_state = self._tree_aggregator.value_generator.make_state(
+        noise_generator_state.seeds, stddev)
+    new_tree_state = attr.evolve(
+        global_state.tree_state, value_generator_state=noise_generator_state)
+    return attr.evolve(
+        global_state, clip_value=clip_norm, tree_state=new_tree_state)
 
   @classmethod
   def build_l2_gaussian_query(cls,
@@ -442,8 +470,8 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         aggregation algorithm based on the paper "Efficient Use of
         Differentially Private Binary Trees".
     """
-    if clip_norm <= 0:
-      raise ValueError(f'`clip_norm` must be positive, got {clip_norm}.')
+    if clip_norm < 0:
+      raise ValueError(f'`clip_norm` must be non-negative, got {clip_norm}.')
 
     if noise_multiplier < 0:
       raise ValueError(

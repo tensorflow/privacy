@@ -74,6 +74,15 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         updating is preferred for non-negative records like vector norms that
         could potentially be very large or very close to zero.
     """
+
+    if target_quantile < 0 or target_quantile > 1:
+      raise ValueError(
+          f'`target_quantile` must be between 0 and 1, got {target_quantile}.')
+
+    if learning_rate < 0:
+      raise ValueError(
+          f'`learning_rate` must be non-negative, got {learning_rate}')
+
     self._initial_estimate = initial_estimate
     self._target_quantile = target_quantile
     self._learning_rate = learning_rate
@@ -208,7 +217,7 @@ class NoPrivacyQuantileEstimatorQuery(QuantileEstimatorQuery):
     return no_privacy_query.NoPrivacyAverageQuery()
 
 
-class TreeAggregationQuantileEstimatorQuery(QuantileEstimatorQuery):
+class TreeQuantileEstimatorQuery(QuantileEstimatorQuery):
   """Iterative process to estimate target quantile of a univariate distribution.
 
   Unlike the base class, this uses a `TreeResidualSumQuery` to estimate the

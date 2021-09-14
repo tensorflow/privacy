@@ -38,7 +38,7 @@ def _make_quantile_estimator_query(initial_estimate,
                                    tree_aggregation=False):
   if expected_num_records is not None:
     if tree_aggregation:
-      return quantile_estimator_query.TreeAggregationQuantileEstimatorQuery(
+      return quantile_estimator_query.TreeQuantileEstimatorQuery(
           initial_estimate, target_quantile, learning_rate,
           below_estimate_stddev, expected_num_records, geometric_update)
     else:
