@@ -16,13 +16,17 @@
 import abc
 import enum
 
-from tensorflow_privacy.privacy.dp_event import dp_event
-from tensorflow_privacy.privacy.dp_event import dp_event_builder
+from tensorflow_privacy.privacy.analysis import dp_event
+from tensorflow_privacy.privacy.analysis import dp_event_builder
 
 
 class NeighboringRelation(enum.Enum):
   ADD_OR_REMOVE_ONE = 1
   REPLACE_ONE = 2
+
+
+class UnsupportedEventError(Exception):
+  """Exception to raise if _compose is called on unsupported event type."""
 
 
 class PrivacyAccountant(metaclass=abc.ABCMeta):
@@ -43,7 +47,7 @@ class PrivacyAccountant(metaclass=abc.ABCMeta):
     return self._neighboring_relation
 
   @abc.abstractmethod
-  def is_supported(self, event: dp_event.DpEvent) -> bool:
+  def supports(self, event: dp_event.DpEvent) -> bool:
     """Checks whether the `DpEvent` can be processed by this accountant.
 
     In general this will require recursively checking the structure of the
@@ -59,7 +63,7 @@ class PrivacyAccountant(metaclass=abc.ABCMeta):
 
   @abc.abstractmethod
   def _compose(self, event: dp_event.DpEvent, count: int = 1):
-    """Update internal state to account for application of a `DpEvent`.
+    """Updates internal state to account for application of a `DpEvent`.
 
     Calls to `get_epsilon` or `get_delta` after calling `_compose` will return
     values that account for this `DpEvent`.
@@ -70,7 +74,7 @@ class PrivacyAccountant(metaclass=abc.ABCMeta):
     """
 
   def compose(self, event: dp_event.DpEvent, count: int = 1):
-    """Update internal state to account for application of a `DpEvent`.
+    """Updates internal state to account for application of a `DpEvent`.
 
     Calls to `get_epsilon` or `get_delta` after calling `compose` will return
     values that account for this `DpEvent`.
@@ -80,10 +84,15 @@ class PrivacyAccountant(metaclass=abc.ABCMeta):
       count: The number of times to compose the event.
 
     Raises:
-      TypeError: `event` is not supported by this `PrivacyAccountant`.
+      UnsupportedEventError: `event` is not supported by this
+      `PrivacyAccountant`.
     """
-    if not self.is_supported(event):
-      raise TypeError(f'`DpEvent` {event} is of unsupported type.')
+    if not isinstance(event, dp_event.DpEvent):
+      raise TypeError(f'`event` must be `DpEvent`. Found {type(event)}.')
+
+    if not self.supports(event):
+      raise UnsupportedEventError('Unsupported event: {event}.')
+
     self._ledger.compose(event, count)
     self._compose(event, count)
 
