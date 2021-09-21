@@ -27,6 +27,15 @@ class RestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
         ValueError, 'Restart frequency should be equal or larger than 1'):
       restart_query.PeriodicRoundRestartIndicator(frequency)
 
+  @parameterized.named_parameters(('zero', 0), ('negative', -1), ('equal', 2),
+                                  ('large', 3))
+  def test_round_raise_warmup(self, warmup):
+    frequency = 2
+    with self.assertRaisesRegex(
+        ValueError,
+        f'Warmup should be between 1 and `frequency-1={frequency-1}`'):
+      restart_query.PeriodicRoundRestartIndicator(frequency, warmup)
+
   @parameterized.named_parameters(('f1', 1), ('f2', 2), ('f4', 4), ('f5', 5))
   def test_round_indicator(self, frequency):
     total_steps = 20
@@ -35,6 +44,18 @@ class RestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
     for i in range(total_steps):
       flag, state = indicator.next(state)
       if i % frequency == frequency - 1:
+        self.assertTrue(flag)
+      else:
+        self.assertFalse(flag)
+
+  @parameterized.named_parameters(('f2', 2, 1), ('f4', 4, 3), ('f5', 5, 2))
+  def test_round_indicator_warmup(self, frequency, warmup):
+    total_steps = 20
+    indicator = restart_query.PeriodicRoundRestartIndicator(frequency, warmup)
+    state = indicator.initialize()
+    for i in range(total_steps):
+      flag, state = indicator.next(state)
+      if i % frequency == warmup - 1:
         self.assertTrue(flag)
       else:
         self.assertFalse(flag)
@@ -118,7 +139,6 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
       expected = scalar_value + tree_node_value * (
           bin(i % frequency + 1)[2:].count('1') -
           bin(i % frequency)[2:].count('1'))
-      print(i, query_result, expected)
       self.assertEqual(query_result, expected)
 
 

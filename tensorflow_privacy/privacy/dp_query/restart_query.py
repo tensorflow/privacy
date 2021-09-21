@@ -17,6 +17,7 @@ This query is used to compose with a DPQuery that has `reset_state` function.
 """
 import abc
 import collections
+from typing import Optional
 
 import tensorflow as tf
 
@@ -60,17 +61,26 @@ class PeriodicRoundRestartIndicator(RestartIndicator):
   The indicator will maintain an internal counter as state.
   """
 
-  def __init__(self, frequency: int):
+  def __init__(self, frequency: int, warmup: Optional[int] = None):
     """Construct the `PeriodicRoundRestartIndicator`.
 
     Args:
       frequency: The `next` function will return `True` every `frequency` number
         of `next` calls.
+      warmup: The first `True` will be returned at the `warmup` times call of
+        `next`.
     """
     if frequency < 1:
-      raise ValueError('Restart frequency should be equal or larger than 1 '
+      raise ValueError('Restart frequency should be equal or larger than 1, '
                        f'got {frequency}')
-    self.frequency = tf.constant(frequency, tf.int32)
+    if warmup is None:
+      warmup = 0
+    elif warmup <= 0 or warmup >= frequency:
+      raise ValueError(
+          f'Warmup should be between 1 and `frequency-1={frequency-1}`, '
+          f'got {warmup}')
+    self.frequency = frequency
+    self.warmup = warmup
 
   def initialize(self):
     """Returns initialized state of 0 for `PeriodicRoundRestartIndicator`."""
@@ -86,8 +96,10 @@ class PeriodicRoundRestartIndicator(RestartIndicator):
       A pair (value, new_state) where value is the bool indicator and new_state
         of `state+1`.
     """
+    frequency = tf.constant(self.frequency, tf.int32)
+    warmup = tf.constant(self.warmup, tf.int32)
     state = state + tf.constant(1, tf.int32)
-    flag = state % self.frequency == 0
+    flag = tf.math.equal(tf.math.floormod(state, frequency), warmup)
     return flag, state
 
 
@@ -132,6 +144,7 @@ class RestartQuery(dp_query.SumAggregationDPQuery):
     """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     return self._inner_query.preprocess_record(params, record)
 
+  @tf.function
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
     noised_results, inner_state, event = self._inner_query.get_noised_result(
