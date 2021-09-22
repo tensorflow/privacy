@@ -13,8 +13,6 @@
 # limitations under the License.
 """Builder class for ComposedDpEvent."""
 
-import collections
-
 from tensorflow_privacy.privacy.analysis import dp_event
 
 
@@ -28,7 +26,8 @@ class DpEventBuilder(object):
   """
 
   def __init__(self):
-    self._events = collections.OrderedDict()
+    # A list of (event, count) pairs.
+    self._event_counts = []
     self._composed_event = None
 
   def compose(self, event: dp_event.DpEvent, count: int = 1):
@@ -46,33 +45,32 @@ class DpEventBuilder(object):
     if count < 1:
       raise ValueError(f'`count` must be positive. Found {count}.')
 
-    if isinstance(event, dp_event.ComposedDpEvent):
-      for composed_event in event.events:
-        self.compose(composed_event, count)
+    if isinstance(event, dp_event.NoOpDpEvent):
+      return
     elif isinstance(event, dp_event.SelfComposedDpEvent):
       self.compose(event.event, count * event.count)
-    elif isinstance(event, dp_event.NoOpDpEvent):
-      return
     else:
-      current_count = self._events.get(event, 0)
-      self._events[event] = current_count + count
+      if self._event_counts and self._event_counts[-1][0] == event:
+        new_event_count = (event, self._event_counts[-1][1] + count)
+        self._event_counts[-1] = new_event_count
+      else:
+        self._event_counts.append((event, count))
       self._composed_event = None
 
   def build(self) -> dp_event.DpEvent:
     """Builds and returns the composed DpEvent represented by the builder."""
     if not self._composed_event:
-      self_composed_events = []
-      for event, count in self._events.items():
+      events = []
+      for event, count in self._event_counts:
         if count == 1:
-          self_composed_events.append(event)
+          events.append(event)
         else:
-          self_composed_events.append(
-              dp_event.SelfComposedDpEvent(event, count))
-      if not self_composed_events:
+          events.append(dp_event.SelfComposedDpEvent(event, count))
+      if not events:
         self._composed_event = dp_event.NoOpDpEvent()
-      elif len(self_composed_events) == 1:
-        self._composed_event = self_composed_events[0]
+      elif len(events) == 1:
+        self._composed_event = events[0]
       else:
-        self._composed_event = dp_event.ComposedDpEvent(self_composed_events)
+        self._composed_event = dp_event.ComposedDpEvent(events)
 
     return self._composed_event

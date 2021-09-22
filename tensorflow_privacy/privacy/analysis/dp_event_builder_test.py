@@ -20,8 +20,6 @@ from tensorflow_privacy.privacy.analysis import dp_event_builder
 _gaussian_event = dp_event.GaussianDpEvent(1.0)
 _poisson_event = dp_event.PoissonSampledDpEvent(_gaussian_event, 0.1)
 _self_composed_event = dp_event.SelfComposedDpEvent(_gaussian_event, 3)
-_composed_event = dp_event.ComposedDpEvent(
-    [_self_composed_event, _poisson_event])
 
 
 class DpEventBuilderTest(absltest.TestCase):
@@ -50,22 +48,27 @@ class DpEventBuilderTest(absltest.TestCase):
 
   def test_compose_heterogenous(self):
     builder = dp_event_builder.DpEventBuilder()
+    builder.compose(_poisson_event)
     builder.compose(_gaussian_event)
-    builder.compose(_poisson_event)
     builder.compose(_gaussian_event, 2)
-    self.assertEqual(_composed_event, builder.build())
+    builder.compose(_poisson_event)
+    expected_event = dp_event.ComposedDpEvent(
+        [_poisson_event, _self_composed_event, _poisson_event])
+    self.assertEqual(expected_event, builder.build())
 
-  def test_compose_complex(self):
+  def test_compose_composed(self):
     builder = dp_event_builder.DpEventBuilder()
-    builder.compose(_gaussian_event, 2)
-    builder.compose(_composed_event)
+    composed_event = dp_event.ComposedDpEvent(
+        [_gaussian_event, _poisson_event, _self_composed_event])
+    builder.compose(_gaussian_event)
+    builder.compose(composed_event)
+    builder.compose(composed_event, 2)
     builder.compose(_poisson_event)
-    builder.compose(_composed_event, 2)
-
+    builder.compose(_poisson_event)
     expected_event = dp_event.ComposedDpEvent([
-        dp_event.SelfComposedDpEvent(_gaussian_event, 11),
-        dp_event.SelfComposedDpEvent(_poisson_event, 4)
-    ])
+        _gaussian_event,
+        dp_event.SelfComposedDpEvent(composed_event, 3),
+        dp_event.SelfComposedDpEvent(_poisson_event, 2)])
     self.assertEqual(expected_event, builder.build())
 
 
