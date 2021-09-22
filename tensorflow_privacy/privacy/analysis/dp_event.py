@@ -74,7 +74,7 @@ class SelfComposedDpEvent(DpEvent):
 @attr.s(frozen=True, slots=True, auto_attribs=True)
 class ComposedDpEvent(DpEvent):
   """A series of composed mechanisms."""
-  events: List[SelfComposedDpEvent]
+  events: List[DpEvent]
 
 
 @attr.s(frozen=True, slots=True, auto_attribs=True)
