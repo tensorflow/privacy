@@ -551,13 +551,13 @@ class RdpAccountant(privacy_accountant.PrivacyAccountant):
             noise_multiplier=event.event.noise_multiplier,
             orders=self._orders)
       return True
-    elif isinstance(event, dp_event.FixedBatchSampledWorDpEvent):
+    elif isinstance(event, dp_event.SampledWithoutReplacementDpEvent):
       if (self._neighboring_relation is not NeighborRel.REPLACE_ONE or
           not isinstance(event.event, dp_event.GaussianDpEvent)):
         return False
       if do_compose:
         self._rdp += count * _compute_rdp_sample_wor_gaussian(
-            q=event.batch_size / event.dataset_size,
+            q=event.sample_size / event.source_dataset_size,
             noise_multiplier=event.event.noise_multiplier,
             orders=self._orders)
       return True

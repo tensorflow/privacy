@@ -38,10 +38,8 @@ else:
   from tensorflow_privacy.privacy.analysis.dp_event import SelfComposedDpEvent
   from tensorflow_privacy.privacy.analysis.dp_event import ComposedDpEvent
   from tensorflow_privacy.privacy.analysis.dp_event import PoissonSampledDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import FixedBatchSampledWrDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import FixedBatchSampledWorDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import ShuffledDatasetDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import TreeAggregationDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithReplacementDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithoutReplacementDpEvent
 
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy

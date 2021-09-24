@@ -94,13 +94,13 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
     self.assertTrue(aor_accountant.supports(event))
     self.assertFalse(ro_accountant.supports(event))
 
-    event = dp_event.FixedBatchSampledWorDpEvent(1000, 10,
-                                                 dp_event.GaussianDpEvent(1.0))
+    event = dp_event.SampledWithoutReplacementDpEvent(
+        1000, 10, dp_event.GaussianDpEvent(1.0))
     self.assertFalse(aor_accountant.supports(event))
     self.assertTrue(ro_accountant.supports(event))
 
-    event = dp_event.FixedBatchSampledWrDpEvent(1000, 10,
-                                                dp_event.GaussianDpEvent(1.0))
+    event = dp_event.SampledWithReplacementDpEvent(
+        1000, 10, dp_event.GaussianDpEvent(1.0))
     self.assertFalse(aor_accountant.supports(event))
     self.assertFalse(ro_accountant.supports(event))
 
@@ -148,8 +148,8 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
     accountant = rdp_privacy_accountant.RdpAccountant(
         [3.14159], privacy_accountant.NeighboringRelation.REPLACE_ONE)
     accountant.compose(
-        dp_event.FixedBatchSampledWorDpEvent(1000, 0,
-                                             dp_event.GaussianDpEvent(1.0)))
+        dp_event.SampledWithoutReplacementDpEvent(
+            1000, 0, dp_event.GaussianDpEvent(1.0)))
     self.assertEqual(accountant.get_epsilon(1e-10), 0)
     self.assertEqual(accountant.get_delta(1e-10), 0)
 
