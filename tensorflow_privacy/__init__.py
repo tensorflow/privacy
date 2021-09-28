@@ -45,6 +45,7 @@ else:
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogeneous_rdp
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
+  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_tree
   from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
   # DPQuery classes
