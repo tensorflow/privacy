@@ -242,3 +242,10 @@ class TreeQuantileEstimatorQuery(QuantileEstimatorQuery):
         record_specs=tf.TensorSpec([]))
     return normalized_query.NormalizedQuery(
         sum_query, denominator=expected_num_records)
+
+  def reset_state(self, noised_results, global_state):
+    new_numerator_state = self._below_estimate_query._numerator.reset_state(  # pylint: disable=protected-access,line-too-long
+        noised_results, global_state.below_estimate_state.numerator_state)
+    new_below_estimate_state = global_state.below_estimate_state._replace(
+        numerator_state=new_numerator_state)
+    return global_state._replace(below_estimate_state=new_below_estimate_state)
