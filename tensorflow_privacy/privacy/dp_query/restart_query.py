@@ -103,6 +103,50 @@ class PeriodicRoundRestartIndicator(RestartIndicator):
     return flag, state
 
 
+class PeriodicTimeRestartIndicator(RestartIndicator):
+  """Indicator for periodically resetting the tree state after a certain time.
+
+  The indicator will maintain a state to track the previous restart time.
+  """
+
+  def __init__(self, period_seconds: float):
+    """Construct the `PeriodicTimeRestartIndicator`.
+
+    Args:
+      period_seconds: The `next` function will return `True` if called after
+        `period_seconds`.
+    """
+    if period_seconds <= 0:
+      raise ValueError('Restart period_seconds should be larger than 0, got '
+                       f'{period_seconds}')
+    self.period_seconds = period_seconds
+
+  @tf.function
+  def initialize(self):
+    """Returns initial time as state."""
+    return tf.timestamp()
+
+  @tf.function
+  def next(self, state):
+    """Gets next bool indicator and advances the state.
+
+    Args:
+      state: The current state.
+
+    Returns:
+      A pair (value, new_state) where value is the bool indicator and new_state
+        of time.
+    """
+    current_time = tf.timestamp()
+    current_period = current_time - state
+    reset_flag = tf.math.greater(
+        current_period,
+        tf.convert_to_tensor(self.period_seconds, current_period.dtype))
+    if reset_flag:
+      state = current_time
+    return reset_flag, state
+
+
 class RestartQuery(dp_query.SumAggregationDPQuery):
   """`DPQuery` for `SumAggregationDPQuery` with a `reset_state` function."""
 
