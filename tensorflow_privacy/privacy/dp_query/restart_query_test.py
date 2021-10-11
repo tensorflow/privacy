@@ -81,7 +81,7 @@ class TimeRestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
         tf, 'timestamp', return_value=return_time) as mock_func:
       time_stamps = [
           1627022468.452365,  # 23:41pm PST 5:41am UTC, July 22, 1 hr, False
-          1627105268.452365,  # 23:41pm PST 5:41am UTC, July 23, 1 day, True
+          1627105268.452365,  # 22:41pm PST 5:41am UTC, July 23, 1 day, True
           1627112468.452365,  # 2 hr after restart, False
           1627189508.452365,  # 23.4 hr after restart, False
           1627189904.452365,  # 23.51 hr after restart, True
