@@ -483,6 +483,42 @@ def _compute_rdp_sample_wor_gaussian_int(q, sigma, alpha):
     return log_a
 
 
+def _effective_gaussian_noise_multiplier(event: dp_event.DpEvent):
+  """Determines the effective noise multiplier of nested structure of Gaussians.
+
+  A series of Gaussian queries on the same data can be reexpressed as a single
+  query with pre- and post- processing. For details, see section 3 of
+  https://arxiv.org/pdf/1812.06210.pdf.
+
+  Args:
+    event: A `dp_event.DpEvent`. In order for conversion to be successful it
+      must consist of a single `dp_event.GaussianDpEvent`, or a nested structure
+      of `dp_event.ComposedDpEvent` and/or `dp_event.SelfComposedDpEvent`
+      bottoming out in `dp_event.GaussianDpEvent`s.
+
+  Returns:
+    The noise multiplier of the equivalent `dp_event.GaussianDpEvent`, or None
+    if the input event was not a `dp_event.GaussianDpEvent` or a nested
+    structure of `dp_event.ComposedDpEvent` and/or
+    `dp_event.SelfComposedDpEvent` bottoming out in `dp_event.GaussianDpEvent`s.
+  """
+  if isinstance(event, dp_event.GaussianDpEvent):
+    return event.noise_multiplier
+  elif isinstance(event, dp_event.ComposedDpEvent):
+    sum_sigma_inv_sq = 0
+    for e in event.events:
+      sigma = _effective_gaussian_noise_multiplier(e)
+      if sigma is None:
+        return None
+      sum_sigma_inv_sq += sigma**-2
+    return sum_sigma_inv_sq**-0.5
+  elif isinstance(event, dp_event.SelfComposedDpEvent):
+    sigma = _effective_gaussian_noise_multiplier(event.event)
+    return None if sigma is None else (event.count * sigma**-2)**-0.5
+  else:
+    return None
+
+
 class RdpAccountant(privacy_accountant.PrivacyAccountant):
   """Privacy accountant that uses Renyi differential privacy."""
 
@@ -542,23 +578,29 @@ class RdpAccountant(privacy_accountant.PrivacyAccountant):
             q=1.0, noise_multiplier=event.noise_multiplier, orders=self._orders)
       return True
     elif isinstance(event, dp_event.PoissonSampledDpEvent):
-      if (self._neighboring_relation is not NeighborRel.ADD_OR_REMOVE_ONE or
-          not isinstance(event.event, dp_event.GaussianDpEvent)):
+      if self._neighboring_relation is not NeighborRel.ADD_OR_REMOVE_ONE:
+        return False
+      gaussian_noise_multiplier = _effective_gaussian_noise_multiplier(
+          event.event)
+      if gaussian_noise_multiplier is None:
         return False
       if do_compose:
         self._rdp += count * _compute_rdp_poisson_subsampled_gaussian(
             q=event.sampling_probability,
-            noise_multiplier=event.event.noise_multiplier,
+            noise_multiplier=gaussian_noise_multiplier,
             orders=self._orders)
       return True
     elif isinstance(event, dp_event.SampledWithoutReplacementDpEvent):
-      if (self._neighboring_relation is not NeighborRel.REPLACE_ONE or
-          not isinstance(event.event, dp_event.GaussianDpEvent)):
+      if self._neighboring_relation is not NeighborRel.REPLACE_ONE:
+        return False
+      gaussian_noise_multiplier = _effective_gaussian_noise_multiplier(
+          event.event)
+      if gaussian_noise_multiplier is None:
         return False
       if do_compose:
         self._rdp += count * _compute_rdp_sample_wor_gaussian(
             q=event.sample_size / event.source_dataset_size,
-            noise_multiplier=event.event.noise_multiplier,
+            noise_multiplier=gaussian_noise_multiplier,
             orders=self._orders)
       return True
     else:

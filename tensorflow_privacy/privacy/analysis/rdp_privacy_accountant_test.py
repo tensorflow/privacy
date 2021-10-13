@@ -94,8 +94,20 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
     self.assertTrue(aor_accountant.supports(event))
     self.assertFalse(ro_accountant.supports(event))
 
+    composed_gaussian = dp_event.ComposedDpEvent(
+        [dp_event.GaussianDpEvent(1.0),
+         dp_event.GaussianDpEvent(2.0)])
+    event = dp_event.PoissonSampledDpEvent(0.1, composed_gaussian)
+    self.assertTrue(aor_accountant.supports(event))
+    self.assertFalse(ro_accountant.supports(event))
+
     event = dp_event.SampledWithoutReplacementDpEvent(
         1000, 10, dp_event.GaussianDpEvent(1.0))
+    self.assertFalse(aor_accountant.supports(event))
+    self.assertTrue(ro_accountant.supports(event))
+
+    event = dp_event.SampledWithoutReplacementDpEvent(1000, 10,
+                                                      composed_gaussian)
     self.assertFalse(aor_accountant.supports(event))
     self.assertTrue(ro_accountant.supports(event))
 
@@ -165,6 +177,42 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
     accountant = rdp_privacy_accountant.RdpAccountant(orders=[alpha])
     accountant.compose(event)
     self.assertAlmostEqual(accountant._rdp[0], alpha / (2 * sigma**2))
+
+  def test_compute_rdp_multi_gaussian(self):
+    alpha = 3.14159
+    sigma1, sigma2 = 2.71828, 6.28319
+
+    rdp1 = alpha / (2 * sigma1**2)
+    rdp2 = alpha / (2 * sigma2**2)
+    rdp = rdp1 + rdp2
+
+    accountant = rdp_privacy_accountant.RdpAccountant(orders=[alpha])
+    accountant.compose(
+        dp_event.PoissonSampledDpEvent(
+            1.0,
+            dp_event.ComposedDpEvent([
+                dp_event.GaussianDpEvent(sigma1),
+                dp_event.GaussianDpEvent(sigma2)
+            ])))
+    self.assertAlmostEqual(accountant._rdp[0], rdp)
+
+  def test_effective_gaussian_noise_multiplier(self):
+    np.random.seed(0xBAD5EED)
+    sigmas = np.random.uniform(size=(4,))
+
+    event = dp_event.ComposedDpEvent([
+        dp_event.GaussianDpEvent(sigmas[0]),
+        dp_event.SelfComposedDpEvent(dp_event.GaussianDpEvent(sigmas[1]), 3),
+        dp_event.ComposedDpEvent([
+            dp_event.GaussianDpEvent(sigmas[2]),
+            dp_event.GaussianDpEvent(sigmas[3])
+        ])
+    ])
+
+    sigma = rdp_privacy_accountant._effective_gaussian_noise_multiplier(event)
+    multi_sigmas = list(sigmas) + [sigmas[1]] * 2
+    expected = sum(s**-2 for s in multi_sigmas)**-0.5
+    self.assertAlmostEqual(sigma, expected)
 
   def test_compute_rdp_poisson_sampled_gaussian(self):
     orders = [1.5, 2.5, 5, 50, 100, np.inf]
