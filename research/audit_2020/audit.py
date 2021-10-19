@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,10 +13,6 @@
 # limitations under the License.
 # =============================================================================
 """Class for running auditing procedure."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import numpy as np
 from statsmodels.stats import proportion
@@ -77,24 +73,24 @@ def compute_epsilon_and_acc(poison_arr, unpois_arr, threshold, alpha, pois_ct):
 
 class AuditAttack(object):
   """Audit attack class. Generates poisoning, then runs auditing algorithm."""
-  def __init__(self, trn_x, trn_y, train_function):
+  def __init__(self, train_x, train_y, train_function):
     """
-    trn_x: training features
-    trn_y: training labels
+    train_x: training features
+    train_y: training labels
     name: identifier for the attack
     train_function: function returning membership score
     """
-    self.trn_x, self.trn_y = trn_x, trn_y
+    self.train_x, self.train_y = train_x, train_y
     self.train_function = train_function
     self.poisoning = None
 
   def make_poisoning(self, pois_ct, attack_type, l2_norm=10):
     """Get poisoning data."""
-    return attacks.make_many_pois(self.trn_x, self.trn_y, [pois_ct],
+    return attacks.make_many_poisoned_datasets(self.train_x, self.train_y, [pois_ct],
                                   attack=attack_type, l2_norm=l2_norm)
 
   def run_experiments(self, num_trials):
-    """Uses multiprocessing to run all training experiments."""
+    """Runs all training experiments."""
     (pois_x1, pois_y1), (pois_x2, pois_y2) = self.poisoning['data']
     sample_x, sample_y = self.poisoning['pois']
 

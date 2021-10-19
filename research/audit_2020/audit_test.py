@@ -1,4 +1,4 @@
-# Copyright 2020, The TensorFlow Authors.
+# Copyright 2021, The TensorFlow Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -81,7 +81,7 @@ class AuditAttackTest(absltest.TestCase):
   def test_run_experiments(self):
     auditor = get_auditor()
     pois, unpois = auditor.run_experiments(100)
-    expected = [0 for _ in range(100)]
+    expected = [0]*100
     self.assertListEqual(pois, expected)
     self.assertListEqual(unpois, expected)
 
