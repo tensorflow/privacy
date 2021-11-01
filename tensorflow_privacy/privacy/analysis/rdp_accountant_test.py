@@ -272,81 +272,56 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     # This tests is based on the StackOverflow setting in "Practical and
     # Private (Deep) Learning without Sampling or Shuffling". The calculated
     # epsilon could be better as the method in this package keeps improving.
-    steps_list, target_delta, max_participation = 1600, 1e-6, 1
-    rdp = rdp_accountant.compute_rdp_tree(noise_multiplier, steps_list,
-                                          max_participation, orders)
+    steps_list, target_delta = 1600, 1e-6
+    rdp = rdp_accountant.compute_rdp_tree_restart(noise_multiplier, steps_list,
+                                                  orders)
     new_eps = rdp_accountant.get_privacy_spent(
         orders, rdp, target_delta=target_delta)[0]
     self.assertLess(new_eps, eps)
 
   @parameterized.named_parameters(
-      ('restart4_max2', [400] * 4, [2] * 4),
-      ('restart2_max1', [800] * 2, [1] * 2),
-      ('adaptive_max4', [10, 400, 400, 400, 390], [4] * 5),
-      ('adaptive', [10, 400, 400, 400, 390], [2, 3, 4, 4, 3]))
-  def test_compose_tree_rdp(self, steps_list, max_participation_list):
+      ('restart4', [400] * 4),
+      ('restart2', [800] * 2),
+      ('adaptive', [10, 400, 400, 400, 390]),
+  )
+  def test_compose_tree_rdp(self, steps_list):
     noise_multiplier, orders = 0.1, 1
-    if np.isscalar(max_participation_list):
-      rdp_list = [
-          rdp_accountant.compute_rdp_tree(noise_multiplier, steps,
-                                          max_participation_list, orders)
-          for steps in steps_list
-      ]
-    else:
-      rdp_list = [
-          rdp_accountant.compute_rdp_tree(noise_multiplier, steps,
-                                          max_participation, orders) for steps,
-          max_participation in zip(steps_list, max_participation_list)
-      ]
-    rdp_composed = rdp_accountant.compute_rdp_tree(noise_multiplier, steps_list,
-                                                   max_participation_list,
-                                                   orders)
+    rdp_list = [
+        rdp_accountant.compute_rdp_tree_restart(noise_multiplier, steps, orders)
+        for steps in steps_list
+    ]
+    rdp_composed = rdp_accountant.compute_rdp_tree_restart(
+        noise_multiplier, steps_list, orders)
     self.assertAllClose(rdp_composed, sum(rdp_list), rtol=1e-12)
 
   @parameterized.named_parameters(
-      ('restart4_max2', [400] * 4, [2] * 4),
-      ('restart2_max1', [800] * 2, [1] * 2),
-      ('adaptive_max4', [10, 400, 400, 400, 390], [4] * 5),
+      ('restart4', [400] * 4),
+      ('restart2', [800] * 2),
+      ('adaptive', [10, 400, 400, 400, 390]),
   )
-  def test_compute_eps_tree_decreasing(self, steps_list, max_participation):
+  def test_compute_eps_tree_decreasing(self, steps_list):
     # Test privacy epsilon decreases with noise multiplier increasing when
     # keeping other parameters the same.
     orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
     target_delta = 1e-6
-    prev_eps = rdp_accountant.compute_rdp_tree(0, steps_list, max_participation,
-                                               orders)
+    prev_eps = rdp_accountant.compute_rdp_tree_restart(0, steps_list, orders)
     for noise_multiplier in [0.1 * x for x in range(1, 100, 5)]:
-      rdp = rdp_accountant.compute_rdp_tree(noise_multiplier, steps_list,
-                                            max_participation, orders)
+      rdp = rdp_accountant.compute_rdp_tree_restart(noise_multiplier,
+                                                    steps_list, orders)
       eps = rdp_accountant.get_privacy_spent(
           orders, rdp, target_delta=target_delta)[0]
       self.assertLess(eps, prev_eps)
 
   @parameterized.named_parameters(
-      ('negative_noise', -1, 3, 2, 1),
-      ('empty_steps', 1, [], 2, 1),
-      ('empty_part', 1, 1, [], 1),
-      ('negative_steps', 1, -3, 2, 1),
-      ('zero_participation', 1, 3, 0, 1),
-      ('negative_participation', 1, 3, -1, 1),
+      ('negative_noise', -1, 3, 1),
+      ('empty_steps', 1, [], 1),
+      ('negative_steps', 1, -3, 1),
   )
-  def test_compute_rdp_tree_raise(self, noise_multiplier, steps_list,
-                                  max_participation, orders):
+  def test_compute_rdp_tree_restart_raise(self, noise_multiplier, steps_list,
+                                          orders):
     with self.assertRaisesRegex(ValueError, 'must be'):
-      rdp_accountant.compute_rdp_tree(noise_multiplier, steps_list,
-                                      max_participation, orders)
-
-  @parameterized.named_parameters(
-      ('list_scalar', [2], 1),
-      ('scalar_list', 2, [1]),
-      ('list_length', [2, 3], [1]),
-      ('list_length2', [2, 3], [1, 2, 2]),
-  )
-  def test_compute_rdp_tree_raise_input_type(self, steps_list,
-                                             max_participation):
-    with self.assertRaisesRegex(ValueError, 'must have the same'):
-      rdp_accountant.compute_rdp_tree(
-          0.1, steps_list, max_participation, orders=1)
+      rdp_accountant.compute_rdp_tree_restart(noise_multiplier, steps_list,
+                                              orders)
 
   @parameterized.named_parameters(
       ('t100n0.1', 100, 0.1),
@@ -354,9 +329,9 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_no_tree_no_sampling(self, total_steps, noise_multiplier):
     orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-    tree_rdp = rdp_accountant.compute_rdp_tree(noise_multiplier,
-                                               [1] * total_steps,
-                                               [1] * total_steps, orders)
+    tree_rdp = rdp_accountant.compute_rdp_tree_restart(noise_multiplier,
+                                                       [1] * total_steps,
+                                                       orders)
     rdp = rdp_accountant.compute_rdp(1., noise_multiplier, total_steps, orders)
     self.assertAllClose(tree_rdp, rdp, rtol=1e-12)
 

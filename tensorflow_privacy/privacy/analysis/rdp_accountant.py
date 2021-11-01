@@ -398,34 +398,34 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   return rdp * steps
 
 
-def _compute_rdp_tree(sigma, steps_list, max_participation_list, alpha):
+def _compute_rdp_tree_restart(sigma, steps_list, alpha):
   """Computes RDP of the Tree Aggregation Protocol at order alpha."""
   if np.isinf(alpha):
     return np.inf
   tree_depths = [
-      math.floor(math.log2(steps)) + 1 for steps in steps_list if steps > 0
+      math.floor(math.log2(float(steps))) + 1
+      for steps in steps_list
+      if steps > 0
   ]
-  record_occurence = [
-      x * y for x, y in zip(max_participation_list, tree_depths)
-  ]
-  return alpha * sum(record_occurence) / (2 * sigma**2)
+  return alpha * sum(tree_depths) / (2 * sigma**2)
 
 
-def compute_rdp_tree(
-    noise_multiplier: float, steps_list: Union[float, Collection[float]],
-    max_participation_list: Union[int, Collection[int]],
-    orders: Union[float, Collection[float]]) -> Collection[float]:
+def compute_rdp_tree_restart(
+    noise_multiplier: float, steps_list: Union[int, Collection[int]],
+    orders: Union[float, Collection[float]]) -> Union[float, Collection[float]]:
   """Computes RDP of the Tree Aggregation Protocol for Gaussian Mechanism.
+
+  This function implements the accounting when the tree is restarted at every
+  epoch. See appendix of
+  "Practical and Private (Deep) Learning without Sampling or Shuffling"
+  https://arxiv.org/abs/2103.00039.
 
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
       standard deviation of the Gaussian noise to the l2-sensitivity of the
       function to which it is added.
     steps_list: A scalar or a list of non-negative intergers representing the
-      number of steps between tree restarts.
-    max_participation_list: A scalar or a list of positive integers representing
-      maximum number of times a sample may appear between tree restarts. The
-      type (scalar/list) of `max_participation_list` should match `steps_list`.
+      number of steps per epoch (between two restarts).
     orders: An array (or a scalar) of RDP orders.
 
   Returns:
@@ -442,46 +442,19 @@ def compute_rdp_tree(
         "steps_list must be a non-empty list, or a non-zero scalar, got "
         f"{steps_list}.")
 
-  if not max_participation_list:
-    raise ValueError(
-        "max_participation_list must be a non-empty list, or a non-zero scalar,"
-        f" got {max_participation_list}.")
-
-  if np.isscalar(steps_list) and np.isscalar(max_participation_list):
+  if np.isscalar(steps_list):
     steps_list = [steps_list]
-    max_participation_list = [max_participation_list]
-  elif np.isscalar(steps_list):
-    raise ValueError(
-        "`steps_list` and `max_participation_list` must have the same type, got"
-        f"scalar of steps: {steps_list}, and list of max_participations with "
-        f"length {len(max_participation_list)}.")
-  elif np.isscalar(max_participation_list):
-    raise ValueError(
-        "`steps_list` and `max_participation_list` must have the same type, got"
-        f"scalar of max_participation: {max_participation_list}, and list of "
-        f"steps with length {len(steps_list)}.")
-  elif len(max_participation_list) != len(steps_list):
-    raise ValueError(
-        "`steps_list` and `max_participation_list` must have the same size, got"
-        f"steps length {len(steps_list)}, max_participations length "
-        f"{len(max_participation_list)}")
-
-  for max_participation in max_participation_list:
-    if max_participation <= 0:
-      raise ValueError(
-          f"Max participation must be positive, got {max_participation}")
 
   for steps in steps_list:
     if steps < 0:
       raise ValueError(f"Steps must be non-negative, got {steps_list}")
 
   if np.isscalar(orders):
-    rdp = _compute_rdp_tree(noise_multiplier, steps_list,
-                            max_participation_list, orders)
+    rdp = _compute_rdp_tree_restart(noise_multiplier, steps_list, orders)
   else:
     rdp = np.array([
-        _compute_rdp_tree(noise_multiplier, steps_list, max_participation_list,
-                          alpha) for alpha in orders
+        _compute_rdp_tree_restart(noise_multiplier, steps_list, alpha)
+        for alpha in orders
     ])
 
   return rdp
