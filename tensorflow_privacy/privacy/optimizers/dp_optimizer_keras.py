@@ -332,6 +332,25 @@ def make_keras_optimizer_class(cls):
 
       return final_grads
 
+    def get_config(self):
+      """Returns the config of the optimizer.
+
+      An optimizer config is a Python dictionary (serializable)
+      containing the configuration of an optimizer.
+      The same optimizer can be reinstantiated later
+      (without any saved state) from this configuration.
+
+      Returns:
+          Python dictionary.
+      """
+      config = super(DPOptimizerClass, self).get_config()
+      config.update({
+          'l2_norm_clip': self._l2_norm_clip,
+          'noise_multiplier': self._noise_multiplier,
+          'num_microbatches': self._num_microbatches,
+      })
+      return config
+
     def apply_gradients(self, grads_and_vars, global_step=None, name=None):
       """DP-SGD version of base class method."""
       assert self._was_dp_gradients_called, (
