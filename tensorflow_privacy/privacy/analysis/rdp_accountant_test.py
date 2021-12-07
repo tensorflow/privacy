@@ -335,6 +335,90 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     rdp = rdp_accountant.compute_rdp(1., noise_multiplier, total_steps, orders)
     self.assertAllClose(tree_rdp, rdp, rtol=1e-12)
 
+  @parameterized.named_parameters(
+      ('negative_noise', -1, 3, 1, 1),
+      ('negative_steps', 0.1, -3, 1, 1),
+      ('negative_part', 0.1, 3, -1, 1),
+      ('negative_sep', 0.1, 3, 1, -1),
+  )
+  def test_compute_rdp_single_tree_raise(self, noise_multiplier, total_steps,
+                                         max_participation, min_separation):
+    orders = 1
+    with self.assertRaisesRegex(ValueError, 'must be'):
+      rdp_accountant.compute_rdp_single_tree(noise_multiplier, total_steps,
+                                             max_participation, min_separation,
+                                             orders)
+
+  @parameterized.named_parameters(
+      ('3', 3),
+      ('8', 8),
+      ('11', 11),
+      ('19', 19),
+  )
+  def test_max_tree_sensitivity_square_sum_every_step(self, steps):
+    max_participation, min_separation = steps, 0
+    # If a sample will appear in every leaf node, we can infer the total
+    # sensitivity by adding all the nodes.
+    steps_bin = bin(steps)[2:]
+    depth = [
+        len(steps_bin) - 1 - i for i, v in enumerate(steps_bin) if v == '1'
+    ]
+    expected = sum([2**d * (2**(d + 1) - 1) for d in depth])
+    self.assertEqual(
+        expected,
+        rdp_accountant._max_tree_sensitivity_square_sum(max_participation,
+                                                        min_separation, steps))
+
+  @parameterized.named_parameters(
+      ('11', 11),
+      ('19', 19),
+      ('200', 200),
+  )
+  def test_max_tree_sensitivity_square_sum_every_step_part(self, max_part):
+    steps, min_separation = 8, 0
+    assert max_part > steps
+    # If a sample will appear in every leaf node, we can infer the total
+    # sensitivity by adding all the nodes.
+    expected = 120
+    self.assertEqual(
+        expected,
+        rdp_accountant._max_tree_sensitivity_square_sum(max_part,
+                                                        min_separation, steps))
+
+  @parameterized.named_parameters(
+      ('3', 3),
+      ('8', 8),
+      ('11', 11),
+      ('19', 19),
+  )
+  def test_max_tree_sensitivity_square_sum_every_step_part2(self, steps):
+    max_participation, min_separation = 2, 0
+    # If a sample will appear twice, the worst case is to put the two nodes at
+    # consecutive nodes of the deepest subtree.
+    steps_bin = bin(steps)[2:]
+    depth = len(steps_bin) - 1
+    expected = 2 + 4 * depth
+    self.assertEqual(
+        expected,
+        rdp_accountant._max_tree_sensitivity_square_sum(max_participation,
+                                                        min_separation, steps))
+
+  @parameterized.named_parameters(
+      ('test1', 1, 7, 8, 4),
+      ('test2', 3, 3, 9, 11),
+      ('test3', 3, 2, 7, 9),
+      # This is an example showing worst-case sensitivity is larger than greedy
+      # in "Practical and Private (Deep) Learning without Sampling or Shuffling"
+      # https://arxiv.org/abs/2103.00039.
+      ('test4', 8, 2, 24, 88),
+  )
+  def test_max_tree_sensitivity_square_sum_toy(self, max_participation,
+                                               min_separation, steps, expected):
+    self.assertEqual(
+        expected,
+        rdp_accountant._max_tree_sensitivity_square_sum(max_participation,
+                                                        min_separation, steps))
+
 
 if __name__ == '__main__':
   tf.test.main()
