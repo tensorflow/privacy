@@ -1,3 +1,5 @@
+## Membership Inference Attacks From First Principles
+
 This directory contains code to reproduce our paper:
 
 **"Membership Inference Attacks From First Principles"**
@@ -5,7 +7,7 @@ https://arxiv.org/abs/2112.03570
 by Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and Florian Tramer.
 
 
-###INSTALLING
+### INSTALLING
 
 You will need to install fairly standard dependencies
 
@@ -17,9 +19,9 @@ https://github.com/google/objax
 https://objax.readthedocs.io/en/latest/installation_setup.html
 
 
-###RUNNING THE CODE
+### RUNNING THE CODE
 
-####1. Train the models
+#### 1. Train the models
 
 The first step in our attack is to train shadow models. As a baseline
 that should give most of the gains in our attack, you should start by
@@ -45,7 +47,7 @@ exp/cifar10/
 -- tb/
 ```
 
-####2. Perform inference
+#### 2. Perform inference
 
 Once the models are trained, now it's necessary to perform inference and save
 the output features for each training example for each model in the dataset.
@@ -65,7 +67,7 @@ where this new file has shape (50000, 10) and stores the model's
 output features for each example.
 
 
-####3. Compute membership inference scores
+#### 3. Compute membership inference scores
 
 Finally we take the output features and generate our logit-scaled membership inference
 scores for each example for each model.
@@ -84,7 +86,7 @@ exp/cifar10/
 with shape (50000,) storing just our scores.
 
 
-###PLOTTING THE RESULTS
+### PLOTTING THE RESULTS
 
 Finally we can generate pretty pictures, and run the plotting code
 
@@ -112,3 +114,16 @@ where the global threshold attack is the baseline, and our online,
 online-with-fixed-variance, offline, and offline-with-fixed-variance
 attack variants are the four other curves. Note that because we only
 train a few models, the fixed variance variants perform best.
+
+### Citation
+
+You can cite this paper with
+
+```
+@article{carlini2021membership,
+  title={Membership Inference Attacks From First Principles},
+  author={Carlini, Nicholas and Chien, Steve and Nasr, Milad and Song, Shuang and Terzis, Andreas and Tramer, Florian},
+  journal={arXiv preprint arXiv:2112.03570},
+  year={2021}
+}
+```
