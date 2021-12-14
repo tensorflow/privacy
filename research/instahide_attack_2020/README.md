@@ -1,6 +1,6 @@
 Implementation of our reconstruction attack on InstaHide.
 
-An Attack on InstaHide: Is Private Learning Possible with Instance Encoding?
+Is Private Learning Possible with Instance Encoding?
 Nicholas Carlini, Samuel Deng, Sanjam Garg, Somesh Jha, Saeed Mahloujifar, Mohammad Mahmoody, Shuang Song, Abhradeep Thakurta, Florian Tramer
 https://arxiv.org/abs/2011.05315
 
@@ -49,3 +49,18 @@ To reproduce our results and run the attack, each of the files should be run in 
 6. Run `step_6_adjust_color.py`. Adjust the color curves to match.
 
 7. Run `step_7_visualize.py`. Show the final resulting images.
+
+## Citation
+
+You can cite this attack at
+
+```
+@inproceedings{carlini2021private,
+  title={Is Private Learning Possible with Instance Encoding?},
+  author={Carlini, Nicholas and Deng, Samuel and Garg, Sanjam and Jha, Somesh and Mahloujifar, Saeed and Mahmoody, Mohammad and Thakurta, Abhradeep and Tram{\`e}r, Florian},
+  booktitle={2021 IEEE Symposium on Security and Privacy (SP)},
+  pages={410--427},
+  year={2021},
+  organization={IEEE}
+}
+```
