@@ -48,6 +48,7 @@ else:
   from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_tree_restart
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_single_tree
+  from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_zcdp_single_tree
 
   # DPQuery classes
   from tensorflow_privacy.privacy.dp_query.dp_query import DPQuery
