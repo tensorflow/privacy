@@ -26,20 +26,35 @@ from tensorflow_privacy.version import __version__  # pylint: disable=g-bad-impo
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
+  # TensorFlow v1 imports
+  from tensorflow_privacy import v1
+
+  # DpEvents
+  from tensorflow_privacy.privacy.analysis.dp_event import DpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import NoOpDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import NonPrivateDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import UnsupportedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import GaussianDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SelfComposedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import ComposedDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import PoissonSampledDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithReplacementDpEvent
+  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithoutReplacementDpEvent
+
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import GaussianSumQueryEntry
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import PrivacyLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import QueryWithLedger
-  from tensorflow_privacy.privacy.analysis.privacy_ledger import SampleEntry
-  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogenous_rdp
+  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogeneous_rdp
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp_from_ledger
   from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+  from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_tree_restart
+  from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_single_tree
+  from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_zcdp_single_tree
 
   # DPQuery classes
   from tensorflow_privacy.privacy.dp_query.dp_query import DPQuery
   from tensorflow_privacy.privacy.dp_query.dp_query import SumAggregationDPQuery
+  from tensorflow_privacy.privacy.dp_query.discrete_gaussian_query import DiscreteGaussianSumQuery
+  from tensorflow_privacy.privacy.dp_query.distributed_discrete_gaussian_query import DistributedDiscreteGaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.gaussian_query import GaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.nested_query import NestedQuery
   from tensorflow_privacy.privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery
@@ -48,13 +63,15 @@ else:
   from tensorflow_privacy.privacy.dp_query.quantile_estimator_query import QuantileEstimatorQuery
   from tensorflow_privacy.privacy.dp_query.quantile_estimator_query import NoPrivacyQuantileEstimatorQuery
   from tensorflow_privacy.privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipSumQuery
+  from tensorflow_privacy.privacy.dp_query import restart_query
   from tensorflow_privacy.privacy.dp_query import tree_aggregation
+  from tensorflow_privacy.privacy.dp_query.restart_query import RestartQuery
   from tensorflow_privacy.privacy.dp_query.tree_aggregation_query import TreeCumulativeSumQuery
   from tensorflow_privacy.privacy.dp_query.tree_aggregation_query import TreeResidualSumQuery
+  from tensorflow_privacy.privacy.dp_query.tree_range_query import TreeRangeSumQuery
 
   # Estimators
   from tensorflow_privacy.privacy.estimators.dnn import DNNClassifier
-  from tensorflow_privacy.privacy.estimators.v1.dnn import DNNClassifier as DNNClassifierV1
 
   # Keras Models
   from tensorflow_privacy.privacy.keras_models.dp_keras_model import DPModel
@@ -62,14 +79,6 @@ else:
   from tensorflow_privacy.privacy.keras_models.dp_keras_model import make_dp_model_class
 
   # Optimizers
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdamOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer import make_optimizer_class
-
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasAdagradOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasAdamOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasSGDOptimizer
@@ -79,15 +88,6 @@ else:
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasAdamOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasSGDOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import make_vectorized_keras_optimizer_class
-
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagradOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdamOptimizer
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPSGDOptimizer
-
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagrad
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdam
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPSGD
-  from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import make_vectorized_optimizer_class
 
   try:
     from tensorflow_privacy.privacy.bolt_on.models import BoltOnModel

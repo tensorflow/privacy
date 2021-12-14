@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """An interface for differentially private query mechanisms.
 
 The DPQuery class abstracts the differential privacy mechanism needed by DP-SGD.
@@ -100,18 +99,6 @@ class DPQuery(object):
 
   __metaclass__ = abc.ABCMeta
 
-  def set_ledger(self, ledger):
-    """Supplies privacy ledger to which the query can record privacy events.
-
-    The ledger should be updated with each call to get_noised_result.
-
-    Args:
-      ledger: A `PrivacyLedger`.
-    """
-    del ledger
-    raise TypeError(
-        'DPQuery type %s does not support set_ledger.' % type(self).__name__)
-
   def initial_global_state(self):
     """Returns the initial global state for the DPQuery.
 
@@ -155,7 +142,6 @@ class DPQuery(object):
         as a template to create the initial sample state. It is assumed that the
         leaves of the structure are python scalars or some type that has
         properties `shape` and `dtype`.
-
     Returns: An initial sample state.
     """
     pass
@@ -171,12 +157,12 @@ class DPQuery(object):
     variables that are stored in self.
 
     Args:
-      params: The parameters for the sample. In standard DP-SGD training,
-        the clipping norm for the sample's microbatch gradients (i.e.,
-        a maximum norm magnitude to which each gradient is clipped)
-      record: The record to be processed. In standard DP-SGD training,
-        the gradient computed for the examples in one microbatch, which
-        may be the gradient for just one example (for size 1 microbatches).
+      params: The parameters for the sample. In standard DP-SGD training, the
+        clipping norm for the sample's microbatch gradients (i.e., a maximum
+        norm magnitude to which each gradient is clipped)
+      record: The record to be processed. In standard DP-SGD training, the
+        gradient computed for the examples in one microbatch, which may be the
+        gradient for just one example (for size 1 microbatches).
 
     Returns:
       A structure of tensors to be aggregated.
@@ -185,8 +171,7 @@ class DPQuery(object):
     return record
 
   @abc.abstractmethod
-  def accumulate_preprocessed_record(
-      self, sample_state, preprocessed_record):
+  def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
     """Accumulates a single preprocessed record into the sample state.
 
     This method is intended to only do simple aggregation, typically just a sum.
@@ -194,8 +179,8 @@ class DPQuery(object):
     declaratively specify the type of aggregation required.
 
     Args:
-      sample_state: The current sample state. In standard DP-SGD training,
-        the accumulated sum of previous clipped microbatch gradients.
+      sample_state: The current sample state. In standard DP-SGD training, the
+        accumulated sum of previous clipped microbatch gradients.
       preprocessed_record: The preprocessed record to accumulate.
 
     Returns:
@@ -211,22 +196,22 @@ class DPQuery(object):
     functions run on a single device. Typically this will be a simple sum.
 
     Args:
-      params: The parameters for the sample. In standard DP-SGD training,
-        the clipping norm for the sample's microbatch gradients (i.e.,
-        a maximum norm magnitude to which each gradient is clipped)
-      sample_state: The current sample state. In standard DP-SGD training,
-        the accumulated sum of previous clipped microbatch gradients.
-      record: The record to accumulate. In standard DP-SGD training,
-        the gradient computed for the examples in one microbatch, which
-        may be the gradient for just one example (for size 1 microbatches).
+      params: The parameters for the sample. In standard DP-SGD training, the
+        clipping norm for the sample's microbatch gradients (i.e., a maximum
+        norm magnitude to which each gradient is clipped)
+      sample_state: The current sample state. In standard DP-SGD training, the
+        accumulated sum of previous clipped microbatch gradients.
+      record: The record to accumulate. In standard DP-SGD training, the
+        gradient computed for the examples in one microbatch, which may be the
+        gradient for just one example (for size 1 microbatches).
 
     Returns:
       The updated sample state. In standard DP-SGD training, the set of
       previous microbatch gradients with the addition of the record argument.
     """
     preprocessed_record = self.preprocess_record(params, record)
-    return self.accumulate_preprocessed_record(
-        sample_state, preprocessed_record)
+    return self.accumulate_preprocessed_record(sample_state,
+                                               preprocessed_record)
 
   @abc.abstractmethod
   def merge_sample_states(self, sample_state_1, sample_state_2):
@@ -261,11 +246,14 @@ class DPQuery(object):
       global_state: The global state, storing long-term privacy bookkeeping.
 
     Returns:
-      A tuple (result, new_global_state) where "result" is the result of the
-      query and "new_global_state" is the updated global state. In standard
-      DP-SGD training, the result is a gradient update comprising a noised
-      average of the clipped gradients in the sample state---with the noise and
-      averaging performed in a manner that guarantees differential privacy.
+      A tuple `(result, new_global_state, event)` where:
+        * `result` is the result of the query,
+        * `new_global_state` is the updated global state, and
+        * `event` is the `DpEvent` that occurred.
+      In standard DP-SGD training, the result is a gradient update comprising a
+      noised average of the clipped gradients in the sample state---with the
+      noise and averaging performed in a manner that guarantees differential
+      privacy.
     """
     pass
 
@@ -312,7 +300,3 @@ class SumAggregationDPQuery(DPQuery):
   def merge_sample_states(self, sample_state_1, sample_state_2):
     """Implements `tensorflow_privacy.DPQuery.merge_sample_states`."""
     return tf.nest.map_structure(tf.add, sample_state_1, sample_state_2)
-
-  def get_noised_result(self, sample_state, global_state):
-    """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    return sample_state, global_state

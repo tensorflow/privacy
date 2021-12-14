@@ -24,6 +24,7 @@ from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import no_privacy_query
 from tensorflow_privacy.privacy.dp_query import normalized_query
+from tensorflow_privacy.privacy.dp_query import tree_aggregation_query
 
 
 class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
@@ -73,6 +74,15 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         updating is preferred for non-negative records like vector norms that
         could potentially be very large or very close to zero.
     """
+
+    if target_quantile < 0 or target_quantile > 1:
+      raise ValueError(
+          f'`target_quantile` must be between 0 and 1, got {target_quantile}.')
+
+    if learning_rate < 0:
+      raise ValueError(
+          f'`learning_rate` must be non-negative, got {learning_rate}')
+
     self._initial_estimate = initial_estimate
     self._target_quantile = target_quantile
     self._learning_rate = learning_rate
@@ -99,10 +109,6 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         gaussian_query.GaussianSumQuery(
             l2_norm_clip=0.5, stddev=below_estimate_stddev),
         denominator=expected_num_records)
-
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._below_estimate_query.set_ledger(ledger)
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
@@ -138,7 +144,7 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    below_estimate_result, new_below_estimate_state = (
+    below_estimate_result, new_below_estimate_state, below_estimate_event = (
         self._below_estimate_query.get_noised_result(
             sample_state, global_state.below_estimate_state))
 
@@ -162,7 +168,7 @@ class QuantileEstimatorQuery(dp_query.SumAggregationDPQuery):
         current_estimate=new_estimate,
         below_estimate_state=new_below_estimate_state)
 
-    return new_estimate, new_global_state
+    return new_estimate, new_global_state, below_estimate_event
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""
@@ -209,3 +215,37 @@ class NoPrivacyQuantileEstimatorQuery(QuantileEstimatorQuery):
     del below_estimate_stddev
     del expected_num_records
     return no_privacy_query.NoPrivacyAverageQuery()
+
+
+class TreeQuantileEstimatorQuery(QuantileEstimatorQuery):
+  """Iterative process to estimate target quantile of a univariate distribution.
+
+  Unlike the base class, this uses a `TreeResidualSumQuery` to estimate the
+  fraction below estimate with an exact denominator. This assumes that below
+  estimate value is used in a SGD-like update and we want to privatize the
+  cumsum of the below estimate.
+
+  See "Practical and Private (Deep) Learning without Sampling or Shuffling"
+  (https://arxiv.org/abs/2103.00039) for tree aggregation and privacy
+  accounting, and "Differentially Private Learning with Adaptive Clipping"
+  (https://arxiv.org/abs/1905.03871) for how below estimate is used in a
+  SGD-like algorithm.
+  """
+
+  def _construct_below_estimate_query(self, below_estimate_stddev,
+                                      expected_num_records):
+    # See comments in `QuantileEstimatorQuery._construct_below_estimate_query`
+    # for why clip norm 0.5 is used for the query.
+    sum_query = tree_aggregation_query.TreeResidualSumQuery.build_l2_gaussian_query(
+        clip_norm=0.5,
+        noise_multiplier=2 * below_estimate_stddev,
+        record_specs=tf.TensorSpec([]))
+    return normalized_query.NormalizedQuery(
+        sum_query, denominator=expected_num_records)
+
+  def reset_state(self, noised_results, global_state):
+    new_numerator_state = self._below_estimate_query._numerator.reset_state(  # pylint: disable=protected-access,line-too-long
+        noised_results, global_state.below_estimate_state.numerator_state)
+    new_below_estimate_state = global_state.below_estimate_state._replace(
+        numerator_state=new_numerator_state)
+    return global_state._replace(below_estimate_state=new_below_estimate_state)

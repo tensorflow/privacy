@@ -16,18 +16,21 @@
 `TreeAggregator` and `EfficientTreeAggregator` compute cumulative sums of noise
 based on tree aggregation. When using an appropriate noise function (e.g.,
 Gaussian noise), it allows for efficient differentially private algorithms under
-continual observation, without prior subsampling or shuffling assumptions.
-
-`build_tree` constructs a tree given the leaf nodes by recursively summing the
-children nodes to get the parent node. It allows for efficient range queries and
-other statistics such as quantiles on the leaf nodes.
+continual observation, without prior subsampling or shuffling assumptions. This
+module implements the core logic of tree aggregation in Tensorflow, which serves
+as helper functions for `tree_aggregation_query`. This module and helper
+functions are publicly accessible.
 """
-
 import abc
+import collections
 from typing import Any, Callable, Collection, Optional, Tuple, Union
 
 import attr
 import tensorflow as tf
+
+
+# TODO(b/192464750): find a proper place for the helper functions, privatize
+# the tree aggregation logic, and encourage users to use the DPQuery API.
 
 
 class ValueGenerator(metaclass=abc.ABCMeta):
@@ -44,6 +47,7 @@ class ValueGenerator(metaclass=abc.ABCMeta):
     Returns:
       An initial state.
     """
+    raise NotImplementedError
 
   @abc.abstractmethod
   def next(self, state):
@@ -56,6 +60,7 @@ class ValueGenerator(metaclass=abc.ABCMeta):
       A pair (value, new_state) where value is the next value and new_state
         is the advanced state.
     """
+    raise NotImplementedError
 
 
 class GaussianNoiseGenerator(ValueGenerator):
@@ -64,6 +69,9 @@ class GaussianNoiseGenerator(ValueGenerator):
   Produces i.i.d. spherical Gaussian noise at each step shaped according to a
   nested structure of `tf.TensorSpec`s.
   """
+
+  # pylint: disable=invalid-name
+  _GlobalState = collections.namedtuple('_GlobalState', ['seeds', 'stddev'])
 
   def __init__(self,
                noise_std: float,
@@ -78,46 +86,57 @@ class GaussianNoiseGenerator(ValueGenerator):
       seed: An optional integer seed. If None, generator is seeded from the
         clock.
     """
-    self.noise_std = noise_std
-    self.specs = specs
-    self.seed = seed
+    self._noise_std = noise_std
+    self._specs = specs
+    self._seed = seed
 
   def initialize(self):
     """Makes an initial state for the GaussianNoiseGenerator.
 
     Returns:
-      An initial state.
+      A named tuple of (seeds, stddev).
     """
-    if self.seed is None:
-      return tf.cast(
-          tf.stack([
-              tf.math.floor(tf.timestamp() * 1e6),
-              tf.math.floor(tf.math.log(tf.timestamp() * 1e6))
-          ]),
-          dtype=tf.int64)
+    if self._seed is None:
+      time_now = tf.timestamp()
+      residual = time_now - tf.math.floor(time_now)
+      return self._GlobalState(
+          tf.cast(
+              tf.stack([
+                  tf.math.floor(tf.timestamp() * 1e6),
+                  tf.math.floor(residual * 1e9)
+              ]),
+              dtype=tf.int64), tf.constant(self._noise_std, dtype=tf.float32))
     else:
-      return tf.constant(self.seed, dtype=tf.int64, shape=(2,))
+      return self._GlobalState(
+          tf.constant(self._seed, dtype=tf.int64, shape=(2,)),
+          tf.constant(self._noise_std, dtype=tf.float32))
 
   def next(self, state):
     """Gets next value and advances the GaussianNoiseGenerator.
 
     Args:
-      state: The current state.
+      state: The current state (seed, noise_std).
 
     Returns:
-      A pair (sample, new_state) where sample is a new sample and new_state
-        is the advanced state.
+      A tuple of (sample, new_state) where sample is a new sample and new_state
+        is the advanced state (seed+1, noise_std).
     """
-    flat_structure = tf.nest.flatten(self.specs)
-    flat_seeds = [state + i for i in range(len(flat_structure))]
-    nest_seeds = tf.nest.pack_sequence_as(self.specs, flat_seeds)
+    flat_structure = tf.nest.flatten(self._specs)
+    flat_seeds = [state.seeds + i for i in range(len(flat_structure))]
+    nest_seeds = tf.nest.pack_sequence_as(self._specs, flat_seeds)
 
     def _get_noise(spec, seed):
       return tf.random.stateless_normal(
-          shape=spec.shape, seed=seed, stddev=self.noise_std)
+          shape=spec.shape, seed=seed, stddev=state.stddev)
 
-    nest_noise = tf.nest.map_structure(_get_noise, self.specs, nest_seeds)
-    return nest_noise, flat_seeds[-1] + 1
+    nest_noise = tf.nest.map_structure(_get_noise, self._specs, nest_seeds)
+    return nest_noise, self._GlobalState(flat_seeds[-1] + 1, state.stddev)
+
+  def make_state(self, seeds: tf.Tensor, stddev: tf.Tensor):
+    """Returns a new named tuple of (seeds, stddev)."""
+    seeds = tf.ensure_shape(seeds, shape=(2,))
+    return self._GlobalState(
+        tf.cast(seeds, dtype=tf.int64), tf.cast(stddev, dtype=tf.float32))
 
 
 class StatelessValueGenerator(ValueGenerator):
@@ -170,6 +189,7 @@ class TreeState(object):
   value_generator_state = attr.ib(type=Any)
 
 
+# TODO(b/192464750): move `get_step_idx` to be a property of `TreeState`.
 @tf.function
 def get_step_idx(state: TreeState) -> tf.Tensor:
   """Returns the current leaf node index based on `TreeState.level_buffer_idx`."""
@@ -192,6 +212,14 @@ class TreeAggregator():
   https://dl.acm.org/doi/pdf/10.1145/1806689.1806787. A buffer at the scale of
   tree depth is maintained and updated when a new conceptual leaf node arrives.
 
+  Example usage:
+    random_generator = GaussianNoiseGenerator(...)
+    tree_aggregator = TreeAggregator(random_generator)
+    state = tree_aggregator.init_state()
+    for leaf_node_idx in range(total_steps):
+      assert leaf_node_idx == get_step_idx(state))
+      noise, state = tree_aggregator.get_cumsum_and_update(state)
+
   Attributes:
     value_generator: A `ValueGenerator` or a no-arg function to generate a noise
       value for each tree node.
@@ -209,14 +237,8 @@ class TreeAggregator():
     else:
       self.value_generator = StatelessValueGenerator(value_generator)
 
-  def init_state(self) -> TreeState:
-    """Returns initial `TreeState`.
-
-    Initializes `TreeState` for a tree of a single leaf node: the respective
-    initial node value in `TreeState.level_buffer` is generated by the value
-    generator function, and the node index is 0.
-    """
-    value_generator_state = self.value_generator.initialize()
+  def _get_init_state(self, value_generator_state) -> TreeState:
+    """Returns initial `TreeState` given `value_generator_state`."""
     level_buffer_idx = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True)
     level_buffer_idx = level_buffer_idx.write(0, tf.constant(
         0, dtype=tf.int32)).stack()
@@ -228,11 +250,27 @@ class TreeAggregator():
         new_val)
     level_buffer = tf.nest.map_structure(lambda x, y: x.write(0, y).stack(),
                                          level_buffer_structure, new_val)
-
     return TreeState(
         level_buffer=level_buffer,
         level_buffer_idx=level_buffer_idx,
         value_generator_state=value_generator_state)
+
+  def init_state(self) -> TreeState:
+    """Returns initial `TreeState`.
+
+    Initializes `TreeState` for a tree of a single leaf node: the respective
+    initial node value in `TreeState.level_buffer` is generated by the value
+    generator function, and the node index is 0.
+
+    Returns:
+      An initialized `TreeState`.
+    """
+    value_generator_state = self.value_generator.initialize()
+    return self._get_init_state(value_generator_state)
+
+  def reset_state(self, state: TreeState) -> TreeState:
+    """Returns reset `TreeState` after restarting a new tree."""
+    return self._get_init_state(state.value_generator_state)
 
   @tf.function
   def _get_cumsum(self, level_buffer: Collection[tf.Tensor]) -> tf.Tensor:
@@ -242,7 +280,7 @@ class TreeAggregator():
   @tf.function
   def get_cumsum_and_update(self,
                             state: TreeState) -> Tuple[tf.Tensor, TreeState]:
-    """Returns tree aggregated value and updated `TreeState` for one step.
+    """Returns tree aggregated noise and updates `TreeState` for the next step.
 
     `TreeState` is updated to prepare for accepting the *next* leaf node. Note
     that `get_step_idx` can be called to get the current index of the leaf node
@@ -253,10 +291,20 @@ class TreeAggregator():
     Args:
       state: `TreeState` for the current leaf node, index can be queried by
         `tree_aggregation.get_step_idx(state.level_buffer_idx)`.
+
+    Returns:
+      Tuple of (noise, state) where `noise` is generated by tree aggregated
+      protocol for the cumulative sum of streaming data, and `state` is the
+      updated `TreeState`.
     """
 
     level_buffer_idx, level_buffer, value_generator_state = (
         state.level_buffer_idx, state.level_buffer, state.value_generator_state)
+    # We only publicize a combined function for updating state and returning
+    # noised results because this DPQuery is designed for the streaming data,
+    # and we only maintain a dynamic memory buffer of max size logT. Only the
+    # the most recent noised results can be queried, and the queries are
+    # expected to happen for every step in the streaming setting.
     cumsum = self._get_cumsum(level_buffer)
 
     new_level_buffer = tf.nest.map_structure(
@@ -315,6 +363,14 @@ class EfficientTreeAggregator():
   `sigma * sqrt(2^{d-1}/(2^d-1))`. which becomes `sigma / sqrt(2)` when
   the tree is very tall.
 
+  Example usage:
+    random_generator = GaussianNoiseGenerator(...)
+    tree_aggregator = EfficientTreeAggregator(random_generator)
+    state = tree_aggregator.init_state()
+    for leaf_node_idx in range(total_steps):
+      assert leaf_node_idx == get_step_idx(state))
+      noise, state = tree_aggregator.get_cumsum_and_update(state)
+
   Attributes:
     value_generator: A `ValueGenerator` or a no-arg function to generate a noise
       value for each tree node.
@@ -332,17 +388,8 @@ class EfficientTreeAggregator():
     else:
       self.value_generator = StatelessValueGenerator(value_generator)
 
-  def init_state(self) -> TreeState:
-    """Returns initial `TreeState`.
-
-    Initializes `TreeState` for a tree of a single leaf node: the respective
-    initial node value in `TreeState.level_buffer` is generated by the value
-    generator function, and the node index is 0.
-
-    Returns:
-      An initialized `TreeState`.
-    """
-    value_generator_state = self.value_generator.initialize()
+  def _get_init_state(self, value_generator_state):
+    """Returns initial buffer for `TreeState`."""
     level_buffer_idx = tf.TensorArray(dtype=tf.int32, size=1, dynamic_size=True)
     level_buffer_idx = level_buffer_idx.write(0, tf.constant(
         0, dtype=tf.int32)).stack()
@@ -354,11 +401,27 @@ class EfficientTreeAggregator():
         new_val)
     level_buffer = tf.nest.map_structure(lambda x, y: x.write(0, y).stack(),
                                          level_buffer_structure, new_val)
-
     return TreeState(
         level_buffer=level_buffer,
         level_buffer_idx=level_buffer_idx,
         value_generator_state=value_generator_state)
+
+  def init_state(self) -> TreeState:
+    """Returns initial `TreeState`.
+
+    Initializes `TreeState` for a tree of a single leaf node: the respective
+    initial node value in `TreeState.level_buffer` is generated by the value
+    generator function, and the node index is 0.
+
+    Returns:
+      An initialized `TreeState`.
+    """
+    value_generator_state = self.value_generator.initialize()
+    return self._get_init_state(value_generator_state)
+
+  def reset_state(self, state: TreeState) -> TreeState:
+    """Returns reset `TreeState` after restarting a new tree."""
+    return self._get_init_state(state.value_generator_state)
 
   @tf.function
   def _get_cumsum(self, state: TreeState) -> tf.Tensor:
@@ -381,7 +444,7 @@ class EfficientTreeAggregator():
   @tf.function
   def get_cumsum_and_update(self,
                             state: TreeState) -> Tuple[tf.Tensor, TreeState]:
-    """Returns tree aggregated value and updated `TreeState` for one step.
+    """Returns tree aggregated noise and updates `TreeState` for the next step.
 
     `TreeState` is updated to prepare for accepting the *next* leaf node. Note
     that `get_step_idx` can be called to get the current index of the leaf node
@@ -394,7 +457,17 @@ class EfficientTreeAggregator():
     Args:
       state: `TreeState` for the current leaf node, index can be queried by
         `tree_aggregation.get_step_idx(state.level_buffer_idx)`.
+
+    Returns:
+      Tuple of (noise, state) where `noise` is generated by tree aggregated
+      protocol for the cumulative sum of streaming data, and `state` is the
+      updated `TreeState`..
     """
+    # We only publicize a combined function for updating state and returning
+    # noised results because this DPQuery is designed for the streaming data,
+    # and we only maintain a dynamic memory buffer of max size logT. Only the
+    # the most recent noised results can be queried, and the queries are
+    # expected to happen for every step in the streaming setting.
     cumsum = self._get_cumsum(state)
 
     level_buffer_idx, level_buffer, value_generator_state = (
@@ -449,79 +522,3 @@ class EfficientTreeAggregator():
         level_buffer_idx=new_level_buffer_idx,
         value_generator_state=value_generator_state)
     return cumsum, new_state
-
-
-@tf.function
-def build_tree_from_leaf(leaf_nodes: tf.Tensor, arity: int) -> tf.RaggedTensor:
-  """A function constructs a complete tree given all the leaf nodes.
-
-  The function takes a 1-D array representing the leaf nodes of a tree and the
-  tree's arity, and constructs a complete tree by recursively summing the
-  adjacent children to get the parent until reaching the root node. Because we
-  assume a complete tree, if the number of leaf nodes does not divide arity, the
-  leaf nodes will be padded with zeros.
-
-  Args:
-    leaf_nodes: A 1-D array storing the leaf nodes of the tree.
-    arity: A `int` for the branching factor of the tree, i.e. the number of
-      children for each internal node.
-
-  Returns:
-    `tf.RaggedTensor` representing the tree. For example, if
-    `leaf_nodes=tf.Tensor([1, 2, 3, 4])` and `arity=2`, then the returned value
-    should be `tree=tf.RaggedTensor([[10],[3,7],[1,2,3,4]])`. In this way,
-    `tree[layer][index]` can be used to access the node indexed by (layer,
-    index) in the tree,
-
-  Raises:
-    ValueError: if parameters don't meet expectations. There are two situations
-    where the error is raised: (1) the input tensor has length smaller than 1;
-    (2) The arity is less than 2.
-  """
-
-  if len(leaf_nodes) <= 0:
-    raise ValueError(
-        'The number of leaf nodes should at least be 1.'
-        f'However, an array of length {len(leaf_nodes)} is detected')
-
-  if arity <= 1:
-    raise ValueError('The branching factor should be at least 2.'
-                     f'However, a branching factor of {arity} is detected.')
-
-  def pad_zero(leaf_nodes, size):
-    paddings = [[0, size - len(leaf_nodes)]]
-    return tf.pad(leaf_nodes, paddings)
-
-  leaf_nodes_size = tf.constant(len(leaf_nodes), dtype=tf.float32)
-  num_layers = tf.math.ceil(
-      tf.math.log(leaf_nodes_size) /
-      tf.math.log(tf.constant(arity, dtype=tf.float32))) + 1
-  leaf_nodes = pad_zero(leaf_nodes, tf.math.pow(float(arity), num_layers - 1))
-
-  def _shrink_layer(layer: tf.Tensor, arity: int) -> tf.Tensor:
-    return tf.reduce_sum((tf.reshape(layer, (-1, arity))), 1)
-
-  # The following `tf.while_loop` constructs the tree from bottom up by
-  # iteratively applying `_shrink_layer` to each layer of the tree. The reason
-  # for the choice of TF1.0-style `tf.while_loop` is that @tf.function does not
-  # support auto-translation from python loop to tf loop when loop variables
-  # contain a `RaggedTensor` whose shape changes across iterations.
-
-  idx = tf.identity(num_layers)
-  loop_cond = lambda i, h: tf.less_equal(2.0, i)
-
-  def _loop_body(i, h):
-    return [
-        tf.add(i, -1.0),
-        tf.concat(([_shrink_layer(h[0], arity)], h), axis=0)
-    ]
-
-  _, tree = tf.while_loop(
-      loop_cond,
-      _loop_body, [idx, tf.RaggedTensor.from_tensor([leaf_nodes])],
-      shape_invariants=[
-          idx.get_shape(),
-          tf.RaggedTensorSpec(dtype=leaf_nodes.dtype, ragged_rank=1)
-      ])
-
-  return tree

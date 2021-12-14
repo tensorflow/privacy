@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""Implements DPQuery interface for queries over nested structures.
-"""
+"""Implements DPQuery interface for queries over nested structures."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -22,6 +20,8 @@ from __future__ import print_function
 import collections
 
 import tensorflow.compat.v1 as tf
+
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 import tree
 
@@ -60,15 +60,12 @@ class NestedQuery(dp_query.DPQuery):
 
   def _map_to_queries(self, fn, *inputs, **kwargs):
     """Maps DPQuery methods to the subqueries."""
+
     def caller(query, *args):
       return getattr(query, fn)(*args, **kwargs)
 
     return tree.map_structure_up_to(self._queries, caller, self._queries,
                                     *inputs)
-
-  def set_ledger(self, ledger):
-    """Implements `tensorflow_privacy.DPQuery.set_ledger`."""
-    self._map_to_queries('set_ledger', ledger=ledger)
 
   def initial_global_state(self):
     """Implements `tensorflow_privacy.DPQuery.initial_global_state`."""
@@ -89,28 +86,27 @@ class NestedQuery(dp_query.DPQuery):
     """Implements `tensorflow_privacy.DPQuery.preprocess_record`."""
     return self._map_to_queries('preprocess_record', params, record)
 
-  def accumulate_preprocessed_record(
-      self, sample_state, preprocessed_record):
+  def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
     """Implements `tensorflow_privacy.DPQuery.accumulate_preprocessed_record`."""
-    return self._map_to_queries(
-        'accumulate_preprocessed_record',
-        sample_state,
-        preprocessed_record)
+    return self._map_to_queries('accumulate_preprocessed_record', sample_state,
+                                preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):
     """Implements `tensorflow_privacy.DPQuery.merge_sample_states`."""
-    return self._map_to_queries(
-        'merge_sample_states', sample_state_1, sample_state_2)
+    return self._map_to_queries('merge_sample_states', sample_state_1,
+                                sample_state_2)
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    estimates_and_new_global_states = self._map_to_queries(
-        'get_noised_result', sample_state, global_state)
+    mapped_query_results = self._map_to_queries('get_noised_result',
+                                                sample_state, global_state)
 
-    flat_estimates, flat_new_global_states = zip(
-        *tree.flatten_up_to(self._queries, estimates_and_new_global_states))
+    flat_estimates, flat_new_global_states, flat_events = zip(
+        *tree.flatten_up_to(self._queries, mapped_query_results))
+
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
-            tf.nest.pack_sequence_as(self._queries, flat_new_global_states))
+            tf.nest.pack_sequence_as(self._queries, flat_new_global_states),
+            dp_event.ComposedDpEvent(events=flat_events))
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""
@@ -118,12 +114,12 @@ class NestedQuery(dp_query.DPQuery):
 
     def add_metrics(tuple_path, subquery, subquery_global_state):
       metrics.update({
-          '/'.join(str(s) for s in tuple_path + (name,)): metric
-          for name, metric
-          in subquery.derive_metrics(subquery_global_state).items()})
+          '/'.join(str(s) for s in tuple_path + (name,)): metric for name,
+          metric in subquery.derive_metrics(subquery_global_state).items()
+      })
 
-    tree.map_structure_with_path_up_to(
-        self._queries, add_metrics, self._queries, global_state)
+    tree.map_structure_with_path_up_to(self._queries, add_metrics,
+                                       self._queries, global_state)
 
     return metrics
 
@@ -137,12 +133,13 @@ class NestedSumQuery(NestedQuery, dp_query.SumAggregationDPQuery):
     Args:
       queries: A nested structure of queries that must all be
         SumAggregationDPQueries.
-
     Raises: TypeError if any of the subqueries are not SumAggregationDPQueries.
     """
+
     def check(query):
       if not isinstance(query, dp_query.SumAggregationDPQuery):
         raise TypeError('All subqueries must be SumAggregationDPQueries.')
+
     tree.map_structure(check, queries)
 
     super(NestedSumQuery, self).__init__(queries)

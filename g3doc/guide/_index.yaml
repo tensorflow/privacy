@@ -1,5 +1,5 @@
 # TODO(b/181782485): Switch to the main book for launch - /responsible_ai/_book.yaml
-book_path: /responsible_ai/privacy/_book.yaml
+book_path: /responsible_ai/_book.yaml
 project_path: /responsible_ai/_project.yaml
 title: TensorFlow Privacy
 description: >
@@ -13,16 +13,21 @@ landing_page:
     - classname: devsite-landing-row-50
       description: >
         <p>
-        Preventing ML models from exposing potentially sensitive information is a critical part of
-        using AI responsibly. To that end, <i>differentially private stochastic gradient descent
-        (DP-SGD)</i> is a modification to the standard stochastic gradient descent (SGD) algorithm
-        in machine learning. </p>
-        <p>Models trained with DP-SGD have provable differential privacy (DP)
-        guarantees, mitigating the risk of exposing sensitive training data. Intuitively, a model
-        trained with differential privacy should not be affected by any single training example in
-        its data set. DP-SGD techniques can also be used in federated learning to provide user-level
-        differential privacy. You can learn more about differentially private deep learning in <a
-        href="https://arxiv.org/pdf/1607.00133.pdf">the original paper</a>.
+        An important aspect of responsible AI usage is ensuring that ML models are prevented from
+        exposing potentially sensitive information, such as demographic information or other
+        attributes in the training dataset that could be used to identify people.
+        One way to achieve this is by using differentially private stochastic gradient descent
+        (DP-SGD), which is a modification to the standard stochastic gradient descent (SGD)
+        algorithm in machine learning.
+        </p>
+        <p>
+        Models trained with DP-SGD have measurable differential privacy (DP) improvements, which
+        helps mitigate the risk of exposing sensitive training data. Since the purpose of DP is
+        to help prevent individual data points from being identified, a model trained with DP
+        should not be affected by any single training example in its training data set. DP-SGD
+        techniques can also be used in federated learning to provide user-level differential privacy.
+        You can learn more about differentially private deep learning in
+        <a href="https://arxiv.org/pdf/1607.00133.pdf">the original paper</a>.
         </p>
 
     - code_block: |
@@ -58,14 +63,19 @@ landing_page:
     items:
     - classname: devsite-landing-row-100
       description: >
-        <p>Tensorflow Privacy (TF Privacy) is an open source library developed by teams in Google
-        Research. The library includes implementations of commonly used TensorFlow Optimizers for
-        training ML models with DP. The goal is to enable ML practitioners using standard Tensorflow
-        APIs to train privacy-preserving models by changing only a few lines of code.</p>
-        <p> The differentially private Optimizers can be used in conjunction with high-level APIs
+        <p>
+        Tensorflow Privacy (TF Privacy) is an open source library developed by teams in
+        Google Research. The library includes implementations of commonly used TensorFlow
+        Optimizers for training ML models with DP. The goal is to enable ML practitioners
+        using standard Tensorflow APIs to train privacy-preserving models by changing only a
+        few lines of code.
+        </p>
+        <p>
+        The differentially private optimizers can be used in conjunction with high-level APIs
         that use the Optimizer class, especially Keras. Additionally, you can find differentially
         private implementations of some Keras models. All of the Optimizers and models can be found
-        in the <a href="./privacy/api">API Documentation</a>.</p>
+        in the <a href="../api_docs/python/tf_privacy">API Documentation</a>.</p>
+        </p>
 
   - classname: devsite-landing-row-cards
     items:

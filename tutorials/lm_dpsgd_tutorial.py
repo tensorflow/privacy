@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Training a language model (recurrent neural network) with DP-SGD optimizer.
 
 This tutorial uses a corpus of text from TensorFlow datasets unless a
@@ -44,7 +43,6 @@ import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_datasets as tfds
 
-from tensorflow_privacy.privacy.analysis import privacy_ledger
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
@@ -92,27 +90,20 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   if mode == tf.estimator.ModeKeys.TRAIN:
     if FLAGS.dpsgd:
 
-      ledger = privacy_ledger.PrivacyLedger(
-          population_size=NB_TRAIN,
-          selection_probability=(FLAGS.batch_size / NB_TRAIN))
-
       optimizer = dp_optimizer.DPAdamGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
           num_microbatches=FLAGS.microbatches,
-          ledger=ledger,
           learning_rate=FLAGS.learning_rate,
           unroll_microbatches=True)
       opt_loss = vector_loss
     else:
-      optimizer = tf.train.AdamOptimizer(
-          learning_rate=FLAGS.learning_rate)
+      optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      train_op=train_op)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
@@ -122,9 +113,8 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
                 labels=tf.cast(x[:, 1:], dtype=tf.int32),
                 predictions=tf.argmax(input=logits, axis=2))
     }
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      eval_metric_ops=eval_metric_ops)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
 def load_data():
@@ -132,13 +122,13 @@ def load_data():
   if not FLAGS.data_dir:
     print('FLAGS.data_dir containing train.txt and test.txt was not specified, '
           'using a substitute dataset from the tensorflow_datasets module.')
-    train_dataset = tfds.load(name='lm1b/subwords8k',
-                              split=tfds.Split.TRAIN,
-                              batch_size=NB_TRAIN,
-                              shuffle_files=True)
-    test_dataset = tfds.load(name='lm1b/subwords8k',
-                             split=tfds.Split.TEST,
-                             batch_size=10000)
+    train_dataset = tfds.load(
+        name='lm1b/subwords8k',
+        split=tfds.Split.TRAIN,
+        batch_size=NB_TRAIN,
+        shuffle_files=True)
+    test_dataset = tfds.load(
+        name='lm1b/subwords8k', split=tfds.Split.TEST, batch_size=10000)
     train_data = next(iter(tfds.as_numpy(train_dataset)))
     test_data = next(iter(tfds.as_numpy(test_dataset)))
     train_data = train_data['text'].flatten()
@@ -162,10 +152,11 @@ def compute_epsilon(steps):
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / NB_TRAIN
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
+  rdp = compute_rdp(
+      q=sampling_probability,
+      noise_multiplier=FLAGS.noise_multiplier,
+      steps=steps,
+      orders=orders)
   # Delta is set to 1e-5 because Penn TreeBank has 60000 training points.
   return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
@@ -180,9 +171,8 @@ def main(unused_argv):
 
   # Instantiate the tf.Estimator.
   conf = tf.estimator.RunConfig(save_summary_steps=1000)
-  lm_classifier = tf.estimator.Estimator(model_fn=rnn_model_fn,
-                                         model_dir=FLAGS.model_dir,
-                                         config=conf)
+  lm_classifier = tf.estimator.Estimator(
+      model_fn=rnn_model_fn, model_dir=FLAGS.model_dir, config=conf)
 
   # Create tf.Estimator input functions for the training and test data.
   batch_len = FLAGS.batch_size * SEQ_LEN
@@ -220,6 +210,7 @@ def main(unused_argv):
       print('For delta=1e-5, the current epsilon is: %.2f' % eps)
     else:
       print('Trained with vanilla non-private SGD optimizer')
+
 
 if __name__ == '__main__':
   app.run(main)

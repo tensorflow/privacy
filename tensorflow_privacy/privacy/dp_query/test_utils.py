@@ -44,6 +44,7 @@ def run_query(query, records, global_state=None, weights=None):
       sample_state = query.accumulate_record(params, sample_state, record)
   else:
     for weight, record in zip(weights, records):
-      sample_state = query.accumulate_record(
-          params, sample_state, record, weight)
-  return query.get_noised_result(sample_state, global_state)
+      sample_state = query.accumulate_record(params, sample_state, record,
+                                             weight)
+  result, global_state, _ = query.get_noised_result(sample_state, global_state)
+  return result, global_state
