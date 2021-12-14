@@ -313,3 +313,54 @@ def compute_rdp_single_tree(
         for alpha in orders
     ])
   return rdp
+
+
+def _compute_gaussian_zcdp(sigma: float,
+                           sum_sensitivity_square: float) -> float:
+  """Computes zCDP of Gaussian mechanism."""
+  return sum_sensitivity_square / (2 * sigma**2)
+
+
+def compute_zcdp_single_tree(
+    noise_multiplier: float, total_steps: int, max_participation: int,
+    min_separation: int) -> Union[float, Collection[float]]:
+  """Computes zCDP of the Tree Aggregation Protocol for a single tree.
+
+  The accounting assume a single tree is constructed for `total_steps` leaf
+  nodes, where the same sample will appear at most `max_participation` times,
+  and there are at least `min_separation` nodes between two appearance. The key
+  idea is to (recurrently) count the worst-case occurence of a sample
+  in all the nodes in a tree, which implements a dynamic programming algorithm
+  that exhausts the possible `num_participation` appearance of a sample in
+  `steps` leaf nodes.
+
+  See Appendix D of
+  "Practical and Private (Deep) Learning without Sampling or Shuffling"
+  https://arxiv.org/abs/2103.00039.
+
+  The Zero-Concentrated Differential Privacy (zCDP) definition is described in
+  "Concentrated Differential Privacy: Simplifications, Extensions,
+  and Lower Bounds" https://arxiv.org/abs/1605.02065
+
+  Args:
+    noise_multiplier: A non-negative float representing the ratio of the
+      standard deviation of the Gaussian noise to the l2-sensitivity of the
+      function to which it is added.
+    total_steps: Total number of steps (leaf nodes in tree aggregation).
+    max_participation: The maximum number of times a sample can appear.
+    min_separation: The minimum number of nodes between two appearance of a
+      sample. If a sample appears in consecutive x, y steps in a streaming
+      setting, then `min_separation=y-x-1`.
+
+  Returns:
+    The zCDP.
+  """
+  _check_nonnegative(noise_multiplier, "noise_multiplier")
+  if noise_multiplier == 0:
+    return np.inf
+  _check_nonnegative(total_steps, "total_steps")
+  _check_nonnegative(max_participation, "max_participation")
+  _check_nonnegative(min_separation, "min_separation")
+  sum_sensitivity_square = _max_tree_sensitivity_square_sum(
+      max_participation, min_separation, total_steps)
+  return _compute_gaussian_zcdp(noise_multiplier, sum_sensitivity_square)

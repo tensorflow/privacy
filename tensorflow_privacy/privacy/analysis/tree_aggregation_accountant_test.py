@@ -180,6 +180,16 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
         tree_aggregation_accountant._max_tree_sensitivity_square_sum(
             max_participation, min_separation, steps))
 
+  def test_compute_gaussian_zcdp(self):
+    for sigma in tf.random.uniform([5], minval=0.01, maxval=100).numpy():
+      for sum_sensitivity_square in tf.random.uniform([5],
+                                                      minval=0.01,
+                                                      maxval=1000).numpy():
+        self.assertEqual(
+            tree_aggregation_accountant._compute_gaussian_rdp(
+                sigma, sum_sensitivity_square, alpha=1),
+            tree_aggregation_accountant._compute_gaussian_zcdp(
+                sigma, sum_sensitivity_square))
 
 if __name__ == '__main__':
   tf.test.main()
