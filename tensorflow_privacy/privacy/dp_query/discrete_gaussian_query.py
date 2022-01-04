@@ -16,9 +16,11 @@
 import collections
 
 import tensorflow as tf
-from tensorflow_privacy.privacy.analysis import dp_event
+
 from tensorflow_privacy.privacy.dp_query import discrete_gaussian_utils
 from tensorflow_privacy.privacy.dp_query import dp_query
+
+from differential_privacy.python.accounting import dp_event
 
 
 class DiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
