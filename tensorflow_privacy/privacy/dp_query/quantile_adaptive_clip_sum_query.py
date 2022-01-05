@@ -21,11 +21,10 @@ import collections
 
 import tensorflow.compat.v1 as tf
 
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import quantile_estimator_query
-
-from differential_privacy.python.accounting import dp_event
 
 
 class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):

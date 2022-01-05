@@ -19,8 +19,8 @@ from __future__ import print_function
 
 import tensorflow.compat.v1 as tf
 
+from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
-from differential_privacy.python.accounting import dp_event
 
 
 class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
