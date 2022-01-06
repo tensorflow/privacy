@@ -73,6 +73,7 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
       eps = rdp_accountant.get_privacy_spent(
           orders, rdp, target_delta=target_delta)[0]
       self.assertLess(eps, prev_eps)
+      prev_eps = eps
 
   @parameterized.named_parameters(
       ('negative_noise', -1, 3, 1),
