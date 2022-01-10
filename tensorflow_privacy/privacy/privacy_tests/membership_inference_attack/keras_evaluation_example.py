@@ -83,7 +83,8 @@ def main(unused_argv):
       attack_types=[AttackType.THRESHOLD_ATTACK,
                     AttackType.K_NEAREST_NEIGHBORS],
       tensorboard_dir=FLAGS.model_dir,
-      tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
+      tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers,
+      is_logit=True, batch_size=2048)
 
   # Train model with Keras
   model.fit(
@@ -101,7 +102,8 @@ def main(unused_argv):
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
       attack_types=[
           AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
-      ])
+      ],
+      is_logit=True, batch_size=2048)
   att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
   print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
