@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Tests for tensorflow_privacy.privacy.secret_sharer.exposures."""
-
 from absl.testing import absltest
-
 import numpy as np
 from scipy.stats import skewnorm
 

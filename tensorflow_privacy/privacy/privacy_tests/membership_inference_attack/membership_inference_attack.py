@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Lint as: python3
 """Code that runs membership inference attacks based on the model outputs.
 
 This file belongs to the new API for membership inference attacks. This file
@@ -20,6 +18,7 @@ will be renamed to membership_inference_attack.py after the old API is removed.
 """
 
 from typing import Iterable
+
 import numpy as np
 from sklearn import metrics
 

@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Lint as: python3
-"""Tests for tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.privacy_report."""
 from absl.testing import absltest
 import numpy as np
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import privacy_report
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType

@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Lint as: python3
 """Specifying and creating AttackInputData slices."""
 
 import collections
@@ -20,6 +18,7 @@ import copy
 from typing import List
 
 import numpy as np
+
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingFeature

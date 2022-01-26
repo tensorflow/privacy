@@ -1,4 +1,3 @@
-# Lint as: python3
 # Copyright 2021 Google LLC. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,14 +17,12 @@ import os
 
 from absl import app
 from absl import flags
-
 import tensorflow as tf
-
 from tensorflow_docs.api_generator import doc_controls
 from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
-
 import tensorflow_privacy as tf_privacy
+
 
 flags.DEFINE_string('output_dir', '/tmp/tf_privacy',
                     'Where to output the docs.')

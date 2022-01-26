@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-# Lint as: python3
 """Plotting functionality for membership inference attack analysis.
 
 Functions to plot ROC curves and histograms as well as functionality to store
