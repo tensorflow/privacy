@@ -19,7 +19,7 @@ from typing import Collection, Optional
 
 import numpy as np
 from scipy import special
-import six
+
 from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.analysis import privacy_accountant
 
@@ -74,7 +74,7 @@ def _log_comb(n, k):
 
 def _compute_log_a_int(q, sigma, alpha):
   """Computes log(A_alpha) for integer alpha, 0 < q < 1."""
-  assert isinstance(alpha, six.integer_types)
+  assert isinstance(alpha, int)
 
   # Initialize with 0 in the log space.
   log_a = -np.inf
@@ -430,7 +430,7 @@ def _compute_rdp_sample_wor_gaussian_int(q, sigma, alpha):
   """
 
   max_alpha = 256
-  assert isinstance(alpha, six.integer_types)
+  assert isinstance(alpha, int)
 
   if np.isinf(alpha):
     return np.inf

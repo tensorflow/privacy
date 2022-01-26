@@ -19,7 +19,6 @@ from __future__ import print_function
 
 from absl.testing import parameterized
 import numpy as np
-from six.moves import xrange
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.dp_query import gaussian_query
@@ -81,7 +80,7 @@ class GaussianQueryTest(tf.test.TestCase, parameterized.TestCase):
       query_result, _ = test_utils.run_query(query, [record1, record2])
 
       noised_sums = []
-      for _ in xrange(1000):
+      for _ in range(1000):
         noised_sums.append(sess.run(query_result))
 
       result_stddev = np.std(noised_sums)

@@ -20,7 +20,6 @@ from __future__ import print_function
 from absl.testing import parameterized
 import mock
 import numpy as np
-from six.moves import range
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized

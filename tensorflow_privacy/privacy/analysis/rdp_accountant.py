@@ -42,9 +42,9 @@ from __future__ import print_function
 
 import math
 import sys
+
 import numpy as np
 from scipy import special
-import six
 
 ########################
 # LOG-SPACE ARITHMETIC #
@@ -106,7 +106,7 @@ def _log_comb(n, k):
 
 def _compute_log_a_int(q, sigma, alpha):
   """Compute log(A_alpha) for integer alpha. 0 < q < 1."""
-  assert isinstance(alpha, six.integer_types)
+  assert isinstance(alpha, int)
 
   # Initialize with 0 in the log space.
   log_a = -np.inf
@@ -486,7 +486,7 @@ def _compute_rdp_sample_without_replacement_int(q, sigma, alpha):
   """
 
   max_alpha = 256
-  assert isinstance(alpha, six.integer_types)
+  assert isinstance(alpha, int)
 
   if np.isinf(alpha):
     return np.inf
