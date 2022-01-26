@@ -1,8 +1,8 @@
-tensorflow>=1.14
-scipy>=0.17
-tensorflow-estimator>=2.3.0
 attrs>=21.2.0
-mpmath
 dm-tree~=0.1.1
-tensorflow-probability>=0.13.0
+mpmath
+scipy>=0.17
 tensorflow-datasets>=4.4.0
+tensorflow-estimator>=2.3.0
+tensorflow-probability>=0.13.0
+tensorflow>=1.14
