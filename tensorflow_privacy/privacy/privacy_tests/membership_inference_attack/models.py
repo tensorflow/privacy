@@ -15,7 +15,8 @@
 # Lint as: python3
 """Trained models for membership inference attacks."""
 
-from dataclasses import dataclass
+import dataclasses
+
 import numpy as np
 from sklearn import ensemble
 from sklearn import linear_model
@@ -27,7 +28,7 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
 
 
-@dataclass
+@dataclasses.dataclass
 class AttackerData:
   """Input data for an ML classifier attack.
 
