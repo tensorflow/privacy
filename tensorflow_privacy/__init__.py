@@ -13,10 +13,6 @@
 # limitations under the License.
 """TensorFlow Privacy library."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
 
 from tensorflow_privacy.version import __version__  # pylint: disable=g-bad-import-order

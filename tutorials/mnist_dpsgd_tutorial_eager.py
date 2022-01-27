@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Training a CNN on MNIST in TF Eager mode with DP-SGD optimizer."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl import app
 from absl import flags
-
 import numpy as np
 import tensorflow.compat.v1 as tf
 

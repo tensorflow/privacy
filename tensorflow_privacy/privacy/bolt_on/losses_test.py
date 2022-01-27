@@ -11,15 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Unit testing for losses."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from contextlib import contextmanager  # pylint: disable=g-importing-member
 from io import StringIO  # pylint: disable=g-importing-member
 import sys
+
 from absl.testing import parameterized
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1.python.framework import test_util

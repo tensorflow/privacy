@@ -13,10 +13,6 @@
 # limitations under the License.
 """Estimator heads that allow integration with TF Privacy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.estimators import head_utils

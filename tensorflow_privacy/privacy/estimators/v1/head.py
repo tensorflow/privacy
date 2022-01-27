@@ -13,10 +13,6 @@
 # limitations under the License.
 """Estimator v1 heads that allow integration with TF Privacy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow.python.ops import lookup_ops  # pylint: disable=g-direct-tensorflow-import

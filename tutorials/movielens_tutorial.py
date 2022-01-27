@@ -14,13 +14,8 @@
 # =============================================================================
 """Training a deep NN on MovieLens with differentially private Adam optimizer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import app
 from absl import flags
-
 import numpy as np
 import pandas as pd
 from scipy import stats

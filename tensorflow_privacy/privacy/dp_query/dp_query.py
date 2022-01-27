@@ -41,10 +41,6 @@ samples. In the common situation where the privacy mechanism remains unchanged
 throughout the entire training process, the global state is usually None.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import abc
 import collections
 

@@ -30,10 +30,6 @@ The output states that DP-SGD with these parameters should
 use a noise multiplier of 1.12.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import app
 from absl import flags
 

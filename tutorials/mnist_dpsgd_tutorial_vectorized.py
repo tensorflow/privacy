@@ -11,16 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Training a CNN on MNIST with vectorized DP-SGD optimizer."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 from absl import app
 from absl import flags
-
 import numpy as np
 import tensorflow.compat.v1 as tf
 

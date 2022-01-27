@@ -57,9 +57,6 @@ appearance of a same sample. For `target_delta`, the estimated epsilon is:
     max_participation, min_separation, orders)
   eps = rdp_accountant.get_privacy_spent(orders, rdp, target_delta)[0]
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import functools
 import math

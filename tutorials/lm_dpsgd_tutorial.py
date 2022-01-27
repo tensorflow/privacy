@@ -30,15 +30,10 @@ using the exposure metric of https://arxiv.org/abs/1802.08232.
 This example is decribed in more details in this post: https://goo.gl/UKr7vH
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
 from absl import app
 from absl import flags
-
 import numpy as np
 import tensorflow.compat.v1 as tf
 import tensorflow_datasets as tfds

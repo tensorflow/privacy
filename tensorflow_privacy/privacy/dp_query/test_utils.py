@@ -16,10 +16,6 @@
 Utility methods for testing private queries.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 
 def run_query(query, records, global_state=None, weights=None):
   """Executes query on the given set of records as a single sample.

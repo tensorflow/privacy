@@ -36,9 +36,6 @@ The example code would be:
    rdp += rdp_accountant.compute_rdp(q, sigma, T, orders)
   eps, _, opt_order = rdp_accountant.get_privacy_spent(rdp, target_delta=delta)
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import math
 import sys

@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tutorial for bolt_on module, the model and the optimizer."""
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
+
 import tensorflow.compat.v1 as tf  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on import losses  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on import models  # pylint: disable=wrong-import-position

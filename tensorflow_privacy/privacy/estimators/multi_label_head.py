@@ -13,10 +13,6 @@
 # limitations under the License.
 """Multiclass head for Estimator that allow integration with TF Privacy."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 from tensorflow.python.keras.utils import losses_utils  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator import model_fn

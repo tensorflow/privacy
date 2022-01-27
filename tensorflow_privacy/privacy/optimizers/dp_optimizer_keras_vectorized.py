@@ -14,10 +14,6 @@
 # ==============================================================================
 """Differentially private version of Keras optimizer v2."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.dp_query import gaussian_query

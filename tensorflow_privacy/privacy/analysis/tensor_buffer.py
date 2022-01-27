@@ -13,10 +13,6 @@
 # limitations under the License.
 """A lightweight buffer for maintaining tensors."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow.compat.v1 as tf
 
 

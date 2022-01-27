@@ -13,10 +13,6 @@
 # limitations under the License.
 """Implements DPQuery interface for no privacy average queries."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import tensorflow.compat.v1 as tf
 
 from tensorflow_privacy.privacy.analysis import dp_event

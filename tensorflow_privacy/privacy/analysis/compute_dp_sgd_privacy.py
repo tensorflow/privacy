@@ -28,10 +28,6 @@ Example:
 The output states that DP-SGD with these parameters satisfies (2.92, 1e-5)-DP.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import app
 from absl import flags
 

@@ -14,10 +14,6 @@
 # ==============================================================================
 """Library for computing privacy values for DP-SGD."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import math
 
 from absl import app

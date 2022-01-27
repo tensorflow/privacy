@@ -17,10 +17,6 @@ This module includes classes designed to be compatible with TF1, based on
 `tf.compat.v1.train.Optimizer` and `tf.estimator.Estimator`.
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import sys
 
 # pylint: disable=g-import-not-at-top

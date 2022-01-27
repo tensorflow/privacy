@@ -13,10 +13,6 @@
 # limitations under the License.
 """Training a CNN on MNIST with Keras and the DP SGD optimizer."""
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 from absl import app
 from absl import flags
 from absl import logging
