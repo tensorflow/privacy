@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Measuring exposure for secret sharer attack."""
 
 from typing import Dict, List
+
 import numpy as np
-from scipy.stats import skewnorm
+from scipy import stats
 
 
 def compute_exposure_interpolation(
@@ -72,9 +72,11 @@ def compute_exposure_extrapolation(
     The exposure of every secret measured using extrapolation
   """
   # Fit a skew normal distribution using the perplexities of the references
-  snormal_param = skewnorm.fit(perplexities_reference)
+  snormal_param = stats.skewnorm.fit(perplexities_reference)
 
   # Estimate exposure using the fitted distribution
-  exposures = {r: -np.log2(skewnorm.cdf(perplexities[r], *snormal_param))
-               for r in perplexities.keys()}
+  exposures = {
+      r: -np.log2(stats.skewnorm.cdf(perplexities[r], *snormal_param))
+      for r in perplexities.keys()
+  }
   return exposures

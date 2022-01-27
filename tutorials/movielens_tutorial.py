@@ -23,7 +23,7 @@ from absl import flags
 
 import numpy as np
 import pandas as pd
-from scipy.stats import rankdata
+from scipy import stats
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
 
@@ -148,7 +148,7 @@ def load_movielens():
   print('number of user: ', n_users)
 
   # give unique dense movie index to movieId
-  data['movieIndex'] = rankdata(data['movieId'], method='dense')
+  data['movieIndex'] = stats.rankdata(data['movieId'], method='dense')
   # minus one to reduce the minimum value to 0, which is the start of col index
 
   print('number of ratings:', data.shape[0])

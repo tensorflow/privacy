@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 import numpy as np
-from scipy.stats import skewnorm
+from scipy import stats
 
 from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_extrapolation
 from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_interpolation
@@ -49,18 +49,20 @@ class UtilsTest(absltest.TestCase):
 
   def test_exposure_extrapolation(self):
     parameters = (4, 0, 1)
-    perplexities = {1: skewnorm.rvs(*parameters, size=(2,)),
-                    10: skewnorm.rvs(*parameters, size=(5,))}
-    perplexities_reference = skewnorm.rvs(*parameters, size=(10000,))
+    perplexities = {
+        1: stats.skewnorm.rvs(*parameters, size=(2,)),
+        10: stats.skewnorm.rvs(*parameters, size=(5,))
+    }
+    perplexities_reference = stats.skewnorm.rvs(*parameters, size=(10000,))
     exposures = compute_exposure_extrapolation(perplexities,
                                                perplexities_reference)
-    fitted_parameters = skewnorm.fit(perplexities_reference)
+    fitted_parameters = stats.skewnorm.fit(perplexities_reference)
 
     self.assertEqual(exposures.keys(), perplexities.keys())
     for r in exposures.keys():
       np.testing.assert_almost_equal(
           exposures[r],
-          -np.log2(skewnorm.cdf(perplexities[r], *fitted_parameters)))
+          -np.log2(stats.skewnorm.cdf(perplexities[r], *fitted_parameters)))
 
 
 if __name__ == '__main__':

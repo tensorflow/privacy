@@ -22,7 +22,7 @@ import dataclasses
 from typing import Iterator, List
 
 import numpy as np
-from scipy.stats import rankdata
+from scipy import stats
 from sklearn import metrics
 from sklearn import model_selection
 import tensorflow as tf
@@ -205,7 +205,7 @@ def _get_ranks_for_sequence(logits: np.ndarray,
   """
   sequence_ranks = []
   for logit, label in zip(logits, labels.astype(int)):
-    rank = rankdata(-logit, method='min')[label] - 1.0
+    rank = stats.rankdata(-logit, method='min')[label] - 1.0
     sequence_ranks.append(rank)
 
   return sequence_ranks

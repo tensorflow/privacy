@@ -21,7 +21,7 @@ subsampling).
 
 import numpy as np
 from scipy import optimize
-from scipy.stats import norm
+from scipy import stats
 
 
 def compute_mu_uniform(epoch, noise_multi, n, batch_size):
@@ -30,8 +30,8 @@ def compute_mu_uniform(epoch, noise_multi, n, batch_size):
   t = epoch * n / batch_size
   c = batch_size * np.sqrt(t) / n
   return np.sqrt(2) * c * np.sqrt(
-      np.exp(noise_multi**(-2)) * norm.cdf(1.5 / noise_multi) +
-      3 * norm.cdf(-0.5 / noise_multi) - 2)
+      np.exp(noise_multi**(-2)) * stats.norm.cdf(1.5 / noise_multi) +
+      3 * stats.norm.cdf(-0.5 / noise_multi) - 2)
 
 
 def compute_mu_poisson(epoch, noise_multi, n, batch_size):
@@ -43,8 +43,8 @@ def compute_mu_poisson(epoch, noise_multi, n, batch_size):
 
 def delta_eps_mu(eps, mu):
   """Compute dual between mu-GDP and (epsilon, delta)-DP."""
-  return norm.cdf(-eps / mu +
-                  mu / 2) - np.exp(eps) * norm.cdf(-eps / mu - mu / 2)
+  return stats.norm.cdf(-eps / mu + mu /
+                        2) - np.exp(eps) * stats.norm.cdf(-eps / mu - mu / 2)
 
 
 def eps_from_mu(mu, delta):

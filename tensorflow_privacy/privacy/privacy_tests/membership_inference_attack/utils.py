@@ -15,7 +15,7 @@
 """Utility functions for membership inference attacks."""
 
 import numpy as np
-import scipy.special
+from scipy import special
 
 
 def log_loss(labels: np.ndarray, pred: np.ndarray, small_value=1e-8):
@@ -37,4 +37,4 @@ def log_loss(labels: np.ndarray, pred: np.ndarray, small_value=1e-8):
 
 def log_loss_from_logits(labels: np.ndarray, logits: np.ndarray):
   """Compute the cross entropy loss from logits."""
-  return log_loss(labels, scipy.special.softmax(logits, axis=-1))
+  return log_loss(labels, special.softmax(logits, axis=-1))

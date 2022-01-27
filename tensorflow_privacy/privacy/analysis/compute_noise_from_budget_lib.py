@@ -21,7 +21,7 @@ from __future__ import print_function
 import math
 
 from absl import app
-from scipy.optimize import bisect
+from scipy import optimize
 
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
@@ -69,7 +69,7 @@ def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
     guess_epsilon = apply_dp_sgd_analysis(q, noise, steps, orders, delta)[0]
     return guess_epsilon - target_epsilon
 
-  target_noise = bisect(epsilon_fn, min_noise, max_noise)
+  target_noise = optimize.bisect(epsilon_fn, min_noise, max_noise)
   print(
       'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
       ' over {} steps satisfies'.format(100 * q, target_noise, steps),
