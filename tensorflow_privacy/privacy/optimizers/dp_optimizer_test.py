@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
+import unittest
 
 from absl.testing import parameterized
-import mock
 import numpy as np
 import tensorflow.compat.v1 as tf
 
@@ -175,7 +175,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       # Test standard deviation is close to l2_norm_clip * noise_multiplier.
       self.assertNear(np.std(grads), 2.0 * 4.0 / num_microbatches, 0.5)
 
-  @mock.patch('absl.logging.warning')
+  @unittest.mock.patch('absl.logging.warning')
   def testComputeGradientsOverrideWarning(self, mock_logging):
 
     class SimpleOptimizer(tf.train.Optimizer):

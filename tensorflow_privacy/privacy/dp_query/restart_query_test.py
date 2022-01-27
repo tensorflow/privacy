@@ -11,11 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for `restart_query`."""
-from absl.testing import parameterized
-import mock
 
+import unittest
+
+from absl.testing import parameterized
 import tensorflow as tf
+
 from tensorflow_privacy.privacy.dp_query import restart_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation_query
 
@@ -77,7 +78,7 @@ class TimeRestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
     # the `PeriodicTimeRestartIndicator` to unroll the mock test.
     return_time = tf.Variable(
         1627018868.452365)  # 22:41pm PST 5:41am UTC, July 22, initialize
-    with mock.patch.object(
+    with unittest.mock.patch.object(
         tf, 'timestamp', return_value=return_time) as mock_func:
       time_stamps = [
           1627022468.452365,  # 23:41pm PST 5:41am UTC, July 22, 1 hr, False
