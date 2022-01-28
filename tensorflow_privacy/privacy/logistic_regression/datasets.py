@@ -28,8 +28,9 @@ Includes two types of datasets:
 - MNIST 10-class classification dataset.
 """
 
-from typing import Tuple
 import dataclasses
+from typing import Tuple
+
 import numpy as np
 from sklearn import preprocessing
 import tensorflow as tf

@@ -13,10 +13,11 @@
 # limitations under the License.
 """Generate random sequences."""
 
+import dataclasses
 import itertools
 import string
 from typing import Dict, List
-from dataclasses import dataclass
+
 import numpy as np
 
 
@@ -66,7 +67,7 @@ def generate_random_sequences(vocab: List[str],
   return list(seq)
 
 
-@dataclass
+@dataclasses.dataclass
 class SecretConfig:
   """Configuration of secret for secrets sharer.
 
@@ -85,7 +86,7 @@ class SecretConfig:
   num_references: int
 
 
-@dataclass
+@dataclasses.dataclass
 class Secrets:
   """Secrets for secrets sharer.
 
