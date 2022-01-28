@@ -138,12 +138,12 @@ def make_keras_optimizer_class(cls):
         l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
         num_microbatches: Number of microbatches into which each minibatch is
-          split. Default is `None` which means that number of microbatches is
-          equal to batch size (i.e. each microbatch contains exactly one
+          split. Default is `None` which means that number of microbatches
+          is equal to batch size (i.e. each microbatch contains exactly one
           example). If `gradient_accumulation_steps` is greater than 1 and
           `num_microbatches` is not `None` then the effective number of
-          microbatches is equal to `num_microbatches *
-          gradient_accumulation_steps`.
+          microbatches is equal to
+          `num_microbatches * gradient_accumulation_steps`.
         gradient_accumulation_steps: If greater than 1 then optimizer will be
           accumulating gradients for this number of optimizer steps before
           applying them to update model weights. If this argument is set to 1
@@ -162,13 +162,13 @@ def make_keras_optimizer_class(cls):
       self._was_dp_gradients_called = False
 
     def _create_slots(self, var_list):
-      super()._create_slots(var_list)
+      super()._create_slots(var_list)  # pytype: disable=attribute-error
       if self.gradient_accumulation_steps > 1:
         for var in var_list:
           self.add_slot(var, 'grad_acc')
 
     def _prepare_local(self, var_device, var_dtype, apply_state):
-      super()._prepare_local(var_device, var_dtype, apply_state)
+      super()._prepare_local(var_device, var_dtype, apply_state)  # pytype: disable=attribute-error
       if self.gradient_accumulation_steps > 1:
         apply_update = tf.math.equal(
             tf.math.floormod(self.iterations + 1,
@@ -188,7 +188,7 @@ def make_keras_optimizer_class(cls):
 
         def _update_grad():
           apply_grad_op = super(DPOptimizerClass, self)._resource_apply_dense(
-              grad_acc + grad * coefficients['grad_scaler'], var, apply_state)
+              grad_acc + grad * coefficients['grad_scaler'], var, apply_state)  # pytype: disable=attribute-error
           with tf.control_dependencies([apply_grad_op]):
             return grad_acc.assign(
                 tf.zeros_like(grad_acc),
@@ -203,25 +203,21 @@ def make_keras_optimizer_class(cls):
 
         return tf.cond(coefficients['apply_update'], _update_grad, _accumulate)
       else:
-        return super(DPOptimizerClass,
-                     self)._resource_apply_dense(grad, var, apply_state)
+        return super()._resource_apply_dense(grad, var, apply_state)  # pytype: disable=attribute-error
 
     def _resource_apply_sparse_duplicate_indices(self, *args, **kwargs):
       if self.gradient_accumulation_steps > 1:
         raise NotImplementedError(
             'Sparse gradients are not supported with large batch emulation.')
       else:
-        return super(DPOptimizerClass,
-                     self)._resource_apply_sparse_duplicate_indices(
-                         *args, **kwargs)
+        return super()._resource_apply_sparse_duplicate_indices(*args, **kwargs)  # pytype: disable=attribute-error
 
     def _resource_apply_sparse(self, *args, **kwargs):
       if self.gradient_accumulation_steps > 1:
         raise NotImplementedError(
             'Sparse gradients are not supported with large batch emulation.')
       else:
-        return super(DPOptimizerClass,
-                     self)._resource_apply_sparse(*args, **kwargs)
+        return super()._resource_apply_sparse(*args, **kwargs)  # pytype: disable=attribute-error
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP-SGD version of base class method."""
@@ -338,7 +334,7 @@ def make_keras_optimizer_class(cls):
       Returns:
           Python dictionary.
       """
-      config = super(DPOptimizerClass, self).get_config()
+      config = super().get_config()
       config.update({
           'l2_norm_clip': self._l2_norm_clip,
           'noise_multiplier': self._noise_multiplier,
@@ -354,7 +350,7 @@ def make_keras_optimizer_class(cls):
           'training is not differentially private. It may be the case that '
           'you need to upgrade to TF 2.4 or higher to use this particular '
           'optimizer.')
-      return super(DPOptimizerClass, self).apply_gradients(*args, **kwargs)
+      return super().apply_gradients(*args, **kwargs)
 
   return DPOptimizerClass
 

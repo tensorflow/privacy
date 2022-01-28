@@ -15,7 +15,7 @@
 
 import collections
 import copy
-from typing import List
+from typing import List, Optional
 
 import numpy as np
 
@@ -90,8 +90,9 @@ def _slice_by_classification_correctness(data: AttackInputData,
   return _slice_data_by_indices(data, idx_train, idx_test)
 
 
-def get_single_slice_specs(slicing_spec: SlicingSpec,
-                           num_classes: int = None) -> List[SingleSliceSpec]:
+def get_single_slice_specs(
+    slicing_spec: SlicingSpec,
+    num_classes: Optional[int] = None) -> List[SingleSliceSpec]:
   """Returns slices of data according to slicing_spec."""
   result = []
 

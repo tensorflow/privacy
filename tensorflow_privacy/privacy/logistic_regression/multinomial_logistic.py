@@ -27,12 +27,14 @@ the algorithm of Abadi et al.: https://arxiv.org/pdf/1607.00133.pdf%20.
 
 import math
 from typing import List, Optional, Tuple
+
 import numpy as np
 import tensorflow as tf
-from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy import compute_dp_sgd_privacy as compute_epsilon
+from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
+
 from differential_privacy.python.accounting import common
 
 
@@ -170,9 +172,13 @@ def compute_dpsgd_noise_multiplier(num_train: int,
   """
   search_parameters = common.BinarySearchParameters(
       lower_bound=0, upper_bound=math.inf, initial_guess=1, tolerance=tolerance)
-  return common.inverse_monotone_function(
-      lambda x: compute_epsilon(num_train, batch_size, x, epochs, delta)[0],
-      epsilon, search_parameters)
+
+  def _func(x):
+    result = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy(
+        num_train, batch_size, x, epochs, delta)
+    return result[0]
+
+  return common.inverse_monotone_function(_func, epsilon, search_parameters)
 
 
 def logistic_dpsgd(train_dataset: datasets.RegressionDataset,

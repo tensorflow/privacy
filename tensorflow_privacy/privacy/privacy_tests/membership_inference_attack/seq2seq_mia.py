@@ -19,14 +19,13 @@ and the logistic regression membership inference attack.
 """
 
 import dataclasses
-from typing import Iterator, List
+from typing import Iterator, List, Optional, Tuple
 
 import numpy as np
 from scipy import stats
 from sklearn import metrics
 from sklearn import model_selection
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
@@ -51,15 +50,15 @@ class Seq2SeqAttackInputData:
 
   This includes only the data, and not configuration.
   """
-  logits_train: Iterator[np.ndarray] = None
-  logits_test: Iterator[np.ndarray] = None
+  logits_train: Optional[Iterator[np.ndarray]] = None
+  logits_test: Optional[Iterator[np.ndarray]] = None
 
   # Contains ground-truth token indices for the target sequences.
-  labels_train: Iterator[np.ndarray] = None
-  labels_test: Iterator[np.ndarray] = None
+  labels_train: Optional[Iterator[np.ndarray]] = None
+  labels_test: Optional[Iterator[np.ndarray]] = None
 
   # Size of the target sequence vocabulary.
-  vocab_size: int = None
+  vocab_size: Optional[int] = None
 
   # Train, test size = number of batches in training, test set.
   # These values need to be supplied by the user as logits, labels
@@ -126,7 +125,7 @@ class Seq2SeqAttackInputData:
 
 def _get_attack_features_and_metadata(
     logits: Iterator[np.ndarray],
-    labels: Iterator[np.ndarray]) -> (np.ndarray, float, float):
+    labels: Iterator[np.ndarray]) -> Tuple[np.ndarray, float, float]:
   """Returns the average rank of tokens per batch of sequences and the loss.
 
   Args:
@@ -212,7 +211,7 @@ def _get_ranks_for_sequence(logits: np.ndarray,
 
 
 def _get_batch_loss_metrics(batch_logits: np.ndarray,
-                            batch_labels: np.ndarray) -> (float, int):
+                            batch_labels: np.ndarray) -> Tuple[float, int]:
   """Returns the loss, number of sequences for a batch.
 
   Args:
@@ -234,12 +233,13 @@ def _get_batch_loss_metrics(batch_logits: np.ndarray,
       batch_loss += tf.reduce_sum(sequence_loss)
 
   if not tf.executing_eagerly():
-    batch_loss = batch_loss.eval(session=tf.compat.v1.Session())
+    session = tf.compat.v1.Session()
+    batch_loss = batch_loss.eval(session)  # pytype: disable=attribute-error
   return batch_loss / batch_length, batch_length
 
 
-def _get_batch_accuracy_metrics(batch_logits: np.ndarray,
-                                batch_labels: np.ndarray) -> (float, float):
+def _get_batch_accuracy_metrics(
+    batch_logits: np.ndarray, batch_labels: np.ndarray) -> Tuple[float, float]:
   """Returns the number of correct predictions, total number of predictions for a batch.
 
   Args:
@@ -261,8 +261,8 @@ def _get_batch_accuracy_metrics(batch_logits: np.ndarray,
     batch_total_preds += len(sequence_labels)
 
   if not tf.executing_eagerly():
-    batch_correct_preds = batch_correct_preds.eval(
-        session=tf.compat.v1.Session())
+    session = tf.compat.v1.Session()
+    batch_correct_preds = batch_correct_preds.eval(session)  # pytype: disable=attribute-error
   return batch_correct_preds, batch_total_preds
 
 

@@ -14,6 +14,7 @@
 """Trained models for membership inference attacks."""
 
 import dataclasses
+from typing import Optional
 
 import numpy as np
 from sklearn import ensemble
@@ -33,15 +34,15 @@ class AttackerData:
   This includes only the data, and not configuration.
   """
 
-  features_train: np.ndarray = None
+  features_train: Optional[np.ndarray] = None
   # element-wise boolean array denoting if the example was part of training.
-  is_training_labels_train: np.ndarray = None
+  is_training_labels_train: Optional[np.ndarray] = None
 
-  features_test: np.ndarray = None
+  features_test: Optional[np.ndarray] = None
   # element-wise boolean array denoting if the example was part of training.
-  is_training_labels_test: np.ndarray = None
+  is_training_labels_test: Optional[np.ndarray] = None
 
-  data_size: DataSize = None
+  data_size: Optional[DataSize] = None
 
 
 def create_attacker_data(attack_input_data: AttackInputData,

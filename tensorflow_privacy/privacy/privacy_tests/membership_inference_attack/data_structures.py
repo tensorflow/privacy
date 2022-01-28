@@ -19,7 +19,7 @@ import enum
 import glob
 import os
 import pickle
-from typing import Any, Iterable, Union
+from typing import Any, Iterable, MutableSequence, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -47,8 +47,8 @@ class SingleSliceSpec:
 
   When feature is None, it means that the slice is the entire dataset.
   """
-  feature: SlicingFeature = None
-  value: Any = None
+  feature: Optional[SlicingFeature] = None
+  value: Optional[Any] = None
 
   @property
   def entire_dataset(self):
@@ -172,29 +172,29 @@ class AttackInputData:
   This includes only the data, and not configuration.
   """
 
-  logits_train: np.ndarray = None
-  logits_test: np.ndarray = None
+  logits_train: Optional[np.ndarray] = None
+  logits_test: Optional[np.ndarray] = None
 
   # Predicted probabilities for each class. They can be derived from logits,
   # so they can be set only if logits are not explicitly provided.
-  probs_train: np.ndarray = None
-  probs_test: np.ndarray = None
+  probs_train: Optional[np.ndarray] = None
+  probs_test: Optional[np.ndarray] = None
 
   # Contains ground-truth classes. Classes are assumed to be integers starting
   # from 0.
-  labels_train: np.ndarray = None
-  labels_test: np.ndarray = None
+  labels_train: Optional[np.ndarray] = None
+  labels_test: Optional[np.ndarray] = None
 
   # Explicitly specified loss. If provided, this is used instead of deriving
   # loss from logits and labels
-  loss_train: np.ndarray = None
-  loss_test: np.ndarray = None
+  loss_train: Optional[np.ndarray] = None
+  loss_test: Optional[np.ndarray] = None
 
   # Explicitly specified prediction entropy. If provided, this is used instead
   # of deriving entropy from logits and labels
   # (https://arxiv.org/pdf/2003.10595.pdf by Song and Mittal).
-  entropy_train: np.ndarray = None
-  entropy_test: np.ndarray = None
+  entropy_train: Optional[np.ndarray] = None
+  entropy_test: Optional[np.ndarray] = None
 
   @property
   def num_classes(self):
@@ -387,7 +387,7 @@ class AttackInputData:
     return '\n'.join(result)
 
 
-def _append_array_shape(arr: np.array, arr_name: str, result):
+def _append_array_shape(arr: Optional[np.ndarray], arr_name: str, result):
   if arr is not None:
     result.append(' %s with shape: %s,' % (arr_name, arr.shape))
 
@@ -465,11 +465,11 @@ class SingleAttackResult:
 
   # Membership scores for the training set samples. For a perfect attacker,
   # all training samples will have higher scores than test samples.
-  membership_scores_train: np.ndarray = None
+  membership_scores_train: Optional[np.ndarray] = None
 
   # Membership scores for the test set samples. For a perfect attacker, all
   # test set samples will have lower scores than the training set samples.
-  membership_scores_test: np.ndarray = None
+  membership_scores_test: Optional[np.ndarray] = None
 
   def get_attacker_advantage(self):
     return self.roc_curve.get_attacker_advantage()
@@ -601,14 +601,14 @@ class PrivacyReportMetadata:
 
   Used to create a privacy report based on AttackResults.
   """
-  accuracy_train: float = None
-  accuracy_test: float = None
+  accuracy_train: Optional[float] = None
+  accuracy_test: Optional[float] = None
 
-  loss_train: float = None
-  loss_test: float = None
+  loss_train: Optional[float] = None
+  loss_test: Optional[float] = None
 
   model_variant_label: str = 'Default model variant'
-  epoch_num: int = None
+  epoch_num: Optional[int] = None
 
 
 class AttackResultsDFColumns(enum.Enum):
@@ -627,9 +627,9 @@ class AttackResultsDFColumns(enum.Enum):
 @dataclasses.dataclass
 class AttackResults:
   """Results from running multiple attacks."""
-  single_attack_results: Iterable[SingleAttackResult]
+  single_attack_results: MutableSequence[SingleAttackResult]
 
-  privacy_report_metadata: PrivacyReportMetadata = None
+  privacy_report_metadata: Optional[PrivacyReportMetadata] = None
 
   def calculate_pd_dataframe(self):
     """Returns all metrics as a Pandas DataFrame."""
@@ -760,7 +760,7 @@ class AttackResults:
 @dataclasses.dataclass
 class AttackResultsCollection:
   """A collection of AttackResults."""
-  attack_results_list: Iterable[AttackResults]
+  attack_results_list: MutableSequence[AttackResults]
 
   def append(self, attack_results: AttackResults):
     self.attack_results_list.append(attack_results)

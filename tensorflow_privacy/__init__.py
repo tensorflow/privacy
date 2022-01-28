@@ -85,12 +85,4 @@ else:
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasSGDOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import make_vectorized_keras_optimizer_class
 
-  try:
-    from tensorflow_privacy.privacy.bolt_on.models import BoltOnModel
-    from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn
-    from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexMixin
-    from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexBinaryCrossentropy
-    from tensorflow_privacy.privacy.bolt_on.losses import StrongConvexHuber
-  except ImportError:
-    # module `bolt_on` not yet available in this version of TF Privacy
-    pass
+  # module `bolt_on` not yet available in this version of TF Privacy
