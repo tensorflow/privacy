@@ -120,7 +120,23 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
   def test_raises_with_non_sum(self):
 
     class NonSumDPQuery(dp_query.DPQuery):
-      pass
+
+      def initial_sample_state(self, template=None):
+        del template  # Unused.
+        return None
+
+      def accumulate_preprocessed_record(self, sample_state,
+                                         preprocessed_record):
+        del sample_state, preprocessed_record  # Unused.
+        return None
+
+      def merge_sample_states(self, sample_state_1, sample_state_2):
+        del sample_state_1, sample_state_2  # Unused.
+        return None
+
+      def get_noised_result(self, sample_state, global_state):
+        del sample_state, global_state  # Unused.
+        return None
 
     non_sum_query = NonSumDPQuery()
 
@@ -137,6 +153,23 @@ class NestedQueryTest(tf.test.TestCase, parameterized.TestCase):
 
       def __init__(self, metric_val):
         self._metric_val = metric_val
+
+      def initial_sample_state(self, template=None):
+        del template  # Unused.
+        return None
+
+      def accumulate_preprocessed_record(self, sample_state,
+                                         preprocessed_record):
+        del sample_state, preprocessed_record  # Unused.
+        return None
+
+      def merge_sample_states(self, sample_state_1, sample_state_2):
+        del sample_state_1, sample_state_2  # Unused.
+        return None
+
+      def get_noised_result(self, sample_state, global_state):
+        del sample_state, global_state  # Unused.
+        return None
 
       def derive_metrics(self, global_state):
         return collections.OrderedDict(metric=self._metric_val)

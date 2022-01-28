@@ -47,7 +47,7 @@ import collections
 import tensorflow.compat.v1 as tf
 
 
-class DPQuery(object):
+class DPQuery(metaclass=abc.ABCMeta):
   """Interface for differentially private query mechanisms.
 
   Differential privacy is achieved by processing records to bound sensitivity,
@@ -92,8 +92,6 @@ class DPQuery(object):
     # Do something with result and metrics...
   ```
   """
-
-  __metaclass__ = abc.ABCMeta
 
   def initial_global_state(self):
     """Returns the initial global state for the DPQuery.
