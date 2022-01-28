@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_privacy.privacy.logistic_regression.multinomial_logistic."""
 
 import unittest
+
 from absl.testing import parameterized
-from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy import compute_dp_sgd_privacy
+from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import multinomial_logistic
 
@@ -49,12 +49,10 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
                                           epochs, batch_size, tolerance):
     noise_multiplier = multinomial_logistic.compute_dpsgd_noise_multiplier(
         num_train, epsilon, delta, epochs, batch_size, tolerance)
-    epsilon_lower_bound = compute_dp_sgd_privacy(num_train, batch_size,
-                                                 noise_multiplier + tolerance,
-                                                 epochs, delta)[0]
-    epsilon_upper_bound = compute_dp_sgd_privacy(num_train, batch_size,
-                                                 noise_multiplier - tolerance,
-                                                 epochs, delta)[0]
+    epsilon_lower_bound = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy(
+        num_train, batch_size, noise_multiplier + tolerance, epochs, delta)[0]
+    epsilon_upper_bound = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy(
+        num_train, batch_size, noise_multiplier - tolerance, epochs, delta)[0]
     self.assertLess(epsilon_lower_bound, epsilon)
     self.assertLess(epsilon, epsilon_upper_bound)
 

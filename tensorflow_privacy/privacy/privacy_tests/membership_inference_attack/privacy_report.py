@@ -13,10 +13,10 @@
 # limitations under the License.
 """Plotting code for ML Privacy Reports."""
 
-from typing import Iterable
+from typing import Iterable, Sequence
+
 import matplotlib.pyplot as plt
 import pandas as pd
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsDFColumns
@@ -30,7 +30,7 @@ TRAIN_ACCURACY_STR = 'Train accuracy'
 
 
 def plot_by_epochs(results: AttackResultsCollection,
-                   privacy_metrics: Iterable[PrivacyMetric]) -> plt.Figure:
+                   privacy_metrics: Sequence[PrivacyMetric]) -> plt.Figure:
   """Plots privacy vulnerabilities vs epoch numbers.
 
   In case multiple privacy metrics are specified, the plot will feature
@@ -55,7 +55,7 @@ def plot_by_epochs(results: AttackResultsCollection,
 
 
 def plot_privacy_vs_accuracy(results: AttackResultsCollection,
-                             privacy_metrics: Iterable[PrivacyMetric]):
+                             privacy_metrics: Sequence[PrivacyMetric]):
   """Plots privacy vulnerabilities vs accuracy plots.
 
   In case multiple privacy metrics are specified, the plot will feature
@@ -105,7 +105,7 @@ def _calculate_combined_df_with_metadata(results: Iterable[AttackResults]):
 
 def _generate_subplots(all_results_df: pd.DataFrame, x_axis_metric: str,
                        figure_title: str,
-                       privacy_metrics: Iterable[PrivacyMetric]):
+                       privacy_metrics: Sequence[PrivacyMetric]):
   """Create one subplot per privacy metric for a specified x_axis_metric."""
   fig, axes = plt.subplots(
       1, len(privacy_metrics), figsize=(5 * len(privacy_metrics) + 3, 5))

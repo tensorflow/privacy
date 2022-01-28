@@ -24,12 +24,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn import metrics
-from tensorflow import keras
-from tensorflow.keras import layers
-from tensorflow.keras.utils import to_categorical
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
@@ -91,31 +87,32 @@ num_clusters = int(round(np.max(training_labels))) + 1
 
 # Hint: play with the number of layers to achieve different level of
 # over-fitting and observe its effects on membership inference performance.
-three_layer_model = keras.models.Sequential([
-    layers.Dense(300, activation="relu"),
-    layers.Dense(300, activation="relu"),
-    layers.Dense(300, activation="relu"),
-    layers.Dense(num_clusters, activation="relu"),
-    layers.Softmax()
+three_layer_model = tf.keras.Sequential([
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(num_clusters, activation="relu"),
+    tf.keras.layers.Softmax()
 ])
 three_layer_model.compile(
     optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
-two_layer_model = keras.models.Sequential([
-    layers.Dense(300, activation="relu"),
-    layers.Dense(300, activation="relu"),
-    layers.Dense(num_clusters, activation="relu"),
-    layers.Softmax()
+two_layer_model = tf.keras.Sequential([
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(300, activation="relu"),
+    tf.keras.layers.Dense(num_clusters, activation="relu"),
+    tf.keras.layers.Softmax()
 ])
 two_layer_model.compile(
     optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
 
 
 def crossentropy(true_labels, predictions):
-  return keras.backend.eval(
-      keras.losses.binary_crossentropy(
-          keras.backend.variable(to_categorical(true_labels, num_clusters)),
-          keras.backend.variable(predictions)))
+  return tf.keras.backend.eval(
+      tf.keras.metrics.binary_crossentropy(
+          tf.keras.backend.variable(
+              tf.keras.utils.to_categorical(true_labels, num_clusters)),
+          tf.keras.backend.variable(predictions)))
 
 
 def main(unused_argv):
@@ -131,9 +128,10 @@ def main(unused_argv):
     for i in range(1, 6):
       models[model_name].fit(
           training_features,
-          to_categorical(training_labels, num_clusters),
+          tf.keras.utils.to_categorical(training_labels, num_clusters),
           validation_data=(test_features,
-                           to_categorical(test_labels, num_clusters)),
+                           tf.keras.utils.to_categorical(
+                               test_labels, num_clusters)),
           batch_size=64,
           epochs=num_epochs,
           shuffle=True)

@@ -20,7 +20,6 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 import mnist_dpsgd_tutorial_common as common
