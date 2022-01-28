@@ -76,7 +76,7 @@ def make_dp_model_class(cls):
             **kwargs: These will be passed on to the base class `__init__`
               method.
       """
-      super(DPModelClass, self).__init__(*args, **kwargs)
+      super().__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
 

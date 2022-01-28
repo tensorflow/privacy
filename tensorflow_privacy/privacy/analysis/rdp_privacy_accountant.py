@@ -527,7 +527,7 @@ class RdpAccountant(privacy_accountant.PrivacyAccountant):
       orders: Optional[Collection[float]] = None,
       neighboring_relation: NeighborRel = NeighborRel.ADD_OR_REMOVE_ONE,
   ):
-    super(RdpAccountant, self).__init__(neighboring_relation)
+    super().__init__(neighboring_relation)
     if orders is None:
       # Default orders chosen to give good coverage for Gaussian mechanism in
       # the privacy regime of interest. In the future, more orders might be

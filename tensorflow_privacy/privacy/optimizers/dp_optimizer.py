@@ -115,7 +115,7 @@ def make_optimizer_class(cls):
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
-      super(DPOptimizerClass, self).__init__(*args, **kwargs)
+      super().__init__(*args, **kwargs)
       self._dp_sum_query = dp_sum_query
       self._num_microbatches = num_microbatches
       self._global_state = None

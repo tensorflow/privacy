@@ -244,7 +244,7 @@ class SingleMembershipProbabilityResultTest(absltest.TestCase):
 class AttackResultsCollectionTest(absltest.TestCase):
 
   def __init__(self, *args, **kwargs):
-    super(AttackResultsCollectionTest, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
     self.some_attack_result = SingleAttackResult(
         slice_spec=SingleSliceSpec(None),

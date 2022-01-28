@@ -32,7 +32,7 @@ class DPBinaryClassHead(tf.estimator.BinaryClassHead):
                loss_reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
                loss_fn=None,
                name=None):
-    super(DPBinaryClassHead, self).__init__(
+    super().__init__(
         weight_column=weight_column,
         thresholds=thresholds,
         label_vocabulary=label_vocabulary,

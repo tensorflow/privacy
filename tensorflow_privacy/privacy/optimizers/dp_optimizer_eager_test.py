@@ -24,7 +24,7 @@ class DPOptimizerEagerTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     tf.enable_eager_execution()
-    super(DPOptimizerEagerTest, self).setUp()
+    super().setUp()
 
   def _loss_fn(self, val0, val1):
     return 0.5 * tf.reduce_sum(

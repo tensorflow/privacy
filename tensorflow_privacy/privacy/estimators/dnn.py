@@ -61,7 +61,7 @@ class DNNClassifier(tf.estimator.Estimator):
           config=config,
           batch_norm=batch_norm)
 
-    super(DNNClassifier, self).__init__(
+    super().__init__(
         model_fn=_model_fn,
         model_dir=model_dir,
         config=config,

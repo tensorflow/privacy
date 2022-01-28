@@ -28,7 +28,7 @@ class TestLoss(losses.Loss, StrongConvexMixin):
   """Test loss function for testing BoltOn model."""
 
   def __init__(self, reg_lambda, c_arg, radius_constant, name='test'):
-    super(TestLoss, self).__init__(name=name)
+    super().__init__(name=name)
     self.reg_lambda = reg_lambda
     self.C = c_arg  # pylint: disable=invalid-name
     self.radius_constant = radius_constant
@@ -103,7 +103,7 @@ class TestOptimizer(OptimizerV2):
   """Test optimizer used for testing BoltOn model."""
 
   def __init__(self):
-    super(TestOptimizer, self).__init__('test')
+    super().__init__('test')
 
   def compute_gradients(self):
     return 0

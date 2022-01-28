@@ -117,7 +117,7 @@ def make_vectorized_keras_optimizer_class(cls):
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
-      super(DPOptimizerClass, self).__init__(*args, **kwargs)
+      super().__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
@@ -204,7 +204,7 @@ def make_vectorized_keras_optimizer_class(cls):
       def process_microbatch(microbatch_loss):
         """Compute clipped grads for one microbatch."""
         mean_loss = tf.reduce_mean(input_tensor=microbatch_loss)
-        grads = super(DPOptimizerClass, self).get_gradients(mean_loss, params)
+        grads = cls.get_gradients(self, mean_loss, params)
         grads_list = [
             g if g is not None else tf.zeros_like(v)
             for (g, v) in zip(list(grads), params)

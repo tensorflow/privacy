@@ -138,10 +138,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     self.radius_constant = radius_constant
     self.dtype = dtype
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
-    super(StrongConvexHuber, self).__init__(
-        name="strongconvexhuber",
-        reduction=reduction,
-    )
+    super().__init__(reduction=reduction, name="strongconvexhuber")
 
   def call(self, y_true, y_pred):
     """Computes loss.
@@ -248,7 +245,7 @@ class StrongConvexBinaryCrossentropy(
     self.dtype = dtype
     self.C = c_arg  # pylint: disable=invalid-name
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
-    super(StrongConvexBinaryCrossentropy, self).__init__(
+    super().__init__(
         reduction=reduction,
         name="strongconvexbinarycrossentropy",
         from_logits=from_logits,

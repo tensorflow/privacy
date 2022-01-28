@@ -144,7 +144,7 @@ bolt.fit_generator(generator,
 class TestModel(tf.keras.Model):  # pylint: disable=abstract-method
 
   def __init__(self, reg_layer, number_of_outputs=1):
-    super(TestModel, self).__init__(name='test')
+    super().__init__(name='test')
     self.output_layer = tf.keras.layers.Dense(number_of_outputs,
                                               kernel_regularizer=reg_layer)
 

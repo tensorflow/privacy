@@ -45,8 +45,7 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
 
   def initial_sample_state(self, template):
     """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
-    return (super(NoPrivacyAverageQuery,
-                  self).initial_sample_state(template), tf.constant(0.0))
+    return super().initial_sample_state(template), tf.constant(0.0)
 
   def preprocess_record(self, params, record, weight=1):
     """Implements `tensorflow_privacy.DPQuery.preprocess_record`.

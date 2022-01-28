@@ -138,4 +138,4 @@ class NestedSumQuery(NestedQuery, dp_query.SumAggregationDPQuery):
 
     tree.map_structure(check, queries)
 
-    super(NestedSumQuery, self).__init__(queries)
+    super().__init__(queries)

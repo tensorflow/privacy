@@ -29,7 +29,7 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 class PrivacyReportTest(absltest.TestCase):
 
   def __init__(self, *args, **kwargs):
-    super(PrivacyReportTest, self).__init__(*args, **kwargs)
+    super().__init__(*args, **kwargs)
 
     # Classifier that achieves an AUC of 0.5.
     self.imperfect_classifier_result = SingleAttackResult(

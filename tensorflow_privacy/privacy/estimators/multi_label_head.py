@@ -36,7 +36,7 @@ class DPMultiLabelHead(tf.estimator.MultiLabelHead):
                name=None):
     if loss_reduction == tf.keras.losses.Reduction.NONE:
       loss_reduction = tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
-    super(DPMultiLabelHead, self).__init__(
+    super().__init__(
         n_classes=n_classes,
         weight_column=weight_column,
         thresholds=thresholds,

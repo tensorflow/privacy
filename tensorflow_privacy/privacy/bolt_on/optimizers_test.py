@@ -51,7 +51,7 @@ class TestModel(Model):  # pylint: disable=abstract-method
       input_shape:
       init_value:
     """
-    super(TestModel, self).__init__(name='bolton', dynamic=False)
+    super().__init__(name='bolton', dynamic=False)
     self.n_outputs = n_outputs
     self.layer_input_shape = input_shape
     self.output_layer = tf.keras.layers.Dense(
@@ -142,7 +142,7 @@ class TestOptimizer(OptimizerV2):
   """Optimizer used for testing the BoltOn optimizer."""
 
   def __init__(self):
-    super(TestOptimizer, self).__init__('test')
+    super().__init__('test')
     self.not_private = 'test'
     self.iterations = tf.constant(1, dtype=tf.float32)
     self._iterations = tf.constant(1, dtype=tf.float32)

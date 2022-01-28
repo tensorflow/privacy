@@ -32,7 +32,7 @@ class DPMultiClassHead(tf.estimator.MultiClassHead):
                loss_reduction=losses_utils.ReductionV2.SUM_OVER_BATCH_SIZE,
                loss_fn=None,
                name=None):
-    super(DPMultiClassHead, self).__init__(
+    super().__init__(
         n_classes=n_classes,
         weight_column=weight_column,
         label_vocabulary=label_vocabulary,

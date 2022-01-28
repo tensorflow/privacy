@@ -100,7 +100,7 @@ def make_vectorized_optimizer_class(cls):
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
-      super(DPOptimizerClass, self).__init__(*args, **kwargs)
+      super().__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches

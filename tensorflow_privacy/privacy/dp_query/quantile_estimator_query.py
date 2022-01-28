@@ -198,7 +198,7 @@ class NoPrivacyQuantileEstimatorQuery(QuantileEstimatorQuery):
         updating is preferred for non-negative records like vector norms that
         could potentially be very large or very close to zero.
     """
-    super(NoPrivacyQuantileEstimatorQuery, self).__init__(
+    super().__init__(
         initial_estimate,
         target_quantile,
         learning_rate,

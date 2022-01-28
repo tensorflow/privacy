@@ -151,7 +151,7 @@ def make_keras_optimizer_class(cls):
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
-      super(DPOptimizerClass, self).__init__(*args, **kwargs)
+      super().__init__(*args, **kwargs)
       self.gradient_accumulation_steps = gradient_accumulation_steps
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
@@ -162,14 +162,13 @@ def make_keras_optimizer_class(cls):
       self._was_dp_gradients_called = False
 
     def _create_slots(self, var_list):
-      super(DPOptimizerClass, self)._create_slots(var_list)
+      super()._create_slots(var_list)
       if self.gradient_accumulation_steps > 1:
         for var in var_list:
           self.add_slot(var, 'grad_acc')
 
     def _prepare_local(self, var_device, var_dtype, apply_state):
-      super(DPOptimizerClass, self)._prepare_local(
-          var_device, var_dtype, apply_state)
+      super()._prepare_local(var_device, var_dtype, apply_state)
       if self.gradient_accumulation_steps > 1:
         apply_update = tf.math.equal(
             tf.math.floormod(self.iterations + 1,
