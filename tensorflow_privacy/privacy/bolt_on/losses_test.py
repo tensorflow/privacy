@@ -40,21 +40,29 @@ def captured_output():
 
 class StrongConvexMixinTests(keras_parameterized.TestCase):
   """Tests for the StrongConvexMixin."""
-  @parameterized.named_parameters([
-      {'testcase_name': 'beta not implemented',
-       'fn': 'beta',
-       'args': [1]},
-      {'testcase_name': 'gamma not implemented',
-       'fn': 'gamma',
-       'args': []},
-      {'testcase_name': 'lipchitz not implemented',
-       'fn': 'lipchitz_constant',
-       'args': [1]},
-      {'testcase_name': 'radius not implemented',
-       'fn': 'radius',
-       'args': []},
-  ])
 
+  @parameterized.named_parameters([
+      {
+          'testcase_name': 'beta not implemented',
+          'fn': 'beta',
+          'args': [1]
+      },
+      {
+          'testcase_name': 'gamma not implemented',
+          'fn': 'gamma',
+          'args': []
+      },
+      {
+          'testcase_name': 'lipchitz not implemented',
+          'fn': 'lipchitz_constant',
+          'args': [1]
+      },
+      {
+          'testcase_name': 'radius not implemented',
+          'fn': 'radius',
+          'args': []
+      },
+  ])
   def test_not_implemented(self, fn, args):
     """Test that the given fn's are not implemented on the mixin.
 
@@ -67,9 +75,11 @@ class StrongConvexMixinTests(keras_parameterized.TestCase):
       getattr(loss, fn, None)(*args)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'radius not implemented',
-       'fn': 'kernel_regularizer',
-       'args': []},
+      {
+          'testcase_name': 'radius not implemented',
+          'fn': 'kernel_regularizer',
+          'args': []
+      },
   ])
   def test_return_none(self, fn, args):
     """Test that fn of Mixin returns None.
@@ -87,10 +97,11 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   """tests for BinaryCrossesntropy StrongConvex loss."""
 
   @parameterized.named_parameters([
-      {'testcase_name': 'normal',
-       'reg_lambda': 1,
-       'C': 1,
-       'radius_constant': 1
+      {
+          'testcase_name': 'normal',
+          'reg_lambda': 1,
+          'C': 1,
+          'radius_constant': 1
       },  # pylint: disable=invalid-name
   ])
   def test_init_params(self, reg_lambda, C, radius_constant):
@@ -106,24 +117,29 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
     self.assertIsInstance(loss, StrongConvexBinaryCrossentropy)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'negative c',
-       'reg_lambda': 1,
-       'C': -1,
-       'radius_constant': 1
+      {
+          'testcase_name': 'negative c',
+          'reg_lambda': 1,
+          'C': -1,
+          'radius_constant': 1
       },
-      {'testcase_name': 'negative radius',
-       'reg_lambda': 1,
-       'C': 1,
-       'radius_constant': -1
+      {
+          'testcase_name': 'negative radius',
+          'reg_lambda': 1,
+          'C': 1,
+          'radius_constant': -1
       },
-      {'testcase_name': 'negative lambda',
-       'reg_lambda': -1,
-       'C': 1,
-       'radius_constant': 1
+      {
+          'testcase_name': 'negative lambda',
+          'reg_lambda': -1,
+          'C': 1,
+          'radius_constant': 1
       },  # pylint: disable=invalid-name
   ])
   def test_bad_init_params(self, reg_lambda, C, radius_constant):
-    """Test invalid domain for given params. Should return ValueError.
+    """Test invalid domain for given params.
+
+    Should return ValueError.
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
@@ -137,25 +153,29 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
       # [] for compatibility with tensorflow loss calculation
-      {'testcase_name': 'both positive',
-       'logits': [10000],
-       'y_true': [1],
-       'result': 0,
+      {
+          'testcase_name': 'both positive',
+          'logits': [10000],
+          'y_true': [1],
+          'result': 0,
       },
-      {'testcase_name': 'positive gradient negative logits',
-       'logits': [-10000],
-       'y_true': [1],
-       'result': 10000,
+      {
+          'testcase_name': 'positive gradient negative logits',
+          'logits': [-10000],
+          'y_true': [1],
+          'result': 10000,
       },
-      {'testcase_name': 'positivee gradient positive logits',
-       'logits': [10000],
-       'y_true': [0],
-       'result': 10000,
+      {
+          'testcase_name': 'positivee gradient positive logits',
+          'logits': [10000],
+          'y_true': [0],
+          'result': 10000,
       },
-      {'testcase_name': 'both negative',
-       'logits': [-10000],
-       'y_true': [0],
-       'result': 0
+      {
+          'testcase_name': 'both negative',
+          'logits': [-10000],
+          'y_true': [0],
+          'result': 0
       },
   ])
   def test_calculation(self, logits, y_true, result):
@@ -173,29 +193,33 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
     self.assertEqual(loss.numpy(), result)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'beta',
-       'init_args': [1, 1, 1],
-       'fn': 'beta',
-       'args': [1],
-       'result': tf.constant(2, dtype=tf.float32)
+      {
+          'testcase_name': 'beta',
+          'init_args': [1, 1, 1],
+          'fn': 'beta',
+          'args': [1],
+          'result': tf.constant(2, dtype=tf.float32)
       },
-      {'testcase_name': 'gamma',
-       'fn': 'gamma',
-       'init_args': [1, 1, 1],
-       'args': [],
-       'result': tf.constant(1, dtype=tf.float32),
+      {
+          'testcase_name': 'gamma',
+          'fn': 'gamma',
+          'init_args': [1, 1, 1],
+          'args': [],
+          'result': tf.constant(1, dtype=tf.float32),
       },
-      {'testcase_name': 'lipchitz constant',
-       'fn': 'lipchitz_constant',
-       'init_args': [1, 1, 1],
-       'args': [1],
-       'result': tf.constant(2, dtype=tf.float32),
+      {
+          'testcase_name': 'lipchitz constant',
+          'fn': 'lipchitz_constant',
+          'init_args': [1, 1, 1],
+          'args': [1],
+          'result': tf.constant(2, dtype=tf.float32),
       },
-      {'testcase_name': 'kernel regularizer',
-       'fn': 'kernel_regularizer',
-       'init_args': [1, 1, 1],
-       'args': [],
-       'result': L1L2(l2=0.5),
+      {
+          'testcase_name': 'kernel regularizer',
+          'fn': 'kernel_regularizer',
+          'init_args': [1, 1, 1],
+          'args': [],
+          'result': L1L2(l2=0.5),
       },
   ])
   def test_fns(self, init_args, fn, args, result):
@@ -218,11 +242,12 @@ class BinaryCrossesntropyTests(keras_parameterized.TestCase):
     self.assertEqual(expected, result)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'label_smoothing',
-       'init_args': [1, 1, 1, True, 0.1],
-       'fn': None,
-       'args': None,
-       'print_res': 'The impact of label smoothing on privacy is unknown.'
+      {
+          'testcase_name': 'label_smoothing',
+          'init_args': [1, 1, 1, True, 0.1],
+          'fn': None,
+          'args': None,
+          'print_res': 'The impact of label smoothing on privacy is unknown.'
       },
   ])
   def test_prints(self, init_args, fn, args, print_res):
@@ -245,11 +270,12 @@ class HuberTests(keras_parameterized.TestCase):
   """tests for BinaryCrossesntropy StrongConvex loss."""
 
   @parameterized.named_parameters([
-      {'testcase_name': 'normal',
-       'reg_lambda': 1,
-       'c': 1,
-       'radius_constant': 1,
-       'delta': 1,
+      {
+          'testcase_name': 'normal',
+          'reg_lambda': 1,
+          'c': 1,
+          'radius_constant': 1,
+          'delta': 1,
       },
   ])
   def test_init_params(self, reg_lambda, c, radius_constant, delta):
@@ -266,33 +292,39 @@ class HuberTests(keras_parameterized.TestCase):
     self.assertIsInstance(loss, StrongConvexHuber)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'negative c',
-       'reg_lambda': 1,
-       'c': -1,
-       'radius_constant': 1,
-       'delta': 1
+      {
+          'testcase_name': 'negative c',
+          'reg_lambda': 1,
+          'c': -1,
+          'radius_constant': 1,
+          'delta': 1
       },
-      {'testcase_name': 'negative radius',
-       'reg_lambda': 1,
-       'c': 1,
-       'radius_constant': -1,
-       'delta': 1
+      {
+          'testcase_name': 'negative radius',
+          'reg_lambda': 1,
+          'c': 1,
+          'radius_constant': -1,
+          'delta': 1
       },
-      {'testcase_name': 'negative lambda',
-       'reg_lambda': -1,
-       'c': 1,
-       'radius_constant': 1,
-       'delta': 1
+      {
+          'testcase_name': 'negative lambda',
+          'reg_lambda': -1,
+          'c': 1,
+          'radius_constant': 1,
+          'delta': 1
       },
-      {'testcase_name': 'negative delta',
-       'reg_lambda': 1,
-       'c': 1,
-       'radius_constant': 1,
-       'delta': -1
+      {
+          'testcase_name': 'negative delta',
+          'reg_lambda': 1,
+          'c': 1,
+          'radius_constant': 1,
+          'delta': -1
       },
   ])
   def test_bad_init_params(self, reg_lambda, c, radius_constant, delta):
-    """Test invalid domain for given params. Should return ValueError.
+    """Test invalid domain for given params.
+
+    Should return ValueError.
 
     Args:
       reg_lambda: initialization value for reg_lambda arg
@@ -307,59 +339,68 @@ class HuberTests(keras_parameterized.TestCase):
   # test the bounds and test varied delta's
   @test_util.run_all_in_graph_and_eager_modes
   @parameterized.named_parameters([
-      {'testcase_name': 'delta=1,y_true=1 z>1+h decision boundary',
-       'logits': 2.1,
-       'y_true': 1,
-       'delta': 1,
-       'result': 0,
+      {
+          'testcase_name': 'delta=1,y_true=1 z>1+h decision boundary',
+          'logits': 2.1,
+          'y_true': 1,
+          'delta': 1,
+          'result': 0,
       },
-      {'testcase_name': 'delta=1,y_true=1 z<1+h decision boundary',
-       'logits': 1.9,
-       'y_true': 1,
-       'delta': 1,
-       'result': 0.01*0.25,
+      {
+          'testcase_name': 'delta=1,y_true=1 z<1+h decision boundary',
+          'logits': 1.9,
+          'y_true': 1,
+          'delta': 1,
+          'result': 0.01 * 0.25,
       },
-      {'testcase_name': 'delta=1,y_true=1 1-z< h decision boundary',
-       'logits': 0.1,
-       'y_true': 1,
-       'delta': 1,
-       'result': 1.9**2 * 0.25,
+      {
+          'testcase_name': 'delta=1,y_true=1 1-z< h decision boundary',
+          'logits': 0.1,
+          'y_true': 1,
+          'delta': 1,
+          'result': 1.9**2 * 0.25,
       },
-      {'testcase_name': 'delta=1,y_true=1 z < 1-h decision boundary',
-       'logits': -0.1,
-       'y_true': 1,
-       'delta': 1,
-       'result': 1.1,
+      {
+          'testcase_name': 'delta=1,y_true=1 z < 1-h decision boundary',
+          'logits': -0.1,
+          'y_true': 1,
+          'delta': 1,
+          'result': 1.1,
       },
-      {'testcase_name': 'delta=2,y_true=1 z>1+h decision boundary',
-       'logits': 3.1,
-       'y_true': 1,
-       'delta': 2,
-       'result': 0,
+      {
+          'testcase_name': 'delta=2,y_true=1 z>1+h decision boundary',
+          'logits': 3.1,
+          'y_true': 1,
+          'delta': 2,
+          'result': 0,
       },
-      {'testcase_name': 'delta=2,y_true=1 z<1+h decision boundary',
-       'logits': 2.9,
-       'y_true': 1,
-       'delta': 2,
-       'result': 0.01*0.125,
+      {
+          'testcase_name': 'delta=2,y_true=1 z<1+h decision boundary',
+          'logits': 2.9,
+          'y_true': 1,
+          'delta': 2,
+          'result': 0.01 * 0.125,
       },
-      {'testcase_name': 'delta=2,y_true=1 1-z < h decision boundary',
-       'logits': 1.1,
-       'y_true': 1,
-       'delta': 2,
-       'result': 1.9**2 * 0.125,
+      {
+          'testcase_name': 'delta=2,y_true=1 1-z < h decision boundary',
+          'logits': 1.1,
+          'y_true': 1,
+          'delta': 2,
+          'result': 1.9**2 * 0.125,
       },
-      {'testcase_name': 'delta=2,y_true=1 z < 1-h decision boundary',
-       'logits': -1.1,
-       'y_true': 1,
-       'delta': 2,
-       'result': 2.1,
+      {
+          'testcase_name': 'delta=2,y_true=1 z < 1-h decision boundary',
+          'logits': -1.1,
+          'y_true': 1,
+          'delta': 2,
+          'result': 2.1,
       },
-      {'testcase_name': 'delta=1,y_true=-1 z>1+h decision boundary',
-       'logits': -2.1,
-       'y_true': -1,
-       'delta': 1,
-       'result': 0,
+      {
+          'testcase_name': 'delta=1,y_true=-1 z>1+h decision boundary',
+          'logits': -2.1,
+          'y_true': -1,
+          'delta': 1,
+          'result': 0,
       },
   ])
   def test_calculation(self, logits, y_true, delta, result):
@@ -378,29 +419,33 @@ class HuberTests(keras_parameterized.TestCase):
     self.assertAllClose(loss.numpy(), result)
 
   @parameterized.named_parameters([
-      {'testcase_name': 'beta',
-       'init_args': [1, 1, 1, 1],
-       'fn': 'beta',
-       'args': [1],
-       'result': tf.Variable(1.5, dtype=tf.float32)
+      {
+          'testcase_name': 'beta',
+          'init_args': [1, 1, 1, 1],
+          'fn': 'beta',
+          'args': [1],
+          'result': tf.Variable(1.5, dtype=tf.float32)
       },
-      {'testcase_name': 'gamma',
-       'fn': 'gamma',
-       'init_args': [1, 1, 1, 1],
-       'args': [],
-       'result': tf.Variable(1, dtype=tf.float32),
+      {
+          'testcase_name': 'gamma',
+          'fn': 'gamma',
+          'init_args': [1, 1, 1, 1],
+          'args': [],
+          'result': tf.Variable(1, dtype=tf.float32),
       },
-      {'testcase_name': 'lipchitz constant',
-       'fn': 'lipchitz_constant',
-       'init_args': [1, 1, 1, 1],
-       'args': [1],
-       'result': tf.Variable(2, dtype=tf.float32),
+      {
+          'testcase_name': 'lipchitz constant',
+          'fn': 'lipchitz_constant',
+          'init_args': [1, 1, 1, 1],
+          'args': [1],
+          'result': tf.Variable(2, dtype=tf.float32),
       },
-      {'testcase_name': 'kernel regularizer',
-       'fn': 'kernel_regularizer',
-       'init_args': [1, 1, 1, 1],
-       'args': [],
-       'result': L1L2(l2=0.5),
+      {
+          'testcase_name': 'kernel regularizer',
+          'fn': 'kernel_regularizer',
+          'init_args': [1, 1, 1, 1],
+          'args': [],
+          'result': L1L2(l2=0.5),
       },
   ])
   def test_fns(self, init_args, fn, args, result):

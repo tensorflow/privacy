@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_privacy.privacy.logistic_regression.single_layer_softmax."""
 
 import unittest
+
 from absl.testing import parameterized
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
@@ -26,7 +26,7 @@ class SingleLayerSoftmaxTest(parameterized.TestCase):
       (5000, 500, 4, 40, 2, 0.05),
       (10000, 1000, 3, 40, 4, 0.1),
       (10000, 1000, 4, 40, 4, 0.1),
-      )
+  )
   def test_single_layer_softmax(self, num_train, num_test, dimension, epochs,
                                 num_classes, tolerance):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
@@ -34,6 +34,7 @@ class SingleLayerSoftmaxTest(parameterized.TestCase):
     accuracy = single_layer_softmax.single_layer_softmax_classifier(
         train_dataset, test_dataset, epochs, num_classes, 'sgd')
     self.assertAlmostEqual(accuracy[-1], 1, delta=tolerance)
+
 
 if __name__ == '__main__':
   unittest.main()

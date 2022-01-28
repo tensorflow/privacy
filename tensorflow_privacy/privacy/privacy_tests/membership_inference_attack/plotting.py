@@ -81,5 +81,4 @@ def plot_histograms(train: Iterable[float],
 
 def plot_roc_curve(roc_curve, plot_func=plot_curve_with_area) -> plt.Figure:
   """Plot the ROC curve and the area under the curve."""
-  return plot_func(
-      roc_curve.fpr, roc_curve.tpr, xlabel='FPR', ylabel='TPR')
+  return plot_func(roc_curve.fpr, roc_curve.tpr, xlabel='FPR', ylabel='TPR')

@@ -52,8 +52,8 @@ def main(argv):
   assert FLAGS.batch_size is not None, 'Flag batch_size is missing.'
   assert FLAGS.epsilon is not None, 'Flag epsilon is missing.'
   assert FLAGS.epochs is not None, 'Flag epochs is missing.'
-  compute_noise(FLAGS.N, FLAGS.batch_size, FLAGS.epsilon,
-                FLAGS.epochs, FLAGS.delta, FLAGS.min_noise)
+  compute_noise(FLAGS.N, FLAGS.batch_size, FLAGS.epsilon, FLAGS.epochs,
+                FLAGS.delta, FLAGS.min_noise)
 
 
 if __name__ == '__main__':

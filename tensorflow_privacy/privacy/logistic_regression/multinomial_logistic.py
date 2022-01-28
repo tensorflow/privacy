@@ -52,21 +52,26 @@ class KiferRegularizer(tf.keras.regularizers.Regularizer):
     (self._l2_regularizer,
      variance) = self.logistic_objective_perturbation_parameters(
          num_train, epsilon, delta, num_classes, input_clipping_norm)
-    self._b = tf.random.normal(shape=[dimension, num_classes], mean=0.0,
-                               stddev=math.sqrt(variance),
-                               dtype=tf.dtypes.float32)
+    self._b = tf.random.normal(
+        shape=[dimension, num_classes],
+        mean=0.0,
+        stddev=math.sqrt(variance),
+        dtype=tf.dtypes.float32)
 
   def __call__(self, x):
-    return (tf.reduce_sum(self._l2_regularizer*tf.square(x)) +
-            (1/self._num_train)*tf.reduce_sum(tf.multiply(x, self._b)))
+    return (tf.reduce_sum(self._l2_regularizer * tf.square(x)) +
+            (1 / self._num_train) * tf.reduce_sum(tf.multiply(x, self._b)))
 
   def get_config(self):
-    return {'l2_regularizer': self._l2_regularizer,
-            'num_train': self._num_train, 'b': self._b}
+    return {
+        'l2_regularizer': self._l2_regularizer,
+        'num_train': self._num_train,
+        'b': self._b
+    }
 
   def logistic_objective_perturbation_parameters(
       self, num_train: int, epsilon: float, delta: float, num_classes: int,
-      input_clipping_norm: float)-> Tuple[float, float]:
+      input_clipping_norm: float) -> Tuple[float, float]:
     """Computes l2-regularization coefficient and Gaussian noise variance.
 
       The setting is based on Algorithm 1 of Kifer et al.
@@ -85,19 +90,21 @@ class KiferRegularizer(tf.keras.regularizers.Regularizer):
     # zeta is an upper bound on the l2-norm of the loss function gradient.
     zeta = input_clipping_norm
     # variance is based on line 5 from Algorithm 1 of Kifer et al. (page 6):
-    variance = zeta*zeta*(8*np.log(2/delta)+4*epsilon)/(epsilon*epsilon)
+    variance = zeta * zeta * (8 * np.log(2 / delta) + 4 * epsilon) / (
+        epsilon * epsilon)
     # lambda_coefficient is an upper bound on the spectral norm of the Hessian
     # of the loss function.
-    lambda_coefficient = math.sqrt(2*num_classes)*(input_clipping_norm**2)/4
-    l2_regularizer = lambda_coefficient/(epsilon*num_train)
+    lambda_coefficient = math.sqrt(2 * num_classes) * (input_clipping_norm**
+                                                       2) / 4
+    l2_regularizer = lambda_coefficient / (epsilon * num_train)
     return (l2_regularizer, variance)
 
 
 def logistic_objective_perturbation(train_dataset: datasets.RegressionDataset,
                                     test_dataset: datasets.RegressionDataset,
-                                    epsilon: float, delta: float,
-                                    epochs: int, num_classes: int,
-                                    input_clipping_norm: float)-> List[float]:
+                                    epsilon: float, delta: float, epochs: int,
+                                    num_classes: int,
+                                    input_clipping_norm: float) -> List[float]:
   """Trains and validates differentially private logistic regression model.
 
     The training is based on the Algorithm 1 of Kifer et al.
@@ -127,13 +134,21 @@ def logistic_objective_perturbation(train_dataset: datasets.RegressionDataset,
   kernel_regularizer = KiferRegularizer(num_train, dimension, epsilon, delta,
                                         num_classes, input_clipping_norm)
   return single_layer_softmax.single_layer_softmax_classifier(
-      train_dataset, test_dataset, epochs, num_classes, optimizer, loss,
+      train_dataset,
+      test_dataset,
+      epochs,
+      num_classes,
+      optimizer,
+      loss,
       kernel_regularizer=kernel_regularizer)
 
 
-def compute_dpsgd_noise_multiplier(
-    num_train: int, epsilon: float, delta: float, epochs: int,
-    batch_size: int, tolerance: float = 1e-2) -> Optional[float]:
+def compute_dpsgd_noise_multiplier(num_train: int,
+                                   epsilon: float,
+                                   delta: float,
+                                   epochs: int,
+                                   batch_size: int,
+                                   tolerance: float = 1e-2) -> Optional[float]:
   """Computes the noise multiplier for DP-SGD given privacy parameters.
 
     The algorithm performs binary search on the values of epsilon.
@@ -153,20 +168,17 @@ def compute_dpsgd_noise_multiplier(
     the given tolerance) for which using DPKerasAdamOptimizer will result in an
     (epsilon, delta)-differentially private trained model.
   """
-  search_parameters = common.BinarySearchParameters(lower_bound=0,
-                                                    upper_bound=math.inf,
-                                                    initial_guess=1,
-                                                    tolerance=tolerance)
+  search_parameters = common.BinarySearchParameters(
+      lower_bound=0, upper_bound=math.inf, initial_guess=1, tolerance=tolerance)
   return common.inverse_monotone_function(
       lambda x: compute_epsilon(num_train, batch_size, x, epochs, delta)[0],
       epsilon, search_parameters)
 
 
 def logistic_dpsgd(train_dataset: datasets.RegressionDataset,
-                   test_dataset: datasets.RegressionDataset,
-                   epsilon: float, delta: float, epochs: int, num_classes: int,
-                   batch_size: int, num_microbatches: int,
-                   clipping_norm: float)-> List[float]:
+                   test_dataset: datasets.RegressionDataset, epsilon: float,
+                   delta: float, epochs: int, num_classes: int, batch_size: int,
+                   num_microbatches: int, clipping_norm: float) -> List[float]:
   """Trains and validates private logistic regression model via DP-SGD.
 
     The training is based on the differentially private stochasstic gradient
@@ -183,8 +195,8 @@ def logistic_dpsgd(train_dataset: datasets.RegressionDataset,
     num_classes: number of classes.
     batch_size: the number of examples in each batch of gradient descent.
     num_microbatches: the number of microbatches in gradient descent.
-    clipping_norm: the gradients will be normalized by DPKerasAdamOptimizer
-      to have l2-norm at most clipping_norm.
+    clipping_norm: the gradients will be normalized by DPKerasAdamOptimizer to
+      have l2-norm at most clipping_norm.
 
   Returns:
     List of test accuracies (one for each epoch) on test_dataset of model
@@ -199,7 +211,8 @@ def logistic_dpsgd(train_dataset: datasets.RegressionDataset,
   noise_multiplier = compute_dpsgd_noise_multiplier(num_train, epsilon, delta,
                                                     epochs, batch_size)
   optimizer = dp_optimizer_keras.DPKerasAdamOptimizer(
-      l2_norm_clip=clipping_norm, noise_multiplier=noise_multiplier,
+      l2_norm_clip=clipping_norm,
+      noise_multiplier=noise_multiplier,
       num_microbatches=num_microbatches)
   loss = tf.keras.losses.CategoricalCrossentropy(
       reduction=tf.losses.Reduction.NONE)

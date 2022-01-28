@@ -25,22 +25,23 @@ def compute_exposure_interpolation(
   """Get exposure using interpolation.
 
   Args:
-    perplexities: a dictionary, key is number of secret repetitions,
-                  value is a list of perplexities
+    perplexities: a dictionary, key is number of secret repetitions, value is a
+      list of perplexities
     perplexities_reference: a list, perplexities of the random sequences that
-                            did not appear in the training data
+      did not appear in the training data
+
   Returns:
     The exposure of every secret measured using interpolation (not necessarily
     in the same order as the input)
   """
   repetitions = list(perplexities.keys())
   # Concatenate all perplexities, including those for references
-  perplexities_concat = np.concatenate([perplexities[r] for r in repetitions]
-                                       + [perplexities_reference])
+  perplexities_concat = np.concatenate([perplexities[r] for r in repetitions] +
+                                       [perplexities_reference])
   # Concatenate the number of repetitions for each secret
-  repetitions_concat = np.concatenate(
-      [[r] * len(perplexities[r]) for r in repetitions]
-      + [[0] * len(perplexities_reference)])
+  repetitions_concat = np.concatenate([[r] * len(perplexities[r])
+                                       for r in repetitions] +
+                                      [[0] * len(perplexities_reference)])
 
   # Sort the repetition list according to the corresponding perplexity
   idx = np.argsort(perplexities_concat)
@@ -53,8 +54,10 @@ def compute_exposure_interpolation(
   # (repetitions_concat == 0).
   cum_sum = np.cumsum(repetitions_concat == 0)
   ranks = {r: cum_sum[repetitions_concat == r] + 1 for r in repetitions}
-  exposures = {r: np.log2(len(perplexities_reference)) - np.log2(ranks[r])
-               for r in repetitions}
+  exposures = {
+      r: np.log2(len(perplexities_reference)) - np.log2(ranks[r])
+      for r in repetitions
+  }
   return exposures
 
 
@@ -64,10 +67,11 @@ def compute_exposure_extrapolation(
   """Get exposure using extrapolation.
 
   Args:
-    perplexities: a dictionary, key is number of secret repetitions,
-                  value is a list of perplexities
+    perplexities: a dictionary, key is number of secret repetitions, value is a
+      list of perplexities
     perplexities_reference: a list, perplexities of the random sequences that
-                            did not appear in the training data
+      did not appear in the training data
+
   Returns:
     The exposure of every secret measured using extrapolation
   """

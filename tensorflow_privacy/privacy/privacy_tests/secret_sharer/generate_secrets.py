@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Generate random sequences."""
 
 import itertools
@@ -21,7 +20,9 @@ from dataclasses import dataclass
 import numpy as np
 
 
-def generate_random_sequences(vocab: List[str], pattern: str, n: int,
+def generate_random_sequences(vocab: List[str],
+                              pattern: str,
+                              n: int,
                               seed: int = 1) -> List[str]:
   """Generate random sequences.
 
@@ -35,6 +36,7 @@ def generate_random_sequences(vocab: List[str], pattern: str, n: int,
   Returns:
     A list of different random sequences from the given vocabulary
   """
+
   def count_placeholder(pattern):
     return sum([x[1] is not None for x in string.Formatter().parse(pattern)])
 
@@ -103,7 +105,8 @@ def construct_secret(secret_config: SecretConfig, seqs: List[str]) -> Secrets:
   Args:
     secret_config: configuration of secret.
     seqs: a list of random sequences that will be used for secrets and
-          references.
+      references.
+
   Returns:
     a secret instance.
   """
@@ -116,9 +119,10 @@ def construct_secret(secret_config: SecretConfig, seqs: List[str]) -> Secrets:
       secret_config.num_repetitions, secret_config.num_secrets_for_repetitions):
     secrets[num_repetition] = seqs[i:i + num_secrets]
     i += num_secrets
-  return Secrets(config=secret_config,
-                 secrets=secrets,
-                 references=seqs[-secret_config.num_references:])
+  return Secrets(
+      config=secret_config,
+      secrets=secrets,
+      references=seqs[-secret_config.num_references:])
 
 
 def generate_secrets_and_references(secret_configs: List[SecretConfig],
@@ -128,6 +132,7 @@ def generate_secrets_and_references(secret_configs: List[SecretConfig],
   Args:
     secret_configs: a list of secret configurations.
     seed: random seed.
+
   Returns:
     A list of secret instances.
   """

@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from absl.testing import absltest
-
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import tf_estimator_evaluation
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
@@ -55,23 +53,25 @@ class UtilsTest(absltest.TestCase):
     # Define the classifier, input_fn for training and test data
     self.classifier = tf.estimator.Estimator(model_fn=model_fn)
     self.input_fn_train = tf.estimator.inputs.numpy_input_fn(
-        x={'x': self.train_data}, y=self.train_labels, num_epochs=1,
+        x={'x': self.train_data},
+        y=self.train_labels,
+        num_epochs=1,
         shuffle=False)
     self.input_fn_test = tf.estimator.inputs.numpy_input_fn(
-        x={'x': self.test_data}, y=self.test_labels, num_epochs=1,
+        x={'x': self.test_data},
+        y=self.test_labels,
+        num_epochs=1,
         shuffle=False)
 
   def test_calculate_losses(self):
     """Test calculating the loss."""
-    pred, loss = tf_estimator_evaluation.calculate_losses(self.classifier,
-                                                          self.input_fn_train,
-                                                          self.train_labels)
+    pred, loss = tf_estimator_evaluation.calculate_losses(
+        self.classifier, self.input_fn_train, self.train_labels)
     self.assertEqual(pred.shape, (self.ntrain, self.nclass))
     self.assertEqual(loss.shape, (self.ntrain,))
 
-    pred, loss = tf_estimator_evaluation.calculate_losses(self.classifier,
-                                                          self.input_fn_test,
-                                                          self.test_labels)
+    pred, loss = tf_estimator_evaluation.calculate_losses(
+        self.classifier, self.input_fn_test, self.test_labels)
     self.assertEqual(pred.shape, (self.ntest, self.nclass))
     self.assertEqual(loss.shape, (self.ntest,))
 
@@ -94,12 +94,12 @@ class UtilsTest(absltest.TestCase):
 
   def test_run_attack_on_tf_estimator_model(self):
     """Test the attack on the final models."""
+
     def input_fn_constructor(x, y):
       return tf.estimator.inputs.numpy_input_fn(x={'x': x}, y=y, shuffle=False)
 
     results = tf_estimator_evaluation.run_attack_on_tf_estimator_model(
-        self.classifier,
-        (self.train_data, self.train_labels),
+        self.classifier, (self.train_data, self.train_labels),
         (self.test_data, self.test_labels),
         input_fn_constructor,
         attack_types=[AttackType.THRESHOLD_ATTACK])

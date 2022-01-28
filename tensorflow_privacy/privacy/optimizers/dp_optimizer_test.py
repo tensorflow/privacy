@@ -18,7 +18,6 @@ import unittest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
@@ -30,13 +29,14 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     return 0.5 * tf.reduce_sum(
         input_tensor=tf.math.squared_difference(val0, val1), axis=1)
 
-  def _compute_expected_gradients(self, per_example_gradients,
-                                  l2_norm_clip, num_microbatches):
+  def _compute_expected_gradients(self, per_example_gradients, l2_norm_clip,
+                                  num_microbatches):
     batch_size, num_vars = per_example_gradients.shape
     microbatch_gradients = np.mean(
-        np.reshape(per_example_gradients,
-                   [num_microbatches,
-                    np.int(batch_size / num_microbatches), num_vars]),
+        np.reshape(
+            per_example_gradients,
+            [num_microbatches,
+             np.int(batch_size / num_microbatches), num_vars]),
         axis=1)
     microbatch_gradients_norms = np.linalg.norm(microbatch_gradients, axis=1)
 
@@ -124,8 +124,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       l2_norm_clip = 1.0
       dp_sum_query = gaussian_query.GaussianSumQuery(l2_norm_clip, 0.0)
 
-      opt = cls(dp_sum_query, num_microbatches=num_microbatches,
-                learning_rate=2.0)
+      opt = cls(
+          dp_sum_query, num_microbatches=num_microbatches, learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values

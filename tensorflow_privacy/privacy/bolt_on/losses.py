@@ -68,7 +68,6 @@ class StrongConvexMixin:
 
     Args:
       class_weight: class weights used
-
     Returns: L
     """
     raise NotImplementedError("lipchitz constant not implemented for "
@@ -126,13 +125,10 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     if reg_lambda <= 0:
       raise ValueError("reg lambda: {0} must be positive".format(reg_lambda))
     if radius_constant <= 0:
-      raise ValueError("radius_constant: {0}, should be >= 0".format(
-          radius_constant
-      ))
+      raise ValueError(
+          "radius_constant: {0}, should be >= 0".format(radius_constant))
     if delta <= 0:
-      raise ValueError("delta: {0}, should be >= 0".format(
-          delta
-      ))
+      raise ValueError("delta: {0}, should be >= 0".format(delta))
     self.C = c_arg  # pylint: disable=invalid-name
     self.delta = delta
     self.radius_constant = radius_constant
@@ -172,9 +168,7 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
   def beta(self, class_weight):
     """See super class."""
     max_class_weight = self.max_class_weight(class_weight, self.dtype)
-    delta = _ops.convert_to_tensor_v2(self.delta,
-                                      dtype=self.dtype
-                                     )
+    delta = _ops.convert_to_tensor_v2(self.delta, dtype=self.dtype)
     return self.C * max_class_weight / (delta *
                                         tf.constant(2, dtype=self.dtype)) + \
            self.reg_lambda
@@ -197,13 +191,11 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
       The L2 regularizer layer for this loss function, with regularizer constant
       set to half the 0.5 * reg_lambda.
     """
-    return L1L2(l2=self.reg_lambda/2)
+    return L1L2(l2=self.reg_lambda / 2)
 
 
-class StrongConvexBinaryCrossentropy(
-    losses.BinaryCrossentropy,
-    StrongConvexMixin
-):
+class StrongConvexBinaryCrossentropy(losses.BinaryCrossentropy,
+                                     StrongConvexMixin):
   """Strongly Convex BinaryCrossentropy loss using l2 weight regularization."""
 
   def __init__(self,
@@ -222,10 +214,10 @@ class StrongConvexBinaryCrossentropy(
       radius_constant: constant defining the length of the radius
       from_logits: True if the input are unscaled logits. False if they are
         already scaled.
-      label_smoothing: amount of smoothing to perform on labels
-        relaxation of trust in labels, e.g. (1 -> 1-x, 0 -> 0+x). Note, the
-        impact of this parameter's effect on privacy is not known and thus the
-        default should be used.
+      label_smoothing: amount of smoothing to perform on labels relaxation of
+        trust in labels, e.g. (1 -> 1-x, 0 -> 0+x). Note, the impact of this
+        parameter's effect on privacy is not known and thus the default should
+        be used.
       reduction: reduction type to use. See super class
       dtype: tf datatype to use for tensor conversions.
     """
@@ -239,9 +231,8 @@ class StrongConvexBinaryCrossentropy(
     if c_arg <= 0:
       raise ValueError("c: {0}, should be >= 0".format(c_arg))
     if radius_constant <= 0:
-      raise ValueError("radius_constant: {0}, should be >= 0".format(
-          radius_constant
-      ))
+      raise ValueError(
+          "radius_constant: {0}, should be >= 0".format(radius_constant))
     self.dtype = dtype
     self.C = c_arg  # pylint: disable=invalid-name
     self.reg_lambda = tf.constant(reg_lambda, dtype=self.dtype)
@@ -294,4 +285,4 @@ class StrongConvexBinaryCrossentropy(
       The L2 regularizer layer for this loss function, with regularizer constant
       set to half the 0.5 * reg_lambda.
     """
-    return L1L2(l2=self.reg_lambda/2)
+    return L1L2(l2=self.reg_lambda / 2)

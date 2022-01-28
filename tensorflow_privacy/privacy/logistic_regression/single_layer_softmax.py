@@ -11,8 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Implementation of a single-layer softmax classifier.
-"""
+"""Implementation of a single-layer softmax classifier."""
 
 from typing import List
 import tensorflow as tf
@@ -22,10 +21,13 @@ from tensorflow_privacy.privacy.logistic_regression import datasets
 def single_layer_softmax_classifier(
     train_dataset: datasets.RegressionDataset,
     test_dataset: datasets.RegressionDataset,
-    epochs: int, num_classes: int, optimizer: tf.keras.optimizers.Optimizer,
+    epochs: int,
+    num_classes: int,
+    optimizer: tf.keras.optimizers.Optimizer,
     loss: tf.keras.losses.Loss = 'categorical_crossentropy',
     batch_size: int = 32,
-    kernel_regularizer: tf.keras.regularizers.Regularizer = None)-> List[float]:
+    kernel_regularizer: tf.keras.regularizers.Regularizer = None
+) -> List[float]:
   """Trains a single layer neural network classifier with softmax activation.
 
   Args:
@@ -47,13 +49,17 @@ def single_layer_softmax_classifier(
   one_hot_train_labels = tf.one_hot(train_dataset.labels, num_classes)
   one_hot_test_labels = tf.one_hot(test_dataset.labels, num_classes)
   model = tf.keras.Sequential()
-  model.add(tf.keras.layers.Dense(units=num_classes,
-                                  activation='softmax',
-                                  kernel_regularizer=kernel_regularizer))
+  model.add(
+      tf.keras.layers.Dense(
+          units=num_classes,
+          activation='softmax',
+          kernel_regularizer=kernel_regularizer))
   model.compile(optimizer, loss=loss, metrics=['accuracy'])
-  history = model.fit(train_dataset.points, one_hot_train_labels,
-                      batch_size=batch_size, epochs=epochs,
-                      validation_data=(test_dataset.points,
-                                       one_hot_test_labels),
-                      verbose=0)
+  history = model.fit(
+      train_dataset.points,
+      one_hot_train_labels,
+      batch_size=batch_size,
+      epochs=epochs,
+      validation_data=(test_dataset.points, one_hot_test_labels),
+      verbose=0)
   return history.history['val_accuracy']

@@ -53,9 +53,10 @@ def make_dp_model_class(cls):
        model.fit(train_data, train_labels, epochs=1, batch_size=32)
        ```
 
-       """).format(base_model='tf.keras.' + cls.__name__,
-                   short_base_model=cls.__name__,
-                   dp_model_class='DP' + cls.__name__)
+       """).format(
+           base_model='tf.keras.' + cls.__name__,
+           short_base_model=cls.__name__,
+           dp_model_class='DP' + cls.__name__)
 
     def __init__(
         self,

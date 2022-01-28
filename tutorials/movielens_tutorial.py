@@ -114,7 +114,7 @@ def nn_model_fn(features, labels, mode):
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
-# Add evaluation metrics (for EVAL mode).
+  # Add evaluation metrics (for EVAL mode).
   if mode == tf.estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'rmse':

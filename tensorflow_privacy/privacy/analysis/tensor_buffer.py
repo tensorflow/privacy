@@ -84,13 +84,13 @@ class TensorBuffer(object):
               dtype=self._dtype,
               initializer=new_buffer,
               trainable=False)
-          return self._buffer, tf.assign(
-              self._capacity, tf.multiply(self._capacity, 2))
+          return self._buffer, tf.assign(self._capacity,
+                                         tf.multiply(self._capacity, 2))
       else:
         return tf.assign(
             self._buffer, new_buffer,
-            validate_shape=False), tf.assign(
-                self._capacity, tf.multiply(self._capacity, 2))
+            validate_shape=False), tf.assign(self._capacity,
+                                             tf.multiply(self._capacity, 2))
 
     update_buffer, update_capacity = tf.cond(
         pred=tf.equal(self._current_size, self._capacity),

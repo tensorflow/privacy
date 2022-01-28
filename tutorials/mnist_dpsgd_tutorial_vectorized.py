@@ -22,7 +22,6 @@ from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
 
-
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
     'train with vanilla SGD.')
@@ -50,10 +49,11 @@ def compute_epsilon(steps):
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / NUM_TRAIN_EXAMPLES
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
+  rdp = compute_rdp(
+      q=sampling_probability,
+      noise_multiplier=FLAGS.noise_multiplier,
+      steps=steps,
+      orders=orders)
   # Delta is set to approximate 1 / (number of training points).
   return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
@@ -63,15 +63,11 @@ def cnn_model_fn(features, labels, mode):
 
   # Define CNN architecture using tf.keras.layers.
   input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
-  y = tf.keras.layers.Conv2D(16, 8,
-                             strides=2,
-                             padding='same',
-                             activation='relu').apply(input_layer)
+  y = tf.keras.layers.Conv2D(
+      16, 8, strides=2, padding='same', activation='relu').apply(input_layer)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Conv2D(32, 4,
-                             strides=2,
-                             padding='valid',
-                             activation='relu').apply(y)
+  y = tf.keras.layers.Conv2D(
+      32, 4, strides=2, padding='valid', activation='relu').apply(y)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
   y = tf.keras.layers.Flatten().apply(y)
   y = tf.keras.layers.Dense(32, activation='relu').apply(y)
@@ -106,22 +102,19 @@ def cnn_model_fn(features, labels, mode):
     # the vector_loss because tf.estimator requires a scalar loss. This is only
     # used for evaluation and debugging by tf.estimator. The actual loss being
     # minimized is opt_loss defined above and passed to optimizer.minimize().
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      train_op=train_op)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
-                labels=labels,
-                predictions=tf.argmax(input=logits, axis=1))
+                labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
 
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      eval_metric_ops=eval_metric_ops)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
 def load_mnist():
@@ -155,8 +148,8 @@ def main(unused_argv):
   train_data, train_labels, test_data, test_labels = load_mnist()
 
   # Instantiate the tf.Estimator.
-  mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn,
-                                            model_dir=FLAGS.model_dir)
+  mnist_classifier = tf.estimator.Estimator(
+      model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
 
   # Create tf.Estimator input functions for the training and test data.
   train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -166,10 +159,7 @@ def main(unused_argv):
       num_epochs=FLAGS.epochs,
       shuffle=True)
   eval_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={'x': test_data},
-      y=test_labels,
-      num_epochs=1,
-      shuffle=False)
+      x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
 
   # Training loop.
   steps_per_epoch = NUM_TRAIN_EXAMPLES // FLAGS.batch_size
@@ -188,6 +178,7 @@ def main(unused_argv):
       print('For delta=1e-5, the current epsilon is: %.2f' % eps)
     else:
       print('Trained with vanilla non-private SGD optimizer')
+
 
 if __name__ == '__main__':
   app.run(main)

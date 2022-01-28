@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from absl.testing import parameterized
-
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.dp_query import quantile_estimator_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
@@ -44,10 +42,7 @@ def _make_quantile_estimator_query(initial_estimate,
       raise ValueError(
           'Cannot set expected_num_records to None for tree aggregation.')
     return quantile_estimator_query.NoPrivacyQuantileEstimatorQuery(
-        initial_estimate,
-        target_quantile,
-        learning_rate,
-        geometric_update)
+        initial_estimate, target_quantile, learning_rate, geometric_update)
 
 
 class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
@@ -109,7 +104,7 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
     # to 4 / sqrt(2.0). Still only one record is below, so it reduces to 2.0.
     # Now no records are below, and the estimate norm stays there (at 2.0).
 
-    four_div_root_two = 4 / np.sqrt(2.0)   # approx 2.828
+    four_div_root_two = 4 / np.sqrt(2.0)  # approx 2.828
 
     expected_estimates = [8.0, 4.0, four_div_root_two, 2.0, 2.0]
     for expected_estimate in expected_estimates:
@@ -175,7 +170,7 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
     # is multiplied by sqrt(2.0). Still only one is above so it increases to
     # 4.0. Now both records are above, and the estimate stays there (at 4.0).
 
-    two_times_root_two = 2 * np.sqrt(2.0)   # approx 2.828
+    two_times_root_two = 2 * np.sqrt(2.0)  # approx 2.828
 
     expected_estimates = [1.0, 2.0, two_times_root_two, 4.0, 4.0]
     for expected_estimate in expected_estimates:
@@ -201,8 +196,10 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
     # 100 records equally spaced from 0 to 10 in 0.1 increments.
     # Test that we converge to the correct median value and bounce around it.
     num_records = 21
-    records = [tf.constant(x) for x in np.linspace(
-        0.0, 10.0, num=num_records, dtype=np.float32)]
+    records = [
+        tf.constant(x)
+        for x in np.linspace(0.0, 10.0, num=num_records, dtype=np.float32)
+    ]
 
     query = _make_quantile_estimator_query(
         initial_estimate=(1.0 if start_low else 10.0),
@@ -267,9 +264,7 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_raises_with_non_scalar_record(self):
     query = quantile_estimator_query.NoPrivacyQuantileEstimatorQuery(
-        initial_estimate=1.0,
-        target_quantile=0.5,
-        learning_rate=1.0)
+        initial_estimate=1.0, target_quantile=0.5, learning_rate=1.0)
 
     with self.assertRaisesRegex(ValueError, 'scalar'):
       query.accumulate_record(None, None, [1.0, 2.0])

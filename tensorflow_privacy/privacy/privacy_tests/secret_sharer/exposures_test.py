@@ -15,7 +15,6 @@
 from absl.testing import absltest
 import numpy as np
 from scipy import stats
-
 from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_extrapolation
 from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_interpolation
 
@@ -28,9 +27,11 @@ class UtilsTest(absltest.TestCase):
 
   def test_exposure_interpolation(self):
     """Test exposure by interpolation."""
-    perplexities = {1: [0, 0.1],  # smallest perplexities
-                    2: [20.0],  # largest perplexities
-                    5: [3.5]}  # rank = 4
+    perplexities = {
+        1: [0, 0.1],  # smallest perplexities
+        2: [20.0],  # largest perplexities
+        5: [3.5]
+    }  # rank = 4
     perplexities_reference = [float(x) for x in range(1, 17)]
     exposures = compute_exposure_interpolation(perplexities,
                                                perplexities_reference)
@@ -41,7 +42,8 @@ class UtilsTest(absltest.TestCase):
     expected_exposures = {
         1: np.array([exposure_largest] * 2),
         2: np.array([exposure_smallest]),
-        5: np.array([np.log2(num_perplexities_reference) - np.log2(4)])}
+        5: np.array([np.log2(num_perplexities_reference) - np.log2(4)])
+    }
 
     self.assertEqual(exposures.keys(), expected_exposures.keys())
     for r in exposures.keys():

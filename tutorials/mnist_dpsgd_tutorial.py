@@ -86,12 +86,10 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
-                labels=labels,
-                predictions=tf.argmax(input=logits, axis=1))
+                labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      eval_metric_ops=eval_metric_ops)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
 def main(unused_argv):
@@ -100,8 +98,8 @@ def main(unused_argv):
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Instantiate the tf.Estimator.
-  mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model_fn,
-                                            model_dir=FLAGS.model_dir)
+  mnist_classifier = tf.estimator.Estimator(
+      model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
 
   # Training loop.
   steps_per_epoch = 60000 // FLAGS.batch_size

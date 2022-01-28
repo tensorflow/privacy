@@ -27,7 +27,7 @@ def write_to_tensorboard(writers, tags, values, step):
 
   Args:
     writers: a list of tensorboard writers or one writer to be used for metrics.
-    If it's a list, it should be of the same length as tags
+      If it's a list, it should be of the same length as tags
     tags: a list of tags of metrics
     values: a list of values of metrics with the same length as tags
     step: step for the tensorboard summary
@@ -54,7 +54,7 @@ def write_to_tensorboard_tf2(writers, tags, values, step):
 
   Args:
     writers: a list of tensorboard writers or one writer to be used for metrics.
-    If it's a list, it should be of the same length as tags
+      If it's a list, it should be of the same length as tags
     tags: a list of tags of metrics
     values: a list of values of metrics with the same length as tags
     step: step for the tensorboard summary
@@ -77,11 +77,10 @@ def write_to_tensorboard_tf2(writers, tags, values, step):
       writer.flush()
 
 
-def write_results_to_tensorboard(
-    attack_results: AttackResults,
-    writers: Union[tf1.summary.FileWriter, List[tf1.summary.FileWriter]],
-    step: int,
-    merge_classifiers: bool):
+def write_results_to_tensorboard(attack_results: AttackResults,
+                                 writers: Union[tf1.summary.FileWriter,
+                                                List[tf1.summary.FileWriter]],
+                                 step: int, merge_classifiers: bool):
   """Write attack results to tensorboard.
 
   Args:
@@ -97,21 +96,21 @@ def write_results_to_tensorboard(
   att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
   if merge_classifiers:
-    att_tags = ['attack/' + f'{s}_{m}' for s, m in
-                zip(att_slices, att_metrics)]
-    write_to_tensorboard([writers[t] for t in att_types],
-                         att_tags, att_values, step)
+    att_tags = ['attack/' + f'{s}_{m}' for s, m in zip(att_slices, att_metrics)]
+    write_to_tensorboard([writers[t] for t in att_types], att_tags, att_values,
+                         step)
   else:
-    att_tags = ['attack/' + f'{s}_{t}_{m}' for t, s, m in
-                zip(att_types, att_slices, att_metrics)]
+    att_tags = [
+        'attack/' + f'{s}_{t}_{m}'
+        for t, s, m in zip(att_types, att_slices, att_metrics)
+    ]
     write_to_tensorboard(writers, att_tags, att_values, step)
 
 
 def write_results_to_tensorboard_tf2(
     attack_results: AttackResults,
     writers: Union[tf2.summary.SummaryWriter, List[tf2.summary.SummaryWriter]],
-    step: int,
-    merge_classifiers: bool):
+    step: int, merge_classifiers: bool):
   """Write attack results to tensorboard.
 
   Args:
@@ -127,12 +126,12 @@ def write_results_to_tensorboard_tf2(
   att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
   if merge_classifiers:
-    att_tags = ['attack/' + f'{s}_{m}' for s, m in
-                zip(att_slices, att_metrics)]
-    write_to_tensorboard_tf2([writers[t] for t in att_types],
-                             att_tags, att_values, step)
+    att_tags = ['attack/' + f'{s}_{m}' for s, m in zip(att_slices, att_metrics)]
+    write_to_tensorboard_tf2([writers[t] for t in att_types], att_tags,
+                             att_values, step)
   else:
-    att_tags = ['attack/' + f'{s}_{t}_{m}' for t, s, m in
-                zip(att_types, att_slices, att_metrics)]
+    att_tags = [
+        'attack/' + f'{s}_{t}_{m}'
+        for t, s, m in zip(att_types, att_slices, att_metrics)
+    ]
     write_to_tensorboard_tf2(writers, att_tags, att_values, step)
-

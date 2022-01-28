@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for tensorflow_privacy.privacy.logistic_regression.datasets."""
 
 import unittest
+
 from absl.testing import parameterized
 import numpy as np
 from tensorflow_privacy.privacy.logistic_regression import datasets
@@ -22,14 +22,16 @@ from tensorflow_privacy.privacy.logistic_regression import datasets
 class DatasetsTest(parameterized.TestCase):
 
   @parameterized.parameters(
-      (1, np.array([[1],])),
-      (2, np.array([[1],])),
-      (5, np.array([[-1, 1], [1, -1]])),
+      (1, np.array([
+          [1],
+      ])), (2, np.array([
+          [1],
+      ])), (5, np.array([[-1, 1], [1, -1]])),
       (15, np.array([[-1, 1.5, 2.1], [1.3, -3.3, -7.1], [1.3, -3.3, -7.1]])))
   def test_linearly_separable_labeled_examples(self, num_examples, weights):
     dimension, num_classes = weights.shape
-    dataset = datasets.linearly_separable_labeled_examples(num_examples,
-                                                           weights)
+    dataset = datasets.linearly_separable_labeled_examples(
+        num_examples, weights)
     self.assertEqual(dataset.points.shape, (num_examples, dimension))
     self.assertEqual(dataset.labels.shape, (num_examples,))
     product = np.matmul(dataset.points, weights)
@@ -37,11 +39,8 @@ class DatasetsTest(parameterized.TestCase):
       for j in range(num_classes):
         self.assertGreaterEqual(product[i, dataset.labels[i]], product[i, j])
 
-  @parameterized.parameters(
-      (1, 1, 1, 2),
-      (20, 5, 1, 2),
-      (20, 5, 2, 2),
-      (1000, 10, 15, 10))
+  @parameterized.parameters((1, 1, 1, 2), (20, 5, 1, 2), (20, 5, 2, 2),
+                            (1000, 10, 15, 10))
   def test_synthetic(self, num_train, num_test, dimension, num_classes):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
         num_train, num_test, dimension, num_classes)
@@ -72,6 +71,7 @@ class DatasetsTest(parameterized.TestCase):
     # Check that each train and test label is in {0,...,9}.
     self.assertTrue(np.all(np.isin(train_dataset.labels, range(10))))
     self.assertTrue(np.all(np.isin(test_dataset.labels, range(10))))
+
 
 if __name__ == '__main__':
   unittest.main()

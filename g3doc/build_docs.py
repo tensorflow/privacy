@@ -23,7 +23,6 @@ from tensorflow_docs.api_generator import generate_lib
 from tensorflow_docs.api_generator import public_api
 import tensorflow_privacy as tf_privacy
 
-
 flags.DEFINE_string('output_dir', '/tmp/tf_privacy',
                     'Where to output the docs.')
 flags.DEFINE_string(

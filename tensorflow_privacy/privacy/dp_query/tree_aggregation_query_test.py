@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for `tree_aggregation_query`."""
 
 from absl.testing import parameterized
 import numpy as np
@@ -212,11 +211,11 @@ class TreeCumulativeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('two_records_noise_fn', [2.71828, 3.14159], _get_noise_fn),
-      ('five_records_noise_fn', np.random.uniform(low=0.1, size=5).tolist(),
-       _get_noise_fn),
+      ('five_records_noise_fn', np.random.uniform(
+          low=0.1, size=5).tolist(), _get_noise_fn),
       ('two_records_generator', [2.71828, 3.14159], _get_noise_generator),
-      ('five_records_generator', np.random.uniform(low=0.1, size=5).tolist(),
-       _get_noise_generator),
+      ('five_records_generator', np.random.uniform(
+          low=0.1, size=5).tolist(), _get_noise_generator),
   )
   def test_noisy_cumsum_and_state_update(self, records, value_generator):
     num_trials, vector_size = 10, 100

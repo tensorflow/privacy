@@ -44,9 +44,8 @@ class TensorBufferTest(tf.test.TestCase):
 
     my_buffer = tensor_buffer.TensorBuffer(size, shape, name='my_buffer')
 
-    with self.assertRaisesRegex(
-        tf.errors.InvalidArgumentError,
-        'Appending value of inconsistent shape.'):
+    with self.assertRaisesRegex(tf.errors.InvalidArgumentError,
+                                'Appending value of inconsistent shape.'):
       my_buffer.append(tf.ones(shape=[3, 4], dtype=tf.int32))
 
   def test_resize(self):

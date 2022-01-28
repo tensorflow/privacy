@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for DpEventBuilder."""
 
 from absl.testing import absltest
 from tensorflow_privacy.privacy.analysis import dp_event
@@ -68,7 +67,8 @@ class DpEventBuilderTest(absltest.TestCase):
     expected_event = dp_event.ComposedDpEvent([
         _gaussian_event,
         dp_event.SelfComposedDpEvent(composed_event, 3),
-        dp_event.SelfComposedDpEvent(_poisson_event, 2)])
+        dp_event.SelfComposedDpEvent(_poisson_event, 2)
+    ])
     self.assertEqual(expected_event, builder.build())
 
 

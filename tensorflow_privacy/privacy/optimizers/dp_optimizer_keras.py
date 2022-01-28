@@ -138,12 +138,12 @@ def make_keras_optimizer_class(cls):
         l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
         num_microbatches: Number of microbatches into which each minibatch is
-          split. Default is `None` which means that number of microbatches
-          is equal to batch size (i.e. each microbatch contains exactly one
+          split. Default is `None` which means that number of microbatches is
+          equal to batch size (i.e. each microbatch contains exactly one
           example). If `gradient_accumulation_steps` is greater than 1 and
           `num_microbatches` is not `None` then the effective number of
-          microbatches is equal to
-          `num_microbatches * gradient_accumulation_steps`.
+          microbatches is equal to `num_microbatches *
+          gradient_accumulation_steps`.
         gradient_accumulation_steps: If greater than 1 then optimizer will be
           accumulating gradients for this number of optimizer steps before
           applying them to update model weights. If this argument is set to 1
@@ -172,39 +172,39 @@ def make_keras_optimizer_class(cls):
       if self.gradient_accumulation_steps > 1:
         apply_update = tf.math.equal(
             tf.math.floormod(self.iterations + 1,
-                             self.gradient_accumulation_steps),
-            0)
+                             self.gradient_accumulation_steps), 0)
         grad_scaler = tf.cast(1. / self.gradient_accumulation_steps, var_dtype)
-        apply_state[(var_device, var_dtype)].update(
-            {
-                'apply_update': apply_update,
-                'grad_scaler': grad_scaler
-            })
+        apply_state[(var_device, var_dtype)].update({
+            'apply_update': apply_update,
+            'grad_scaler': grad_scaler
+        })
 
     def _resource_apply_dense(self, grad, var, apply_state=None):
       if self.gradient_accumulation_steps > 1:
         var_device, var_dtype = var.device, var.dtype.base_dtype
-        coefficients = ((apply_state or {}).get((var_device, var_dtype))
-                        or self._fallback_apply_state(var_device, var_dtype))
+        coefficients = ((apply_state or {}).get((var_device, var_dtype)) or
+                        self._fallback_apply_state(var_device, var_dtype))
         grad_acc = self.get_slot(var, 'grad_acc')
 
         def _update_grad():
           apply_grad_op = super(DPOptimizerClass, self)._resource_apply_dense(
               grad_acc + grad * coefficients['grad_scaler'], var, apply_state)
           with tf.control_dependencies([apply_grad_op]):
-            return grad_acc.assign(tf.zeros_like(grad_acc),
-                                   use_locking=self._use_locking,
-                                   read_value=False)
+            return grad_acc.assign(
+                tf.zeros_like(grad_acc),
+                use_locking=self._use_locking,
+                read_value=False)
 
         def _accumulate():
-          return grad_acc.assign_add(grad * coefficients['grad_scaler'],
-                                     use_locking=self._use_locking,
-                                     read_value=False)
+          return grad_acc.assign_add(
+              grad * coefficients['grad_scaler'],
+              use_locking=self._use_locking,
+              read_value=False)
 
         return tf.cond(coefficients['apply_update'], _update_grad, _accumulate)
       else:
-        return super(DPOptimizerClass, self)._resource_apply_dense(
-            grad, var, apply_state)
+        return super(DPOptimizerClass,
+                     self)._resource_apply_dense(grad, var, apply_state)
 
     def _resource_apply_sparse_duplicate_indices(self, *args, **kwargs):
       if self.gradient_accumulation_steps > 1:
@@ -220,8 +220,8 @@ def make_keras_optimizer_class(cls):
         raise NotImplementedError(
             'Sparse gradients are not supported with large batch emulation.')
       else:
-        return super(DPOptimizerClass, self)._resource_apply_sparse(
-            *args, **kwargs)
+        return super(DPOptimizerClass,
+                     self)._resource_apply_sparse(*args, **kwargs)
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP-SGD version of base class method."""

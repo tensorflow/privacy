@@ -434,8 +434,8 @@ def _binary_logistic_or_multi_class_head(n_classes, weight_column,
       encoded as integer or float within [0, 1] for `n_classes=2` and encoded as
       integer values in {0, 1,..., n_classes-1} for `n_classes`>2 . Also there
       will be errors if vocabulary is not provided and labels are string.
-    loss_reduction: Describes how to reduce training loss over batch.
-      Defaults to `SUM`.
+    loss_reduction: Describes how to reduce training loss over batch. Defaults
+      to `SUM`.
 
   Returns:
     `head._Head` instance.

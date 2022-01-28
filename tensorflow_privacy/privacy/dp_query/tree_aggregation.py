@@ -28,7 +28,6 @@ from typing import Any, Callable, Collection, Optional, Tuple, Union
 import attr
 import tensorflow as tf
 
-
 # TODO(b/192464750): find a proper place for the helper functions, privatize
 # the tree aggregation logic, and encourage users to use the DPQuery API.
 

@@ -27,11 +27,12 @@ class ComputeNoiseFromBudgetTest(parameterized.TestCase):
       ('Test2', 100000000, 1024, 5907984.81339406, 10, 1e-7, 1e-5, 0.1),
       ('Test3', 100000000, 1024, 5907984.81339406, 10, 1e-7, 1, 0),
   )
-  def test_compute_noise(self, n, batch_size, target_epsilon, epochs,
-                         delta, min_noise, expected_noise):
+  def test_compute_noise(self, n, batch_size, target_epsilon, epochs, delta,
+                         min_noise, expected_noise):
     target_noise = compute_noise_from_budget_lib.compute_noise(
         n, batch_size, target_epsilon, epochs, delta, min_noise)
     self.assertAlmostEqual(target_noise, expected_noise)
+
 
 if __name__ == '__main__':
   absltest.main()

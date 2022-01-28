@@ -187,5 +187,6 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
             tree_aggregation_accountant._compute_gaussian_zcdp(
                 sigma, sum_sensitivity_square))
 
+
 if __name__ == '__main__':
   tf.test.main()

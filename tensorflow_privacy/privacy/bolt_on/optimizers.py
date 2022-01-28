@@ -48,14 +48,12 @@ class GammaBetaDecreasingStep(
                            'This is performed automatically by using the '
                            '{1} as a context manager, '
                            'as desired'.format(self.__class__.__name__,
-                                               BoltOn.__class__.__name__
-                                              )
-                          )
+                                               BoltOn.__class__.__name__))
     dtype = self.beta.dtype
     one = tf.constant(1, dtype)
-    return tf.math.minimum(tf.math.reduce_min(one/self.beta),
-                           one/(self.gamma*math_ops.cast(step, dtype))
-                          )
+    return tf.math.minimum(
+        tf.math.reduce_min(one / self.beta),
+        one / (self.gamma * math_ops.cast(step, dtype)))
 
   def get_config(self):
     """Return config to setup the learning rate scheduler."""
@@ -108,16 +106,16 @@ class BoltOn(optimizer_v2.OptimizerV2):
   Descent-based Analytics by Xi Wu et. al.
   """
 
-  def __init__(self,  # pylint: disable=super-init-not-called
-               optimizer,
-               loss,
-               dtype=tf.float32,
-              ):
+  def __init__(
+      self,  # pylint: disable=super-init-not-called
+      optimizer,
+      loss,
+      dtype=tf.float32,
+  ):
     """Constructor.
 
     Args:
-      optimizer: Optimizer_v2 or subclass to be used as the optimizer
-        (wrapped).
+      optimizer: Optimizer_v2 or subclass to be used as the optimizer (wrapped).
       loss: StrongConvexLoss function that the model is being compiled with.
       dtype: dtype
     """
@@ -155,8 +153,8 @@ class BoltOn(optimizer_v2.OptimizerV2):
     """Normalize the weights to the R-ball.
 
     Args:
-      force: True to normalize regardless of previous weight values.
-        False to check if weights > R-ball and only normalize then.
+      force: True to normalize regardless of previous weight values. False to
+        check if weights > R-ball and only normalize then.
 
     Raises:
       Exception: If not called from inside this optimizer context.
@@ -199,14 +197,14 @@ class BoltOn(optimizer_v2.OptimizerV2):
       l2_sensitivity = (2 *
                         loss.lipchitz_constant(self.class_weights)) / \
                        (loss.gamma() * self.n_samples * self.batch_size)
-      unit_vector = tf.random.normal(shape=(input_dim, output_dim),
-                                     mean=0,
-                                     seed=1,
-                                     stddev=1.0,
-                                     dtype=self.dtype)
+      unit_vector = tf.random.normal(
+          shape=(input_dim, output_dim),
+          mean=0,
+          seed=1,
+          stddev=1.0,
+          dtype=self.dtype)
       unit_vector = unit_vector / tf.math.sqrt(
-          tf.reduce_sum(tf.math.square(unit_vector), axis=0)
-      )
+          tf.reduce_sum(tf.math.square(unit_vector), axis=0))
 
       beta = l2_sensitivity / per_class_epsilon
       alpha = input_dim  # input_dim
@@ -214,8 +212,7 @@ class BoltOn(optimizer_v2.OptimizerV2):
                               alpha,
                               beta=1 / beta,
                               seed=1,
-                              dtype=self.dtype
-                             )
+                              dtype=self.dtype)
       return unit_vector * gamma
     raise NotImplementedError('Noise distribution: {0} is not '
                               'a valid distribution'.format(distribution))
@@ -245,10 +242,8 @@ class BoltOn(optimizer_v2.OptimizerV2):
     except AttributeError:
       raise AttributeError(
           "Neither '{0}' nor '{1}' object has attribute '{2}'"
-          "".format(self.__class__.__name__,
-                    self._internal_optimizer.__class__.__name__,
-                    name)
-          )
+          ''.format(self.__class__.__name__,
+                    self._internal_optimizer.__class__.__name__, name))
 
   def __setattr__(self, key, value):
     """Set attribute to self instance if its the internal optimizer.
@@ -309,20 +304,15 @@ class BoltOn(optimizer_v2.OptimizerV2):
     self._is_init = True
     return self
 
-  def __call__(self,
-               noise_distribution,
-               epsilon,
-               layers,
-               class_weights,
-               n_samples,
-               batch_size):
+  def __call__(self, noise_distribution, epsilon, layers, class_weights,
+               n_samples, batch_size):
     """Accepts required values for bolton method from context entry point.
 
     Stores them on the optimizer for use throughout fitting.
 
     Args:
-      noise_distribution: the noise distribution to pick.
-        see _accepted_distributions and get_noise for possible values.
+      noise_distribution: the noise distribution to pick. see
+        _accepted_distributions and get_noise for possible values.
       epsilon: privacy parameter. Lower gives more privacy but less utility.
       layers: list of Keras/Tensorflow layers. Can be found as model.layers
       class_weights: class_weights used, which may either be a scalar or 1D
@@ -341,8 +331,8 @@ class BoltOn(optimizer_v2.OptimizerV2):
                        'distributions'.format(noise_distribution,
                                               _accepted_distributions))
     self.noise_distribution = noise_distribution
-    self.learning_rate.initialize(self.loss.beta(class_weights),
-                                  self.loss.gamma())
+    self.learning_rate.initialize(
+        self.loss.beta(class_weights), self.loss.gamma())
     self.epsilon = tf.constant(epsilon, dtype=self.dtype)
     self.class_weights = tf.constant(class_weights, dtype=self.dtype)
     self.n_samples = tf.constant(n_samples, dtype=self.dtype)
@@ -369,9 +359,10 @@ class BoltOn(optimizer_v2.OptimizerV2):
     for layer in self.layers:
       input_dim = layer.kernel.shape[0]
       output_dim = layer.units
-      noise = self.get_noise(input_dim,
-                             output_dim,
-                            )
+      noise = self.get_noise(
+          input_dim,
+          output_dim,
+      )
       layer.kernel = tf.math.add(layer.kernel, noise)
     self.noise_distribution = None
     self.learning_rate.de_initialize()

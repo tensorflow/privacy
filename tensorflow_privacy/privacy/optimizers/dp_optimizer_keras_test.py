@@ -15,7 +15,6 @@
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras_vectorized
 
@@ -108,8 +107,7 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     with tape:
       loss = self._loss(data0, var0) + self._loss(data1, var1)
 
-    grads_and_vars = opt._compute_gradients(
-        loss, [var0, var1], tape=tape)
+    grads_and_vars = opt._compute_gradients(loss, [var0, var1], tape=tape)
     self.assertAllCloseAccordingToType(expected_grad0, grads_and_vars[0][0])
     self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
 
@@ -442,10 +440,9 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPKerasSGDOptimizer 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
       ('DPKerasSGDOptimizer 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
       ('DPKerasSGDOptimizer 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
-      ('DPKerasAdamOptimizer 2',
-       dp_optimizer_keras.DPKerasAdamOptimizer, 1),
-      ('DPKerasAdagradOptimizer 2',
-       dp_optimizer_keras.DPKerasAdagradOptimizer, 2),
+      ('DPKerasAdamOptimizer 2', dp_optimizer_keras.DPKerasAdamOptimizer, 1),
+      ('DPKerasAdagradOptimizer 2', dp_optimizer_keras.DPKerasAdagradOptimizer,
+       2),
   )
   def testLargeBatchEmulation(self, cls, gradient_accumulation_steps):
     # Tests various optimizers with large batch emulation.

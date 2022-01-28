@@ -55,9 +55,8 @@ def create_attacker_data(attack_input_data: AttackInputData,
     attack_input_data: Original AttackInputData
     test_fraction: Fraction of the dataset to include in the test split.
     balance: Whether the training and test sets for the membership inference
-              attacker should have a balanced (roughly equal) number of samples
-              from the training and test sets used to develop the model
-              under attack.
+      attacker should have a balanced (roughly equal) number of samples from the
+      training and test sets used to develop the model under attack.
 
   Returns:
     AttackerData.
@@ -134,6 +133,7 @@ class TrainedAttacker:
     Args:
       input_features : A vector of features with the same semantics as x_train
         passed to train_model.
+
     Returns:
       An array of probabilities denoting whether the example belongs to test.
     """

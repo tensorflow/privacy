@@ -54,7 +54,8 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
 
   def __init__(
       self,
-      in_train, out_train,
+      in_train,
+      out_train,
       slicing_spec: SlicingSpec = None,
       attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
       tensorboard_dir=None,
@@ -70,7 +71,7 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
       attack_types: a list of attacks, each of type AttackType
       tensorboard_dir: directory for tensorboard summary
       tensorboard_merge_classifiers: if true, plot different classifiers with
-      the same slicing_spec and metric in the same figure
+        the same slicing_spec and metric in the same figure
       is_logit: whether the result of model.predict is logit or probability
       batch_size: the batch size for model.predict
     """
@@ -96,19 +97,18 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
 
   def on_epoch_end(self, epoch, logs=None):
     results = run_attack_on_keras_model(
-        self.model,
-        (self._in_train_data, self._in_train_labels),
-        (self._out_train_data, self._out_train_labels),
-        self._slicing_spec,
-        self._attack_types,
-        self._is_logit, self._batch_size)
+        self.model, (self._in_train_data, self._in_train_labels),
+        (self._out_train_data, self._out_train_labels), self._slicing_spec,
+        self._attack_types, self._is_logit, self._batch_size)
     logging.info(results)
 
     att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
         results)
     print('Attack result:')
-    print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
-                     zip(att_types, att_slices, att_metrics, att_values)]))
+    print('\n'.join([
+        '  %s: %.4f' % (', '.join([s, t, m]), v)
+        for t, s, m, v in zip(att_types, att_slices, att_metrics, att_values)
+    ]))
 
     # Write to tensorboard if tensorboard_dir is specified
     if self._writers is not None:
@@ -117,7 +117,9 @@ class MembershipInferenceCallback(tf.keras.callbacks.Callback):
 
 
 def run_attack_on_keras_model(
-    model, in_train, out_train,
+    model,
+    in_train,
+    out_train,
     slicing_spec: SlicingSpec = None,
     attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
     is_logit: bool = False,
@@ -132,6 +134,7 @@ def run_attack_on_keras_model(
     attack_types: a list of attacks, each of type AttackType
     is_logit: whether the result of model.predict is logit or probability
     batch_size: the batch size for model.predict
+
   Returns:
     Results of the attack
   """
@@ -139,16 +142,19 @@ def run_attack_on_keras_model(
   out_train_data, out_train_labels = out_train
 
   # Compute predictions and losses
-  in_train_pred, in_train_loss = calculate_losses(
-      model, in_train_data, in_train_labels, is_logit, batch_size)
-  out_train_pred, out_train_loss = calculate_losses(
-      model, out_train_data, out_train_labels, is_logit, batch_size)
+  in_train_pred, in_train_loss = calculate_losses(model, in_train_data,
+                                                  in_train_labels, is_logit,
+                                                  batch_size)
+  out_train_pred, out_train_loss = calculate_losses(model, out_train_data,
+                                                    out_train_labels, is_logit,
+                                                    batch_size)
   attack_input = AttackInputData(
-      logits_train=in_train_pred, logits_test=out_train_pred,
-      labels_train=in_train_labels, labels_test=out_train_labels,
-      loss_train=in_train_loss, loss_test=out_train_loss
-  )
-  results = mia.run_attacks(attack_input,
-                            slicing_spec=slicing_spec,
-                            attack_types=attack_types)
+      logits_train=in_train_pred,
+      logits_test=out_train_pred,
+      labels_train=in_train_labels,
+      labels_test=out_train_labels,
+      loss_train=in_train_loss,
+      loss_test=out_train_loss)
+  results = mia.run_attacks(
+      attack_input, slicing_spec=slicing_spec, attack_types=attack_types)
   return results

@@ -17,7 +17,6 @@
 import math
 
 from absl import app
-
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 
@@ -33,8 +32,10 @@ def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
 
   eps, _, opt_order = get_privacy_spent(orders, rdp, target_delta=delta)
 
-  print('DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
-        ' over {} steps satisfies'.format(100 * q, sigma, steps), end=' ')
+  print(
+      'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
+      ' over {} steps satisfies'.format(100 * q, sigma, steps),
+      end=' ')
   print('differential privacy with eps = {:.3g} and delta = {}.'.format(
       eps, delta))
   print('The optimal RDP order is {}.'.format(opt_order))

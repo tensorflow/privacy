@@ -140,9 +140,9 @@ def _run_attack(attack_input: AttackInputData,
     attack_input: input data for running an attack
     attack_type: the attack to run
     balance_attacker_training: Whether the training and test sets for the
-          membership inference attacker should have a balanced (roughly equal)
-          number of samples from the training and test sets used to develop
-          the model under attack.
+      membership inference attacker should have a balanced (roughly equal)
+      number of samples from the training and test sets used to develop the
+      model under attack.
     min_num_samples: minimum number of examples in either training or test data.
 
   Returns:
@@ -179,9 +179,9 @@ def run_attacks(attack_input: AttackInputData,
     attack_types: attacks to run
     privacy_report_metadata: the metadata of the model under attack.
     balance_attacker_training: Whether the training and test sets for the
-          membership inference attacker should have a balanced (roughly equal)
-          number of samples from the training and test sets used to develop
-          the model under attack.
+      membership inference attacker should have a balanced (roughly equal)
+      number of samples from the training and test sets used to develop the
+      model under attack.
     min_num_samples: minimum number of examples in either training or test data.
 
   Returns:
@@ -200,8 +200,7 @@ def run_attacks(attack_input: AttackInputData,
     attack_input_slice = get_slice(attack_input, single_slice_spec)
     for attack_type in attack_types:
       attack_result = _run_attack(attack_input_slice, attack_type,
-                                  balance_attacker_training,
-                                  min_num_samples)
+                                  balance_attacker_training, min_num_samples)
       if attack_result is not None:
         attack_results.append(attack_result)
 

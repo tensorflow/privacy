@@ -40,8 +40,8 @@ class RegressionDataset:
   """Class for storing labeled examples for a regression dataset.
 
   Attributes:
-    points: array of shape (num_examples, dimension) containing the points to
-      be classified.
+    points: array of shape (num_examples, dimension) containing the points to be
+      classified.
     labels: array of shape (num_examples,) containing the corresponding labels,
       each belonging to the set {0,1,...,num_classes-1}, where num_classes is
       the number of classes.
@@ -51,7 +51,7 @@ class RegressionDataset:
 
 
 def linearly_separable_labeled_examples(
-    num_examples: int, weights: np.ndarray)-> RegressionDataset:
+    num_examples: int, weights: np.ndarray) -> RegressionDataset:
   """Generates num_examples labeled examples using separator given by weights.
 
   Args:
@@ -75,7 +75,7 @@ def linearly_separable_labeled_examples(
 
 def synthetic_linearly_separable_data(
     num_train: int, num_test: int, dimension: int,
-    num_classes: int)-> Tuple[RegressionDataset, RegressionDataset]:
+    num_classes: int) -> Tuple[RegressionDataset, RegressionDataset]:
   """Generates synthetic train and test data for logistic regression.
 
   Args:
@@ -103,7 +103,7 @@ def synthetic_linearly_separable_data(
   return (train_dataset, test_dataset)
 
 
-def mnist_dataset()-> Tuple[RegressionDataset, RegressionDataset]:
+def mnist_dataset() -> Tuple[RegressionDataset, RegressionDataset]:
   """Generates (normalized) train and test data for MNIST.
 
   Returns:

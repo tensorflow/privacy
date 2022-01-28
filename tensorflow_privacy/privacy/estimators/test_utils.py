@@ -34,6 +34,7 @@ def make_input_data(size, classes):
         np.power(feature_a, 3) + np.power(feature_b, 2) +
         np.power(feature_c, 1) + noise > 125).astype(int)
   else:
+
     def label_fn(x):
       if x < 110.0:
         return 0
@@ -42,10 +43,11 @@ def make_input_data(size, classes):
       else:
         return 2
 
-    labels = list(map(
-        label_fn,
-        np.power(feature_a, 3) + np.power(feature_b, 2) +
-        np.power(feature_c, 1) + noise))
+    labels = list(
+        map(
+            label_fn,
+            np.power(feature_a, 3) + np.power(feature_b, 2) +
+            np.power(feature_c, 1) + noise))
 
   return features, labels
 
@@ -87,6 +89,7 @@ def make_input_fn(features, labels, training, batch_size=16):
       dataset = dataset.shuffle(1000)
 
     return dataset.batch(batch_size)
+
   return input_fn
 
 

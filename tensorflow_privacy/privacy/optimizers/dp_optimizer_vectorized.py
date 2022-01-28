@@ -134,19 +134,15 @@ def make_vectorized_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.trainable_variables() + tf.get_collection(
-                  tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.trainable_variables() +
+              tf.get_collection(tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         def process_microbatch(microbatch_loss):
           """Compute clipped grads for one microbatch."""
           microbatch_loss = tf.reduce_mean(input_tensor=microbatch_loss)
           grads, _ = zip(*super(DPOptimizerClass, self).compute_gradients(
-              microbatch_loss,
-              var_list,
-              gate_gradients,
-              aggregation_method,
-              colocate_gradients_with_ops,
-              grad_loss))
+              microbatch_loss, var_list, gate_gradients, aggregation_method,
+              colocate_gradients_with_ops, grad_loss))
           grads_list = [
               g if g is not None else tf.zeros_like(v)
               for (g, v) in zip(list(grads), var_list)

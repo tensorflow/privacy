@@ -56,8 +56,8 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   logits = tf.keras.layers.Dense(
       units=nclasses,
       kernel_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer),
-      bias_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer)).apply(
-          input_layer)
+      bias_regularizer=tf.keras.regularizers.L2(
+          l2=FLAGS.regularizer)).apply(input_layer)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -166,8 +166,7 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # an option.
     rdp = [order * coef for order in orders]
     eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
-    print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(
-        p * 100, eps, delta))
+    print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
   # Compute privacy guarantees for the Sampled Gaussian Mechanism.
   rdp_sgm = compute_rdp(batch_size / samples, noise_multiplier,
@@ -233,6 +232,7 @@ def main(unused_argv):
         samples=num_samples,
         noise_multiplier=FLAGS.noise_multiplier,
     )
+
 
 if __name__ == '__main__':
   app.run(main)

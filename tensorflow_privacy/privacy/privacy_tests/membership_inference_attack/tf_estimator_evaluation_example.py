@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """An example for using tf_estimator_evaluation."""
 
 from absl import app
@@ -26,15 +25,15 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.tf_estimator_evaluation import MembershipInferenceTrainingHook
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.tf_estimator_evaluation import run_attack_on_tf_estimator_model
 
-
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.02, 'Learning rate for training')
 flags.DEFINE_integer('batch_size', 250, 'Batch size')
 flags.DEFINE_integer('epochs', 100, 'Number of epochs')
 flags.DEFINE_string('model_dir', None, 'Model directory.')
-flags.DEFINE_bool('tensorboard_merge_classifiers', False, 'If true, plot '
-                  'different classifiers with the same slicing_spec and metric '
-                  'in the same figure.')
+flags.DEFINE_bool(
+    'tensorboard_merge_classifiers', False, 'If true, plot '
+    'different classifiers with the same slicing_spec and metric '
+    'in the same figure.')
 
 
 def small_cnn_fn(features, labels, mode):
@@ -55,8 +54,8 @@ def small_cnn_fn(features, labels, mode):
 
   # Configure the training op (for TRAIN mode).
   if mode == tf.estimator.ModeKeys.TRAIN:
-    optimizer = tf.train.MomentumOptimizer(learning_rate=FLAGS.learning_rate,
-                                           momentum=0.9)
+    optimizer = tf.train.MomentumOptimizer(
+        learning_rate=FLAGS.learning_rate, momentum=0.9)
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(
@@ -111,13 +110,12 @@ def main(unused_argv):
 
   # Get hook for membership inference attack.
   mia_hook = MembershipInferenceTrainingHook(
-      classifier,
-      (x_train, y_train),
-      (x_test, y_test),
+      classifier, (x_train, y_train), (x_test, y_test),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[AttackType.THRESHOLD_ATTACK,
-                    AttackType.K_NEAREST_NEIGHBORS],
+      attack_types=[
+          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
+      ],
       tensorboard_dir=FLAGS.model_dir,
       tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
 
@@ -148,12 +146,15 @@ def main(unused_argv):
       classifier, (x_train, y_train), (x_test, y_test),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS]
-      )
+      attack_types=[
+          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
+      ])
   att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
-  print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
-                   zip(att_types, att_slices, att_metrics, att_values)]))
+  print('\n'.join([
+      '  %s: %.4f' % (', '.join([s, t, m]), v)
+      for t, s, m, v in zip(att_types, att_slices, att_metrics, att_values)
+  ]))
 
 
 if __name__ == '__main__':

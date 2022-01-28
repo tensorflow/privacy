@@ -27,10 +27,14 @@ n_samples = 10
 input_dim = 2
 n_outputs = 1
 # Create binary classification dataset:
-x_stack = [tf.constant(-1, tf.float32, (n_samples, input_dim)),
-           tf.constant(1, tf.float32, (n_samples, input_dim))]
-y_stack = [tf.constant(0, tf.float32, (n_samples, 1)),
-           tf.constant(1, tf.float32, (n_samples, 1))]
+x_stack = [
+    tf.constant(-1, tf.float32, (n_samples, input_dim)),
+    tf.constant(1, tf.float32, (n_samples, input_dim))
+]
+y_stack = [
+    tf.constant(0, tf.float32, (n_samples, 1)),
+    tf.constant(1, tf.float32, (n_samples, 1))
+]
 x, y = tf.concat(x_stack, 0), tf.concat(y_stack, 0)
 print(x.shape, y.shape)
 generator = tf.data.Dataset.from_tensor_slices((x, y))
@@ -86,14 +90,15 @@ n_samples = None  # default, if it cannot be iferred, specify this
 epsilon = 2
 noise_distribution = 'laplace'
 
-bolt.fit(x,
-         y,
-         epsilon=epsilon,
-         class_weight=class_weight,
-         batch_size=batch_size,
-         n_samples=n_samples,
-         noise_distribution=noise_distribution,
-         epochs=2)
+bolt.fit(
+    x,
+    y,
+    epsilon=epsilon,
+    class_weight=class_weight,
+    batch_size=batch_size,
+    n_samples=n_samples,
+    noise_distribution=noise_distribution,
+    epochs=2)
 # -------
 # We may also train a generator object, or try different optimizers and loss
 # functions. Below, we will see that we must pass the number of samples as the
@@ -109,25 +114,27 @@ n_samples = None  # default, if it cannot be iferred, specify this
 epsilon = 2
 noise_distribution = 'laplace'
 try:
-  bolt.fit(generator,
-           epsilon=epsilon,
-           class_weight=class_weight,
-           batch_size=batch_size,
-           n_samples=n_samples,
-           noise_distribution=noise_distribution,
-           verbose=0)
+  bolt.fit(
+      generator,
+      epsilon=epsilon,
+      class_weight=class_weight,
+      batch_size=batch_size,
+      n_samples=n_samples,
+      noise_distribution=noise_distribution,
+      verbose=0)
 except ValueError as e:
   print(e)
 # -------
 # And now, re running with the parameter set.
 # -------
 n_samples = 20
-bolt.fit_generator(generator,
-                   epsilon=epsilon,
-                   class_weight=class_weight,
-                   n_samples=n_samples,
-                   noise_distribution=noise_distribution,
-                   verbose=0)
+bolt.fit_generator(
+    generator,
+    epsilon=epsilon,
+    class_weight=class_weight,
+    n_samples=n_samples,
+    noise_distribution=noise_distribution,
+    verbose=0)
 # -------
 # You don't have to use the BoltOn model to use the BoltOn method.
 # There are only a few requirements:
@@ -145,8 +152,8 @@ class TestModel(tf.keras.Model):  # pylint: disable=abstract-method
 
   def __init__(self, reg_layer, number_of_outputs=1):
     super().__init__(name='test')
-    self.output_layer = tf.keras.layers.Dense(number_of_outputs,
-                                              kernel_regularizer=reg_layer)
+    self.output_layer = tf.keras.layers.Dense(
+        number_of_outputs, kernel_regularizer=reg_layer)
 
   def call(self, inputs):  # pylint: disable=arguments-differ
     return self.output_layer(inputs)
@@ -180,6 +187,5 @@ with optimizer(
     layers=test_model.layers,
     class_weights=class_weights,
     n_samples=n_samples,
-    batch_size=batch_size
-) as _:
+    batch_size=batch_size) as _:
   test_model.fit(x, y, batch_size=batch_size, epochs=2)

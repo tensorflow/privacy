@@ -47,10 +47,11 @@ def compute_epsilon(steps):
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
+  rdp = compute_rdp(
+      q=sampling_probability,
+      noise_multiplier=FLAGS.noise_multiplier,
+      steps=steps,
+      orders=orders)
   # Delta is set to 1e-5 because MNIST has 60000 training points.
   return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
@@ -91,16 +92,16 @@ def main(unused_argv):
 
   # Define a sequential Keras model
   model = tf.keras.Sequential([
-      tf.keras.layers.Conv2D(16, 8,
-                             strides=2,
-                             padding='same',
-                             activation='relu',
-                             input_shape=(28, 28, 1)),
+      tf.keras.layers.Conv2D(
+          16,
+          8,
+          strides=2,
+          padding='same',
+          activation='relu',
+          input_shape=(28, 28, 1)),
       tf.keras.layers.MaxPool2D(2, 1),
-      tf.keras.layers.Conv2D(32, 4,
-                             strides=2,
-                             padding='valid',
-                             activation='relu'),
+      tf.keras.layers.Conv2D(
+          32, 4, strides=2, padding='valid', activation='relu'),
       tf.keras.layers.MaxPool2D(2, 1),
       tf.keras.layers.Flatten(),
       tf.keras.layers.Dense(32, activation='relu'),
@@ -124,10 +125,12 @@ def main(unused_argv):
   model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
 
   # Train model with Keras
-  model.fit(train_data, train_labels,
-            epochs=FLAGS.epochs,
-            validation_data=(test_data, test_labels),
-            batch_size=FLAGS.batch_size)
+  model.fit(
+      train_data,
+      train_labels,
+      epochs=FLAGS.epochs,
+      validation_data=(test_data, test_labels),
+      batch_size=FLAGS.batch_size)
 
   # Compute the privacy budget expended.
   if FLAGS.dpsgd:
@@ -135,6 +138,7 @@ def main(unused_argv):
     print('For delta=1e-5, the current epsilon is: %.2f' % eps)
   else:
     print('Trained with vanilla non-private SGD optimizer')
+
 
 if __name__ == '__main__':
   app.run(main)

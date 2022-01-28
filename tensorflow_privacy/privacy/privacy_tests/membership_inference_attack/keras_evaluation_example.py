@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """An example for using keras_evaluation."""
 
 from absl import app
@@ -25,15 +24,15 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.keras_evaluation import MembershipInferenceCallback
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.keras_evaluation import run_attack_on_keras_model
 
-
 FLAGS = flags.FLAGS
 flags.DEFINE_float('learning_rate', 0.02, 'Learning rate for training')
 flags.DEFINE_integer('batch_size', 250, 'Batch size')
 flags.DEFINE_integer('epochs', 100, 'Number of epochs')
 flags.DEFINE_string('model_dir', None, 'Model directory.')
-flags.DEFINE_bool('tensorboard_merge_classifiers', False, 'If true, plot '
-                  'different classifiers with the same slicing_spec and metric '
-                  'in the same figure.')
+flags.DEFINE_bool(
+    'tensorboard_merge_classifiers', False, 'If true, plot '
+    'different classifiers with the same slicing_spec and metric '
+    'in the same figure.')
 
 
 def small_cnn():
@@ -76,14 +75,15 @@ def main(unused_argv):
 
   # Get callback for membership inference attack.
   mia_callback = MembershipInferenceCallback(
-      (x_train, y_train),
-      (x_test, y_test),
+      (x_train, y_train), (x_test, y_test),
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
-      attack_types=[AttackType.THRESHOLD_ATTACK,
-                    AttackType.K_NEAREST_NEIGHBORS],
+      attack_types=[
+          AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
+      ],
       tensorboard_dir=FLAGS.model_dir,
       tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers,
-      is_logit=True, batch_size=2048)
+      is_logit=True,
+      batch_size=2048)
 
   # Train model with Keras
   model.fit(
@@ -102,11 +102,14 @@ def main(unused_argv):
       attack_types=[
           AttackType.THRESHOLD_ATTACK, AttackType.K_NEAREST_NEIGHBORS
       ],
-      is_logit=True, batch_size=2048)
+      is_logit=True,
+      batch_size=2048)
   att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
       attack_results)
-  print('\n'.join(['  %s: %.4f' % (', '.join([s, t, m]), v) for t, s, m, v in
-                   zip(att_types, att_slices, att_metrics, att_values)]))
+  print('\n'.join([
+      '  %s: %.4f' % (', '.join([s, t, m]), v)
+      for t, s, m, v in zip(att_types, att_slices, att_metrics, att_values)
+  ]))
 
 
 if __name__ == '__main__':

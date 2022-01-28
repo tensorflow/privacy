@@ -64,5 +64,6 @@ class DPDNNClassifierTest(tf.test.TestCase, parameterized.TestCase):
         input_fn=test_utils.make_input_fn(predict_features, predict_labels,
                                           False))
 
+
 if __name__ == '__main__':
   tf.test.main()

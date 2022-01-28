@@ -28,23 +28,19 @@ def cnn_model_fn(features, labels, mode):
 
   # Define CNN architecture using tf.keras.layers.
   input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
-  y = tf.keras.layers.Conv2D(16, 8,
-                             strides=2,
-                             padding='same',
-                             activation='relu').apply(input_layer)
+  y = tf.keras.layers.Conv2D(
+      16, 8, strides=2, padding='same', activation='relu').apply(input_layer)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Conv2D(32, 4,
-                             strides=2,
-                             padding='valid',
-                             activation='relu').apply(y)
+  y = tf.keras.layers.Conv2D(
+      32, 4, strides=2, padding='valid', activation='relu').apply(y)
   y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
   y = tf.keras.layers.Flatten().apply(y)
   y = tf.keras.layers.Dense(32, activation='relu').apply(y)
   logits = tf.keras.layers.Dense(10).apply(y)
 
   # Calculate loss as a vector and as its average across minibatch.
-  vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=labels,
-                                                               logits=logits)
+  vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
+      labels=labels, logits=logits)
   scalar_loss = tf.reduce_mean(vector_loss)
 
   # Configure the training op (for TRAIN mode).
@@ -53,21 +49,18 @@ def cnn_model_fn(features, labels, mode):
     opt_loss = scalar_loss
     global_step = tf.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      train_op=train_op)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
   elif mode == tf.estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
-                labels=labels,
-                predictions=tf.argmax(input=logits, axis=1))
+                labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
-    return tf.estimator.EstimatorSpec(mode=mode,
-                                      loss=scalar_loss,
-                                      eval_metric_ops=eval_metric_ops)
+    return tf.estimator.EstimatorSpec(
+        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
 def load_mnist():
@@ -109,10 +102,7 @@ def main(unused_argv):
       num_epochs=FLAGS.epochs,
       shuffle=True)
   eval_input_fn = tf.estimator.inputs.numpy_input_fn(
-      x={'x': test_data},
-      y=test_labels,
-      num_epochs=1,
-      shuffle=False)
+      x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
 
   # Training loop.
   steps_per_epoch = 60000 // FLAGS.batch_size
@@ -124,6 +114,7 @@ def main(unused_argv):
     eval_results = mnist_classifier.evaluate(input_fn=eval_input_fn)
     test_accuracy = eval_results['accuracy']
     print('Test accuracy after %d epochs is: %.3f' % (epoch, test_accuracy))
+
 
 if __name__ == '__main__':
   tf.app.run()

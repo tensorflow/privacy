@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from absl.testing import absltest
-
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import keras_evaluation
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
@@ -59,8 +57,7 @@ class UtilsTest(absltest.TestCase):
   def test_run_attack_on_keras_model(self):
     """Test the attack."""
     results = keras_evaluation.run_attack_on_keras_model(
-        self.model,
-        (self.train_data, self.train_labels),
+        self.model, (self.train_data, self.train_labels),
         (self.test_data, self.test_labels),
         attack_types=[AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, AttackResults)

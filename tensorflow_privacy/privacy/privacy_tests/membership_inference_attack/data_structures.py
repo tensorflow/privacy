@@ -482,8 +482,8 @@ class SingleAttackResult:
     return '\n'.join([
         'SingleAttackResult(',
         '  SliceSpec: %s' % str(self.slice_spec),
-        '  DataSize: (ntrain=%d, ntest=%d)' % (self.data_size.ntrain,
-                                               self.data_size.ntest),
+        '  DataSize: (ntrain=%d, ntest=%d)' %
+        (self.data_size.ntrain, self.data_size.ntest),
         '  AttackType: %s' % str(self.attack_type),
         '  AUC: %.2f' % self.get_auc(),
         '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
@@ -684,10 +684,8 @@ class AttackResults:
     summary.append('Best-performing attacks over all slices')
     summary.append(
         '  %s (with %d training and %d test examples) achieved an AUC of %.2f on slice %s'
-        % (max_auc_result_all.attack_type,
-           max_auc_result_all.data_size.ntrain,
-           max_auc_result_all.data_size.ntest,
-           max_auc_result_all.get_auc(),
+        % (max_auc_result_all.attack_type, max_auc_result_all.data_size.ntrain,
+           max_auc_result_all.data_size.ntest, max_auc_result_all.get_auc(),
            max_auc_result_all.slice_spec))
 
     max_advantage_result_all = self.get_result_with_max_attacker_advantage()
@@ -709,10 +707,8 @@ class AttackResults:
         max_auc_result = results.get_result_with_max_auc()
         summary.append(
             '  %s (with %d training and %d test examples) achieved an AUC of %.2f'
-            % (max_auc_result.attack_type,
-               max_auc_result.data_size.ntrain,
-               max_auc_result.data_size.ntest,
-               max_auc_result.get_auc()))
+            % (max_auc_result.attack_type, max_auc_result.data_size.ntrain,
+               max_auc_result.data_size.ntest, max_auc_result.get_auc()))
         max_advantage_result = results.get_result_with_max_attacker_advantage()
         summary.append(
             '  %s (with %d training and %d test examples) achieved an advantage of %.2f'
@@ -816,6 +812,8 @@ def get_flattened_attack_metrics(results: AttackResults):
     types += [str(attack_result.attack_type)] * 2
     slices += [str(attack_result.slice_spec)] * 2
     attack_metrics += ['adv', 'auc']
-    values += [float(attack_result.get_attacker_advantage()),
-               float(attack_result.get_auc())]
+    values += [
+        float(attack_result.get_attacker_advantage()),
+        float(attack_result.get_auc())
+    ]
   return types, slices, attack_metrics, values

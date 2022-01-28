@@ -25,16 +25,18 @@ from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescent
 GradientDescentOptimizer = tf.train.GradientDescentOptimizer
 tf.enable_eager_execution()
 
-flags.DEFINE_boolean('dpsgd', True, 'If True, train with DP-SGD. If False, '
-                     'train with vanilla SGD.')
+flags.DEFINE_boolean(
+    'dpsgd', True, 'If True, train with DP-SGD. If False, '
+    'train with vanilla SGD.')
 flags.DEFINE_float('learning_rate', 0.15, 'Learning rate for training')
 flags.DEFINE_float('noise_multiplier', 1.1,
                    'Ratio of the standard deviation to the clipping norm')
 flags.DEFINE_float('l2_norm_clip', 1.0, 'Clipping norm')
 flags.DEFINE_integer('batch_size', 250, 'Batch size')
 flags.DEFINE_integer('epochs', 60, 'Number of epochs')
-flags.DEFINE_integer('microbatches', 250, 'Number of microbatches '
-                     '(must evenly divide batch_size)')
+flags.DEFINE_integer(
+    'microbatches', 250, 'Number of microbatches '
+    '(must evenly divide batch_size)')
 
 FLAGS = flags.FLAGS
 
@@ -45,10 +47,11 @@ def compute_epsilon(steps):
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / 60000
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
+  rdp = compute_rdp(
+      q=sampling_probability,
+      noise_multiplier=FLAGS.noise_multiplier,
+      steps=steps,
+      orders=orders)
   # Delta is set to 1e-5 because MNIST has 60000 training points.
   return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 
@@ -64,22 +67,20 @@ def main(_):
 
   # Create a dataset object and batch for the training data
   dataset = tf.data.Dataset.from_tensor_slices(
-      (tf.cast(train_images[..., tf.newaxis]/255, tf.float32),
-       tf.cast(train_labels, tf.int64)))
+      (tf.cast(train_images[..., tf.newaxis] / 255,
+               tf.float32), tf.cast(train_labels, tf.int64)))
   dataset = dataset.shuffle(1000).batch(FLAGS.batch_size)
 
   # Create a dataset object and batch for the test data
   eval_dataset = tf.data.Dataset.from_tensor_slices(
-      (tf.cast(test_images[..., tf.newaxis]/255, tf.float32),
-       tf.cast(test_labels, tf.int64)))
+      (tf.cast(test_images[..., tf.newaxis] / 255,
+               tf.float32), tf.cast(test_labels, tf.int64)))
   eval_dataset = eval_dataset.batch(10000)
 
   # Define the model using tf.keras.layers
   mnist_model = tf.keras.Sequential([
-      tf.keras.layers.Conv2D(16, 8,
-                             strides=2,
-                             padding='same',
-                             activation='relu'),
+      tf.keras.layers.Conv2D(
+          16, 8, strides=2, padding='same', activation='relu'),
       tf.keras.layers.MaxPool2D(2, 1),
       tf.keras.layers.Conv2D(32, 4, strides=2, activation='relu'),
       tf.keras.layers.MaxPool2D(2, 1),
@@ -119,8 +120,8 @@ def main(_):
           return loss
 
         if FLAGS.dpsgd:
-          grads_and_vars = opt.compute_gradients(loss_fn, var_list,
-                                                 gradient_tape=gradient_tape)
+          grads_and_vars = opt.compute_gradients(
+              loss_fn, var_list, gradient_tape=gradient_tape)
         else:
           grads_and_vars = opt.compute_gradients(loss_fn, var_list)
 
@@ -139,6 +140,7 @@ def main(_):
       print('For delta=1e-5, the current epsilon is: %.2f' % eps)
     else:
       print('Trained with vanilla non-private SGD optimizer')
+
 
 if __name__ == '__main__':
   app.run(main)

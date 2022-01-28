@@ -46,12 +46,13 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
     # the basis of this sanity check. This is confirmed in the above paper.
     q = batch_size / n
     steps = epochs * n / batch_size
-    sigma = noise_multiplier * math.sqrt(steps) /q
+    sigma = noise_multiplier * math.sqrt(steps) / q
     # We compute the optimal guarantee for Gaussian
     # using https://arxiv.org/abs/1805.06530 Theorem 8 (in v2).
-    low_delta = .5*math.erfc((eps*sigma-.5/sigma)/math.sqrt(2))
+    low_delta = .5 * math.erfc((eps * sigma - .5 / sigma) / math.sqrt(2))
     if eps < 100:  # Skip this if it causes overflow; error is minor.
-      low_delta -= math.exp(eps)*.5*math.erfc((eps*sigma+.5/sigma)/math.sqrt(2))
+      low_delta -= math.exp(eps) * .5 * math.erfc(
+          (eps * sigma + .5 / sigma) / math.sqrt(2))
     self.assertLessEqual(low_delta, delta)
 
 

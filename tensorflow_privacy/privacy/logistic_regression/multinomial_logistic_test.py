@@ -27,7 +27,7 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
       (5000, 500, 4, 1, 1e-5, 40, 2, 0.05),
       (10000, 1000, 3, 1, 1e-5, 40, 4, 0.1),
       (10000, 1000, 4, 1, 1e-5, 40, 4, 0.1),
-      )
+  )
   def test_logistic_objective_perturbation(self, num_train, num_test, dimension,
                                            epsilon, delta, epochs, num_classes,
                                            tolerance):
@@ -44,7 +44,7 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
       (1, 1, 1e-5, 40, 1, 1e-2),
       (500, 0.1, 1e-5, 40, 50, 1e-2),
       (5000, 10, 1e-5, 40, 10, 1e-3),
-      )
+  )
   def test_compute_dpsgd_noise_multiplier(self, num_train, epsilon, delta,
                                           epochs, batch_size, tolerance):
     noise_multiplier = multinomial_logistic.compute_dpsgd_noise_multiplier(
@@ -61,19 +61,22 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
       (5000, 500, 4, 1, 1e-5, 40, 2, 0.05, 10, 10, 1),
       (5000, 500, 3, 2, 1e-4, 40, 4, 0.1, 10, 10, 1),
       (5000, 500, 4, 2, 1e-4, 40, 4, 0.1, 10, 10, 1),
-      )
-  def test_logistic_dpsgd(self, num_train, num_test, dimension, epsilon,
-                          delta, epochs, num_classes, tolerance,
-                          batch_size, num_microbatches, clipping_norm):
+  )
+  def test_logistic_dpsgd(self, num_train, num_test, dimension, epsilon, delta,
+                          epochs, num_classes, tolerance, batch_size,
+                          num_microbatches, clipping_norm):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
         num_train, num_test, dimension, num_classes)
-    accuracy = multinomial_logistic.logistic_dpsgd(
-        train_dataset, test_dataset, epsilon, delta, epochs, num_classes,
-        batch_size, num_microbatches, clipping_norm)
+    accuracy = multinomial_logistic.logistic_dpsgd(train_dataset, test_dataset,
+                                                   epsilon, delta, epochs,
+                                                   num_classes, batch_size,
+                                                   num_microbatches,
+                                                   clipping_norm)
     # Since the synthetic data is linearly separable, we expect the test
     # accuracy to come arbitrarily close to 1 as the number of training examples
     # grows.
     self.assertAlmostEqual(accuracy[-1], 1, delta=tolerance)
+
 
 if __name__ == '__main__':
   unittest.main()

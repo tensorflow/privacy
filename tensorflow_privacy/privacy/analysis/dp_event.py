@@ -176,4 +176,3 @@ class SampledWithoutReplacementDpEvent(DpEvent):
   source_dataset_size: int
   sample_size: int
   event: DpEvent
-

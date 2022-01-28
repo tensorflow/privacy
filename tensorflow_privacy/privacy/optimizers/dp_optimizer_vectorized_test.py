@@ -17,7 +17,6 @@ import unittest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
 from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdagrad
 from tensorflow_privacy.privacy.optimizers.dp_optimizer_vectorized import VectorizedDPAdam
@@ -63,19 +62,19 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType(expected_answer, grads_and_vars[0][0])
 
-  @parameterized.named_parameters(
-      ('DPGradientDescent', VectorizedDPSGD),
-      ('DPAdagrad', VectorizedDPAdagrad),
-      ('DPAdam', VectorizedDPAdam))
+  @parameterized.named_parameters(('DPGradientDescent', VectorizedDPSGD),
+                                  ('DPAdagrad', VectorizedDPAdagrad),
+                                  ('DPAdam', VectorizedDPAdam))
   def testClippingNorm(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0, 0.0])
       data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
-      opt = cls(l2_norm_clip=1.0,
-                noise_multiplier=0.,
-                num_microbatches=1,
-                learning_rate=2.0)
+      opt = cls(
+          l2_norm_clip=1.0,
+          noise_multiplier=0.,
+          num_microbatches=1,
+          learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -86,19 +85,19 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
       grads_and_vars = sess.run(gradient_op)
       self.assertAllCloseAccordingToType([-0.6, -0.8], grads_and_vars[0][0])
 
-  @parameterized.named_parameters(
-      ('DPGradientDescent', VectorizedDPSGD),
-      ('DPAdagrad', VectorizedDPAdagrad),
-      ('DPAdam', VectorizedDPAdam))
+  @parameterized.named_parameters(('DPGradientDescent', VectorizedDPSGD),
+                                  ('DPAdagrad', VectorizedDPAdagrad),
+                                  ('DPAdam', VectorizedDPAdam))
   def testNoiseMultiplier(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])
       data0 = tf.Variable([[0.0]])
 
-      opt = cls(l2_norm_clip=4.0,
-                noise_multiplier=8.0,
-                num_microbatches=1,
-                learning_rate=2.0)
+      opt = cls(
+          l2_norm_clip=4.0,
+          noise_multiplier=8.0,
+          num_microbatches=1,
+          learning_rate=2.0)
 
       self.evaluate(tf.global_variables_initializer())
       # Fetch params to validate initial values
@@ -168,10 +167,9 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         true_weights,
         atol=1.0)
 
-  @parameterized.named_parameters(
-      ('DPGradientDescent', VectorizedDPSGD),
-      ('DPAdagrad', VectorizedDPAdagrad),
-      ('DPAdam', VectorizedDPAdam))
+  @parameterized.named_parameters(('DPGradientDescent', VectorizedDPSGD),
+                                  ('DPAdagrad', VectorizedDPAdagrad),
+                                  ('DPAdam', VectorizedDPAdam))
   def testDPGaussianOptimizerClass(self, cls):
     with self.cached_session() as sess:
       var0 = tf.Variable([0.0])
