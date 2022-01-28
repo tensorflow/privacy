@@ -169,17 +169,15 @@ class StrongConvexHuber(losses.Loss, StrongConvexMixin):
     """See super class."""
     max_class_weight = self.max_class_weight(class_weight, self.dtype)
     delta = _ops.convert_to_tensor_v2(self.delta, dtype=self.dtype)
-    return self.C * max_class_weight / (delta *
-                                        tf.constant(2, dtype=self.dtype)) + \
-           self.reg_lambda
+    return self.C * max_class_weight / (
+        delta * tf.constant(2, dtype=self.dtype)) + self.reg_lambda
 
   def lipchitz_constant(self, class_weight):
     """See super class."""
     # if class_weight is provided,
     # it should be a vector of the same size of number of classes
     max_class_weight = self.max_class_weight(class_weight, self.dtype)
-    lc = self.C * max_class_weight + \
-         self.reg_lambda * self.radius()
+    lc = self.C * max_class_weight + self.reg_lambda * self.radius()
     return lc
 
   def kernel_regularizer(self):

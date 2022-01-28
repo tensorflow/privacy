@@ -90,7 +90,7 @@ class StrongConvexMixinTests(keras_parameterized.TestCase):
     """
     loss = StrongConvexMixin()
     ret = getattr(loss, fn, None)(*args)
-    self.assertEqual(ret, None)
+    self.assertNone(ret)
 
 
 class BinaryCrossesntropyTests(keras_parameterized.TestCase):

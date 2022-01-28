@@ -213,9 +213,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     loss = TestLoss(1, 1, 1)
     bolton = opt.BoltOn(TestOptimizer(), loss)
     model = TestModel(1)
-    model.layers[0].kernel = \
-      model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                          model.n_outputs))
+    model.layers[0].kernel = model.layers[0].kernel_initializer(
+        (model.layer_input_shape[0], model.n_outputs))
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
@@ -282,9 +281,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(n_out, shape, init_value)
       model.compile(bolton, loss)
-      model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
+      model.layers[0].kernel = model.layers[0].kernel_initializer(
+          (model.layer_input_shape[0], model.n_outputs))
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.layers = model.layers
       bolton.epsilon = 2
@@ -321,9 +319,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
-      model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
+      model.layers[0].kernel = model.layers[0].kernel_initializer(
+          (model.layer_input_shape[0], model.n_outputs))
       with bolton(noise, epsilon, model.layers, class_weights, 1, 1) as _:
         pass
       return _ops.convert_to_tensor_v2(bolton.epsilon, dtype=tf.float32)
@@ -360,9 +357,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
-      model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
+      model.layers[0].kernel = model.layers[0].kernel_initializer(
+          (model.layer_input_shape[0], model.n_outputs))
       with bolton(noise, epsilon, model.layers, 1, 1, 1) as _:
         pass
 
@@ -392,9 +388,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
-      model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
+      model.layers[0].kernel = model.layers[0].kernel_initializer(
+          (model.layer_input_shape[0], model.n_outputs))
       getattr(bolton, fn)(*args)
 
     with self.assertRaisesRegexp(Exception, err_msg):  # pylint: disable=deprecated-method
@@ -463,12 +458,10 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
     bolton = opt.BoltOn(optimizer, loss)
     model = TestModel(3)
     model.compile(optimizer, loss)
-    model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
-    model.layers[0].kernel = \
-      model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                          model.n_outputs))
+    model.layers[0].kernel = model.layers[0].kernel_initializer(
+        (model.layer_input_shape[0], model.n_outputs))
+    model.layers[0].kernel = model.layers[0].kernel_initializer(
+        (model.layer_input_shape[0], model.n_outputs))
     bolton._is_init = True  # pylint: disable=protected-access
     bolton.layers = model.layers
     bolton.epsilon = 2
@@ -505,9 +498,8 @@ class BoltonOptimizerTest(keras_parameterized.TestCase):
       bolton = opt.BoltOn(TestOptimizer(), loss)
       model = TestModel(1, (1,), 1)
       model.compile(bolton, loss)
-      model.layers[0].kernel = \
-        model.layers[0].kernel_initializer((model.layer_input_shape[0],
-                                            model.n_outputs))
+      model.layers[0].kernel = model.layers[0].kernel_initializer(
+          (model.layer_input_shape[0], model.n_outputs))
       bolton._is_init = True  # pylint: disable=protected-access
       bolton.noise_distribution = 'laplace'
       bolton.epsilon = 1

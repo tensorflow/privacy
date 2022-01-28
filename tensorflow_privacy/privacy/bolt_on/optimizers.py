@@ -194,9 +194,8 @@ class BoltOn(optimizer_v2.OptimizerV2):
     distribution = self.noise_distribution.lower()
     if distribution == _accepted_distributions[0]:  # laplace
       per_class_epsilon = self.epsilon / (output_dim)
-      l2_sensitivity = (2 *
-                        loss.lipchitz_constant(self.class_weights)) / \
-                       (loss.gamma() * self.n_samples * self.batch_size)
+      l2_sensitivity = (2 * loss.lipchitz_constant(self.class_weights)) / (
+          loss.gamma() * self.n_samples * self.batch_size)
       unit_vector = tf.random.normal(
           shape=(input_dim, output_dim),
           mean=0,
@@ -239,11 +238,11 @@ class BoltOn(optimizer_v2.OptimizerV2):
     optim = object.__getattribute__(self, '_internal_optimizer')
     try:
       return object.__getattribute__(optim, name)
-    except AttributeError:
+    except AttributeError as e:
       raise AttributeError(
           "Neither '{0}' nor '{1}' object has attribute '{2}'"
           ''.format(self.__class__.__name__,
-                    self._internal_optimizer.__class__.__name__, name))
+                    self._internal_optimizer.__class__.__name__, name)) from e
 
   def __setattr__(self, key, value):
     """Set attribute to self instance if its the internal optimizer.
