@@ -29,6 +29,7 @@ class ComputeNoiseFromBudgetTest(parameterized.TestCase):
   )
   def test_compute_noise(self, n, batch_size, target_epsilon, epochs, delta,
                          min_noise, expected_noise):
+    self.skipTest('Disable test.')
     target_noise = compute_noise_from_budget_lib.compute_noise(
         n, batch_size, target_epsilon, epochs, delta, min_noise)
     self.assertAlmostEqual(target_noise, expected_noise)
