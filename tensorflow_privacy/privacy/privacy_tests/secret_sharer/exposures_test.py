@@ -15,8 +15,8 @@
 from absl.testing import absltest
 import numpy as np
 from scipy import stats
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_extrapolation
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.exposures import compute_exposure_interpolation
+
+from tensorflow_privacy.privacy.privacy_tests.secret_sharer import exposures
 
 
 class UtilsTest(absltest.TestCase):
@@ -28,42 +28,46 @@ class UtilsTest(absltest.TestCase):
   def test_exposure_interpolation(self):
     """Test exposure by interpolation."""
     perplexities = {
-        1: [0, 0.1],  # smallest perplexities
-        2: [20.0],  # largest perplexities
-        5: [3.5]
-    }  # rank = 4
+        '1': [0, 0.1],  # smallest perplexities
+        '2': [20.0],  # largest perplexities
+        '5': [3.5],  # rank = 4
+        '8': [3.5],  # rank = 4
+    }
     perplexities_reference = [float(x) for x in range(1, 17)]
-    exposures = compute_exposure_interpolation(perplexities,
-                                               perplexities_reference)
+    resulted_exposures = exposures.compute_exposure_interpolation(
+        perplexities, perplexities_reference)
     num_perplexities_reference = len(perplexities_reference)
     exposure_largest = np.log2(num_perplexities_reference)
     exposure_smallest = np.log2(num_perplexities_reference) - np.log2(
         num_perplexities_reference + 1)
+    exposure_rank4 = np.log2(num_perplexities_reference) - np.log2(4)
     expected_exposures = {
-        1: np.array([exposure_largest] * 2),
-        2: np.array([exposure_smallest]),
-        5: np.array([np.log2(num_perplexities_reference) - np.log2(4)])
+        '1': np.array([exposure_largest] * 2),
+        '2': np.array([exposure_smallest]),
+        '5': np.array([exposure_rank4]),
+        '8': np.array([exposure_rank4])
     }
 
-    self.assertEqual(exposures.keys(), expected_exposures.keys())
-    for r in exposures.keys():
-      np.testing.assert_almost_equal(exposures[r], exposures[r])
+    self.assertEqual(resulted_exposures.keys(), expected_exposures.keys())
+    for r in resulted_exposures.keys():
+      np.testing.assert_almost_equal(expected_exposures[r],
+                                     resulted_exposures[r])
 
   def test_exposure_extrapolation(self):
     parameters = (4, 0, 1)
     perplexities = {
-        1: stats.skewnorm.rvs(*parameters, size=(2,)),
-        10: stats.skewnorm.rvs(*parameters, size=(5,))
+        '1': stats.skewnorm.rvs(*parameters, size=(2,)),
+        '10': stats.skewnorm.rvs(*parameters, size=(5,))
     }
     perplexities_reference = stats.skewnorm.rvs(*parameters, size=(10000,))
-    exposures = compute_exposure_extrapolation(perplexities,
-                                               perplexities_reference)
+    resulted_exposures = exposures.compute_exposure_extrapolation(
+        perplexities, perplexities_reference)
     fitted_parameters = stats.skewnorm.fit(perplexities_reference)
 
-    self.assertEqual(exposures.keys(), perplexities.keys())
-    for r in exposures.keys():
+    self.assertEqual(resulted_exposures.keys(), perplexities.keys())
+    for r in resulted_exposures.keys():
       np.testing.assert_almost_equal(
-          exposures[r],
+          resulted_exposures[r],
           -np.log2(stats.skewnorm.cdf(perplexities[r], *fitted_parameters)))
 
 

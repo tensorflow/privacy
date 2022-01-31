@@ -13,74 +13,81 @@
 # limitations under the License.
 """Measuring exposure for secret sharer attack."""
 
-from typing import Dict, List
-
+from typing import Iterable, TypeVar, Mapping
 import numpy as np
 from scipy import stats
 
 
+_KT = TypeVar('_KT')
+
+
 def compute_exposure_interpolation(
-    perplexities: Dict[int, List[float]],
-    perplexities_reference: List[float]) -> Dict[int, List[float]]:
-  """Get exposure using interpolation.
+    perplexities: Mapping[_KT, Iterable[float]],
+    perplexities_reference: Iterable[float]) -> Mapping[_KT, Iterable[float]]:
+  """Gets exposure using interpolation.
 
   Args:
-    perplexities: a dictionary, key is number of secret repetitions, value is a
-      list of perplexities
-    perplexities_reference: a list, perplexities of the random sequences that
-      did not appear in the training data
+    perplexities: a `Mapping` where the key is an identifier for the secrets
+      set, e.g. number of secret repetitions, and the value is an iterable of
+      perplexities.
+    perplexities_reference: perplexities of the random sequences that did not
+      appear in the training data.
 
   Returns:
     The exposure of every secret measured using interpolation (not necessarily
-    in the same order as the input)
+    in the same order as the input), keyed in the same way as perplexities.
   """
-  repetitions = list(perplexities.keys())
-  # Concatenate all perplexities, including those for references
-  perplexities_concat = np.concatenate([perplexities[r] for r in repetitions] +
-                                       [perplexities_reference])
-  # Concatenate the number of repetitions for each secret
-  repetitions_concat = np.concatenate([[r] * len(perplexities[r])
-                                       for r in repetitions] +
-                                      [[0] * len(perplexities_reference)])
+  # Get the keys in some fixed order which will be used internally only
+  # further down.
+  keys = list(perplexities)
+  # Concatenate all perplexities, including those from `perplexities_reference`.
+  # Add another dimension indicating which set the perplexity is from: -1 for
+  # reference, {0, ..., len(perplexities)} for secrets
+  perplexities_concat = [(p, -1) for p in perplexities_reference]
+  for i, k in enumerate(keys):
+    perplexities_concat.extend((p, i) for p in perplexities[k])
 
-  # Sort the repetition list according to the corresponding perplexity
-  idx = np.argsort(perplexities_concat)
-  repetitions_concat = repetitions_concat[idx]
+  # Get the indices list sorted according to the corresponding perplexity,
+  # in case of tie, keep the reference before the secret
+  indices_concat = np.fromiter((i for _, i in sorted(perplexities_concat)),
+                               dtype=int)
 
-  # In the sorted repetition list, if there are m examples with repetition 0
-  # (does not appear in training) in front of an example, then its rank is
-  # (m + 1). To get the number of examples with repetition 0 in front of
-  # any example, we use the cummulative sum of the indicator vecotr
-  # (repetitions_concat == 0).
-  cum_sum = np.cumsum(repetitions_concat == 0)
-  ranks = {r: cum_sum[repetitions_concat == r] + 1 for r in repetitions}
+  # In the sorted indices list, if there are m examples with index -1
+  # (from the reference set) in front of an example, then its rank is
+  # (m + 1). To get the number of examples with index -1 in front of
+  # any example, we use the cumulative sum of the indicator vector
+  # (indices_concat == -1).
+  cum_sum = np.cumsum(indices_concat == -1)
+  ranks = {k: cum_sum[indices_concat == i] + 1 for i, k in enumerate(keys)}
   exposures = {
-      r: np.log2(len(perplexities_reference)) - np.log2(ranks[r])
-      for r in repetitions
+      k: np.log2(len(list(perplexities_reference))) - np.log2(ranks[k])
+      for k in ranks
   }
   return exposures
 
 
 def compute_exposure_extrapolation(
-    perplexities: Dict[int, List[float]],
-    perplexities_reference: List[float]) -> Dict[int, List[float]]:
-  """Get exposure using extrapolation.
+    perplexities: Mapping[_KT, Iterable[float]],
+    perplexities_reference: Iterable[float]) -> Mapping[_KT, Iterable[float]]:
+  """Gets exposure using extrapolation.
 
   Args:
-    perplexities: a dictionary, key is number of secret repetitions, value is a
-      list of perplexities
-    perplexities_reference: a list, perplexities of the random sequences that
-      did not appear in the training data
+    perplexities: a `Mapping` where the key is an identifier for the secrets
+      set, e.g. number of secret repetitions, and the value is an iterable of
+      perplexities.
+    perplexities_reference: perplexities of the random sequences that did not
+      appear in the training data.
 
   Returns:
-    The exposure of every secret measured using extrapolation
+    The exposure of every secret measured using extrapolation, keyed in the same
+    way as perplexities.
   """
   # Fit a skew normal distribution using the perplexities of the references
   snormal_param = stats.skewnorm.fit(perplexities_reference)
 
   # Estimate exposure using the fitted distribution
   exposures = {
-      r: -np.log2(stats.skewnorm.cdf(perplexities[r], *snormal_param))
-      for r in perplexities.keys()
+      r: -np.log2(stats.skewnorm.cdf(p, *snormal_param))
+      for r, p in perplexities.items()
   }
   return exposures
