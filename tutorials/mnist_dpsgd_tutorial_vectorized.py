@@ -15,9 +15,9 @@
 
 from absl import app
 from absl import flags
+from absl import logging
 import numpy as np
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
@@ -140,7 +140,9 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logger = tf.get_logger()
+  logger.set_level(logging.INFO)
+
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
 

@@ -25,10 +25,9 @@ import math
 
 from absl import app
 from absl import flags
-
+from absl import logging
 import numpy as np
 import tensorflow.compat.v1 as tf
-
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
@@ -178,7 +177,9 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logger = tf.get_logger()
+  logger.set_level(logging.INFO)
+
   if FLAGS.data_l2_norm <= 0:
     raise ValueError('data_l2_norm must be positive.')
   if FLAGS.dpsgd and FLAGS.learning_rate > 8 / FLAGS.data_l2_norm**2:

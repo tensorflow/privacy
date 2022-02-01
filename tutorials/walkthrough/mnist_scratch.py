@@ -13,8 +13,9 @@
 # limitations under the License.
 """Scratchpad for training a CNN on MNIST with DPSGD."""
 
+from absl import logging
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 tf.flags.DEFINE_float('learning_rate', .15, 'Learning rate for training')
 tf.flags.DEFINE_integer('batch_size', 256, 'Batch size')
@@ -86,7 +87,8 @@ def load_mnist():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.INFO)
+  logger = tf.get_logger()
+  logger.set_level(logging.INFO)
 
   # Load training and test data.
   train_data, train_labels, test_data, test_labels = load_mnist()

@@ -17,7 +17,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
@@ -91,10 +91,8 @@ def load_cifar10():
 
 
 def main(unused_argv):
-  tf.logging.set_verbosity(tf.logging.ERROR)
-  logging.set_verbosity(logging.ERROR)
-  logging.set_stderrthreshold(logging.ERROR)
-  logging.get_absl_handler().use_absl_log_file()
+  logger = tf.get_logger()
+  logger.set_level(logging.ERROR)
 
   # Load training and test data.
   x_train, y_train, x_test, y_test = load_cifar10()
