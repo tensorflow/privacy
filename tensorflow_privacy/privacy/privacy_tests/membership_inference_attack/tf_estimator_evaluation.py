@@ -14,19 +14,15 @@
 """A hook and a function in tf estimator for membership inference attack."""
 
 import os
-
 from typing import Iterable
+
 from absl import logging
 import numpy as np
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.utils import log_loss
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.utils_tensorboard import write_results_to_tensorboard
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils_tensorboard
 
 
 def calculate_losses(estimator, input_fn, labels):
@@ -47,23 +43,23 @@ def calculate_losses(estimator, input_fn, labels):
     loss: cross entropy loss of each sample
   """
   pred = np.array(list(estimator.predict(input_fn=input_fn)))
-  loss = log_loss(labels, pred)
+  loss = utils.log_loss(labels, pred)
   return pred, loss
 
 
 class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
   """Training hook to perform membership inference attack on epoch end."""
 
-  def __init__(
-      self,
-      estimator,
-      in_train,
-      out_train,
-      input_fn_constructor,
-      slicing_spec: SlicingSpec = None,
-      attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
-      tensorboard_dir=None,
-      tensorboard_merge_classifiers=False):
+  def __init__(self,
+               estimator,
+               in_train,
+               out_train,
+               input_fn_constructor,
+               slicing_spec: data_structures.SlicingSpec = None,
+               attack_types: Iterable[data_structures.AttackType] = (
+                   data_structures.AttackType.THRESHOLD_ATTACK,),
+               tensorboard_dir=None,
+               tensorboard_merge_classifiers=False):
     """Initialize the hook.
 
     Args:
@@ -112,7 +108,7 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
                                 self._attack_types)
     logging.info(results)
 
-    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
         results)
     print('Attack result:')
     print('\n'.join([
@@ -123,8 +119,9 @@ class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
     # Write to tensorboard if tensorboard_dir is specified
     global_step = self._estimator.get_variable_value('global_step')
     if self._writers is not None:
-      write_results_to_tensorboard(results, self._writers, global_step,
-                                   self._tensorboard_merge_classifiers)
+      utils_tensorboard.write_results_to_tensorboard(
+          results, self._writers, global_step,
+          self._tensorboard_merge_classifiers)
 
 
 def run_attack_on_tf_estimator_model(
@@ -132,8 +129,9 @@ def run_attack_on_tf_estimator_model(
     in_train,
     out_train,
     input_fn_constructor,
-    slicing_spec: SlicingSpec = None,
-    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)):
+    slicing_spec: data_structures.SlicingSpec = None,
+    attack_types: Iterable[data_structures.AttackType] = (
+        data_structures.AttackType.THRESHOLD_ATTACK,)):
   """Performs the attack in the end of training.
 
   Args:
@@ -164,14 +162,14 @@ def run_attack_on_tf_estimator_model(
   return results
 
 
-def run_attack_helper(
-    estimator,
-    in_train_input_fn,
-    out_train_input_fn,
-    in_train_labels,
-    out_train_labels,
-    slicing_spec: SlicingSpec = None,
-    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,)):
+def run_attack_helper(estimator,
+                      in_train_input_fn,
+                      out_train_input_fn,
+                      in_train_labels,
+                      out_train_labels,
+                      slicing_spec: data_structures.SlicingSpec = None,
+                      attack_types: Iterable[data_structures.AttackType] = (
+                          data_structures.AttackType.THRESHOLD_ATTACK,)):
   """A helper function to perform attack.
 
   Args:
@@ -192,7 +190,7 @@ def run_attack_helper(
   out_train_pred, out_train_loss = calculate_losses(estimator,
                                                     out_train_input_fn,
                                                     out_train_labels)
-  attack_input = AttackInputData(
+  attack_input = data_structures.AttackInputData(
       logits_train=in_train_pred,
       logits_test=out_train_pred,
       labels_train=in_train_labels,

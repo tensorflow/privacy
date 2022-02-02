@@ -13,40 +13,11 @@
 # limitations under the License.
 """Utility functions for writing attack results to tensorboard."""
 
-from typing import List
-from typing import Union
+from typing import List, Union
 
-import tensorflow as tf2
-import tensorflow.compat.v1 as tf1
+import tensorflow as tf
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
-
-
-def write_to_tensorboard(writers, tags, values, step):
-  """Write metrics to tensorboard.
-
-  Args:
-    writers: a list of tensorboard writers or one writer to be used for metrics.
-      If it's a list, it should be of the same length as tags
-    tags: a list of tags of metrics
-    values: a list of values of metrics with the same length as tags
-    step: step for the tensorboard summary
-  """
-  if writers is None or not writers:
-    raise ValueError('write_to_tensorboard does not get any writer.')
-
-  if not isinstance(writers, list):
-    writers = [writers] * len(tags)
-
-  assert len(writers) == len(tags) == len(values)
-
-  for writer, tag, val in zip(writers, tags, values):
-    summary = tf1.Summary()
-    summary.value.add(tag=tag, simple_value=val)
-    writer.add_summary(summary, step)
-
-  for writer in set(writers):
-    writer.flush()
 
 
 def write_to_tensorboard_tf2(writers, tags, values, step):
@@ -69,7 +40,7 @@ def write_to_tensorboard_tf2(writers, tags, values, step):
 
   for writer, tag, val in zip(writers, tags, values):
     with writer.as_default():
-      tf2.summary.scalar(tag, val, step=step)
+      tf.summary.scalar(tag, val, step=step)
       writer.flush()
 
   for writer in set(writers):
@@ -77,39 +48,9 @@ def write_to_tensorboard_tf2(writers, tags, values, step):
       writer.flush()
 
 
-def write_results_to_tensorboard(attack_results: AttackResults,
-                                 writers: Union[tf1.summary.FileWriter,
-                                                List[tf1.summary.FileWriter]],
-                                 step: int, merge_classifiers: bool):
-  """Write attack results to tensorboard.
-
-  Args:
-    attack_results: results from attack
-    writers: a list of tensorboard writers or one writer to be used for metrics
-    step: step for the tensorboard summary
-    merge_classifiers: if true, plot different classifiers with the same
-      slicing_spec and metric in the same figure
-  """
-  if writers is None or not writers:
-    raise ValueError('write_results_to_tensorboard does not get any writer.')
-
-  att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
-      attack_results)
-  if merge_classifiers:
-    att_tags = ['attack/' + f'{s}_{m}' for s, m in zip(att_slices, att_metrics)]
-    write_to_tensorboard([writers[t] for t in att_types], att_tags, att_values,
-                         step)
-  else:
-    att_tags = [
-        'attack/' + f'{s}_{t}_{m}'
-        for t, s, m in zip(att_types, att_slices, att_metrics)
-    ]
-    write_to_tensorboard(writers, att_tags, att_values, step)
-
-
 def write_results_to_tensorboard_tf2(
     attack_results: AttackResults,
-    writers: Union[tf2.summary.SummaryWriter, List[tf2.summary.SummaryWriter]],
+    writers: Union[tf.summary.SummaryWriter, List[tf.summary.SummaryWriter]],
     step: int, merge_classifiers: bool):
   """Write attack results to tensorboard.
 
