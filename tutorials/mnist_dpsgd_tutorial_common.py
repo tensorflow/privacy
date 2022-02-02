@@ -13,7 +13,7 @@
 # limitations under the License.
 """Common tools for DP-SGD MNIST tutorials."""
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 import tensorflow_datasets as tfds
 
 

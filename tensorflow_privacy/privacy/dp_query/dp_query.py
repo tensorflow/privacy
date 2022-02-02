@@ -44,7 +44,7 @@ throughout the entire training process, the global state is usually None.
 import abc
 import collections
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 
 class DPQuery(metaclass=abc.ABCMeta):

@@ -15,12 +15,12 @@
 
 This query is used to compose with a DPQuery that has `reset_state` function.
 """
+
 import abc
 import collections
 from typing import Optional
 
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.dp_query import dp_query
 
 

@@ -15,8 +15,7 @@
 
 import collections
 
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 import tree

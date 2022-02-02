@@ -14,7 +14,7 @@
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import keras_evaluation
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType

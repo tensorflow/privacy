@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import normalized_query
 from tensorflow_privacy.privacy.dp_query import test_utils

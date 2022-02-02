@@ -13,8 +13,7 @@
 # limitations under the License.
 
 from absl.testing import parameterized
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import no_privacy_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
