@@ -29,12 +29,21 @@ mechanism. Its public interface consists of the following methods:
     min_separation: int,
     orders: Union[float, Collection[float]]) -> Union[float, Collection[float]]:
     computes RDP for DP-FTRL-NoTreeRestart.
+  compute_zcdp_single_tree(
+    noise_multiplier: float, total_steps: int, max_participation: int,
+    min_separation: int) -> Union[float, Collection[float]]:
+    computes zCDP for DP-FTRL-NoTreeRestart.
 
 For RDP to (epsilon, delta)-DP conversion, use the following public function
 described in `rdp_accountant.py`:
   get_privacy_spent(orders, rdp, target_eps, target_delta) computes delta
                                    (or eps) given RDP at multiple orders and
                                    a target value for eps (or delta).
+
+The `noise_multiplier` is usually from `TreeCumulativeSumQuery` and
+`TreeResidualSumQuery` in `dp_query.tree_aggregation_query`. The other
+inputs depend on the data streaming setting (single/multi-pass) and the restart
+strategy (see `restart_query`).
 
 Example use:
 
@@ -91,7 +100,9 @@ def compute_rdp_tree_restart(
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
       standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added.
+      function to which it is added, which is usually set in
+      `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
+      `dp_query.tree_aggregation_query`.
     steps_list: A scalar or a list of non-negative intergers representing the
       number of steps per epoch (between two restarts).
     orders: An array (or a scalar) of RDP orders.
@@ -282,7 +293,9 @@ def compute_rdp_single_tree(
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
       standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added.
+      function to which it is added, which is usually set in
+      `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
+      `dp_query.tree_aggregation_query`.
     total_steps: Total number of steps (leaf nodes in tree aggregation).
     max_participation: The maximum number of times a sample can appear.
     min_separation: The minimum number of nodes between two appearance of a
@@ -342,7 +355,9 @@ def compute_zcdp_single_tree(
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
       standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added.
+      function to which it is added, which is usually set in
+      `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
+      `dp_query.tree_aggregation_query`.
     total_steps: Total number of steps (leaf nodes in tree aggregation).
     max_participation: The maximum number of times a sample can appear.
     min_separation: The minimum number of nodes between two appearance of a

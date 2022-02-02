@@ -18,6 +18,19 @@ online observation queries relying on `tree_aggregation`. 'Online' means that
 the leaf nodes of the tree arrive one by one as the time proceeds. The core
 logic of tree aggregation is implemented in `tree_aggregation.TreeAggregator`
 and `tree_aggregation.EfficientTreeAggregator`.
+
+Depending on the data streaming setting (single/multi-pass), the privacy
+accounting method ((epsilon,delta)-DP/RDP/zCDP), and the restart strategy (see
+`restart_query`), the DP bound can be computed by one of the public methods
+in `analysis.tree_aggregation_accountant`.
+
+For example, for a single-pass algorithm where a sample may appear at most once
+in the querying process; if `get_noised_result` is called `steps` times, the
+corresponding epsilon for a `target_delta` and `noise_multiplier` to achieve
+(epsilon,delta)-DP can be computed as:
+  orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+  rdp = compute_rdp_tree_restart(noise_multiplier, [steps], orders)
+  eps = rdp_accountant.get_privacy_spent(orders, rdp, target_delta)[0]
 """
 
 import attr
@@ -210,7 +223,9 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
       clip_norm: Each record will be clipped so that it has L2 norm at most
         `clip_norm`.
       noise_multiplier: The effective noise multiplier for the sum of records.
-        Noise standard deviation is `clip_norm*noise_multiplier`.
+        Noise standard deviation is `clip_norm*noise_multiplier`. The value can
+        be used as the input of the privacy accounting functions in
+        `analysis.tree_aggregation_accountant`.
       record_specs: A nested structure of `tf.TensorSpec`s specifying structure
         and shapes of records.
       noise_seed: Integer seed for the Gaussian noise generator. If `None`, a
@@ -461,7 +476,9 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
       clip_norm: Each record will be clipped so that it has L2 norm at most
         `clip_norm`.
       noise_multiplier: The effective noise multiplier for the sum of records.
-        Noise standard deviation is `clip_norm*noise_multiplier`.
+        Noise standard deviation is `clip_norm*noise_multiplier`. The value can
+        be used as the input of the privacy accounting functions in
+        `analysis.tree_aggregation_accountant`.
       record_specs: A nested structure of `tf.TensorSpec`s specifying structure
         and shapes of records.
       noise_seed: Integer seed for the Gaussian noise generator. If `None`, a
