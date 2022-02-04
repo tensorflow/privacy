@@ -99,8 +99,8 @@ def compute_rdp_tree_restart(
 
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
-      standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added, which is usually set in
+      standard deviation of the Gaussian noise to the l2-sensitivity of a single
+      contribution (a leaf node), which is usually set in
       `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
       `dp_query.tree_aggregation_query`.
     steps_list: A scalar or a list of non-negative intergers representing the
@@ -292,8 +292,8 @@ def compute_rdp_single_tree(
 
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
-      standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added, which is usually set in
+      standard deviation of the Gaussian noise to the l2-sensitivity of a single
+      contribution (a leaf node), which is usually set in
       `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
       `dp_query.tree_aggregation_query`.
     total_steps: Total number of steps (leaf nodes in tree aggregation).
@@ -354,8 +354,8 @@ def compute_zcdp_single_tree(
 
   Args:
     noise_multiplier: A non-negative float representing the ratio of the
-      standard deviation of the Gaussian noise to the l2-sensitivity of the
-      function to which it is added, which is usually set in
+      standard deviation of the Gaussian noise to the l2-sensitivity of a single
+      contribution (a leaf node), which is usually set in
       `TreeCumulativeSumQuery` and `TreeResidualSumQuery` from
       `dp_query.tree_aggregation_query`.
     total_steps: Total number of steps (leaf nodes in tree aggregation).
