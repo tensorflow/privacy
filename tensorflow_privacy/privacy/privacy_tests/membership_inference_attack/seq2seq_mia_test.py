@@ -16,8 +16,6 @@ from absl.testing import absltest
 import numpy as np
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import create_seq2seq_attacker_data
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import run_seq2seq_attack
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.seq2seq_mia import Seq2SeqAttackInputData
 
@@ -89,154 +87,6 @@ class Seq2SeqAttackInputDataTest(absltest.TestCase):
             vocab_size=0,
             train_size=0,
             test_size=0).validate)
-
-
-class Seq2SeqTrainedAttackerTest(absltest.TestCase):
-
-  def test_create_seq2seq_attacker_data_logits_and_labels(self):
-    attack_input = Seq2SeqAttackInputData(
-        logits_train=iter([
-            np.array([
-                np.array([[0.1, 0.1, 0.8], [0.7, 0.3, 0]], dtype=np.float32),
-                np.array([[0.4, 0.5, 0.1]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array(
-                [np.array([[0.25, 0.6, 0.15], [1, 0, 0]], dtype=np.float32)],
-                dtype=object),
-            np.array([
-                np.array([[0.9, 0, 0.1], [0.25, 0.5, 0.25]], dtype=np.float32),
-                np.array([[0, 1, 0], [0.2, 0.1, 0.7]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        logits_test=iter([
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.3, 0.3, 0.4], [0.4, 0.4, 0.2]], dtype=np.float32),
-                np.array([[0.3, 0.35, 0.35]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_train=iter([
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([1, 0], dtype=np.float32)], dtype=object),
-            np.array([
-                np.array([0, 1], dtype=np.float32),
-                np.array([1, 2], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_test=iter([
-            np.array([np.array([2, 1], dtype=np.float32)]),
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        vocab_size=3,
-        train_size=3,
-        test_size=2)
-    privacy_report_metadata = PrivacyReportMetadata()
-    attacker_data = create_seq2seq_attacker_data(
-        attack_input_data=attack_input,
-        test_fraction=0.25,
-        balance=False,
-        privacy_report_metadata=privacy_report_metadata)
-    self.assertLen(attacker_data.features_train, 3)
-    self.assertLen(attacker_data.features_test, 2)
-
-    for _, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 1)  # each feature has one average rank
-
-    # Tests that fields of PrivacyReportMetadata are populated.
-    self.assertIsNotNone(privacy_report_metadata.loss_train)
-    self.assertIsNotNone(privacy_report_metadata.loss_test)
-    self.assertIsNotNone(privacy_report_metadata.accuracy_train)
-    self.assertIsNotNone(privacy_report_metadata.accuracy_test)
-
-  def test_balanced_create_seq2seq_attacker_data_logits_and_labels(self):
-    attack_input = Seq2SeqAttackInputData(
-        logits_train=iter([
-            np.array([
-                np.array([[0.1, 0.1, 0.8], [0.7, 0.3, 0]], dtype=np.float32),
-                np.array([[0.4, 0.5, 0.1]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array(
-                [np.array([[0.25, 0.6, 0.15], [1, 0, 0]], dtype=np.float32)],
-                dtype=object),
-            np.array([
-                np.array([[0.9, 0, 0.1], [0.25, 0.5, 0.25]], dtype=np.float32),
-                np.array([[0, 1, 0], [0.2, 0.1, 0.7]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        logits_test=iter([
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.3, 0.3, 0.4], [0.4, 0.4, 0.2]], dtype=np.float32),
-                np.array([[0.3, 0.35, 0.35]], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([
-                np.array([[0.25, 0.4, 0.35], [0.2, 0.4, 0.4]], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_train=iter([
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([1, 0], dtype=np.float32)], dtype=object),
-            np.array([
-                np.array([0, 1], dtype=np.float32),
-                np.array([1, 2], dtype=np.float32)
-            ],
-                     dtype=object)
-        ]),
-        labels_test=iter([
-            np.array([np.array([2, 1], dtype=np.float32)]),
-            np.array([
-                np.array([2, 0], dtype=np.float32),
-                np.array([1], dtype=np.float32)
-            ],
-                     dtype=object),
-            np.array([np.array([2, 1], dtype=np.float32)])
-        ]),
-        vocab_size=3,
-        train_size=3,
-        test_size=3)
-    privacy_report_metadata = PrivacyReportMetadata()
-    attacker_data = create_seq2seq_attacker_data(
-        attack_input_data=attack_input,
-        test_fraction=0.33,
-        balance=True,
-        privacy_report_metadata=privacy_report_metadata)
-    self.assertLen(attacker_data.features_train, 4)
-    self.assertLen(attacker_data.features_test, 2)
-
-    for _, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 1)  # each feature has one average rank
-
-    # Tests that fields of PrivacyReportMetadata are populated.
-    self.assertIsNotNone(privacy_report_metadata.loss_train)
-    self.assertIsNotNone(privacy_report_metadata.loss_test)
-    self.assertIsNotNone(privacy_report_metadata.accuracy_train)
-    self.assertIsNotNone(privacy_report_metadata.accuracy_test)
 
 
 def _get_batch_logits_and_labels(num_sequences, max_tokens_in_sequence,
@@ -323,7 +173,7 @@ class RunSeq2SeqAttackTest(absltest.TestCase):
             max_tokens_in_sequence=5,
             vocab_size=2))
     seq2seq_result = list(result.single_attack_results)[0]
-    self.assertEqual(seq2seq_result.attack_type, AttackType.LOGISTIC_REGRESSION)
+    self.assertEqual(seq2seq_result.attack_type, AttackType.THRESHOLD_ATTACK)
 
   def test_run_seq2seq_attack_calculates_correct_auc(self):
     result = run_seq2seq_attack(
@@ -337,7 +187,7 @@ class RunSeq2SeqAttackTest(absltest.TestCase):
         balance_attacker_training=False)
     seq2seq_result = list(result.single_attack_results)[0]
     np.testing.assert_almost_equal(
-        seq2seq_result.roc_curve.get_auc(), 0.63, decimal=2)
+        seq2seq_result.roc_curve.get_auc(), 0.59, decimal=2)
 
   def test_run_seq2seq_attack_calculates_correct_metadata(self):
     attack_input = Seq2SeqAttackInputData(

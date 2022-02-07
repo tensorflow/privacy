@@ -23,19 +23,12 @@ from typing import Iterator, List, Optional, Tuple
 
 import numpy as np
 from scipy import stats
-from sklearn import metrics
-from sklearn import model_selection
 import tensorflow as tf
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import RocCurve
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleAttackResult
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleSliceSpec
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.models import _sample_multidimensional_array
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.models import AttackerData
 
 
 def _is_iterator(obj, obj_name):
@@ -266,66 +259,6 @@ def _get_batch_accuracy_metrics(
   return batch_correct_preds, batch_total_preds
 
 
-def create_seq2seq_attacker_data(
-    attack_input_data: Seq2SeqAttackInputData,
-    test_fraction: float = 0.25,
-    balance: bool = True,
-    privacy_report_metadata: PrivacyReportMetadata = PrivacyReportMetadata()
-) -> AttackerData:
-  """Prepares Seq2SeqAttackInputData to train ML attackers.
-
-  Uses logits and losses to generate ranks and performs a random train-test
-  split.
-
-  Also computes metadata (loss, accuracy) for the model under attack
-  and populates respective fields of PrivacyReportMetadata.
-
-  Args:
-    attack_input_data: Original Seq2SeqAttackInputData
-    test_fraction: Fraction of the dataset to include in the test split.
-    balance: Whether the training and test sets for the membership inference
-      attacker should have a balanced (roughly equal) number of samples from the
-      training and test sets used to develop the model under attack.
-    privacy_report_metadata: the metadata of the model under attack.
-
-  Returns:
-    AttackerData.
-  """
-  attack_input_train, loss_train, accuracy_train = _get_attack_features_and_metadata(
-      attack_input_data.logits_train, attack_input_data.labels_train)
-  attack_input_test, loss_test, accuracy_test = _get_attack_features_and_metadata(
-      attack_input_data.logits_test, attack_input_data.labels_test)
-
-  if balance:
-    min_size = min(len(attack_input_train), len(attack_input_test))
-    attack_input_train = _sample_multidimensional_array(attack_input_train,
-                                                        min_size)
-    attack_input_test = _sample_multidimensional_array(attack_input_test,
-                                                       min_size)
-
-  features_all = np.concatenate((attack_input_train, attack_input_test))
-  ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
-
-  # Reshape for classifying one-dimensional features
-  features_all = features_all.reshape(-1, 1)
-
-  labels_all = np.concatenate(((np.zeros(ntrain)), (np.ones(ntest))))
-
-  # Perform a train-test split
-  features_train, features_test, is_training_labels_train, is_training_labels_test = model_selection.train_test_split(
-      features_all, labels_all, test_size=test_fraction, stratify=labels_all)
-
-  # Populate accuracy, loss fields in privacy report metadata
-  privacy_report_metadata.loss_train = loss_train
-  privacy_report_metadata.loss_test = loss_test
-  privacy_report_metadata.accuracy_train = accuracy_train
-  privacy_report_metadata.accuracy_test = accuracy_test
-
-  return AttackerData(features_train, is_training_labels_train, features_test,
-                      is_training_labels_test,
-                      DataSize(ntrain=ntrain, ntest=ntest))
-
-
 def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
                        privacy_report_metadata: PrivacyReportMetadata = None,
                        balance_attacker_training: bool = True) -> AttackResults:
@@ -343,39 +276,23 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
     the attack result.
   """
   attack_input.validate()
+  attack_input_train, loss_train, accuracy_train = _get_attack_features_and_metadata(
+      attack_input.logits_train, attack_input.labels_train)
+  attack_input_test, loss_test, accuracy_test = _get_attack_features_and_metadata(
+      attack_input.logits_test, attack_input.labels_test)
 
-  # The attacker uses the average rank (a single number) of a seq2seq dataset
-  # record to determine membership. So only Logistic Regression is supported,
-  # as it makes the most sense for single-number features.
-  attacker = models.LogisticRegressionAttacker()
-
-  # Create attacker data and populate fields of privacy_report_metadata
   privacy_report_metadata = privacy_report_metadata or PrivacyReportMetadata()
-  prepared_attacker_data = create_seq2seq_attacker_data(
-      attack_input_data=attack_input,
-      balance=balance_attacker_training,
-      privacy_report_metadata=privacy_report_metadata)
+  privacy_report_metadata.loss_train = loss_train
+  privacy_report_metadata.loss_test = loss_test
+  privacy_report_metadata.accuracy_train = accuracy_train
+  privacy_report_metadata.accuracy_test = accuracy_test
 
-  attacker.train_model(prepared_attacker_data.features_train,
-                       prepared_attacker_data.is_training_labels_train)
-
-  # Run the attacker on (permuted) test examples.
-  predictions_test = attacker.predict(prepared_attacker_data.features_test)
-
-  # Generate ROC curves with predictions.
-  fpr, tpr, thresholds = metrics.roc_curve(
-      prepared_attacker_data.is_training_labels_test, predictions_test)
-
-  roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
-
-  attack_results = [
-      SingleAttackResult(
-          slice_spec=SingleSliceSpec(),
-          attack_type=AttackType.LOGISTIC_REGRESSION,
-          roc_curve=roc_curve,
-          data_size=prepared_attacker_data.data_size)
-  ]
-
-  return AttackResults(
-      single_attack_results=attack_results,
-      privacy_report_metadata=privacy_report_metadata)
+  # `attack_input_train` and `attack_input_test` contains the rank of the
+  # ground-truth label in the logit, so smaller value means an example is
+  # more likely a training example.
+  return mia.run_attacks(
+      AttackInputData(
+          loss_train=attack_input_train, loss_test=attack_input_test),
+      attack_types=(AttackType.THRESHOLD_ATTACK,),
+      privacy_report_metadata=privacy_report_metadata,
+      balance_attacker_training=balance_attacker_training)
