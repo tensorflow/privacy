@@ -8,26 +8,28 @@ design machine learning algorithms that responsibly train models on private
 data. Learning with differential privacy provides provable guarantees of
 privacy, mitigating the risk of exposing sensitive training data in machine
 learning. Intuitively, a model trained with differential privacy should not be
-affected by any single training example, or small set of training examples, in its data set.
+affected by any single training example, or small set of training examples, in
+its data set.
 
-You may recall our [previous blog post on PATE](http://www.cleverhans.io/privacy/2018/04/29/privacy-and-machine-learning.html), 
-an approach that achieves private learning by carefully 
-coordinating the activity of several different ML 
-models [[Papernot et al.]](https://arxiv.org/abs/1610.05755). 
-In this post, you will learn how to train a differentially private model with
-another approach that relies on Differentially
-Private Stochastic Gradient Descent (DP-SGD) [[Abadi et al.]](https://arxiv.org/abs/1607.00133).
-DP-SGD and PATE are two different ways to achieve the same goal of privacy-preserving
-machine learning. DP-SGD makes less assumptions about the ML task than PATE, 
-but this comes at the expense of making modifications to the training algorithm. 
+You may recall our
+[previous blog post on PATE](http://www.cleverhans.io/privacy/2018/04/29/privacy-and-machine-learning.html),
+an approach that achieves private learning by carefully coordinating the
+activity of several different ML models
+[[Papernot et al.]](https://arxiv.org/abs/1610.05755). In this post, you will
+learn how to train a differentially private model with another approach that
+relies on Differentially Private Stochastic Gradient Descent (DP-SGD)
+[[Abadi et al.]](https://arxiv.org/abs/1607.00133). DP-SGD and PATE are two
+different ways to achieve the same goal of privacy-preserving machine learning.
+DP-SGD makes less assumptions about the ML task than PATE, but this comes at the
+expense of making modifications to the training algorithm.
 
-Indeed, DP-SGD is
-a modification of the stochastic gradient descent algorithm,
+Indeed, DP-SGD is a modification of the stochastic gradient descent algorithm,
 which is the basis for many optimizers that are popular in machine learning.
 Models trained with DP-SGD have provable privacy guarantees expressed in terms
 of differential privacy (we will explain what this means at the end of this
-post). We will be using the [TensorFlow Privacy](https://github.com/tensorflow/privacy) library,
-which provides an implementation of DP-SGD, to illustrate our presentation of DP-SGD
+post). We will be using the
+[TensorFlow Privacy](https://github.com/tensorflow/privacy) library, which
+provides an implementation of DP-SGD, to illustrate our presentation of DP-SGD
 and provide a hands-on tutorial.
 
 The only prerequisite for following this tutorial is to be able to train a
@@ -36,13 +38,12 @@ convolutional neural networks or how to train them, we recommend reading
 [this tutorial first](https://www.tensorflow.org/tutorials/keras/basic_classification)
 to get started with TensorFlow and machine learning.
 
-Upon completing the tutorial presented in this post, 
-you will be able to wrap existing optimizers
-(e.g., SGD, Adam, ...) into their differentially private counterparts using
-TensorFlow (TF) Privacy. You will also learn how to tune the parameters
-introduced by differentially private optimization. Finally, we will learn how to
-measure the privacy guarantees provided using analysis tools included in TF
-Privacy.
+Upon completing the tutorial presented in this post, you will be able to wrap
+existing optimizers (e.g., SGD, Adam, ...) into their differentially private
+counterparts using TensorFlow (TF) Privacy. You will also learn how to tune the
+parameters introduced by differentially private optimization. Finally, we will
+learn how to measure the privacy guarantees provided using analysis tools
+included in TF Privacy.
 
 ## Getting started
 
@@ -50,12 +51,14 @@ Before we get started with DP-SGD and TF Privacy, we need to put together a
 script that trains a simple neural network with TensorFlow.
 
 In the interest of keeping this tutorial focused on the privacy aspects of
-training, we've included
-such a script as companion code for this blog post in the `walkthrough` [subdirectory](https://github.com/tensorflow/privacy/tree/master/tutorials/walkthrough) of the
-`tutorials` found in the [TensorFlow Privacy](https://github.com/tensorflow/privacy) repository. The code found in the file `mnist_scratch.py` 
-trains a small
-convolutional neural network on the MNIST dataset for handwriting recognition.
-This script will be used as the basis for our exercise below.
+training, we've included such a script as companion code for this blog post in
+the `walkthrough`
+[subdirectory](https://github.com/tensorflow/privacy/tree/master/tutorials/walkthrough)
+of the `tutorials` found in the
+[TensorFlow Privacy](https://github.com/tensorflow/privacy) repository. The code
+found in the file `mnist_scratch.py` trains a small convolutional neural network
+on the MNIST dataset for handwriting recognition. This script will be used as
+the basis for our exercise below.
 
 Next, we highlight some important code snippets from the `mnist_scratch.py`
 script.
@@ -116,10 +119,10 @@ python mnist_scratch.py
 
 ### Stochastic Gradient Descent
 
-Before we dive into how DP-SGD and TF Privacy can be used to provide differential privacy
-during machine learning, we first provide a brief overview of the stochastic
-gradient descent algorithm, which is one of the most popular optimizers for
-neural networks.
+Before we dive into how DP-SGD and TF Privacy can be used to provide
+differential privacy during machine learning, we first provide a brief overview
+of the stochastic gradient descent algorithm, which is one of the most popular
+optimizers for neural networks.
 
 Stochastic gradient descent is an iterative procedure. At each iteration, a
 batch of data is randomly sampled from the training set (this is where the
@@ -208,16 +211,16 @@ gradient manipulation later at step 4.
 
 We are now ready to create an optimizer. In TensorFlow, an optimizer object can
 be instantiated by passing it a learning rate value, which is used in step 6
-outlined above. 
-This is what the code would look like *without* differential privacy:
+outlined above. This is what the code would look like *without* differential
+privacy:
 
 ```python
 optimizer = tf.train.GradientDescentOptimizer(FLAGS.learning_rate)
 train_op = optimizer.minimize(loss=scalar_loss)
 ```
 
-Note that our code snippet assumes that a TensorFlow flag was
-defined for the learning rate value.
+Note that our code snippet assumes that a TensorFlow flag was defined for the
+learning rate value.
 
 Now, we use the `optimizers.dp_optimizer` module of TF Privacy to implement the
 optimizer with differential privacy. Under the hood, this code implements steps
@@ -233,17 +236,18 @@ optimizer = optimizers.dp_optimizer.DPGradientDescentGaussianOptimizer(
 train_op = optimizer.minimize(loss=vector_loss)
 ```
 
-In these two code snippets, we used the stochastic gradient descent
-optimizer but it could be replaced by another optimizer implemented in
-TensorFlow. For instance, the `AdamOptimizer` can be replaced by `DPAdamGaussianOptimizer`. In addition to the standard optimizers already
-included in TF Privacy, most optimizers which are objects from a child class
-of `tf.train.Optimizer`
-can be made differentially private by calling `optimizers.dp_optimizer.make_gaussian_optimizer_class()`.
+In these two code snippets, we used the stochastic gradient descent optimizer
+but it could be replaced by another optimizer implemented in TensorFlow. For
+instance, the `AdamOptimizer` can be replaced by `DPAdamGaussianOptimizer`. In
+addition to the standard optimizers already included in TF Privacy, most
+optimizers which are objects from a child class of `tf.train.Optimizer` can be
+made differentially private by calling
+`optimizers.dp_optimizer.make_gaussian_optimizer_class()`.
 
 As you can see, only one line needs to change but there are a few things going
-on that are best to unwrap before we continue. In addition to the learning rate, we
-passed the size of the training set as the `population_size` parameter. This is
-used to measure the strength of privacy achieved; we will come back to this
+on that are best to unwrap before we continue. In addition to the learning rate,
+we passed the size of the training set as the `population_size` parameter. This
+is used to measure the strength of privacy achieved; we will come back to this
 accounting aspect later.
 
 More importantly, TF Privacy introduces three new hyperparameters to the
@@ -252,11 +256,11 @@ You may have deduced what `l2_norm_clip` and `noise_multiplier` are from the two
 changes outlined above.
 
 Parameter `l2_norm_clip` is the maximum Euclidean norm of each individual
-gradient that is computed on an individual training example from a minibatch. This
-parameter is used to bound the optimizer's sensitivity to individual training
-points. Note how in order for the optimizer to be able to compute these per
-example gradients, we must pass it a *vector* loss as defined previously, rather
-than the loss averaged over the entire minibatch.
+gradient that is computed on an individual training example from a minibatch.
+This parameter is used to bound the optimizer's sensitivity to individual
+training points. Note how in order for the optimizer to be able to compute these
+per example gradients, we must pass it a *vector* loss as defined previously,
+rather than the loss averaged over the entire minibatch.
 
 Next, the `noise_multiplier` parameter is used to control how much noise is
 sampled and added to gradients before they are applied by the optimizer.
@@ -320,9 +324,9 @@ single training example in the training set. This could mean to add a training
 example, remove a training example, or change the values within one training
 example. The intuition is that if a single training point does not affect the
 outcome of learning, the information contained in that training point cannot be
-memorized and the privacy of the individual who contributed this data point to our
-dataset is respected. We often refer to this probability as the privacy budget:
-smaller privacy budgets correspond to stronger privacy guarantees.
+memorized and the privacy of the individual who contributed this data point to
+our dataset is respected. We often refer to this probability as the privacy
+budget: smaller privacy budgets correspond to stronger privacy guarantees.
 
 Accounting required to compute the privacy budget spent to train our machine
 learning model is another feature provided by TF Privacy. Knowing what level of
@@ -348,15 +352,16 @@ steps = FLAGS.epochs * 60000 // FLAGS.batch_size
 At a high level, the privacy analysis measures how including or excluding any
 particular point in the training data is likely to change the probability that
 we learn any particular set of parameters. In other words, the analysis measures
-the difference between the distributions of model parameters on neighboring training
-sets (pairs of any training sets with a Hamming distance of 1). In TF Privacy,
-we use the Rényi divergence to measure this distance between distributions.
-Indeed, our analysis is performed in the framework of Rényi Differential Privacy
-(RDP), which is a generalization of pure differential privacy
-[[Mironov]](https://arxiv.org/abs/1702.07476). RDP is a useful tool here because
-it is particularly well suited to analyze the differential privacy guarantees
-provided by sampling followed by Gaussian noise addition, which is how gradients
-are randomized in the TF Privacy implementation of the DP-SGD optimizer.
+the difference between the distributions of model parameters on neighboring
+training sets (pairs of any training sets with a Hamming distance of 1). In TF
+Privacy, we use the Rényi divergence to measure this distance between
+distributions. Indeed, our analysis is performed in the framework of Rényi
+Differential Privacy (RDP), which is a generalization of pure differential
+privacy [[Mironov]](https://arxiv.org/abs/1702.07476). RDP is a useful tool here
+because it is particularly well suited to analyze the differential privacy
+guarantees provided by sampling followed by Gaussian noise addition, which is
+how gradients are randomized in the TF Privacy implementation of the DP-SGD
+optimizer.
 
 We will express our differential privacy guarantee using two parameters:
 `epsilon` and `delta`.
@@ -374,21 +379,22 @@ We will express our differential privacy guarantee using two parameters:
     still mean good practical privacy.
 
 The TF Privacy library provides two methods relevant to derive privacy
-guarantees achieved from the three parameters outlined in the last code snippet: `compute_rdp`
-and `get_privacy_spent`.
-These methods are found in its `analysis.rdp_accountant` module. Here is how to use them.
+guarantees achieved from the three parameters outlined in the last code snippet:
+`compute_rdp` and `get_privacy_spent`. These methods are found in its
+`analysis.rdp_accountant` module. Here is how to use them.
 
 First, we need to define a list of orders, at which the Rényi divergence will be
-computed. While some finer points of how to use the RDP accountant are outside the 
-scope of this document, it is useful to keep in mind the following.
-First, there is very little downside in expanding the list of orders for which RDP
-is computed. Second, the computed privacy budget is typically not very sensitive to
-the exact value of the order (being close enough will land you in the right neighborhood).
-Finally, if you are targeting a particular range of epsilons (say, 1—10) and your delta is
-fixed (say, `10^-5`), then your orders must cover the range between `1+ln(1/delta)/10≈2.15` and 
-`1+ln(1/delta)/1≈12.5`. This last rule may appear circular (how do you know what privacy
-parameters you get without running the privacy accountant?!), one or two adjustments 
-of the range of the orders would usually suffice.
+computed. While some finer points of how to use the RDP accountant are outside
+the scope of this document, it is useful to keep in mind the following. First,
+there is very little downside in expanding the list of orders for which RDP is
+computed. Second, the computed privacy budget is typically not very sensitive to
+the exact value of the order (being close enough will land you in the right
+neighborhood). Finally, if you are targeting a particular range of epsilons
+(say, 1—10) and your delta is fixed (say, `10^-5`), then your orders must cover
+the range between `1+ln(1/delta)/10≈2.15` and `1+ln(1/delta)/1≈12.5`. This last
+rule may appear circular (how do you know what privacy parameters you get
+without running the privacy accountant?!), one or two adjustments of the range
+of the orders would usually suffice.
 
 ```python
 orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
@@ -408,13 +414,11 @@ epsilon = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
 Running the code snippets above with the hyperparameter values used during
 training will estimate the `epsilon` value that was achieved by the
 differentially private optimizer, and thus the strength of the privacy guarantee
-which comes with the model we trained. Once we computed the value of `epsilon`, 
-interpreting this value is at times
-difficult. One possibility is to purposely 
-insert secrets in the model's training set and measure how likely
-they are to be leaked by a differentially private model 
-(compared to a non-private model) at inference time 
-[[Carlini et al.]](https://arxiv.org/abs/1802.08232).
+which comes with the model we trained. Once we computed the value of `epsilon`,
+interpreting this value is at times difficult. One possibility is to purposely
+insert secrets in the model's training set and measure how likely they are to be
+leaked by a differentially private model (compared to a non-private model) at
+inference time [[Carlini et al.]](https://arxiv.org/abs/1802.08232).
 
 ### Putting all the pieces together
 
@@ -425,7 +429,7 @@ achieved.
 
 However, in case you ran into an issue or you'd like to see what a complete
 implementation looks like, the "solution" to the tutorial presented in this blog
-post can be [found](https://github.com/tensorflow/privacy/blob/master/tutorials/mnist_dpsgd_tutorial.py) in the
-tutorials directory of TF Privacy. It is the script called `mnist_dpsgd_tutorial.py`.
-
-
+post can be
+[found](https://github.com/tensorflow/privacy/blob/master/tutorials/mnist_dpsgd_tutorial.py)
+in the tutorials directory of TF Privacy. It is the script called
+`mnist_dpsgd_tutorial.py`.
