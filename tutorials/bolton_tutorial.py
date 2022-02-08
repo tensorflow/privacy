@@ -13,10 +13,11 @@
 # limitations under the License.
 """Tutorial for bolt_on module, the model and the optimizer."""
 
-import tensorflow.compat.v1 as tf  # pylint: disable=wrong-import-position
+import tensorflow as tf
 from tensorflow_privacy.privacy.bolt_on import losses  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on import models  # pylint: disable=wrong-import-position
 from tensorflow_privacy.privacy.bolt_on.optimizers import BoltOn  # pylint: disable=wrong-import-position
+
 # -------
 # First, we will create a binary classification dataset with a single output
 # dimension. The samples for each label are repeated data points at different

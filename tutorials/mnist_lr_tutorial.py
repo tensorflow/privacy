@@ -27,12 +27,12 @@ from absl import app
 from absl import flags
 from absl import logging
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
-GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
 FLAGS = flags.FLAGS
 
@@ -80,7 +80,7 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     # In the following, we pass the mean of the loss (scalar_loss) rather than
     # the vector_loss because tf.estimator requires a scalar loss. This is only
@@ -205,13 +205,13 @@ def main(unused_argv):
   # Create tf.Estimator input functions for the training and test data.
   # To analyze the per-user privacy loss, we keep the same orders of samples in
   # each epoch by setting shuffle=False.
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': train_data},
       y=train_labels,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=False)
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
 
   # Train the model.

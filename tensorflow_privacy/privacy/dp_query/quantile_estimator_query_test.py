@@ -14,11 +14,11 @@
 
 from absl.testing import parameterized
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import quantile_estimator_query
 from tensorflow_privacy.privacy.dp_query import test_utils
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 def _make_quantile_estimator_query(initial_estimate,
@@ -254,7 +254,7 @@ class QuantileEstimatorQueryTest(tf.test.TestCase, parameterized.TestCase):
     global_state = query.initial_global_state()
 
     for t in range(50):
-      tf.assign(learning_rate, 1.0 / np.sqrt(t + 1))
+      tf.compat.v1.assign(learning_rate, 1.0 / np.sqrt(t + 1))
       _, global_state = test_utils.run_query(query, records, global_state)
 
       actual_estimate = global_state.current_estimate

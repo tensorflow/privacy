@@ -21,7 +21,6 @@ import pandas as pd
 from scipy import stats
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.analysis.gdp_accountant import compute_eps_poisson
 from tensorflow_privacy.privacy.analysis.gdp_accountant import compute_mu_poisson
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
@@ -92,8 +91,8 @@ def nn_model_fn(features, labels, mode):
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
-      # tf.train.Optimizer should be wrappable in differentially private
-      # counterparts by calling dp_optimizer.optimizer_from_args().
+      # tf.compat.v1.train.Optimizer should be wrappable in differentially
+      # private counterparts by calling dp_optimizer.optimizer_from_args().
       optimizer = dp_optimizer.DPAdamGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,

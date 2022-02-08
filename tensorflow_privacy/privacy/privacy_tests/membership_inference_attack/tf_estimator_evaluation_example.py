@@ -18,7 +18,6 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
@@ -56,7 +55,7 @@ def small_cnn_fn(features, labels, mode):
   if mode == tf.estimator.ModeKeys.TRAIN:
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=FLAGS.learning_rate, momentum=0.9)
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
@@ -104,7 +103,8 @@ def main(unused_argv):
   # A function to construct input_fn given (data, label), to be used by the
   # membership inference training hook.
   def input_fn_constructor(x, y):
-    return tf.estimator.inputs.numpy_input_fn(x={'x': x}, y=y, shuffle=False)
+    return tf.compat.v1.estimator.inputs.numpy_input_fn(
+        x={'x': x}, y=y, shuffle=False)
 
   # Get hook for membership inference attack.
   mia_hook = MembershipInferenceTrainingHook(
@@ -118,13 +118,13 @@ def main(unused_argv):
       tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': x_train},
       y=y_train,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': x_test}, y=y_test, num_epochs=1, shuffle=False)
 
   # Training loop.

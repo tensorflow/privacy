@@ -40,7 +40,7 @@ FLAGS = flags.FLAGS
 
 NUM_TRAIN_EXAMPLES = 60000
 
-GradientDescentOptimizer = tf.train.GradientDescentOptimizer
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
 
 def compute_epsilon(steps):
@@ -85,8 +85,8 @@ def cnn_model_fn(features, labels, mode):
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
-      # tf.train.Optimizer should be wrappable in differentially private
-      # counterparts by calling dp_optimizer.optimizer_from_args().
+      # tf.compat.v1.train.Optimizer should be wrappable in differentially
+      # private counterparts by calling dp_optimizer.optimizer_from_args().
       optimizer = dp_optimizer_vectorized.VectorizedDPSGD(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
@@ -96,7 +96,7 @@ def cnn_model_fn(features, labels, mode):
     else:
       optimizer = GradientDescentOptimizer(learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     # In the following, we pass the mean of the loss (scalar_loss) rather than
     # the vector_loss because tf.estimator requires a scalar loss. This is only
@@ -154,13 +154,13 @@ def main(unused_argv):
       model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': train_data},
       y=train_labels,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
 
   # Training loop.

@@ -18,8 +18,7 @@ import time
 from absl import app
 from absl import flags
 from absl import logging
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 import mnist_dpsgd_tutorial_common as common
@@ -58,8 +57,8 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
-      # tf.train.Optimizer should be wrappable in differentially private
-      # counterparts by calling dp_optimizer.optimizer_from_args().
+      # tf.compat.v1.train.Optimizer should be wrappable in differentially
+      # private counterparts by calling dp_optimizer.optimizer_from_args().
       optimizer = dp_optimizer.DPGradientDescentGaussianOptimizer(
           l2_norm_clip=FLAGS.l2_norm_clip,
           noise_multiplier=FLAGS.noise_multiplier,
@@ -67,11 +66,11 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
           learning_rate=FLAGS.learning_rate)
       opt_loss = vector_loss
     else:
-      optimizer = tf.train.GradientDescentOptimizer(
+      optimizer = tf.compat.v1.train.GradientDescentOptimizer(
           learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
 
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
 
     # In the following, we pass the mean of the loss (scalar_loss) rather than

@@ -46,7 +46,7 @@ class TensorBuffer(object):
       raise ValueError('Shape cannot be scalar.')
     shape = [capacity] + shape
 
-    with tf.variable_scope(self._name):
+    with tf.compat.v1.variable_scope(self._name):
       # We need to use a placeholder as the initial value to allow resizing.
       self._buffer = tf.Variable(
           initial_value=tf.placeholder_with_default(
@@ -78,19 +78,19 @@ class TensorBuffer(object):
       padding = tf.zeros_like(self._buffer, self._buffer.dtype)
       new_buffer = tf.concat([self._buffer, padding], axis=0)
       if tf.executing_eagerly():
-        with tf.variable_scope(self._name, reuse=True):
+        with tf.compat.v1.variable_scope(self._name, reuse=True):
           self._buffer = tf.get_variable(
               name='buffer',
               dtype=self._dtype,
               initializer=new_buffer,
               trainable=False)
-          return self._buffer, tf.assign(self._capacity,
-                                         tf.multiply(self._capacity, 2))
+          return self._buffer, tf.compat.v1.assign(
+              self._capacity, tf.multiply(self._capacity, 2))
       else:
-        return tf.assign(
+        return tf.compat.v1.assign(
             self._buffer, new_buffer,
-            validate_shape=False), tf.assign(self._capacity,
-                                             tf.multiply(self._capacity, 2))
+            validate_shape=False), tf.compat.v1.assign(
+                self._capacity, tf.multiply(self._capacity, 2))
 
     update_buffer, update_capacity = tf.cond(
         pred=tf.equal(self._current_size, self._capacity),
@@ -109,8 +109,8 @@ class TensorBuffer(object):
               message='Appending value of inconsistent shape.')
       ]):
         with tf.control_dependencies(
-            [tf.assign(self._buffer[self._current_size, :], value)]):
-          return tf.assign_add(self._current_size, 1)
+            [tf.compat.v1.assign(self._buffer[self._current_size, :], value)]):
+          return tf.compat.v1.assign_add(self._current_size, 1)
 
   @property
   def values(self):

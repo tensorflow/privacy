@@ -14,11 +14,9 @@
 
 from absl.testing import absltest
 import numpy as np
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import tf_estimator_evaluation
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
 
 
 class UtilsTest(absltest.TestCase):
@@ -52,12 +50,12 @@ class UtilsTest(absltest.TestCase):
 
     # Define the classifier, input_fn for training and test data
     self.classifier = tf.estimator.Estimator(model_fn=model_fn)
-    self.input_fn_train = tf.estimator.inputs.numpy_input_fn(
+    self.input_fn_train = tf.compat.v1.estimator.inputs.numpy_input_fn(
         x={'x': self.train_data},
         y=self.train_labels,
         num_epochs=1,
         shuffle=False)
-    self.input_fn_test = tf.estimator.inputs.numpy_input_fn(
+    self.input_fn_test = tf.compat.v1.estimator.inputs.numpy_input_fn(
         x={'x': self.test_data},
         y=self.test_labels,
         num_epochs=1,
@@ -83,9 +81,9 @@ class UtilsTest(absltest.TestCase):
         self.input_fn_test,
         self.train_labels,
         self.test_labels,
-        attack_types=[AttackType.THRESHOLD_ATTACK])
-    self.assertIsInstance(results, AttackResults)
-    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+        attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
+    self.assertIsInstance(results, data_structures.AttackResults)
+    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
         results)
     self.assertLen(att_types, 2)
     self.assertLen(att_slices, 2)
@@ -96,15 +94,16 @@ class UtilsTest(absltest.TestCase):
     """Test the attack on the final models."""
 
     def input_fn_constructor(x, y):
-      return tf.estimator.inputs.numpy_input_fn(x={'x': x}, y=y, shuffle=False)
+      return tf.compat.v1.estimator.inputs.numpy_input_fn(
+          x={'x': x}, y=y, shuffle=False)
 
     results = tf_estimator_evaluation.run_attack_on_tf_estimator_model(
         self.classifier, (self.train_data, self.train_labels),
         (self.test_data, self.test_labels),
         input_fn_constructor,
-        attack_types=[AttackType.THRESHOLD_ATTACK])
-    self.assertIsInstance(results, AttackResults)
-    att_types, att_slices, att_metrics, att_values = get_flattened_attack_metrics(
+        attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
+    self.assertIsInstance(results, data_structures.AttackResults)
+    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
         results)
     self.assertLen(att_types, 2)
     self.assertLen(att_slices, 2)

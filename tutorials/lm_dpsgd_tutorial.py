@@ -93,9 +93,10 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
           unroll_microbatches=True)
       opt_loss = vector_loss
     else:
-      optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+      optimizer = tf.compat.v1.train.AdamOptimizer(
+          learning_rate=FLAGS.learning_rate)
       opt_loss = scalar_loss
-    global_step = tf.train.get_global_step()
+    global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
@@ -175,12 +176,12 @@ def main(unused_argv):
   batch_len = FLAGS.batch_size * SEQ_LEN
   train_data_end = len(train_data) - len(train_data) % batch_len
   test_data_end = len(test_data) - len(test_data) % batch_len
-  train_input_fn = tf.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': train_data[:train_data_end]},
       batch_size=batch_len,
       num_epochs=FLAGS.epochs,
       shuffle=False)
-  eval_input_fn = tf.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
       x={'x': test_data[:test_data_end]},
       batch_size=batch_len,
       num_epochs=1,

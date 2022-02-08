@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 
 from tensorflow_privacy.privacy.analysis import tensor_buffer
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 
 class TensorBufferTest(tf.test.TestCase):

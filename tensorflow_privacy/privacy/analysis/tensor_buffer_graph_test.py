@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.analysis import tensor_buffer
 
 
@@ -33,7 +32,7 @@ class TensorBufferTest(tf.test.TestCase):
           values = my_buffer.values
           current_size = my_buffer.current_size
           capacity = my_buffer.capacity
-      self.evaluate(tf.global_variables_initializer())
+      self.evaluate(tf.compat.v1.global_variables_initializer())
 
       v, cs, cap = sess.run([values, current_size, capacity])
       self.assertAllEqual(v, [value1, value2])
@@ -55,7 +54,7 @@ class TensorBufferTest(tf.test.TestCase):
             values = my_buffer.values
             current_size = my_buffer.current_size
             capacity = my_buffer.capacity
-      self.evaluate(tf.global_variables_initializer())
+      self.evaluate(tf.compat.v1.global_variables_initializer())
 
       v, cs, cap = sess.run([values, current_size, capacity])
       self.assertAllEqual(v, [value1, value2, value3])

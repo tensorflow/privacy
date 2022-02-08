@@ -14,9 +14,7 @@
 """Differentially private optimizers for TensorFlow."""
 
 from absl import logging
-
-import tensorflow.compat.v1 as tf
-
+import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 
 
@@ -30,12 +28,12 @@ def make_optimizer_class(cls):
   Returns:
     A DP-SGD subclass of `cls`.
   """
-  parent_code = tf.train.Optimizer.compute_gradients.__code__
+  parent_code = tf.compat.v1.train.Optimizer.compute_gradients.__code__
 
   has_compute_gradients = hasattr(cls, 'compute_gradients')
   if has_compute_gradients:
     child_code = cls.compute_gradients.__code__
-  GATE_OP = tf.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
+  GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
   if has_compute_gradients and child_code is not parent_code:
     logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
@@ -220,8 +218,8 @@ def make_optimizer_class(cls):
 
         if var_list is None:
           var_list = (
-              tf.trainable_variables() +
-              tf.get_collection(tf.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
+              tf.compat.v1.trainable_variables() + tf.compat.v1.get_collection(
+                  tf.compat.v1.GraphKeys.TRAINABLE_RESOURCE_VARIABLES))
 
         sample_state = self._dp_sum_query.initial_sample_state(var_list)
 
@@ -283,7 +281,7 @@ def make_gaussian_optimizer_class(cls):
   class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=empty-docstring
     __doc__ = ("""DP subclass of `{}`.
 
-       You can use this as a differentially private replacement for 
+       You can use this as a differentially private replacement for
        `tf.compat.v1.train.{}`. This optimizer implements DP-SGD using
        the standard Gaussian mechanism.
 
@@ -295,7 +293,7 @@ def make_gaussian_optimizer_class(cls):
 
        ```python
        # Create optimizer.
-       opt = {}(l2_norm_clip=1.0, noise_multiplier=0.5, num_microbatches=1, 
+       opt = {}(l2_norm_clip=1.0, noise_multiplier=0.5, num_microbatches=1,
                 <standard arguments>)
        ```
 
@@ -372,10 +370,10 @@ def make_gaussian_optimizer_class(cls):
   return DPGaussianOptimizerClass
 
 
-AdagradOptimizer = tf.train.AdagradOptimizer
-AdamOptimizer = tf.train.AdamOptimizer
-GradientDescentOptimizer = tf.train.GradientDescentOptimizer
-RMSPropOptimizer = tf.train.RMSPropOptimizer
+AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
+AdamOptimizer = tf.compat.v1.train.AdamOptimizer
+GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
+RMSPropOptimizer = tf.compat.v1.train.RMSPropOptimizer
 
 DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(AdamOptimizer)
