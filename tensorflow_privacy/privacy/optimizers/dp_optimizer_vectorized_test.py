@@ -132,7 +132,8 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     def linear_model_fn(features, labels, mode):
       preds = tf.keras.layers.Dense(
-          1, activation='linear', name='dense').apply(features['x'])
+          1, activation='linear', name='dense')(
+              features['x'])
 
       vector_loss = tf.math.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(input_tensor=vector_loss)

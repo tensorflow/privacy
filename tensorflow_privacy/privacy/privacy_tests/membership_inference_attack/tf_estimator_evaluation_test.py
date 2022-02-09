@@ -41,7 +41,7 @@ class UtilsTest(absltest.TestCase):
       del labels
 
       input_layer = tf.reshape(features['x'], [-1, self.ndim])
-      logits = tf.keras.layers.Dense(self.nclass).apply(input_layer)
+      logits = tf.keras.layers.Dense(self.nclass)(input_layer)
 
       # Define the PREDICT mode becasue we only need that
       if mode == tf.estimator.ModeKeys.PREDICT:
