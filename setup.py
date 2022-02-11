@@ -37,7 +37,7 @@ setup(
         'sklearn~=1.0.2',
         'tensorflow-datasets~=4.5.2',
         'tensorflow-estimator>=2.3.0',
-        'tensorflow-probability>=0.13.0',
+        'tensorflow-probability~=0.15.0',
     ],
     # Explicit dependence on TensorFlow is not supported.
     # See https://github.com/tensorflow/tensorflow/issues/7166
