@@ -1,5 +1,5 @@
 absl-py~=1.0.0
-attrs>=21.2.0
+attrs~=21.2.0
 dm-tree~=0.1.1
 matplotlib~=3.3.4
 mpmath
