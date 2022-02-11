@@ -35,7 +35,7 @@ setup(
         'pandas~=1.1.4',
         'scipy~=1.2.1',
         'sklearn~=1.0.2',
-        'tensorflow-datasets>=4.4.0',
+        'tensorflow-datasets~=4.5.2',
         'tensorflow-estimator>=2.3.0',
         'tensorflow-probability>=0.13.0',
     ],
