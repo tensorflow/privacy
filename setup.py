@@ -31,6 +31,7 @@ setup(
         'attrs~=21.2.0',
         'dm-tree~=0.1.1',
         'matplotlib~=3.3.4',
+        'numpy~=1.21.5',
         'scipy>=0.17',
         'tensorflow-datasets>=4.4.0',
         'tensorflow-estimator>=2.3.0',
