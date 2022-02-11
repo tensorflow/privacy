@@ -9,4 +9,5 @@ scipy~=1.2.1
 sklearn~=1.0.2
 tensorflow-datasets>=4.4.0
 tensorflow-estimator>=2.3.0
+tensorflow-probability>=0.13.0
 tensorflow>=1.14
