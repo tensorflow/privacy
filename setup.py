@@ -27,6 +27,7 @@ setup(
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
     install_requires=[
+        'absl-py~=1.0.0',
         'attrs>=21.2.0',
         'dm-tree~=0.1.1',
         'scipy>=0.17',
