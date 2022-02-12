@@ -211,7 +211,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
           name='dense',
           kernel_initializer='zeros',
           bias_initializer='zeros')
-      preds = layer.apply(features)
+      preds = layer(features)
 
       vector_loss = 0.5 * tf.math.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
