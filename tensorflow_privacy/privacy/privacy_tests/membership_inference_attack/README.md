@@ -1,16 +1,16 @@
 # Membership inference attack
 
-A good privacy-preserving model learns from the training data, but
-doesn't memorize it. This library provides empirical tests for measuring
-potential memorization.
+A good privacy-preserving model learns from the training data, but doesn't
+memorize it. This library provides empirical tests for measuring potential
+memorization.
 
 Technically, the tests build classifiers that infer whether a particular sample
 was present in the training set. The more accurate such classifier is, the more
 memorization is present and thus the less privacy-preserving the model is.
 
-The privacy vulnerability (or memorization potential) is measured
-via the area under the ROC-curve (`auc`) or via max{|fpr - tpr|} (`advantage`)
-of the attack classifier. These measures are very closely related.
+The privacy vulnerability (or memorization potential) is measured via the area
+under the ROC-curve (`auc`) or via max{|fpr - tpr|} (`advantage`) of the attack
+classifier. These measures are very closely related.
 
 The tests provided by the library are "black box". That is, only the outputs of
 the model are used (e.g., losses, logits, predictions). Neither model internals
@@ -69,7 +69,8 @@ print(attacks_result.summary())
 
 ### Other codelabs
 
-Please head over to the [codelabs](https://github.com/tensorflow/privacy/tree/master/tensorflow_privacy/privacy/privacy_tests/membership_inference_attack/codelabs)
+Please head over to the
+[codelabs](https://github.com/tensorflow/privacy/tree/master/tensorflow_privacy/privacy/privacy_tests/membership_inference_attack/codelabs)
 section for an overview of the library in action.
 
 ### Advanced usage
@@ -77,11 +78,10 @@ section for an overview of the library in action.
 #### Specifying attacks to run
 
 Sometimes, we have more information about the data, such as the logits and the
-labels,
-and we may want to have finer-grained control of the attack, such as using more
-complicated classifiers instead of the simple threshold attack, and looks at the
-attack results by examples' class.
-In thoses cases, we can provide more information to `run_attacks`.
+labels, and we may want to have finer-grained control of the attack, such as
+using more complicated classifiers instead of the simple threshold attack, and
+looks at the attack results by examples' class. In thoses cases, we can provide
+more information to `run_attacks`.
 
 ```python
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
@@ -109,15 +109,13 @@ attack_input = AttackInputData(
     labels_test = labels_test)
 ```
 
-Instead of `logits`, you can also specify
-`probs_train` and `probs_test` as the predicted probabilty vectors of each
-example.
+Instead of `logits`, you can also specify `probs_train` and `probs_test` as the
+predicted probabilty vectors of each example.
 
-Then, we specify some details of the attack.
-The first part includes the specifications of the slicing of the data. For
-example, we may want to evaluate the result on the whole dataset, or by class,
-percentiles, or the correctness of the model's classification.
-These can be specified by a `SlicingSpec` object.
+Then, we specify some details of the attack. The first part includes the
+specifications of the slicing of the data. For example, we may want to evaluate
+the result on the whole dataset, or by class, percentiles, or the correctness of
+the model's classification. These can be specified by a `SlicingSpec` object.
 
 ```python
 slicing_spec = SlicingSpec(
@@ -127,16 +125,13 @@ slicing_spec = SlicingSpec(
     by_classification_correctness = True)
 ```
 
-The second part specifies the classifiers for the attacker to use.
-Currently, our API supports five classifiers, including
-`AttackType.THRESHOLD_ATTACK` for simple threshold attack,
-`AttackType.LOGISTIC_REGRESSION`,
-`AttackType.MULTI_LAYERED_PERCEPTRON`,
-`AttackType.RANDOM_FOREST`, and
-`AttackType.K_NEAREST_NEIGHBORS`
-which use the corresponding machine learning models.
-For some model, different classifiers can yield pertty different results.
-We can put multiple classifers in a list:
+The second part specifies the classifiers for the attacker to use. Currently,
+our API supports five classifiers, including `AttackType.THRESHOLD_ATTACK` for
+simple threshold attack, `AttackType.LOGISTIC_REGRESSION`,
+`AttackType.MULTI_LAYERED_PERCEPTRON`, `AttackType.RANDOM_FOREST`, and
+`AttackType.K_NEAREST_NEIGHBORS` which use the corresponding machine learning
+models. For some model, different classifiers can yield pertty different
+results. We can put multiple classifers in a list:
 
 ```python
 attack_types = [
@@ -187,7 +182,6 @@ print(attacks_result.summary(by_slices = True))
 #       THRESHOLD_ATTACK achieved an advantage of 0.38
 ```
 
-
 #### Viewing and plotting the attack results
 
 We have seen an example of using `summary()` to view the attack results as text.
@@ -199,6 +193,7 @@ To get the attack that achieves the maximum attacker advantage or AUC, we can do
 max_auc_attacker = attacks_result.get_result_with_max_auc()
 max_advantage_attacker = attacks_result.get_result_with_max_attacker_advantage()
 ```
+
 Then, for individual attack, such as `max_auc_attacker`, we can check its type,
 attacker advantage and AUC by
 
@@ -210,6 +205,7 @@ print("Attack type with max AUC: %s, AUC of %.2f, Attacker advantage of %.2f" %
 # Example output:
 # -> Attack type with max AUC: THRESHOLD_ATTACK, AUC of 0.75, Attacker advantage of 0.38
 ```
+
 We can also plot its ROC curve by
 
 ```python
@@ -217,6 +213,7 @@ import tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.plot
 
 figure = plotting.plot_roc_curve(max_auc_attacker.roc_curve)
 ```
+
 which would give a figure like the one below
 ![roc_fig](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/privacy_tests/membership_inference_attack/codelab_roc_fig.png?raw=true)
 
@@ -241,16 +238,41 @@ print(attacks_result.calculate_pd_dataframe())
 # 25  correctly_classfied       False          lr            0.370713  0.737148
 ```
 
+#### Advanced Membership Inference Attacks
+
+Threshold MIA uses the intuition that training samples usually have lower loss
+than test samples, and it thus predict samples with loss lower than a threshold
+as in-training / member. However, some data samples might be intrinsically
+harder than others. For example, a hard sample might have pretty high loss even
+when included in the training set, and an easy sample might get low loss even
+when it's not. So using the same threshold for all samples might be suboptimal.
+
+People have considered customizing the membership prediction criteria for
+different examples by looking at how they behave when included in or excluded
+from the training set. To do that, we can train a few shadow models with
+training sets being different subsets of all samples. Then for each sample, we
+will know what its loss looks like when it's a member or non-member. Now, we can
+compare its loss from the target model to those from the shadow models. For
+example, if the average loss is `x` when the sample is a member, and `y` when
+it's not, we might adjust the target loss by subtracting `(x+y)/2`. We can
+expect the adjusted losses of different samples to be more of the same scale
+compared to the original target losses. This gives us potentially better
+estimations for membership.
+
+In `advanced_mia.py`, we provide the method described above, and another method
+that uses a more advanced way, i.e. distribution fitting to estimate membership.
+`advanced_mia_example.py` shows an example for doing the advanced membership
+inference on a CIFAR-10 task.
+
 ### External guides / press mentions
 
-* [Introductory blog post](https://franziska-boenisch.de/posts/2021/01/membership-inference/)
-to the theory and the library by Franziska Boenisch from the Fraunhofer AISEC
-institute.
-* [Google AI Blog Post](https://ai.googleblog.com/2021/01/google-research-looking-back-at-2020.html#ResponsibleAI)
-* [TensorFlow Blog Post](https://blog.tensorflow.org/2020/06/introducing-new-privacy-testing-library.html)
-* [VentureBeat article](https://venturebeat.com/2020/06/24/google-releases-experimental-tensorflow-module-that-tests-the-privacy-of-ai-models/)
-* [Tech Xplore article](https://techxplore.com/news/2020-06-google-tensorflow-privacy-module.html)
-
+*   [Introductory blog post](https://franziska-boenisch.de/posts/2021/01/membership-inference/)
+    to the theory and the library by Franziska Boenisch from the Fraunhofer
+    AISEC institute.
+*   [Google AI Blog Post](https://ai.googleblog.com/2021/01/google-research-looking-back-at-2020.html#ResponsibleAI)
+*   [TensorFlow Blog Post](https://blog.tensorflow.org/2020/06/introducing-new-privacy-testing-library.html)
+*   [VentureBeat article](https://venturebeat.com/2020/06/24/google-releases-experimental-tensorflow-module-that-tests-the-privacy-of-ai-models/)
+*   [Tech Xplore article](https://techxplore.com/news/2020-06-google-tensorflow-privacy-module.html)
 
 ## Contact / Feedback
 
