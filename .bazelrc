@@ -1,0 +1,20 @@
+# TensorFlow Privacy Bazel configuration
+#
+# See https://docs.bazel.build/versions/master/user-manual.html#config for
+# details on the various configuration options.
+
+# Enable verbose failures.
+build --verbose_failures
+
+# Enable logging rc options.
+common --announce_rc
+
+# Enable platform-specific configs from bazelrc files.
+common --enable_platform_specific_config
+
+# Enable logging error output.
+test --test_output=errors
+test --test_summary=detailed
+
+# Execute commands as local subprocesses
+build --spawn_strategy=local
