@@ -76,6 +76,28 @@ py_test(
 )
 
 py_library(
+    name = "distributed_skellam_query",
+    srcs = ["distributed_skellam_query.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":dp_query",
+        ":normalized_query",
+        "//tensorflow_privacy/privacy/analysis:dp_event",
+    ],
+)
+
+py_test(
+    name = "distributed_skellam_query_test",
+    srcs = ["distributed_skellam_query_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":distributed_skellam_query",
+        ":test_utils",
+    ],
+)
+
+py_library(
     name = "gaussian_query",
     srcs = ["gaussian_query.py"],
     srcs_version = "PY3",
