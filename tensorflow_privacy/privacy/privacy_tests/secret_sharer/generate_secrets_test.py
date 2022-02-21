@@ -13,10 +13,7 @@
 # limitations under the License.
 
 from absl.testing import absltest
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.generate_secrets import construct_secret
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.generate_secrets import generate_random_sequences
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.generate_secrets import generate_secrets_and_references
-from tensorflow_privacy.privacy.privacy_tests.secret_sharer.generate_secrets import SecretConfig
+from tensorflow_privacy.privacy.privacy_tests.secret_sharer import generate_secrets as gs
 
 
 class UtilsTest(absltest.TestCase):
@@ -28,14 +25,15 @@ class UtilsTest(absltest.TestCase):
   def test_generate_random_sequences(self):
     """Test generate_random_sequences."""
     # Test when n is larger than total number of possible sequences.
-    seqs = generate_random_sequences(['A', 'b', 'c'], '{}+{}', 10, seed=27)
+    seqs = gs.generate_random_sequences(['A', 'b', 'c'], '{}+{}', 10, seed=27)
     expected_seqs = [
         'A+c', 'c+c', 'b+b', 'A+b', 'b+c', 'c+A', 'c+b', 'A+A', 'b+A'
     ]
     self.assertEqual(seqs, expected_seqs)
 
     # Test when n is smaller than total number of possible sequences.
-    seqs = generate_random_sequences(list('01234'), 'prefix {}{}{}?', 8, seed=9)
+    seqs = gs.generate_random_sequences(
+        list('01234'), 'prefix {}{}{}?', 8, seed=9)
     expected_seqs = [
         'prefix 143?', 'prefix 031?', 'prefix 302?', 'prefix 042?',
         'prefix 404?', 'prefix 024?', 'prefix 021?', 'prefix 403?'
@@ -43,14 +41,14 @@ class UtilsTest(absltest.TestCase):
     self.assertEqual(seqs, expected_seqs)
 
   def test_construct_secret(self):
-    secret_config = SecretConfig(
-        vocab=None,
-        pattern='',
+    secret_config = gs.SecretConfig(
         num_repetitions=[1, 2, 8],
         num_secrets_for_repetitions=[2, 3, 1],
-        num_references=3)
+        num_references=3,
+        name='random secrets',
+        properties=gs.TextSecretProperties(vocab=None, pattern=''))
     seqs = list('0123456789')
-    secrets = construct_secret(secret_config, seqs)
+    secrets = gs.construct_secret(secret_config, seqs)
     self.assertEqual(secrets.config, secret_config)
     self.assertDictEqual(secrets.secrets, {
         1: ['0', '1'],
@@ -61,24 +59,29 @@ class UtilsTest(absltest.TestCase):
 
     # Test when the number of elements in seqs is not enough.
     seqs = list('01234567')
-    self.assertRaises(ValueError, construct_secret, secret_config, seqs)
+    self.assertRaises(ValueError, gs.construct_secret, secret_config, seqs)
 
   def test_generate_secrets_and_references(self):
     secret_configs = [
-        SecretConfig(
-            vocab=['w1', 'w2', 'w3'],
-            pattern='{} {} suf',
+        gs.SecretConfig(
             num_repetitions=[1, 12],
             num_secrets_for_repetitions=[2, 1],
-            num_references=3),
-        SecretConfig(
-            vocab=['W 1', 'W 2', 'W 3'],
-            pattern='{}-{}',
+            num_references=3,
+            name='secret1',
+            properties=gs.TextSecretProperties(
+                vocab=['w1', 'w2', 'w3'], pattern='{} {} suf'),
+        ),
+        gs.SecretConfig(
             num_repetitions=[1, 2, 8],
             num_secrets_for_repetitions=[2, 3, 1],
-            num_references=3)
+            num_references=3,
+            name='secert2',
+            properties=gs.TextSecretProperties(
+                vocab=['W 1', 'W 2', 'W 3'],
+                pattern='{}-{}',
+            ))
     ]
-    secrets = generate_secrets_and_references(secret_configs, seed=27)
+    secrets = gs.generate_text_secrets_and_references(secret_configs, seed=27)
     self.assertEqual(secrets[0].config, secret_configs[0])
     self.assertDictEqual(secrets[0].secrets, {
         1: ['w3 w2 suf', 'w2 w1 suf'],
