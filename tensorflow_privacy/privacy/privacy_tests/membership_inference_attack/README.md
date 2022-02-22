@@ -32,20 +32,15 @@ The simplest possible usage is
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 
-# Suppose we have the labels as integers starting from 0
-# labels_train  shape: (n_train, )
-# labels_test  shape: (n_test, )
-
-# Evaluate your model on training and test examples to get
+# Suppose we have evaluated the model on training and test examples to get the
+# per-example losses:
 # loss_train  shape: (n_train, )
 # loss_test  shape: (n_test, )
 
 attacks_result = mia.run_attacks(
     AttackInputData(
         loss_train = loss_train,
-        loss_test = loss_test,
-        labels_train = labels_train,
-        labels_test = labels_test))
+        loss_test = loss_test))
 ```
 
 This example calls `run_attacks` with the default options to run a host of
@@ -94,6 +89,10 @@ First, similar as before, we specify the input for the attack as an
 `AttackInputData` object:
 
 ```python
+# Suppose we have the labels as integers starting from 0
+# labels_train  shape: (n_train, )
+# labels_test  shape: (n_test, )
+
 # Evaluate your model on training and test examples to get
 # logits_train  shape: (n_train, n_classes)
 # logits_test  shape: (n_test, n_classes)
