@@ -19,13 +19,13 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import pandas as pd
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import _log_value
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import LossFunction
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleAttackResult
@@ -48,9 +48,9 @@ class SingleSliceSpecTest(parameterized.TestCase):
     self.assertEqual(str(SingleSliceSpec(feature, value)), expected_str)
 
 
-class AttackInputDataTest(absltest.TestCase):
+class AttackInputDataTest(parameterized.TestCase):
 
-  def test_get_loss_from_logits(self):
+  def test_get_xe_loss_from_logits(self):
     attack_input = AttackInputData(
         logits_train=np.array([[-0.3, 1.5, 0.2], [2, 3, 0.5]]),
         logits_test=np.array([[2, 0.3, 0.2], [0.3, -0.5, 0.2]]),
@@ -62,7 +62,7 @@ class AttackInputDataTest(absltest.TestCase):
     np.testing.assert_allclose(
         attack_input.get_loss_test(), [0.29860897, 0.95618669], atol=1e-7)
 
-  def test_get_loss_from_probs(self):
+  def test_get_xe_loss_from_probs(self):
     attack_input = AttackInputData(
         probs_train=np.array([[0.1, 0.1, 0.8], [0.8, 0.2, 0]]),
         probs_test=np.array([[0, 0.0001, 0.9999], [0.07, 0.18, 0.75]]),
@@ -73,6 +73,130 @@ class AttackInputDataTest(absltest.TestCase):
         attack_input.get_loss_train(), [2.30258509, 0.2231436], atol=1e-7)
     np.testing.assert_allclose(
         attack_input.get_loss_test(), [18.42068074, 0.28768207], atol=1e-7)
+
+  def test_get_binary_xe_loss_from_logits(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([-10, -5, 0., 5, 10]),
+        logits_test=np.array([-10, -5, 0., 5, 10]),
+        labels_train=np.zeros((5,)),
+        labels_test=np.ones((5,)),
+        loss_function_using_logits=True)
+    expected_loss0 = np.array([0.000045398, 0.006715348, 0.6931471825, 5, 10])
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), expected_loss0, rtol=1e-2)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), expected_loss0[::-1], rtol=1e-2)
+
+  def test_get_binary_xe_loss_from_probs(self):
+    attack_input = AttackInputData(
+        probs_train=np.array([0.2, 0.7, 0.1, 0.99, 0.002, 0.008]),
+        probs_test=np.array([0.2, 0.7, 0.1, 0.99, 0.002, 0.008]),
+        labels_train=np.zeros((6,)),
+        labels_test=np.ones((6,)),
+        loss_function_using_logits=False)
+
+    expected_loss0 = np.array([
+        0.2231435513, 1.2039728043, 0.1053605157, 4.6051701860, 0.0020020027,
+        0.0080321717
+    ])
+    expected_loss1 = np.array([
+        1.6094379124, 0.3566749439, 2.3025850930, 0.0100503359, 6.2146080984,
+        4.8283137373
+    ])
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), expected_loss0, atol=1e-7)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), expected_loss1, atol=1e-7)
+
+  @parameterized.named_parameters(
+      ('use_logits', True, np.array([1, 0.]), np.array([0, 4.])),
+      ('use_default', None, np.array([1, 0.]), np.array([0, 4.])),
+      ('use_probs', False, np.array([0, 1.]), np.array([1, 1.])),
+  )
+  def test_get_squared_loss(self, loss_function_using_logits, expected_train,
+                            expected_test):
+    attack_input = AttackInputData(
+        logits_train=np.array([0, 0.]),
+        logits_test=np.array([0, 0.]),
+        probs_train=np.array([1, 1.]),
+        probs_test=np.array([1, 1.]),
+        labels_train=np.array([1, 0.]),
+        labels_test=np.array([0, 2.]),
+        loss_function=LossFunction.SQUARED,
+        loss_function_using_logits=loss_function_using_logits,
+    )
+    np.testing.assert_allclose(attack_input.get_loss_train(), expected_train)
+    np.testing.assert_allclose(attack_input.get_loss_test(), expected_test)
+
+  @parameterized.named_parameters(
+      ('use_logits', True, np.array([125.]), np.array([121.])),
+      ('use_default', None, np.array([125.]), np.array([121.])),
+      ('use_probs', False, np.array([458.]), np.array([454.])),
+  )
+  def test_get_customized_loss(self, loss_function_using_logits, expected_train,
+                               expected_test):
+
+    def fake_loss(x, y):
+      return 2 * x + y
+
+    attack_input = AttackInputData(
+        logits_train=np.array([
+            123.,
+        ]),
+        logits_test=np.array([
+            123.,
+        ]),
+        probs_train=np.array([
+            456.,
+        ]),
+        probs_test=np.array([
+            456.,
+        ]),
+        labels_train=np.array([1.]),
+        labels_test=np.array([-1.]),
+        loss_function=fake_loss,
+        loss_function_using_logits=loss_function_using_logits,
+    )
+    np.testing.assert_allclose(attack_input.get_loss_train(), expected_train)
+    np.testing.assert_allclose(attack_input.get_loss_test(), expected_test)
+
+  @parameterized.named_parameters(
+      ('both', np.array([0, 0.]), np.array([1, 1.]), np.array([1, 0.])),
+      ('only_logits', np.array([0, 0.]), None, np.array([1, 0.])),
+      ('only_probs', None, np.array([1, 1.]), np.array([0, 1.])),
+  )
+  def test_default_loss_function_using_logits(self, logits, probs, expected):
+    """Tests for `loss_function_using_logits = None`. Should prefer logits."""
+    attack_input = AttackInputData(
+        logits_train=logits,
+        logits_test=logits,
+        probs_train=probs,
+        probs_test=probs,
+        labels_train=np.array([1, 0.]),
+        labels_test=np.array([1, 0.]),
+        loss_function=LossFunction.SQUARED,
+    )
+    np.testing.assert_allclose(attack_input.get_loss_train(), expected)
+    np.testing.assert_allclose(attack_input.get_loss_test(), expected)
+
+  @parameterized.parameters(
+      (None, np.array([1.]), True),
+      (np.array([1.]), None, False),
+  )
+  def test_loss_wrong_input(self, logits, probs, loss_function_using_logits):
+    attack_input = AttackInputData(
+        logits_train=logits,
+        logits_test=logits,
+        probs_train=probs,
+        probs_test=probs,
+        labels_train=np.array([
+            1.,
+        ]),
+        labels_test=np.array([0.]),
+        loss_function_using_logits=loss_function_using_logits,
+    )
+    self.assertRaises(ValueError, attack_input.get_loss_train)
+    self.assertRaises(ValueError, attack_input.get_loss_test)
 
   def test_get_loss_explicitly_provided(self):
     attack_input = AttackInputData(
