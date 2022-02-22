@@ -51,6 +51,7 @@ else:
   from tensorflow_privacy.privacy.dp_query.dp_query import SumAggregationDPQuery
   from tensorflow_privacy.privacy.dp_query.discrete_gaussian_query import DiscreteGaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.distributed_discrete_gaussian_query import DistributedDiscreteGaussianSumQuery
+  from tensorflow_privacy.privacy.dp_query.distributed_skellam_query import DistributedSkellamSumQuery
   from tensorflow_privacy.privacy.dp_query.gaussian_query import GaussianSumQuery
   from tensorflow_privacy.privacy.dp_query.nested_query import NestedQuery
   from tensorflow_privacy.privacy.dp_query.no_privacy_query import NoPrivacyAverageQuery

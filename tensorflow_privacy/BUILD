@@ -22,6 +22,7 @@ py_library(
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:discrete_gaussian_query",
         "//tensorflow_privacy/privacy/dp_query:distributed_discrete_gaussian_query",
+        "//tensorflow_privacy/privacy/dp_query:distributed_skellam_query",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
         "//tensorflow_privacy/privacy/dp_query:nested_query",
         "//tensorflow_privacy/privacy/dp_query:no_privacy_query",
