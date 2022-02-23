@@ -62,24 +62,36 @@ def make_dp_model_class(cls):
         self,
         l2_norm_clip,
         noise_multiplier,
+        num_microbatches=None,
         use_xla=True,
         *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
         **kwargs):
       """Initializes the DPModelClass.
 
-        Args:
-            l2_norm_clip: Clipping norm (max L2 norm of per microbatch
-              gradients).
-            noise_multiplier: Ratio of the standard deviation to the clipping
-              norm.
-            use_xla: If `True`, compiles train_step to XLA.
-            *args: These will be passed on to the base class `__init__` method.
-            **kwargs: These will be passed on to the base class `__init__`
-              method.
+      Args:
+        l2_norm_clip: Clipping norm (max L2 norm of per microbatch
+          gradients).
+        noise_multiplier: Ratio of the standard deviation to the clipping
+          norm.
+        num_microbatches: Number of microbatches.
+        use_xla: If `True`, compiles train_step to XLA.
+        *args: These will be passed on to the base class `__init__` method.
+        **kwargs: These will be passed on to the base class `__init__`
+          method.
       """
       super().__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
+
+      # Given that `num_microbatches` was added as an argument after the fact,
+      # this check helps detect unintended calls to the earlier API.
+      # In particular, boolean values supplied to `use_xla` in the earlier API
+      # will raise an error.
+      if isinstance(num_microbatches, bool):
+        raise ValueError('Boolean value supplied for `num_microbatches`. '
+                         'Did you intend it for `use_xla`?')
+
+      self._num_microbatches = num_microbatches
 
       if use_xla:
         self.train_step = tf.function(
@@ -106,21 +118,35 @@ def make_dp_model_class(cls):
     def _compute_per_example_grads(self, data):
       x, y = data
       with tf.GradientTape() as tape:
-        # We need to add the extra dimension to x and y because model
-        # expects batched input.
-        y_pred = self(x[None], training=True)
-        loss = self.compiled_loss(
-            y[None], y_pred, regularization_losses=self.losses)
+        y_pred = self(x, training=True)
+        loss = self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
       grads_list = tape.gradient(loss, self.trainable_variables)
       clipped_grads = self._process_per_example_grads(grads_list)
-      return tf.squeeze(y_pred, axis=0), loss, clipped_grads
+      return y_pred, loss, clipped_grads
 
     def train_step(self, data):
       """DP-SGD version of base class method."""
       _, y = data
+      batch_size = y.shape[0]
+
+      if self._num_microbatches is None:
+        self._num_microbatches = batch_size
+      if batch_size % self._num_microbatches != 0:
+        raise ValueError('Number of_microbatches must divide batch size.')
+
+      def reshape_fn(x):
+        new_shape = (self._num_microbatches,
+                     batch_size // self._num_microbatches) + x.shape[1:]
+        return tf.reshape(x, new_shape)
+
+      data = tf.nest.map_structure(reshape_fn, data)
+
       y_pred, _, per_eg_grads = tf.vectorized_map(
           self._compute_per_example_grads, data)
+
+      y_pred = tf.reshape(y_pred, (batch_size) + y_pred.shape[2:])
+
       grads = tf.nest.map_structure(self._reduce_per_example_grads,
                                     per_eg_grads)
       self.optimizer.apply_gradients(zip(grads, self.trainable_variables))
