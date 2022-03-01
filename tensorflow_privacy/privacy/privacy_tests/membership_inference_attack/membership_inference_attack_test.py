@@ -90,6 +90,31 @@ class RunAttacksTest(absltest.TestCase):
     self.assertLen(result.membership_scores_train, 100)
     self.assertLen(result.membership_scores_test, 50)
 
+  def test_run_attack_trained_sets_membership_scores(self):
+    attack_input = AttackInputData(
+        logits_train=np.tile([500., -500.], (100, 1)),
+        logits_test=np.tile([0., 0.], (50, 1)))
+
+    result = mia._run_trained_attack(
+        attack_input,
+        AttackType.LOGISTIC_REGRESSION,
+        balance_attacker_training=True)
+    self.assertLen(result.membership_scores_train, 100)
+    self.assertLen(result.membership_scores_test, 50)
+
+    # Scores for all training (resp. test) examples should be close
+    np.testing.assert_allclose(
+        result.membership_scores_train,
+        result.membership_scores_train[0],
+        rtol=1e-3)
+    np.testing.assert_allclose(
+        result.membership_scores_test,
+        result.membership_scores_test[0],
+        rtol=1e-3)
+    # Training score should be smaller than test score
+    self.assertLess(result.membership_scores_train[0],
+                    result.membership_scores_test[0])
+
   def test_run_attack_threshold_calculates_correct_auc(self):
     result = mia._run_attack(
         AttackInputData(

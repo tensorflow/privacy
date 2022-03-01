@@ -15,7 +15,6 @@
 
 import dataclasses
 from typing import Optional
-
 import numpy as np
 from sklearn import ensemble
 from sklearn import linear_model
@@ -23,30 +22,34 @@ from sklearn import model_selection
 from sklearn import neighbors
 from sklearn import neural_network
 
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 
 
 @dataclasses.dataclass
 class AttackerData:
   """Input data for an ML classifier attack.
 
-  This includes only the data, and not configuration.
+  Labels in this class correspond to whether an example was in the
+  train or test set.
   """
+  # Features of in-training and out-of-training examples.
+  features_all: Optional[np.ndarray] = None
+  # Indicator for whether the example is in-training (0) or out-of-training (1).
+  labels_all: Optional[np.ndarray] = None
 
-  features_train: Optional[np.ndarray] = None
-  # element-wise boolean array denoting if the example was part of training.
-  is_training_labels_train: Optional[np.ndarray] = None
+  # Indices for `features_all` and `labels_all` that are going to be used for
+  # training the attackers.
+  fold_indices: Optional[np.ndarray] = None
 
-  features_test: Optional[np.ndarray] = None
-  # element-wise boolean array denoting if the example was part of training.
-  is_training_labels_test: Optional[np.ndarray] = None
+  # Indices for `features_all` and `labels_all` that were left out due to
+  # balancing. Disjoint from `fold_indices`.
+  left_out_indices: Optional[np.ndarray] = None
 
-  data_size: Optional[DataSize] = None
+  # Number of in-training and out-of-training examples.
+  data_size: Optional[data_structures.DataSize] = None
 
 
-def create_attacker_data(attack_input_data: AttackInputData,
-                         test_fraction: float = 0.25,
+def create_attacker_data(attack_input_data: data_structures.AttackInputData,
                          balance: bool = True) -> AttackerData:
   """Prepare AttackInputData to train ML attackers.
 
@@ -54,7 +57,6 @@ def create_attacker_data(attack_input_data: AttackInputData,
 
   Args:
     attack_input_data: Original AttackInputData
-    test_fraction: Fraction of the dataset to include in the test split.
     balance: Whether the training and test sets for the membership inference
       attacker should have a balanced (roughly equal) number of samples from the
       training and test sets used to develop the model under attack.
@@ -67,25 +69,49 @@ def create_attacker_data(attack_input_data: AttackInputData,
   attack_input_test = _column_stack(attack_input_data.logits_or_probs_test,
                                     attack_input_data.get_loss_test())
 
-  if balance:
-    min_size = min(attack_input_data.get_train_size(),
-                   attack_input_data.get_test_size())
-    attack_input_train = _sample_multidimensional_array(attack_input_train,
-                                                        min_size)
-    attack_input_test = _sample_multidimensional_array(attack_input_test,
-                                                       min_size)
   ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
-
   features_all = np.concatenate((attack_input_train, attack_input_test))
+  labels_all = np.concatenate((np.zeros(ntrain), np.ones(ntest)))
 
-  labels_all = np.concatenate(((np.zeros(ntrain)), (np.ones(ntest))))
+  fold_indices = np.arange(ntrain + ntest)
+  left_out_indices = np.asarray([], dtype=np.int32)
 
-  # Perform a train-test split
-  features_train, features_test, is_training_labels_train, is_training_labels_test = model_selection.train_test_split(
-      features_all, labels_all, test_size=test_fraction, stratify=labels_all)
-  return AttackerData(features_train, is_training_labels_train, features_test,
-                      is_training_labels_test,
-                      DataSize(ntrain=ntrain, ntest=ntest))
+  if balance:
+    idx_train, idx_test = range(ntrain), range(ntrain, ntrain + ntest)
+    min_size = min(ntrain, ntest)
+    if ntrain > min_size:
+      left_out_size = ntrain - min_size
+      perm_train = np.random.permutation(idx_train)  # shuffle training
+      left_out_indices = perm_train[:left_out_size]
+      fold_indices = np.concatenate((perm_train[left_out_size:], idx_test))
+    elif ntest > min_size:
+      left_out_size = ntest - min_size
+      perm_test = np.random.permutation(idx_test)  # shuffle test
+      left_out_indices = perm_test[:left_out_size]
+      fold_indices = np.concatenate((perm_test[left_out_size:], idx_train))
+
+  # Shuffle indices for the downstream attackers.
+  fold_indices = np.random.permutation(fold_indices)
+
+  return AttackerData(
+      features_all=features_all,
+      labels_all=labels_all,
+      fold_indices=fold_indices,
+      left_out_indices=left_out_indices,
+      data_size=data_structures.DataSize(ntrain=ntrain, ntest=ntest))
+
+
+def create_attacker(attack_type):
+  """Returns the corresponding attacker for the provided attack_type."""
+  if attack_type == data_structures.AttackType.LOGISTIC_REGRESSION:
+    return LogisticRegressionAttacker()
+  if attack_type == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON:
+    return MultilayerPerceptronAttacker()
+  if attack_type == data_structures.AttackType.RANDOM_FOREST:
+    return RandomForestAttacker()
+  if attack_type == data_structures.AttackType.K_NEAREST_NEIGHBORS:
+    return KNearestNeighborsAttacker()
+  raise NotImplementedError('Attack type %s not implemented yet.' % attack_type)
 
 
 def _sample_multidimensional_array(array, size):

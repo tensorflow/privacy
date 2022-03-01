@@ -23,6 +23,7 @@ from absl import app
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 from sklearn import metrics
 import tensorflow as tf
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
@@ -69,69 +70,69 @@ def generate_features_and_labels(samples_per_cluster=250, scale=0.1):
   return (features, labels)
 
 
-# Hint: Play with "noise_scale" for different levels of overlap between
-# the generated clusters. More noise makes the classification harder.
-noise_scale = 2
-training_features, training_labels = generate_features_and_labels(
-    samples_per_cluster=250, scale=noise_scale)
-test_features, test_labels = generate_features_and_labels(
-    samples_per_cluster=250, scale=noise_scale)
+def get_models(num_clusters):
+  """Get the two models we will be using."""
+  # Hint: play with the number of layers to achieve different level of
+  # over-fitting and observe its effects on membership inference performance.
+  three_layer_model = tf.keras.Sequential([
+      tf.keras.layers.Dense(300, activation="relu"),
+      tf.keras.layers.Dense(300, activation="relu"),
+      tf.keras.layers.Dense(300, activation="relu"),
+      tf.keras.layers.Dense(num_clusters, activation="relu"),
+      tf.keras.layers.Softmax()
+  ])
+  three_layer_model.compile(
+      optimizer="adam",
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+      metrics=["accuracy"])
 
-num_clusters = int(round(np.max(training_labels))) + 1
-
-# Hint: play with the number of layers to achieve different level of
-# over-fitting and observe its effects on membership inference performance.
-three_layer_model = tf.keras.Sequential([
-    tf.keras.layers.Dense(300, activation="relu"),
-    tf.keras.layers.Dense(300, activation="relu"),
-    tf.keras.layers.Dense(300, activation="relu"),
-    tf.keras.layers.Dense(num_clusters, activation="relu"),
-    tf.keras.layers.Softmax()
-])
-three_layer_model.compile(
-    optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-
-two_layer_model = tf.keras.Sequential([
-    tf.keras.layers.Dense(300, activation="relu"),
-    tf.keras.layers.Dense(300, activation="relu"),
-    tf.keras.layers.Dense(num_clusters, activation="relu"),
-    tf.keras.layers.Softmax()
-])
-two_layer_model.compile(
-    optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
-
-
-def crossentropy(true_labels, predictions):
-  return tf.keras.backend.eval(
-      tf.keras.metrics.binary_crossentropy(
-          tf.keras.backend.variable(
-              tf.keras.utils.to_categorical(true_labels, num_clusters)),
-          tf.keras.backend.variable(predictions)))
+  two_layer_model = tf.keras.Sequential([
+      tf.keras.layers.Dense(300, activation="relu"),
+      tf.keras.layers.Dense(300, activation="relu"),
+      tf.keras.layers.Dense(num_clusters, activation="relu"),
+      tf.keras.layers.Softmax()
+  ])
+  two_layer_model.compile(
+      optimizer="adam",
+      loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+      metrics=["accuracy"])
+  return three_layer_model, two_layer_model
 
 
 def main(unused_argv):
-  epoch_results = data_structures.AttackResultsCollection([])
+  # Hint: Play with "noise_scale" for different levels of overlap between
+  # the generated clusters. More noise makes the classification harder.
+  noise_scale = 2
+  training_features, training_labels = generate_features_and_labels(
+      samples_per_cluster=250, scale=noise_scale)
+  test_features, test_labels = generate_features_and_labels(
+      samples_per_cluster=250, scale=noise_scale)
 
-  num_epochs = 2
+  num_clusters = int(round(np.max(training_labels))) + 1
+
+  three_layer_model, two_layer_model = get_models(num_clusters)
   models = {
-      "two layer model": two_layer_model,
-      "three layer model": three_layer_model,
+      "two_layer_model": two_layer_model,
+      "three_layer_model": three_layer_model,
   }
-  for model_name in models:
-    # Incrementally train the model and store privacy metrics every num_epochs.
-    for i in range(1, 6):
-      models[model_name].fit(
+
+  num_epochs_per_round = 20
+  epoch_results = data_structures.AttackResultsCollection([])
+  for model_name, model in models.items():
+    print(f"Train {model_name}.")
+    # Incrementally train the model and store privacy metrics
+    # every num_epochs_per_round.
+    for i in range(5):
+      model.fit(
           training_features,
-          tf.keras.utils.to_categorical(training_labels, num_clusters),
-          validation_data=(test_features,
-                           tf.keras.utils.to_categorical(
-                               test_labels, num_clusters)),
+          training_labels,
+          validation_data=(test_features, test_labels),
           batch_size=64,
-          epochs=num_epochs,
+          epochs=num_epochs_per_round,
           shuffle=True)
 
-      training_pred = models[model_name].predict(training_features)
-      test_pred = models[model_name].predict(test_features)
+      training_pred = model.predict(training_features)
+      test_pred = model.predict(test_features)
 
       # Add metadata to generate a privacy report.
       privacy_report_metadata = data_structures.PrivacyReportMetadata(
@@ -139,7 +140,7 @@ def main(unused_argv):
               training_labels, np.argmax(training_pred, axis=1)),
           accuracy_test=metrics.accuracy_score(test_labels,
                                                np.argmax(test_pred, axis=1)),
-          epoch_num=num_epochs * i,
+          epoch_num=num_epochs_per_round * (i + 1),
           model_variant_label=model_name)
 
       attack_results = mia.run_attacks(
@@ -147,9 +148,7 @@ def main(unused_argv):
               labels_train=training_labels,
               labels_test=test_labels,
               probs_train=training_pred,
-              probs_test=test_pred,
-              loss_train=crossentropy(training_labels, training_pred),
-              loss_test=crossentropy(test_labels, test_pred)),
+              probs_test=test_pred),
           data_structures.SlicingSpec(entire_dataset=True, by_class=True),
           attack_types=(data_structures.AttackType.THRESHOLD_ATTACK,
                         data_structures.AttackType.LOGISTIC_REGRESSION),
@@ -215,6 +214,39 @@ def main(unused_argv):
 
   # For saving a figure into a file:
   # plotting.save_plot(figure, <file_path>)
+
+  # Let's look at the per-example membership scores. We'll look at how the
+  # scores from threshold and logistic regression attackers correlate.
+
+  # We take the MIA result of the final three layer model
+  sample_model = epoch_results.attack_results_list[-1]
+  print("We will look at the membership scores of",
+        sample_model.privacy_report_metadata.model_variant_label, "at epoch",
+        sample_model.privacy_report_metadata.epoch_num)
+  sample_results = sample_model.single_attack_results
+
+  # The first two entries of sample_results are from the threshold and
+  # logistic regression attackers on the whole dataset.
+  print("Correlation between the scores of the following two attackers:", "\n ",
+        sample_results[0].slice_spec, sample_results[0].attack_type, "\n ",
+        sample_results[1].slice_spec, sample_results[1].attack_type)
+  threshold_results = np.concatenate(  # scores by threshold attacker
+      (sample_results[0].membership_scores_train,
+       sample_results[0].membership_scores_test))
+  lr_results = np.concatenate(  # scores by logistic regression attacker
+      (sample_results[1].membership_scores_train,
+       sample_results[1].membership_scores_test))
+
+  # Order the scores and plot them
+  threshold_orders = scipy.stats.rankdata(threshold_results)
+  lr_orders = scipy.stats.rankdata(lr_results)
+
+  fig, axes = plt.subplots(nrows=1, ncols=1, figsize=(5, 5))
+  axes.scatter(threshold_orders, lr_orders, alpha=0.2, linewidths=0)
+  m, b = np.polyfit(threshold_orders, lr_orders, 1)  # linear fit
+  axes.plot(threshold_orders, m * threshold_orders + b, color="orange")
+  axes.set_aspect("equal", adjustable="box")
+  fig.show()
 
 
 if __name__ == "__main__":

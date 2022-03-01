@@ -21,6 +21,7 @@ from typing import Iterable
 
 import numpy as np
 from sklearn import metrics
+from sklearn import model_selection
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
@@ -44,49 +45,61 @@ def _get_slice_spec(data: AttackInputData) -> SingleSliceSpec:
   return SingleSliceSpec()
 
 
+# TODO(b/220394926): Allow users to specify their own attack models.
 def _run_trained_attack(attack_input: AttackInputData,
                         attack_type: AttackType,
-                        balance_attacker_training: bool = True):
+                        balance_attacker_training: bool = True,
+                        cross_validation_folds: int = 2):
   """Classification attack done by ML models."""
-  attacker = None
-
-  if attack_type == AttackType.LOGISTIC_REGRESSION:
-    attacker = models.LogisticRegressionAttacker()
-  elif attack_type == AttackType.MULTI_LAYERED_PERCEPTRON:
-    attacker = models.MultilayerPerceptronAttacker()
-  elif attack_type == AttackType.RANDOM_FOREST:
-    attacker = models.RandomForestAttacker()
-  elif attack_type == AttackType.K_NEAREST_NEIGHBORS:
-    attacker = models.KNearestNeighborsAttacker()
-  else:
-    raise NotImplementedError('Attack type %s not implemented yet.' %
-                              attack_type)
-
   prepared_attacker_data = models.create_attacker_data(
       attack_input, balance=balance_attacker_training)
+  indices = prepared_attacker_data.fold_indices
+  left_out_indices = prepared_attacker_data.left_out_indices
+  features = prepared_attacker_data.features_all
+  labels = prepared_attacker_data.labels_all
 
-  attacker.train_model(prepared_attacker_data.features_train,
-                       prepared_attacker_data.is_training_labels_train)
+  # We are going to train multiple models on disjoint subsets of the data
+  # (`features`, `labels`), so we can get the membership scores of all samples,
+  # and each example gets its score assigned only once.
+  # An alternative implementation is to train multiple models on overlapping
+  # subsets of the data, and take an average to get the score for each sample.
+  # `scores` will record the membership score of each sample, initialized to nan
+  scores = np.full(features.shape[0], np.nan)
 
-  # Run the attacker on (permuted) test examples.
-  predictions_test = attacker.predict(prepared_attacker_data.features_test)
+  # We use StratifiedKFold to create disjoint subsets of samples. Notice that
+  # the index it returns is with respect to the samples shuffled with `indices`.
+  kf = model_selection.StratifiedKFold(cross_validation_folds, shuffle=False)
+  for train_indices_in_shuffled, test_indices_in_shuffled in kf.split(
+      features[indices], labels[indices]):
+    # `train_indices_in_shuffled` is with respect to the data shuffled with
+    # `indices`. We convert it to `train_indices` to work with the original
+    # data (`features` and 'labels').
+    train_indices = indices[train_indices_in_shuffled]
+    test_indices = indices[test_indices_in_shuffled]
+    # Make sure one sample only got score predicted once
+    assert np.all(np.isnan(scores[test_indices]))
 
-  # Generate ROC curves with predictions.
-  fpr, tpr, thresholds = metrics.roc_curve(
-      prepared_attacker_data.is_training_labels_test, predictions_test)
+    attacker = models.create_attacker(attack_type)
+    attacker.train_model(features[train_indices], labels[train_indices])
+    scores[test_indices] = attacker.predict(features[test_indices])
 
+  # Predict the left out with the last attacker
+  if left_out_indices.size:
+    assert np.all(np.isnan(scores[left_out_indices]))
+    scores[left_out_indices] = attacker.predict(features[left_out_indices])
+  assert not np.any(np.isnan(scores))
+
+  # Generate ROC curves with scores.
+  fpr, tpr, thresholds = metrics.roc_curve(labels, scores)
   roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
 
-  # NOTE: In the current setup we can't obtain membership scores for all
-  # samples, since some of them were used to train the attacker. This can be
-  # fixed by training several attackers to ensure each sample was left out
-  # in exactly one attacker (basically, this means performing cross-validation).
-  # TODO(b/175870479): Implement membership scores for predicted attackers.
-
+  in_train_indices = (labels == 0)
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
       data_size=prepared_attacker_data.data_size,
       attack_type=attack_type,
+      membership_scores_train=scores[in_train_indices],
+      membership_scores_test=scores[~in_train_indices],
       roc_curve=roc_curve)
 
 
@@ -107,8 +120,8 @@ def _run_threshold_attack(attack_input: AttackInputData):
       slice_spec=_get_slice_spec(attack_input),
       data_size=DataSize(ntrain=ntrain, ntest=ntest),
       attack_type=AttackType.THRESHOLD_ATTACK,
-      membership_scores_train=-attack_input.get_loss_train(),
-      membership_scores_test=-attack_input.get_loss_test(),
+      membership_scores_train=attack_input.get_loss_train(),
+      membership_scores_test=attack_input.get_loss_test(),
       roc_curve=roc_curve)
 
 

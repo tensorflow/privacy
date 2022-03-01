@@ -33,9 +33,8 @@ class TrainedAttackerTest(absltest.TestCase):
   def test_create_attacker_data_loss_only(self):
     attack_input = AttackInputData(
         loss_train=np.array([1, 3]), loss_test=np.array([2, 4]))
-    attacker_data = models.create_attacker_data(attack_input, 0.5)
-    self.assertLen(attacker_data.features_test, 2)
-    self.assertLen(attacker_data.features_train, 2)
+    attacker_data = models.create_attacker_data(attack_input, 2)
+    self.assertLen(attacker_data.features_all, 4)
 
   def test_create_attacker_data_loss_and_logits(self):
     attack_input = AttackInputData(
@@ -43,15 +42,22 @@ class TrainedAttackerTest(absltest.TestCase):
         logits_test=np.array([[10, 11], [14, 15]]),
         loss_train=np.array([3, 7, 10]),
         loss_test=np.array([12, 16]))
-    attacker_data = models.create_attacker_data(
-        attack_input, 0.25, balance=False)
-    self.assertLen(attacker_data.features_test, 2)
-    self.assertLen(attacker_data.features_train, 3)
+    attacker_data = models.create_attacker_data(attack_input, balance=False)
+    self.assertLen(attacker_data.features_all, 5)
+    self.assertLen(attacker_data.fold_indices, 5)
+    self.assertEmpty(attacker_data.left_out_indices)
 
-    for i, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 3)  # each feature has two logits and one loss
-      expected = feature[:2] not in attack_input.logits_train
-      self.assertEqual(attacker_data.is_training_labels_train[i], expected)
+  def test_unbalanced_create_attacker_data_loss_and_logits(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[1, 2], [5, 6], [8, 9]]),
+        logits_test=np.array([[10, 11], [14, 15]]),
+        loss_train=np.array([3, 7, 10]),
+        loss_test=np.array([12, 16]))
+    attacker_data = models.create_attacker_data(attack_input, balance=True)
+    self.assertLen(attacker_data.features_all, 5)
+    self.assertLen(attacker_data.fold_indices, 4)
+    self.assertLen(attacker_data.left_out_indices, 1)
+    self.assertIn(attacker_data.left_out_indices[0], [0, 1, 2])
 
   def test_balanced_create_attacker_data_loss_and_logits(self):
     attack_input = AttackInputData(
@@ -59,14 +65,10 @@ class TrainedAttackerTest(absltest.TestCase):
         logits_test=np.array([[10, 11], [14, 15], [17, 18]]),
         loss_train=np.array([3, 7, 10]),
         loss_test=np.array([12, 16, 19]))
-    attacker_data = models.create_attacker_data(attack_input, 0.33)
-    self.assertLen(attacker_data.features_test, 2)
-    self.assertLen(attacker_data.features_train, 4)
-
-    for i, feature in enumerate(attacker_data.features_train):
-      self.assertLen(feature, 3)  # each feature has two logits and one loss
-      expected = feature[:2] not in attack_input.logits_train
-      self.assertEqual(attacker_data.is_training_labels_train[i], expected)
+    attacker_data = models.create_attacker_data(attack_input)
+    self.assertLen(attacker_data.features_all, 6)
+    self.assertLen(attacker_data.fold_indices, 6)
+    self.assertEmpty(attacker_data.left_out_indices)
 
 
 if __name__ == '__main__':
