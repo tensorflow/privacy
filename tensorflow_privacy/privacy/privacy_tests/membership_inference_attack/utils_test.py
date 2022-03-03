@@ -85,6 +85,8 @@ class TestLogLoss(parameterized.TestCase):
     y = np.full(pred.shape[0], label)
     loss = utils.log_loss(y, pred)
     np.testing.assert_allclose(expected_loss, loss, atol=1e-7)
+    loss = utils.log_loss(y, pred.reshape(-1, 1))
+    np.testing.assert_allclose(expected_loss, loss, atol=1e-7)
 
   @parameterized.named_parameters(
       ('label0', 0, np.array([0.000045398, 0.006715348, 0.6931471825, 5, 10])),
@@ -95,6 +97,8 @@ class TestLogLoss(parameterized.TestCase):
     y = np.full(pred.shape[0], label)
     loss = utils.log_loss(y, pred, from_logits=True)
     np.testing.assert_allclose(expected_loss, loss, rtol=1e-2)
+    loss = utils.log_loss(y, pred.reshape(-1, 1), from_logits=True)
+    np.testing.assert_allclose(expected_loss, loss, rtol=1e-2)
 
   @parameterized.named_parameters(
       ('binary_mismatch', np.array([0, 1, 2]), np.ones((3,))),
@@ -102,6 +106,11 @@ class TestLogLoss(parameterized.TestCase):
       ('multiclass_wrong_label', np.array([0, 3]), np.ones((2, 3))),
   )
   def test_log_loss_wrong_classes(self, labels, pred):
+    self.assertRaises(ValueError, utils.log_loss, labels=labels, pred=pred)
+
+  def test_log_loss_wrong_number_of_example(self):
+    labels = np.array([0, 1, 1])
+    pred = np.array([0.2])
     self.assertRaises(ValueError, utils.log_loss, labels=labels, pred=pred)
 
 

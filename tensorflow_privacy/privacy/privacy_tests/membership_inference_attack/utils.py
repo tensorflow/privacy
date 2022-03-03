@@ -38,13 +38,17 @@ def log_loss(labels: np.ndarray,
   Returns:
     the cross-entropy loss of each sample
   """
+  if labels.shape[0] != pred.shape[0]:
+    raise ValueError('labels and pred should have the same number of examples,',
+                     f'but got {labels.shape[0]} and {pred.shape[0]}.')
   classes = np.unique(labels)
 
   # Binary logistic loss
-  if pred.ndim == 1:
+  if pred.size == pred.shape[0]:
+    pred = pred.flatten()
     if classes.min() < 0 or classes.max() > 1:
-      raise ValueError('Each value in pred is a scalar, but labels are not in',
-                       '{0, 1}.')
+      raise ValueError('Each value in pred is a scalar, so labels are expected',
+                       f'to be {0, 1}. But got {classes}.')
     if from_logits:
       pred = special.expit(pred)
 
