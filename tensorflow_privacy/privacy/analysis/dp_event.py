@@ -59,7 +59,7 @@ incorrect results, the following should be enforced:
    is `False` when processing unknown mechanisms.
 """
 
-from typing import List
+from typing import List, Union
 
 import attr
 
@@ -111,6 +111,20 @@ class GaussianDpEvent(DpEvent):
   For values v_i and noise z ~ N(0, s^2I), this mechanism returns sum_i v_i + z.
   If the norms of the values are bounded ||v_i|| <= C, the noise_multiplier is
   defined as s / C.
+  """
+  noise_multiplier: float
+
+
+@attr.s(frozen=True, slots=True, auto_attribs=True)
+class LaplaceDpEvent(DpEvent):
+  """Represents an application of the Laplace mechanism.
+
+  For values v_i and noise z sampled coordinate-wise from the Laplace
+  distribution L(0, s), this mechanism returns sum_i v_i + z.
+  The probability density function of the Laplace distribution L(0, s) with
+  parameter s is given as exp(-|x|/s) * (0.5/s) at x for any real value x.
+  If the L_1 norm of the values are bounded ||v_i||_1 <= C, the noise_multiplier
+  is defined as s / C.
   """
   noise_multiplier: float
 
@@ -176,3 +190,25 @@ class SampledWithoutReplacementDpEvent(DpEvent):
   source_dataset_size: int
   sample_size: int
   event: DpEvent
+
+
+@attr.s(frozen=True, slots=True, auto_attribs=True)
+class SingleEpochTreeAggregationDpEvent(DpEvent):
+  """Represents aggregation for a single epoch using one or more trees.
+
+  Multiple tree-aggregation steps can occur, but it is required that each
+  record occurs at most once *across all trees*. See appendix D of
+  "Practical and Private (Deep) Learning without Sampling or Shuffling"
+  https://arxiv.org/abs/2103.00039.
+
+  To represent the common case where the same record can occur in multiple
+  trees (but still at most once per tree), wrap this with `SelfComposedDpEvent`
+  or `ComposedDpEvent` and use a scalar for `step_counts`.
+
+  Attributes:
+    noise_multiplier: The ratio of the noise per node to the sensitivity.
+    step_counts: The number of steps in each tree. May be a scalar for a single
+      tree.
+  """
+  noise_multiplier: float
+  step_counts: Union[int, List[int]]
