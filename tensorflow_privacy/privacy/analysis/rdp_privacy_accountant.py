@@ -15,7 +15,7 @@
 """Privacy accountant that uses Renyi differential privacy."""
 
 import math
-from typing import Collection, Optional
+from typing import Collection, Optional, Union
 
 import numpy as np
 from scipy import special
@@ -519,6 +519,49 @@ def _effective_gaussian_noise_multiplier(event: dp_event.DpEvent):
     return None
 
 
+def _compute_rdp_single_epoch_tree_aggregation(
+    noise_multiplier: float, step_counts: Union[int, Collection[int]],
+    orders: Collection[float]) -> Union[float, np.ndarray]:
+  """Computes RDP of the Tree Aggregation Protocol for Gaussian Mechanism.
+
+  This function implements the accounting when the tree is periodically
+  restarted and no record occurs twice across all trees. See appendix D of
+  "Practical and Private (Deep) Learning without Sampling or Shuffling"
+  https://arxiv.org/abs/2103.00039.
+
+  Args:
+    noise_multiplier: A non-negative float representing the ratio of the
+      standard deviation of the Gaussian noise to the l2-sensitivity of the
+      function to which it is added.
+    step_counts: A scalar or a list of non-negative integers representing the
+      number of steps per epoch (between two restarts).
+    orders: An array of RDP orders.
+
+  Returns:
+    The RDPs at all orders. Can be `np.inf`.
+  """
+  if noise_multiplier < 0:
+    raise ValueError(
+        f'noise_multiplier must be non-negative. Got {noise_multiplier}.')
+  if noise_multiplier == 0:
+    return np.inf
+
+  if not step_counts:
+    raise ValueError(
+        'steps_list must be a non-empty list, or a non-zero scalar. Got '
+        f'{step_counts}.')
+
+  if np.isscalar(step_counts):
+    step_counts = [step_counts]
+
+  for steps in step_counts:
+    if steps < 0:
+      raise ValueError(f'Steps must be non-negative. Got {step_counts}')
+
+  max_depth = max(math.ceil(math.log2(steps + 1)) for steps in step_counts)
+  return np.array([a * max_depth / (2 * noise_multiplier**2) for a in orders])
+
+
 class RdpAccountant(privacy_accountant.PrivacyAccountant):
   """Privacy accountant that uses Renyi differential privacy."""
 
@@ -602,6 +645,13 @@ class RdpAccountant(privacy_accountant.PrivacyAccountant):
             q=event.sample_size / event.source_dataset_size,
             noise_multiplier=gaussian_noise_multiplier,
             orders=self._orders)
+      return True
+    elif isinstance(event, dp_event.SingleEpochTreeAggregationDpEvent):
+      if self._neighboring_relation is not NeighborRel.REPLACE_SPECIAL:
+        return False
+      if do_compose:
+        self._rdp += count * _compute_rdp_single_epoch_tree_aggregation(
+            event.noise_multiplier, event.step_counts, self._orders)
       return True
     else:
       # Unsupported event (including `UnsupportedDpEvent`).

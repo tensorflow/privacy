@@ -59,6 +59,26 @@ def _compute_a_mp(sigma, q, alpha):
   return a_alpha
 
 
+def _compose_trees(noise_multiplier, step_counts, orders):
+  accountant = rdp_privacy_accountant.RdpAccountant(
+      orders, privacy_accountant.NeighboringRelation.REPLACE_SPECIAL)
+  accountant.compose(
+      dp_event.ComposedDpEvent([
+          dp_event.SingleEpochTreeAggregationDpEvent(noise_multiplier,
+                                                     step_count)
+          for step_count in step_counts
+      ]))
+  return accountant
+
+
+def _compose_trees_single_epoch(noise_multiplier, step_counts, orders):
+  accountant = rdp_privacy_accountant.RdpAccountant(
+      orders, privacy_accountant.NeighboringRelation.REPLACE_SPECIAL)
+  accountant.compose(
+      dp_event.SingleEpochTreeAggregationDpEvent(noise_multiplier, step_counts))
+  return accountant
+
+
 class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
                                parameterized.TestCase):
 
@@ -67,7 +87,9 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
         rdp_privacy_accountant.RdpAccountant(
             [2.0], privacy_accountant.NeighboringRelation.ADD_OR_REMOVE_ONE),
         rdp_privacy_accountant.RdpAccountant(
-            [2.0], privacy_accountant.NeighboringRelation.REPLACE_ONE)
+            [2.0], privacy_accountant.NeighboringRelation.REPLACE_ONE),
+        rdp_privacy_accountant.RdpAccountant(
+            [2.0], privacy_accountant.NeighboringRelation.REPLACE_SPECIAL)
     ]
 
   def test_supports(self):
@@ -349,6 +371,94 @@ class RdpPrivacyAccountantTest(privacy_accountant_test.PrivacyAccountantTest,
             self.assertLessEqual(delta2, delta)
           else:
             self.assertAlmostEqual(delta, delta2)
+
+  @parameterized.named_parameters(
+      ('add_remove', privacy_accountant.NeighboringRelation.ADD_OR_REMOVE_ONE),
+      ('replace', privacy_accountant.NeighboringRelation.REPLACE_ONE))
+  def test_tree_wrong_neighbor_rel(self, neighboring_relation):
+    event = dp_event.SingleEpochTreeAggregationDpEvent(1.0, 1)
+    accountant = rdp_privacy_accountant.RdpAccountant(
+        neighboring_relation=neighboring_relation)
+    self.assertFalse(accountant.supports(event))
+
+  @parameterized.named_parameters(('eps20', 1.13, 19.74), ('eps2', 8.83, 2.04))
+  def test_compute_eps_tree(self, noise_multiplier, eps):
+    orders = [1 + x / 10 for x in range(1, 100)] + list(range(12, 64))
+    # This test is based on the StackOverflow setting in "Practical and
+    # Private (Deep) Learning without Sampling or Shuffling". The calculated
+    # epsilon could be better as the method in this package keeps improving.
+    step_counts, target_delta = 1600, 1e-6
+    new_eps = _compose_trees_single_epoch(noise_multiplier, step_counts,
+                                          orders).get_epsilon(target_delta)
+    self.assertLess(new_eps, eps)
+
+  @parameterized.named_parameters(
+      ('restart4', [400] * 4),
+      ('restart2', [800] * 2),
+      ('adaptive', [10, 400, 400, 400, 390]),
+  )
+  def test_compose_tree_rdp(self, step_counts):
+    noise_multiplier, orders = 0.1, [1]
+
+    def get_rdp(step_count):
+      return _compose_trees_single_epoch(noise_multiplier, [step_count],
+                                         orders)._rdp[0]
+
+    rdp_summed = sum(get_rdp(step_count) for step_count in step_counts)
+    rdp_composed = _compose_trees(noise_multiplier, step_counts, orders)._rdp[0]
+    self.assertTrue(np.allclose(rdp_composed, rdp_summed, rtol=1e-12))
+
+  def test_single_epoch_multi_tree_rdp(self):
+    noise_multiplier, orders = 0.1, [1]
+    step_counts = [10, 40, 30, 20]
+    single_rdp = _compose_trees_single_epoch(noise_multiplier, step_counts,
+                                             orders)._rdp[0]
+
+    max_rdp = max(
+        _compose_trees_single_epoch(noise_multiplier, step_count,
+                                    orders)._rdp[0]
+        for step_count in step_counts)
+
+    self.assertEqual(single_rdp, max_rdp)
+
+  @parameterized.named_parameters(
+      ('restart4', [400] * 4),
+      ('restart2', [800] * 2),
+      ('adaptive', [10, 400, 400, 400, 390]),
+  )
+  def test_compute_eps_tree_decreasing(self, step_counts):
+    # Test privacy epsilon decreases with noise multiplier increasing when
+    # keeping other parameters the same.
+    orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
+    target_delta = 1e-6
+    prev_eps = np.inf
+    for noise_multiplier in [0.1 * x for x in range(1, 100, 5)]:
+      accountant = _compose_trees(noise_multiplier, step_counts, orders)
+      eps = accountant.get_epsilon(target_delta=target_delta)
+      self.assertLess(eps, prev_eps)
+      prev_eps = eps
+
+  @parameterized.named_parameters(
+      ('negative_noise', -1, [3]),
+      ('negative_steps', 1, [-3]),
+  )
+  def test_compute_rdp_tree_restart_raise(self, noise_multiplier, step_counts):
+    with self.assertRaisesRegex(ValueError, 'non-negative'):
+      _compose_trees(noise_multiplier, step_counts, orders=[1])
+
+  @parameterized.named_parameters(
+      ('t100n0.1', 100, 0.1),
+      ('t1000n0.01', 1000, 0.01),
+  )
+  def test_no_tree_no_sampling(self, total_steps, noise_multiplier):
+    orders = [1 + x / 10 for x in range(1, 100)] + list(range(12, 64))
+    tree_rdp = _compose_trees(noise_multiplier, [1] * total_steps, orders)._rdp
+    accountant = rdp_privacy_accountant.RdpAccountant(orders)
+    event = dp_event.SelfComposedDpEvent(
+        dp_event.GaussianDpEvent(noise_multiplier), total_steps)
+    accountant.compose(event)
+    base_rdp = accountant._rdp
+    self.assertTrue(np.allclose(tree_rdp, base_rdp, rtol=1e-12))
 
 
 if __name__ == '__main__':

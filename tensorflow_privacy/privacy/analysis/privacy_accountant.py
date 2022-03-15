@@ -24,6 +24,10 @@ class NeighboringRelation(enum.Enum):
   ADD_OR_REMOVE_ONE = 1
   REPLACE_ONE = 2
 
+  # A record is replaced with a special record, such as the "zero record". See
+  # https://arxiv.org/pdf/2103.00039.pdf, Definition 1.1.
+  REPLACE_SPECIAL = 3
+
 
 class UnsupportedEventError(Exception):
   """Exception to raise if _compose is called on unsupported event type."""
@@ -91,7 +95,7 @@ class PrivacyAccountant(metaclass=abc.ABCMeta):
       raise TypeError(f'`event` must be `DpEvent`. Found {type(event)}.')
 
     if not self.supports(event):
-      raise UnsupportedEventError('Unsupported event: {event}.')
+      raise UnsupportedEventError(f'Unsupported event: {event}.')
 
     self._ledger.compose(event, count)
     self._compose(event, count)
