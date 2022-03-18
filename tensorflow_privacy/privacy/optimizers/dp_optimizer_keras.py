@@ -256,7 +256,8 @@ def make_keras_optimizer_class(cls):
 
       # Compute the per-microbatch losses using helpful jacobian method.
       with tf.keras.backend.name_scope(self._name + '/gradients'):
-        jacobian = tape.jacobian(microbatch_losses, var_list)
+        jacobian = tape.jacobian(
+            microbatch_losses, var_list, unconnected_gradients='zero')
 
         # Clip gradients to given l2_norm_clip.
         def clip_gradients(g):
