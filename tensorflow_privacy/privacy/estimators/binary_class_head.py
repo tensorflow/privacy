@@ -14,6 +14,7 @@
 """Binary class head for Estimator that allow integration with TF Privacy."""
 
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow.python.keras.utils import losses_utils  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator import model_fn
 from tensorflow_estimator.python.estimator.canned import prediction_keys
@@ -22,7 +23,7 @@ from tensorflow_estimator.python.estimator.head import base_head
 from tensorflow_estimator.python.estimator.mode_keys import ModeKeys
 
 
-class DPBinaryClassHead(tf.estimator.BinaryClassHead):
+class DPBinaryClassHead(tf_estimator.BinaryClassHead):
   """Creates a TF Privacy-enabled version of BinaryClassHead."""
 
   def __init__(self,

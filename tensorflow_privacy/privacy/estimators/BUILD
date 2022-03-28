@@ -27,6 +27,7 @@ py_library(
         "binary_class_head.py",
     ],
     srcs_version = "PY3",
+    deps = ["//third_party/py/tensorflow:tensorflow_estimator"],
 )
 
 py_library(
@@ -35,6 +36,7 @@ py_library(
         "multi_class_head.py",
     ],
     srcs_version = "PY3",
+    deps = ["//third_party/py/tensorflow:tensorflow_estimator"],
 )
 
 py_library(
@@ -43,6 +45,7 @@ py_library(
         "multi_label_head.py",
     ],
     srcs_version = "PY3",
+    deps = ["//third_party/py/tensorflow:tensorflow_estimator"],
 )
 
 py_library(
@@ -51,7 +54,10 @@ py_library(
         "dnn.py",
     ],
     srcs_version = "PY3",
-    deps = [":head_utils"],
+    deps = [
+        ":head_utils",
+        "//third_party/py/tensorflow:tensorflow_estimator",
+    ],
 )
 
 py_library(
@@ -72,6 +78,7 @@ py_test(
         ":binary_class_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -85,6 +92,7 @@ py_test(
         ":multi_class_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -98,6 +106,7 @@ py_test(
         ":multi_label_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
