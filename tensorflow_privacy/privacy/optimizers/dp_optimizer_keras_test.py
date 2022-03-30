@@ -15,6 +15,7 @@
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras_vectorized
 
@@ -227,7 +228,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       train_op = tf.group(
           optimizer.get_updates(loss=vector_loss, params=params),
           [tf.compat.v1.assign_add(global_step, 1)])
-      return tf.estimator.EstimatorSpec(
+      return tf_estimator.EstimatorSpec(
           mode=mode, loss=scalar_loss, train_op=train_op)
 
     return linear_model_fn
@@ -249,7 +250,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   def testBaseline(self, cls, num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
-    linear_regressor = tf.estimator.Estimator(
+    linear_regressor = tf_estimator.Estimator(
         model_fn=self._make_linear_model_fn(cls, 100.0, 0.0, num_microbatches,
                                             0.05))
 
@@ -293,7 +294,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       return tf.data.Dataset.from_tensor_slices(
           (train_data, train_labels)).batch(1)
 
-    unclipped_linear_regressor = tf.estimator.Estimator(
+    unclipped_linear_regressor = tf_estimator.Estimator(
         model_fn=self._make_linear_model_fn(cls, 1.0e9, 0.0, num_microbatches,
                                             1.0))
     unclipped_linear_regressor.train(input_fn=train_input_fn, steps=1)
@@ -302,7 +303,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     bias_value = unclipped_linear_regressor.get_variable_value('dense/bias')
     global_norm = np.linalg.norm(np.concatenate((kernel_value, [bias_value])))
 
-    clipped_linear_regressor = tf.estimator.Estimator(
+    clipped_linear_regressor = tf_estimator.Estimator(
         model_fn=self._make_linear_model_fn(cls, 1.0, 0.0, num_microbatches,
                                             1.0))
     clipped_linear_regressor.train(input_fn=train_input_fn, steps=1)
@@ -339,7 +340,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
                           num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
-    linear_regressor = tf.estimator.Estimator(
+    linear_regressor = tf_estimator.Estimator(
         model_fn=self._make_linear_model_fn(
             cls,
             l2_norm_clip,

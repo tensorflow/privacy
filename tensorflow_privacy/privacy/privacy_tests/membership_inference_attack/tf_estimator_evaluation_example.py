@@ -18,6 +18,8 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import get_flattened_attack_metrics
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
@@ -46,34 +48,34 @@ def small_cnn_fn(features, labels, mode):
   y = tf.keras.layers.Dense(64, activation='relu')(y)
   logits = tf.keras.layers.Dense(10)(y)
 
-  if mode != tf.estimator.ModeKeys.PREDICT:
+  if mode != tf_estimator.ModeKeys.PREDICT:
     vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
         labels=labels, logits=logits)
     scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
 
   # Configure the training op (for TRAIN mode).
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if mode == tf_estimator.ModeKeys.TRAIN:
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=FLAGS.learning_rate, momentum=0.9)
     global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
-  elif mode == tf.estimator.ModeKeys.EVAL:
+  elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
   # Output the prediction probability (for PREDICT mode).
-  elif mode == tf.estimator.ModeKeys.PREDICT:
+  elif mode == tf_estimator.ModeKeys.PREDICT:
     predictions = tf.nn.softmax(logits)
-    return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+    return tf_estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
 
 def load_cifar10():
@@ -97,13 +99,13 @@ def main(unused_argv):
   x_train, y_train, x_test, y_test = load_cifar10()
 
   # Instantiate the tf.Estimator.
-  classifier = tf.estimator.Estimator(
+  classifier = tf_estimator.Estimator(
       model_fn=small_cnn_fn, model_dir=FLAGS.model_dir)
 
   # A function to construct input_fn given (data, label), to be used by the
   # membership inference training hook.
   def input_fn_constructor(x, y):
-    return tf.compat.v1.estimator.inputs.numpy_input_fn(
+    return tf_compat_v1_estimator.inputs.numpy_input_fn(
         x={'x': x}, y=y, shuffle=False)
 
   # Get hook for membership inference attack.
@@ -118,13 +120,13 @@ def main(unused_argv):
       tensorboard_merge_classifiers=FLAGS.tensorboard_merge_classifiers)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': x_train},
       y=y_train,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': x_test}, y=y_test, num_epochs=1, shuffle=False)
 
   # Training loop.

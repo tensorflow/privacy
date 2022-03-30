@@ -15,6 +15,8 @@
 from absl.testing import absltest
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import tf_estimator_evaluation
 
@@ -44,18 +46,18 @@ class UtilsTest(absltest.TestCase):
       logits = tf.keras.layers.Dense(self.nclass)(input_layer)
 
       # Define the PREDICT mode becasue we only need that
-      if mode == tf.estimator.ModeKeys.PREDICT:
+      if mode == tf_estimator.ModeKeys.PREDICT:
         predictions = tf.nn.softmax(logits)
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
+        return tf_estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     # Define the classifier, input_fn for training and test data
-    self.classifier = tf.estimator.Estimator(model_fn=model_fn)
-    self.input_fn_train = tf.compat.v1.estimator.inputs.numpy_input_fn(
+    self.classifier = tf_estimator.Estimator(model_fn=model_fn)
+    self.input_fn_train = tf_compat_v1_estimator.inputs.numpy_input_fn(
         x={'x': self.train_data},
         y=self.train_labels,
         num_epochs=1,
         shuffle=False)
-    self.input_fn_test = tf.compat.v1.estimator.inputs.numpy_input_fn(
+    self.input_fn_test = tf_compat_v1_estimator.inputs.numpy_input_fn(
         x={'x': self.test_data},
         y=self.test_labels,
         num_epochs=1,
@@ -94,7 +96,7 @@ class UtilsTest(absltest.TestCase):
     """Test the attack on the final models."""
 
     def input_fn_constructor(x, y):
-      return tf.compat.v1.estimator.inputs.numpy_input_fn(
+      return tf_compat_v1_estimator.inputs.numpy_input_fn(
           x={'x': x}, y=y, shuffle=False)
 
     results = tf_estimator_evaluation.run_attack_on_tf_estimator_model(

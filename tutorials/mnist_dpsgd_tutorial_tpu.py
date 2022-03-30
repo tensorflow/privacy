@@ -20,6 +20,7 @@ from absl import app
 from absl import flags
 from absl import logging
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 import mnist_dpsgd_tutorial_common as common
@@ -56,7 +57,7 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
   scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
 
   # Configure the training op (for TRAIN mode).
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if mode == tf_estimator.ModeKeys.TRAIN:
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. Other optimizers are
       # available in dp_optimizer. Most optimizers inheriting from
@@ -84,11 +85,11 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
     # the vector_loss because tf.estimator requires a scalar loss. This is only
     # used for evaluation and debugging by tf.estimator. The actual loss being
     # minimized is opt_loss defined above and passed to optimizer.minimize().
-    return tf.estimator.tpu.TPUEstimatorSpec(
+    return tf_estimator.tpu.TPUEstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
-  elif mode == tf.estimator.ModeKeys.EVAL:
+  elif mode == tf_estimator.ModeKeys.EVAL:
 
     def metric_fn(labels, logits):
       predictions = tf.argmax(logits, 1)
@@ -97,7 +98,7 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
               tf.metrics.accuracy(labels=labels, predictions=predictions),
       }
 
-    return tf.estimator.tpu.TPUEstimatorSpec(
+    return tf_estimator.tpu.TPUEstimatorSpec(
         mode=mode,
         loss=scalar_loss,
         eval_metrics=(metric_fn, {
@@ -112,8 +113,8 @@ def main(unused_argv):
     raise ValueError('Number of microbatches should divide evenly batch_size')
 
   # Instantiate the tf.Estimator.
-  run_config = tf.estimator.tpu.RunConfig(master=FLAGS.master)
-  mnist_classifier = tf.estimator.tpu.TPUEstimator(
+  run_config = tf_estimator.tpu.RunConfig(master=FLAGS.master)
+  mnist_classifier = tf_estimator.tpu.TPUEstimator(
       train_batch_size=FLAGS.batch_size,
       eval_batch_size=FLAGS.batch_size,
       model_fn=cnn_model_fn,

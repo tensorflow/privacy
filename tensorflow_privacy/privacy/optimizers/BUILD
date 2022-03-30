@@ -53,6 +53,8 @@ py_test(
     deps = [
         ":dp_optimizer",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -62,7 +64,11 @@ py_test(
     srcs = ["dp_optimizer_vectorized_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dp_optimizer_vectorized"],
+    deps = [
+        ":dp_optimizer_vectorized",
+        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
+        "//third_party/py/tensorflow:tensorflow_estimator",
+    ],
 )
 
 py_test(
@@ -86,5 +92,6 @@ py_test(
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras_vectorized",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )

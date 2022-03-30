@@ -7,4 +7,8 @@ py_binary(
     srcs = ["mnist_scratch.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    deps = [
+        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
+        "//third_party/py/tensorflow:tensorflow_estimator",
+    ],
 )

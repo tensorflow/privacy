@@ -23,7 +23,10 @@ py_library(
         "dnn.py",
     ],
     srcs_version = "PY3",
-    deps = [":head"],
+    deps = [
+        ":head",
+        "//third_party/py/tensorflow:tensorflow_estimator",
+    ],
 )
 
 py_test(
@@ -36,6 +39,7 @@ py_test(
         ":head",
         "//tensorflow_privacy/privacy/estimators:test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 

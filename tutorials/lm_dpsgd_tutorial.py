@@ -37,6 +37,8 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 import tensorflow_datasets as tfds
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
@@ -82,7 +84,7 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   scalar_loss = tf.reduce_mean(vector_loss)
 
   # Configure the training op (for TRAIN mode).
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if mode == tf_estimator.ModeKeys.TRAIN:
     if FLAGS.dpsgd:
 
       optimizer = dp_optimizer.DPAdamGaussianOptimizer(
@@ -98,18 +100,18 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
       opt_loss = scalar_loss
     global_step = tf.compat.v1.train.get_global_step()
     train_op = optimizer.minimize(loss=opt_loss, global_step=global_step)
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
-  elif mode == tf.estimator.ModeKeys.EVAL:
+  elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
                 labels=tf.cast(x[:, 1:], dtype=tf.int32),
                 predictions=tf.argmax(input=logits, axis=2))
     }
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
@@ -168,20 +170,20 @@ def main(unused_argv):
   train_data, test_data = load_data()
 
   # Instantiate the tf.Estimator.
-  conf = tf.estimator.RunConfig(save_summary_steps=1000)
-  lm_classifier = tf.estimator.Estimator(
+  conf = tf_estimator.RunConfig(save_summary_steps=1000)
+  lm_classifier = tf_estimator.Estimator(
       model_fn=rnn_model_fn, model_dir=FLAGS.model_dir, config=conf)
 
   # Create tf.Estimator input functions for the training and test data.
   batch_len = FLAGS.batch_size * SEQ_LEN
   train_data_end = len(train_data) - len(train_data) % batch_len
   test_data_end = len(test_data) - len(test_data) % batch_len
-  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': train_data[:train_data_end]},
       batch_size=batch_len,
       num_epochs=FLAGS.epochs,
       shuffle=False)
-  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': test_data[:test_data_end]},
       batch_size=batch_len,
       num_epochs=1,

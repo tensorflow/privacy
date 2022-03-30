@@ -19,6 +19,7 @@ from typing import Iterable
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
@@ -47,7 +48,7 @@ def calculate_losses(estimator, input_fn, labels):
   return pred, loss
 
 
-class MembershipInferenceTrainingHook(tf.estimator.SessionRunHook):
+class MembershipInferenceTrainingHook(tf_estimator.SessionRunHook):
   """Training hook to perform membership inference attack on epoch end."""
 
   def __init__(self,

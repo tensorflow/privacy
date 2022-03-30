@@ -18,6 +18,8 @@ from absl import flags
 from absl import logging
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
@@ -80,7 +82,7 @@ def cnn_model_fn(features, labels, mode):
   scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
 
   # Configure the training op (for TRAIN mode).
-  if mode == tf.estimator.ModeKeys.TRAIN:
+  if mode == tf_estimator.ModeKeys.TRAIN:
 
     if FLAGS.dpsgd:
       # Use DP version of GradientDescentOptimizer. Other optimizers are
@@ -102,18 +104,18 @@ def cnn_model_fn(features, labels, mode):
     # the vector_loss because tf.estimator requires a scalar loss. This is only
     # used for evaluation and debugging by tf.estimator. The actual loss being
     # minimized is opt_loss defined above and passed to optimizer.minimize().
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
   # Add evaluation metrics (for EVAL mode).
-  elif mode == tf.estimator.ModeKeys.EVAL:
+  elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
             tf.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
 
-    return tf.estimator.EstimatorSpec(
+    return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
 
 
@@ -150,17 +152,17 @@ def main(unused_argv):
   train_data, train_labels, test_data, test_labels = load_mnist()
 
   # Instantiate the tf.Estimator.
-  mnist_classifier = tf.estimator.Estimator(
+  mnist_classifier = tf_estimator.Estimator(
       model_fn=cnn_model_fn, model_dir=FLAGS.model_dir)
 
   # Create tf.Estimator input functions for the training and test data.
-  train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  train_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': train_data},
       y=train_labels,
       batch_size=FLAGS.batch_size,
       num_epochs=FLAGS.epochs,
       shuffle=True)
-  eval_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+  eval_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
       x={'x': test_data}, y=test_labels, num_epochs=1, shuffle=False)
 
   # Training loop.

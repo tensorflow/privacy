@@ -18,6 +18,8 @@ import unittest
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
+from tensorflow import estimator as tf_estimator
+from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
@@ -205,10 +207,10 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
           dp_sum_query, num_microbatches=1, learning_rate=1.0)
       global_step = tf.compat.v1.train.get_global_step()
       train_op = optimizer.minimize(loss=vector_loss, global_step=global_step)
-      return tf.estimator.EstimatorSpec(
+      return tf_estimator.EstimatorSpec(
           mode=mode, loss=scalar_loss, train_op=train_op)
 
-    linear_regressor = tf.estimator.Estimator(model_fn=linear_model_fn)
+    linear_regressor = tf_estimator.Estimator(model_fn=linear_model_fn)
     true_weights = np.array([[-5], [4], [3], [2]]).astype(np.float32)
     true_bias = 6.0
     train_data = np.random.normal(scale=3.0, size=(200, 4)).astype(np.float32)
@@ -217,7 +219,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
                              true_weights) + true_bias + np.random.normal(
                                  scale=0.1, size=(200, 1)).astype(np.float32)
 
-    train_input_fn = tf.compat.v1.estimator.inputs.numpy_input_fn(
+    train_input_fn = tf_compat_v1_estimator.inputs.numpy_input_fn(
         x={'x': train_data},
         y=train_labels,
         batch_size=20,

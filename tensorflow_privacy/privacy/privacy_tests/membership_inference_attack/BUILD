@@ -113,6 +113,8 @@ py_test(
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
+        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -124,6 +126,7 @@ py_library(
         ":membership_inference_attack",
         ":utils",
         ":utils_tensorboard",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -135,6 +138,8 @@ py_binary(
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
+        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
+        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
