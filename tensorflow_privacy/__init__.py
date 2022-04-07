@@ -26,16 +26,16 @@ else:
   from tensorflow_privacy import v1
 
   # DpEvents
-  from tensorflow_privacy.privacy.analysis.dp_event import DpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import NoOpDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import NonPrivateDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import UnsupportedDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import GaussianDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import SelfComposedDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import ComposedDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import PoissonSampledDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithReplacementDpEvent
-  from tensorflow_privacy.privacy.analysis.dp_event import SampledWithoutReplacementDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import DpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import NoOpDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import NonPrivateDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import UnsupportedDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import GaussianDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import SelfComposedDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import ComposedDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import PoissonSampledDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithReplacementDpEvent
+  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithoutReplacementDpEvent
 
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
