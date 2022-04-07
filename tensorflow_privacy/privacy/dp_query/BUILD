@@ -36,7 +36,7 @@ py_library(
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -59,7 +59,7 @@ py_library(
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -82,7 +82,7 @@ py_library(
     deps = [
         ":dp_query",
         ":normalized_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -103,7 +103,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":dp_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -125,7 +125,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":dp_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -167,7 +167,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":dp_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -194,7 +194,7 @@ py_library(
         ":dp_query",
         ":gaussian_query",
         ":quantile_estimator_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -274,7 +274,7 @@ py_library(
     deps = [
         ":dp_query",
         ":tree_aggregation",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
@@ -286,7 +286,7 @@ py_library(
         ":distributed_discrete_gaussian_query",
         ":dp_query",
         ":gaussian_query",
-        "//tensorflow_privacy/privacy/analysis:dp_event",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 

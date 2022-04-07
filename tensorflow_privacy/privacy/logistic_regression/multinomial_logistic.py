@@ -35,7 +35,7 @@ from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
 
-from differential_privacy.python.accounting import common
+from com_google_differential_py.python.dp_accounting import common
 
 
 @tf.keras.utils.register_keras_serializable(package='Custom', name='Kifer')

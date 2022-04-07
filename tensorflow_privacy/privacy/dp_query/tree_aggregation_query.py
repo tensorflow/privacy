@@ -35,9 +35,10 @@ corresponding epsilon for a `target_delta` and `noise_multiplier` to achieve
 
 import attr
 import tensorflow as tf
-from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
+
+from com_google_differential_py.python.dp_accounting import dp_event
 
 # TODO(b/193679963): define `RestartQuery` and move `RestartIndicator` to be
 # in the same module.

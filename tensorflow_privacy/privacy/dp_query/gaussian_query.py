@@ -17,8 +17,9 @@ import collections
 import distutils
 
 import tensorflow as tf
-from tensorflow_privacy.privacy.analysis import dp_event
 from tensorflow_privacy.privacy.dp_query import dp_query
+
+from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class GaussianSumQuery(dp_query.SumAggregationDPQuery):
