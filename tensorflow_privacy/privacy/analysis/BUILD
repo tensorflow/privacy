@@ -52,52 +52,8 @@ py_test(
 )
 
 py_library(
-    name = "dp_event",
-    srcs = ["dp_event.py"],
-    srcs_version = "PY3",
-)
-
-py_library(
-    name = "dp_event_builder",
-    srcs = ["dp_event_builder.py"],
-    srcs_version = "PY3",
-    deps = [":dp_event"],
-)
-
-py_test(
-    name = "dp_event_builder_test",
-    srcs = ["dp_event_builder_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":dp_event",
-        ":dp_event_builder",
-    ],
-)
-
-py_library(
     name = "gdp_accountant",
     srcs = ["gdp_accountant.py"],
-)
-
-py_library(
-    name = "privacy_accountant",
-    srcs = ["privacy_accountant.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":dp_event",
-        ":dp_event_builder",
-    ],
-)
-
-py_library(
-    name = "privacy_accountant_test",
-    srcs = ["privacy_accountant_test.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":dp_event",
-        ":privacy_accountant",
-    ],
 )
 
 py_library(
@@ -114,30 +70,6 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [":rdp_accountant"],
-)
-
-py_library(
-    name = "rdp_privacy_accountant",
-    srcs = ["rdp_privacy_accountant.py"],
-    srcs_version = "PY3",
-    deps = [
-        ":dp_event",
-        ":privacy_accountant",
-    ],
-)
-
-py_test(
-    name = "rdp_privacy_accountant_test",
-    size = "small",
-    srcs = ["rdp_privacy_accountant_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [
-        ":dp_event",
-        ":privacy_accountant",
-        ":privacy_accountant_test",
-        ":rdp_privacy_accountant",
-    ],
 )
 
 py_library(
