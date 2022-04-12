@@ -52,6 +52,12 @@ py_test(
 )
 
 py_library(
+    name = "dp_event",
+    srcs = ["dp_event.py"],
+    srcs_version = "PY3",
+)
+
+py_library(
     name = "gdp_accountant",
     srcs = ["gdp_accountant.py"],
 )
