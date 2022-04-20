@@ -17,9 +17,11 @@ This file belongs to the new API for membership inference attacks. This file
 will be renamed to membership_inference_attack.py after the old API is removed.
 """
 
-from typing import Iterable
+import logging
+from typing import Iterable, List, Union
 
 import numpy as np
+from scipy import special
 from sklearn import metrics
 from sklearn import model_selection
 
@@ -37,6 +39,9 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.dataset_slicing import get_single_slice_specs
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.dataset_slicing import get_slice
+
+
+ArrayLike = Union[np.ndarray, List]
 
 
 def _get_slice_spec(data: AttackInputData) -> SingleSliceSpec:
@@ -81,7 +86,8 @@ def _run_trained_attack(attack_input: AttackInputData,
 
     attacker = models.create_attacker(attack_type)
     attacker.train_model(features[train_indices], labels[train_indices])
-    scores[test_indices] = attacker.predict(features[test_indices])
+    predictions = attacker.predict(features[test_indices])
+    scores[test_indices] = predictions
 
   # Predict the left out with the last attacker
   if left_out_indices.size:
@@ -110,6 +116,11 @@ def _run_threshold_attack(attack_input: AttackInputData):
   loss_test = attack_input.get_loss_test()
   if loss_train is None or loss_test is None:
     raise ValueError('Not possible to run threshold attack without losses.')
+  if attack_input.is_multilabel_data():
+    logging.info(('For multilabel data, when a threshold attack is requested, '
+                  'losses are summed over the class axis before slicing.'))
+    loss_train = np.sum(loss_train, axis=1)
+    loss_test = np.sum(loss_test, axis=1)
   fpr, tpr, thresholds = metrics.roc_curve(
       np.concatenate((np.zeros(ntrain), np.ones(ntest))),
       np.concatenate((loss_train, loss_test)))
@@ -126,6 +137,10 @@ def _run_threshold_attack(attack_input: AttackInputData):
 
 
 def _run_threshold_entropy_attack(attack_input: AttackInputData):
+  """Runs threshold entropy attack on single label data."""
+  if attack_input.is_multilabel_data():
+    raise NotImplementedError(('Entropy-based attacks are not implemented for '
+                               'multilabel data.'))
   ntrain, ntest = attack_input.get_train_size(), attack_input.get_test_size()
   fpr, tpr, thresholds = metrics.roc_curve(
       np.concatenate((np.zeros(ntrain), np.ones(ntest))),
@@ -212,6 +227,7 @@ def run_attacks(attack_input: AttackInputData,
   for single_slice_spec in input_slice_specs:
     attack_input_slice = get_slice(attack_input, single_slice_spec)
     for attack_type in attack_types:
+      logging.info('Running attack: %s', attack_type.name)
       attack_result = _run_attack(attack_input_slice, attack_type,
                                   balance_attacker_training, min_num_samples)
       if attack_result is not None:
@@ -318,15 +334,48 @@ def run_membership_probability_analysis(
 def _compute_missing_privacy_report_metadata(
     metadata: PrivacyReportMetadata,
     attack_input: AttackInputData) -> PrivacyReportMetadata:
-  """Populates metadata fields if they are missing."""
+  """Populates metadata fields if they are missing.
+
+  Args:
+    metadata: Metadata that is used to create a privacy report based on the
+      attack results.
+    attack_input: The input data used to run a membership attack.
+
+  Returns:
+    A new or updated metadata object containing information to create the
+      privacy report.
+  """
+
   if metadata is None:
     metadata = PrivacyReportMetadata()
+  if attack_input.is_multilabel_data():
+    accuracy_fn = _get_multilabel_accuracy
+    sigmoid_func = special.expit
+    # Multi label accuracy is calculated with the prediction probabilties and
+    # the labels. A threshold with a default of 0.5 is used to get predicted
+    # labels from the probabilities.
+    if (attack_input.probs_train is None and
+        attack_input.logits_train is not None):
+      logits_or_probs_train = sigmoid_func(attack_input.logits_train)
+    else:
+      logits_or_probs_train = attack_input.probs_train
+    if (attack_input.probs_test is None and
+        attack_input.logits_test is not None):
+      logits_or_probs_test = sigmoid_func(attack_input.logits_test)
+    else:
+      logits_or_probs_test = attack_input.probs_test
+  else:
+    accuracy_fn = _get_accuracy
+    # Single label accuracy is calculated with the argmax of the logits which
+    # is the same as the argmax of the probbilities.
+    logits_or_probs_train = attack_input.logits_or_probs_train
+    logits_or_probs_test = attack_input.logits_or_probs_test
   if metadata.accuracy_train is None:
-    metadata.accuracy_train = _get_accuracy(attack_input.logits_train,
-                                            attack_input.labels_train)
+    metadata.accuracy_train = accuracy_fn(logits_or_probs_train,
+                                          attack_input.labels_train)
   if metadata.accuracy_test is None:
-    metadata.accuracy_test = _get_accuracy(attack_input.logits_test,
-                                           attack_input.labels_test)
+    metadata.accuracy_test = accuracy_fn(logits_or_probs_test,
+                                         attack_input.labels_test)
   loss_train = attack_input.get_loss_train()
   loss_test = attack_input.get_loss_test()
   if metadata.loss_train is None and loss_train is not None:
@@ -341,3 +390,28 @@ def _get_accuracy(logits, labels):
   if logits is None or labels is None:
     return None
   return metrics.accuracy_score(labels, np.argmax(logits, axis=1))
+
+
+def _get_numpy_binary_accuracy(preds: ArrayLike, labels: ArrayLike):
+  """Computes the multilabel accuracy at threshold=0.5 using Numpy."""
+  return np.mean(np.equal(labels, np.round(preds)))
+
+
+def _get_multilabel_accuracy(preds: ArrayLike, labels: ArrayLike):
+  """Computes the accuracy over multilabel data if it is missing.
+
+  Compute multilabel binary accuracy. AUC is a better measure of model quality
+  for multilabel classification than accuracy, in particular when the classes
+  are imbalanced. For consistency with the single label classification case,
+  we compute and return the binary accuracy over the labels and predictions.
+
+  Args:
+    preds: Prediction probabilities.
+    labels: Ground truth multihot labels.
+
+  Returns:
+    The binary accuracy averaged across all labels.
+  """
+  if preds is None or labels is None:
+    return None
+  return _get_numpy_binary_accuracy(preds, labels)

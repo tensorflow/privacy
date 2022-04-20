@@ -15,6 +15,7 @@
 
 import collections
 import copy
+import logging
 from typing import List, Optional
 
 import numpy as np
@@ -49,10 +50,21 @@ def _slice_data_by_indices(data: AttackInputData, idx_train,
   result.loss_test = _slice_if_not_none(data.loss_test, idx_test)
   result.entropy_test = _slice_if_not_none(data.entropy_test, idx_test)
 
+  # A slice has the same multilabel status as the original data. This is because
+  # of the way multilabel status is computed. A dataset is multilabel if at
+  # least 1 sample has a label that is multihot encoded with more than one
+  # positive class. A slice of this dataset could have only samples with labels
+  # that have only a single positive class, even if the original dataset were
+  # multilable. Therefore we ensure that the slice inherits the multilabel state
+  # of the original dataset.
+  result.multilabel_data = data.is_multilabel_data()
+
   return result
 
 
 def _slice_by_class(data: AttackInputData, class_value: int) -> AttackInputData:
+  if data.is_multilabel_data():
+    raise ValueError("Slicing by class not supported for multilabel data.")
   idx_train = data.labels_train == class_value
   idx_test = data.labels_test == class_value
   return _slice_data_by_indices(data, idx_train, idx_test)
@@ -65,6 +77,12 @@ def _slice_by_percentiles(data: AttackInputData, from_percentile: float,
   # Find from_percentile and to_percentile percentiles in losses.
   loss_train = data.get_loss_train()
   loss_test = data.get_loss_test()
+  if data.is_multilabel_data():
+    logging.info("For multilabel data, when slices by percentiles are "
+                 "requested, losses are summed over the class axis before "
+                 "slicing.")
+    loss_train = np.sum(loss_train, axis=1)
+    loss_test = np.sum(loss_test, axis=1)
   losses = np.concatenate((loss_train, loss_test))
   from_loss = np.percentile(losses, from_percentile)
   to_loss = np.percentile(losses, to_percentile)
@@ -82,6 +100,20 @@ def _indices_by_classification(logits_or_probs, labels, correctly_classified):
 
 def _slice_by_classification_correctness(data: AttackInputData,
                                          correctly_classified: bool):
+  """Slices attack inputs by whether they were classified correctly.
+
+  Args:
+    data: Data to be used as input to the attack models.
+    correctly_classified: Whether to use the indices corresponding to the
+      correctly classified samples.
+
+  Returns:
+    AttackInputData object containing the sliced data.
+  """
+
+  if data.is_multilabel_data():
+    raise ValueError("Slicing by classification correctness not supported for "
+                     "multilabel data.")
   idx_train = _indices_by_classification(data.logits_or_probs_train,
                                          data.labels_train,
                                          correctly_classified)

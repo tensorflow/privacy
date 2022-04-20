@@ -17,6 +17,7 @@ import collections
 import dataclasses
 import enum
 import glob
+import logging
 import os
 import pickle
 from typing import Any, Callable, Iterable, MutableSequence, Optional, Union
@@ -115,6 +116,7 @@ class AttackType(enum.Enum):
   K_NEAREST_NEIGHBORS = 'knn'
   THRESHOLD_ATTACK = 'threshold'
   THRESHOLD_ENTROPY_ATTACK = 'threshold-entropy'
+  TF_LOGISTIC_REGRESSION = 'tf_lr'
 
   @property
   def is_trained_attack(self):
@@ -152,6 +154,19 @@ def _is_array_one_dimensional(arr, arr_name):
   """Checks whether the array is one dimensional."""
   if arr is not None and len(arr.shape) != 1:
     raise ValueError('%s should be a one dimensional numpy array.' % arr_name)
+
+
+def _is_array_two_dimensional(arr, arr_name):
+  """Checks whether the array is two dimensional."""
+  if arr is not None and len(arr.shape) != 2:
+    raise ValueError('%s should be a two dimensional numpy array.' % arr_name)
+
+
+def _is_array_one_or_two_dimensional(arr, arr_name):
+  """Checks whether the array is one or two dimensional."""
+  if arr is not None and len(arr.shape) not in [1, 2]:
+    raise ValueError(
+        ('%s should be a one or two dimensional numpy array.' % arr_name))
 
 
 def _is_np_array(arr, arr_name):
@@ -213,6 +228,14 @@ class AttackInputData:
   # preferred when both are available.
   loss_function_using_logits: Optional[bool] = None
 
+  # If the problem is a multilabel classification problem. If this is set then
+  # the loss function and attack data construction are adjusted accordingly. In
+  # this case the provided labels must be multi-hot encoded. That is, the labels
+  # are an array of shape (num_examples, num_classes) with 0s where the
+  # corresponding class is absent from the example, and 1s where the
+  # corresponding class is present.
+  multilabel_data: Optional[bool] = None
+
   @property
   def num_classes(self):
     if self.labels_train is None or self.labels_test is None:
@@ -266,12 +289,12 @@ class AttackInputData:
       return np.sum(np.multiply(modified_probs, modified_log_probs), axis=1)
 
   @staticmethod
-  def _get_loss(
-      loss: Optional[np.ndarray], labels: Optional[np.ndarray],
-      logits: Optional[np.ndarray], probs: Optional[np.ndarray],
-      loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray],
-                           LossFunction],
-      loss_function_using_logits: Optional[bool]) -> Optional[np.ndarray]:
+  def _get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
+                logits: Optional[np.ndarray], probs: Optional[np.ndarray],
+                loss_function: Union[Callable[[np.ndarray, np.ndarray],
+                                              np.ndarray], LossFunction],
+                loss_function_using_logits: Optional[bool],
+                multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
     """Calculates (if needed) losses.
 
     Args:
@@ -284,6 +307,7 @@ class AttackInputData:
         is supposed to take in (label, logits / probs) as input.
       loss_function_using_logits: if `loss_function` expects `logits` or
         `probs`.
+      multilabel_data: if the data is from a multilabel classification problem.
 
     Returns:
       Loss (or None if neither the loss nor the labels are present).
@@ -299,12 +323,22 @@ class AttackInputData:
 
     predictions = logits if loss_function_using_logits else probs
     if loss_function == LossFunction.CROSS_ENTROPY:
-      loss = utils.log_loss(labels, predictions, loss_function_using_logits)
+      if multilabel_data:
+        loss = utils.multilabel_bce_loss(labels, predictions,
+                                         loss_function_using_logits)
+      else:
+        loss = utils.log_loss(labels, predictions, loss_function_using_logits)
     elif loss_function == LossFunction.SQUARED:
       loss = utils.squared_loss(labels, predictions)
     else:
       loss = loss_function(labels, predictions)
     return loss
+
+  def __post_init__(self):
+    """Checks performed after instantiation of the AttackInputData dataclass."""
+    # Check if the data is multilabel.
+    _ = self.is_multilabel_data()
+    # The validate() check is called as needed, so is not called here.
 
   def get_loss_train(self):
     """Calculates (if needed) cross-entropy losses for the training set.
@@ -316,7 +350,7 @@ class AttackInputData:
       self.loss_function_using_logits = (self.logits_train is not None)
     return self._get_loss(self.loss_train, self.labels_train, self.logits_train,
                           self.probs_train, self.loss_function,
-                          self.loss_function_using_logits)
+                          self.loss_function_using_logits, self.multilabel_data)
 
   def get_loss_test(self):
     """Calculates (if needed) cross-entropy losses for the test set.
@@ -328,35 +362,143 @@ class AttackInputData:
       self.loss_function_using_logits = bool(self.logits_test)
     return self._get_loss(self.loss_test, self.labels_test, self.logits_test,
                           self.probs_test, self.loss_function,
-                          self.loss_function_using_logits)
+                          self.loss_function_using_logits, self.multilabel_data)
 
   def get_entropy_train(self):
     """Calculates prediction entropy for the training set."""
+    if self.is_multilabel_data():
+      # Not implemented for multilabel data.
+      raise NotImplementedError('Computation of the entropy is not '
+                                'applicable for multi-label data.')
     if self.entropy_train is not None:
       return self.entropy_train
     return self._get_entropy(self.logits_train, self.labels_train)
 
   def get_entropy_test(self):
     """Calculates prediction entropy for the test set."""
+    if self.is_multilabel_data():
+      # Not implemented for multilabel data.
+      raise NotImplementedError('Computation of the entropy is not '
+                                'applicable for multi-label data.')
     if self.entropy_test is not None:
       return self.entropy_test
     return self._get_entropy(self.logits_test, self.labels_test)
 
-  def get_train_size(self):
-    """Returns size of the training set."""
+  def get_train_shape(self):
+    """Returns the shape of the training set."""
     if self.loss_train is not None:
-      return self.loss_train.size
+      return self.loss_train.shape
     if self.entropy_train is not None:
-      return self.entropy_train.size
-    return self.logits_or_probs_train.shape[0]
+      return self.entropy_train.shape
+    return self.logits_or_probs_train.shape
+
+  def get_test_shape(self):
+    """Returns the shape of the test set."""
+    if self.loss_test is not None:
+      return self.loss_test.shape
+    if self.entropy_test is not None:
+      return self.entropy_test.shape
+    return self.logits_or_probs_test.shape
+
+  def get_train_size(self):
+    """Returns the number of examples of the training set."""
+    return self.get_train_shape()[0]
 
   def get_test_size(self):
-    """Returns size of the test set."""
-    if self.loss_test is not None:
-      return self.loss_test.size
-    if self.entropy_test is not None:
-      return self.entropy_test.size
-    return self.logits_or_probs_test.shape[0]
+    """Returns the number of examples of the test set."""
+    return self.get_test_shape()[0]
+
+  def is_multihot_labels(self, arr, arr_name) -> bool:
+    """Check if the 2D array is multihot, with values in [0, 1].
+
+    Array is multihot if the sum along the classes axis (axis=1) produces a
+      vector of at least one value > 1.
+
+    Args:
+      arr: Array to test.
+      arr_name: Name of the array.
+
+    Returns:
+      True if the array is a 2D multihot array.
+
+    Raises:
+      ValueError if the array is not 2D.
+    """
+    if arr is None:
+      return False
+    elif len(arr.shape) > 2:
+      raise ValueError(f'Array {arr_name} is not 2D, cannot determine whether '
+                       'it is multihot.')
+    elif len(arr.shape) == 1:
+      return False
+    summed_arr = np.sum(arr, axis=1)
+    return not ((summed_arr == 0) | (summed_arr == 1)).all()
+
+  def is_multilabel_data(self) -> bool:
+    """Check if the provided data is for a multilabel classification problem.
+
+    Data is multilabel if all of the following are true:
+    1. Train and test sizes are 2-dimensional: (num_samples, num_classes)
+    2. Label size is 2-dimentionsl: (num_samples, num_classes)
+    3. The labels are multi-hot. The labels are multihot if sum{label_tensor}
+         along axis=1 (the classes axis) yields a vector of at least one
+         value > 1.
+
+    Returns:
+      Whether the provided data is multilabel.
+
+    Raises:
+      ValueError if the dimensionality of the train and test data are not equal.
+    """
+    # If the data has already been checked for multihot encoded labels, then
+    # return the result of the evaluation.
+    if self.multilabel_data is not None:
+      return self.multilabel_data
+
+    # If one of probs or logits are not provided, or labels are not provided,
+    # this is not a multilabel problem
+    if (self.logits_or_probs_train is None or
+        self.logits_or_probs_test is None or self.labels_train is None or
+        self.labels_test is None):
+      self.multilabel_data = False
+      return self.multilabel_data
+
+    train_shape = self.get_train_shape()
+    test_shape = self.get_test_shape()
+    label_train_shape = self.labels_train.shape
+    label_test_shape = self.labels_test.shape
+
+    if len(train_shape) != len(test_shape):
+      raise ValueError('The number of dimensions of the train data '
+                       f'({train_shape}) is not the same as that of the test '
+                       f'data ({test_shape}).')
+    if len(train_shape) not in [1, 2] or len(test_shape) not in [1, 2]:
+      raise ValueError(('Train and test data shapes must be 1-D '
+                        '(number of samples) or 2-D (number of samples, '
+                        'number of classes).'))
+    if len(label_train_shape) != len(label_test_shape):
+      raise ValueError('The number of dimensions of the train labels '
+                       f'({label_train_shape}) is not the same as that of the '
+                       f'test labels ({label_test_shape}).')
+    if (len(label_train_shape) not in [1, 2] or
+        len(label_test_shape) not in [1, 2]):
+      raise ValueError('Train and test labels shapes must be 1-D '
+                       '(number of samples) or 2-D (number of samples, '
+                       'number of classes).')
+    data_is_2d = len(train_shape) == len(test_shape) == 2
+    if data_is_2d:
+      equal_feature_count = train_shape[1] == test_shape[1]
+    else:
+      equal_feature_count = False
+    labels_are_2d = len(label_train_shape) == len(label_test_shape) == 2
+    labels_train_are_multihot = self.is_multihot_labels(self.labels_train,
+                                                        'labels_train')
+    labels_test_are_multihot = self.is_multihot_labels(self.labels_test,
+                                                       'labels_test')
+    self.multilabel_data = (
+        data_is_2d and labels_are_2d and equal_feature_count and
+        labels_train_are_multihot and labels_test_are_multihot)
+    return self.multilabel_data
 
   def validate(self):
     """Validates the inputs."""
@@ -413,12 +555,30 @@ class AttackInputData:
                        'logits_test')
     _is_last_dim_equal(self.probs_train, 'probs_train', self.probs_test,
                        'probs_test')
-    _is_array_one_dimensional(self.loss_train, 'loss_train')
-    _is_array_one_dimensional(self.loss_test, 'loss_test')
-    _is_array_one_dimensional(self.entropy_train, 'entropy_train')
-    _is_array_one_dimensional(self.entropy_test, 'entropy_test')
-    _is_array_one_dimensional(self.labels_train, 'labels_train')
-    _is_array_one_dimensional(self.labels_test, 'labels_test')
+
+    if self.is_multilabel_data():
+      # Validation for multi-label data.
+      # Verify that both logits and probabilities have the same number of
+      # classes.
+      _is_last_dim_equal(self.logits_train, 'logits_train', self.probs_train,
+                         'probs_train')
+      _is_last_dim_equal(self.logits_test, 'logits_test', self.probs_test,
+                         'probs_test')
+      # Check that losses, labels and entropies are 2D
+      #   (num_samples, num_classes).
+      _is_array_two_dimensional(self.loss_train, 'loss_train')
+      _is_array_two_dimensional(self.loss_test, 'loss_test')
+      _is_array_two_dimensional(self.entropy_train, 'entropy_train')
+      _is_array_two_dimensional(self.entropy_test, 'entropy_test')
+      _is_array_two_dimensional(self.labels_train, 'labels_train')
+      _is_array_two_dimensional(self.labels_test, 'labels_test')
+    else:
+      _is_array_one_dimensional(self.loss_train, 'loss_train')
+      _is_array_one_dimensional(self.loss_test, 'loss_test')
+      _is_array_one_dimensional(self.entropy_train, 'entropy_train')
+      _is_array_one_dimensional(self.entropy_test, 'entropy_test')
+      _is_array_one_dimensional(self.labels_train, 'labels_train')
+      _is_array_one_dimensional(self.labels_test, 'labels_test')
 
   def __str__(self):
     """Return the shapes of variables that are not None."""
@@ -784,8 +944,8 @@ class AttackResults:
     aucs = [result.get_auc() for result in self.single_attack_results]
 
     if min(aucs) < 0.4:
-      print('Suspiciously low AUC detected: %.2f. ' +
-            'There might be a bug in the classifier' % min(aucs))
+      logging.info(('Suspiciously low AUC detected: %.2f. '
+                    'There might be a bug in the classifier'), min(aucs))
 
     return self.single_attack_results[np.argmax(aucs)]
 

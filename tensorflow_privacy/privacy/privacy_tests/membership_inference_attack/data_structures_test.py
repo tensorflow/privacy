@@ -277,6 +277,87 @@ class AttackInputDataTest(parameterized.TestCase):
             probs_train=np.array([]),
             probs_test=np.array([])).validate)
 
+  def test_multilabel_validator(self):
+    # Tests for multilabel data.
+    with self.assertRaises(
+        ValueError,
+        msg='Validation passes incorrectly when `logits_test` is not 1D/2D.'):
+      AttackInputData(
+          logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+          logits_test=np.array([[[0.01, 1.5], [0.5, -3]],
+                                [[0.01, 1.5], [0.5, -3]]]),
+          labels_train=np.array([[0, 0], [0, 1], [1, 0]]),
+          labels_test=np.array([[1, 1], [1, 0]]),
+      ).validate()
+    self.assertTrue(
+        AttackInputData(
+            logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+            logits_test=np.array([[0.01, 1.5], [0.5, -3]]),
+            labels_train=np.array([[0, 0], [0, 1], [1, 1]]),
+            labels_test=np.array([[1, 1], [1, 0]]),
+        ).is_multilabel_data(),
+        msg='Multilabel data check fails even though conditions are met.')
+
+  def test_multihot_labels_check_on_null_array_returns_false(self):
+    self.assertFalse(
+        AttackInputData(
+            logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+            logits_test=np.array([[0.01, 1.5], [0.5, -3]]),
+            labels_train=np.array([[0, 0], [0, 1], [1, 1]]),
+            labels_test=np.array([[1, 1], [1, 0]]),
+        ).is_multihot_labels(None, 'null_array'),
+        msg='Multilabel test on a null array should return False.')
+    self.assertFalse(
+        AttackInputData(
+            logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+            logits_test=np.array([[0.01, 1.5], [0.5, -3]]),
+            labels_train=np.array([[0, 0], [0, 1], [1, 1]]),
+            labels_test=np.array([[1, 1], [1, 0]]),
+        ).is_multihot_labels(np.array([1.0, 2.0, 3.0]), '1d_array'),
+        msg='Multilabel test on a 1-D array should return False.')
+
+  def test_multilabel_get_bce_loss_from_probs(self):
+    attack_input = AttackInputData(
+        probs_train=np.array([[0.2, 0.3, 0.7], [0.8, 0.6, 0.9]]),
+        probs_test=np.array([[0.8, 0.7, 0.9]]),
+        labels_train=np.array([[0, 1, 1], [1, 1, 0]]),
+        labels_test=np.array([[1, 1, 0]]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), [[0.22314343, 1.20397247, 0.3566748],
+                                        [0.22314343, 0.51082546, 2.30258409]],
+        atol=1e-6)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [[0.22314354, 0.35667493, 2.30258499]],
+        atol=1e-6)
+
+  def test_multilabel_get_bce_loss_from_logits(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+        logits_test=np.array([[0.01, 1.5], [0.5, -3]]),
+        labels_train=np.array([[0, 0], [0, 1], [1, 1]]),
+        labels_test=np.array([[1, 1], [1, 0]]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(),
+        [[0.31326167, 0.126928], [0.69815966, 0.20141327],
+         [0.47407697, 3.04858714]],
+        atol=1e-6)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(),
+        [[0.68815966, 0.20141327], [0.47407697, 0.04858734]],
+        atol=1e-6)
+
+  def test_multilabel_get_loss_explicitly_provided(self):
+    attack_input = AttackInputData(
+        loss_train=np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]),
+        loss_test=np.array([[1.0, 4.0, 6.0], [1.0, 2.0, 3.0]]))
+
+    np.testing.assert_equal(attack_input.get_loss_train().tolist(),
+                            np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]))
+    np.testing.assert_equal(attack_input.get_loss_test().tolist(),
+                            np.array([[1.0, 4.0, 6.0], [1.0, 2.0, 3.0]]))
+
 
 class RocCurveTest(absltest.TestCase):
 

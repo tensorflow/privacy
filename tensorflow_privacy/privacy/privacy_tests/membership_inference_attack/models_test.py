@@ -47,6 +47,25 @@ class TrainedAttackerTest(absltest.TestCase):
     self.assertLen(attacker_data.fold_indices, 5)
     self.assertEmpty(attacker_data.left_out_indices)
 
+  def test_multilabel_create_attacker_data_loss_and_logits(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[1, 2], [5, 6], [8, 9]]),
+        logits_test=np.array([[10, 11], [14, 15]]),
+        labels_train=np.array([[0, 1], [1, 1], [1, 0]]),
+        labels_test=np.array([[1, 0], [1, 1]]),
+        loss_train=np.array([[1, 3], [6, 7], [8, 9]]),
+        loss_test=np.array([[4, 2], [4, 6]]))
+    attacker_data = models.create_attacker_data(attack_input, balance=False)
+    self.assertLen(attacker_data.features_all, 5)
+    self.assertLen(attacker_data.fold_indices, 5)
+    self.assertEmpty(attacker_data.left_out_indices)
+    self.assertEqual(
+        attacker_data.features_all.shape[1],
+        attack_input.logits_train.shape[1] + attack_input.loss_train.shape[1])
+    self.assertTrue(
+        attack_input.is_multilabel_data(),
+        msg='Expected multilabel check to pass.')
+
   def test_unbalanced_create_attacker_data_loss_and_logits(self):
     attack_input = AttackInputData(
         logits_train=np.array([[1, 2], [5, 6], [8, 9]]),

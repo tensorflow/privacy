@@ -124,5 +124,62 @@ class TestSquaredLoss(parameterized.TestCase):
     np.testing.assert_allclose(loss, expected_loss, atol=1e-7)
 
 
+class TestMultilabelBCELoss(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('probs_example1', np.array(
+          [[0, 1, 1], [1, 1, 0]]), np.array([[0.2, 0.3, 0.7], [0.8, 0.6, 0.9]]),
+       np.array([[0.22314343, 1.20397247, 0.3566748],
+                 [0.22314343, 0.51082546, 2.30258409]]), False),
+      ('probs_example2', np.array([[0, 1, 0], [1, 1, 0]]),
+       np.array([[0.01, 0.02, 0.04], [0.8, 0.7, 0.9]]),
+       np.array([[0.01005033, 3.91202251, 0.04082198],
+                 [0.22314354, 0.35667493, 2.30258499]]), False),
+      ('logits_example1', np.array([[0, 1, 1], [1, 1, 0]]),
+       np.array([[-1.2, -0.3, 2.1], [0.0, 0.5, 1.5]]),
+       np.array([[0.26328245, 0.85435522, 0.11551951],
+                 [0.69314716, 0.47407697, 1.70141322]]), True),
+      ('logits_example2', np.array([[0, 1, 0], [1, 1, 0]]),
+       np.array([[-1.2, -0.3, 2.1], [0.0, 0.5, 1.5]]),
+       np.array([[0.26328245, 0.85435522, 2.21551943],
+                 [0.69314716, 0.47407697, 1.70141322]]), True),
+  )
+  def test_multilabel_bce_loss(self, label, pred, expected_losses, from_logits):
+    loss = utils.multilabel_bce_loss(label, pred, from_logits=from_logits)
+    np.testing.assert_allclose(loss, expected_losses, atol=1e-6)
+
+  @parameterized.named_parameters(
+      ('from_logits_true_and_incorrect_values_example1',
+       np.array([[0, 1, 1], [1, 1, 0]
+                ]), np.array([[0.2, 0.3, 0.7], [0.8, 0.6, 0.9]]),
+       np.array([[0.22314343, 1.20397247, 0.3566748],
+                 [0.22314343, 0.51082546, 2.30258409]]), True),
+      ('from_logits_true_and_incorrect_values_example2',
+       np.array([[0, 1, 0], [1, 1, 0]
+                ]), np.array([[0.01, 0.02, 0.04], [0.8, 0.7, 0.9]]),
+       np.array([[0.01005033, 3.91202251, 0.04082198],
+                 [0.22314354, 0.35667493, 2.30258499]]), True),
+  )
+  def test_multilabel_bce_loss_incorrect_value(self, label, pred,
+                                               expected_losses, from_logits):
+    loss = utils.multilabel_bce_loss(label, pred, from_logits=from_logits)
+    self.assertFalse(np.allclose(loss, expected_losses))
+
+  @parameterized.named_parameters(
+      ('from_logits_false_and_pred_not_in_0to1_example1',
+       np.array([[0, 1, 1], [1, 1, 0]
+                ]), np.array([[-1.2, -0.3, 2.1], [0.0, 0.5, 1.5]]), False,
+       (r'Prediction probabilities are not in \[0, 1\] and '
+        '`from_logits` is set to False.')),
+      ('labels_not_0_or_1', np.array([[0, 1, 0], [1, 2, 0]]),
+       np.array([[-1.2, -0.3, 2.1], [0.0, 0.5, 1.5]]), False,
+       ('labels should be in {0, 1}. For multi-label classification the labels '
+        'should be multihot encoded.')),
+  )
+  def test_multilabel_bce_loss_raises(self, label, pred, from_logits, regex):
+    self.assertRaisesRegex(ValueError, regex, utils.multilabel_bce_loss, label,
+                           pred, from_logits)
+
+
 if __name__ == '__main__':
   absltest.main()

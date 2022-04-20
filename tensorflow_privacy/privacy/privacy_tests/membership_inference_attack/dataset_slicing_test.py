@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from absl.testing import absltest
+from absl.testing.absltest import mock
 import numpy as np
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
@@ -71,7 +73,7 @@ class SingleSliceSpecsTest(absltest.TestCase):
     self.assertTrue(_are_all_fields_equal(output[0], expected0))
     self.assertTrue(_are_all_fields_equal(output[5], expected5))
 
-  def test_slice_by_correcness(self):
+  def test_slice_by_correctness(self):
     input_data = SlicingSpec(
         entire_dataset=False, by_classification_correctness=True)
     expected = SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED, True)
@@ -197,6 +199,84 @@ class GetSliceTest(absltest.TestCase):
     self.assertLen(output.labels_test, 3)
     self.assertTrue((output.labels_train == [0, 2]).all())
     self.assertTrue((output.labels_test == [1, 2, 0]).all())
+
+
+class GetSliceTestForMultilabelData(absltest.TestCase):
+
+  def __init__(self, methodname):
+    """Initialize the test class."""
+    super().__init__(methodname)
+
+    # Create test data for 3 class multilabel classification task.
+    logits_train = np.array([[0, 1, 0], [2, 0, 3], [4, 5, 0], [6, 7, 0]])
+    logits_test = np.array([[10, 0, 11], [12, 13, 0], [14, 15, 0], [0, 16, 17]])
+    probs_train = np.array([[0, 1, 0], [0.1, 0, 0.7], [0.4, 0.6, 0],
+                            [0.3, 0.7, 0]])
+    probs_test = np.array([[0.4, 0, 0.6], [0.1, 0.9, 0], [0.15, 0.85, 0],
+                           [0, 0, 1]])
+    labels_train = np.array([[0, 1, 1], [1, 0, 1], [1, 1, 0], [0, 1, 0]])
+    labels_test = np.array([[1, 0, 1], [0, 1, 0], [0, 1, 0], [0, 0, 1]])
+    loss_train = np.array([[0, 0, 2], [3, 0, 0.3], [2, 0.5, 0], [1.5, 2, 3]])
+    loss_test = np.array([[1.5, 0, 1.0], [0.5, 0.8, 0], [0.5, 3, 0], [0, 0, 0]])
+    entropy_train = np.array([[0.2, 0.2, 5], [10, 0, 2], [7, 3, 0], [6, 8, 9]])
+    entropy_test = np.array([[3, 0, 2], [3, 6, 0], [2, 6, 0], [0, 0, 0]])
+
+    self.input_data = AttackInputData(
+        logits_train=logits_train,
+        logits_test=logits_test,
+        probs_train=probs_train,
+        probs_test=probs_test,
+        labels_train=labels_train,
+        labels_test=labels_test,
+        loss_train=loss_train,
+        loss_test=loss_test,
+        entropy_train=entropy_train,
+        entropy_test=entropy_test)
+
+  def test_slice_entire_dataset(self):
+    entire_dataset_slice = SingleSliceSpec()
+    output = get_slice(self.input_data, entire_dataset_slice)
+    expected = self.input_data
+    expected.slice_spec = entire_dataset_slice
+    self.assertTrue(_are_all_fields_equal(output, self.input_data))
+
+  def test_slice_by_class_fails(self):
+    class_index = 1
+    class_slice = SingleSliceSpec(SlicingFeature.CLASS, class_index)
+    self.assertRaises(ValueError, get_slice, self.input_data, class_slice)
+
+  @mock.patch('logging.Logger.info', wraps=logging.Logger)
+  def test_slice_by_percentile_logs_multilabel_data(self, mock_logger):
+    percentile_slice = SingleSliceSpec(SlicingFeature.PERCENTILE, (0, 50))
+    _ = get_slice(self.input_data, percentile_slice)
+    mock_logger.assert_called_with(
+        ('For multilabel data, when slices by percentiles are '
+         'requested, losses are summed over the class axis before '
+         'slicing.'))
+
+  def test_slice_by_percentile(self):
+    # 50th percentile is the lower 50% of losses summed over the classes.
+    percentile_slice = SingleSliceSpec(SlicingFeature.PERCENTILE, (0, 50))
+    output = get_slice(self.input_data, percentile_slice)
+
+    # Check logits.
+    with self.subTest(msg='Check logits'):
+      self.assertLen(output.logits_train, 2)
+      self.assertLen(output.logits_test, 3)
+      self.assertTrue((output.logits_test[0] == [10, 0, 11]).all())
+
+    # Check labels.
+    with self.subTest(msg='Check labels'):
+      self.assertLen(output.labels_train, 2)
+      self.assertLen(output.labels_test, 3)
+      self.assertTrue((output.labels_train == [[0, 1, 1], [1, 1, 0]]).all())
+      self.assertTrue((output.labels_test == [[1, 0, 1], [0, 1, 0], [0, 0,
+                                                                     1]]).all())
+
+  def test_slice_by_correctness_fails(self):
+    percentile_slice = SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED,
+                                       False)
+    self.assertRaises(ValueError, get_slice, self.input_data, percentile_slice)
 
 
 if __name__ == '__main__':
