@@ -23,51 +23,58 @@ import tensorflow as tf
 
 from tensorflow_privacy.privacy.analysis import rdp_accountant
 
+#################################
+# HELPER FUNCTIONS:             #
+# Exact computations using      #
+# multi-precision arithmetic.   #
+#################################
+
+
+def _log_float_mp(x):
+  # Convert multi-precision input to float log space.
+  if x >= sys.float_info.min:
+    return float(mpmath.log(x))
+  else:
+    return -np.inf
+
+
+def _integral_mp(fn, bounds=(-mpmath.inf, mpmath.inf)):
+  integral, _ = mpmath.quad(fn, bounds, error=True, maxdegree=8)
+  return integral
+
+
+def _distributions_mp(sigma, q):
+
+  def _mu0(x):
+    return mpmath.npdf(x, mu=0, sigma=sigma)
+
+  def _mu1(x):
+    return mpmath.npdf(x, mu=1, sigma=sigma)
+
+  def _mu(x):
+    return (1 - q) * _mu0(x) + q * _mu1(x)
+
+  return _mu0, _mu  # Closure!
+
+
+def _mu1_over_mu0(x, sigma):
+  # Closed-form expression for N(1, sigma^2) / N(0, sigma^2) at x.
+  return mpmath.exp((2 * x - 1) / (2 * sigma**2))
+
+
+def _mu_over_mu0(x, q, sigma):
+  return (1 - q) + q * _mu1_over_mu0(x, sigma)
+
+
+def _compute_a_mp(sigma, q, alpha):
+  """Compute A_alpha for arbitrary alpha by numerical integration."""
+  mu0, _ = _distributions_mp(sigma, q)
+  a_alpha_fn = lambda z: mu0(z) * _mu_over_mu0(z, q, sigma)**alpha
+  a_alpha = _integral_mp(a_alpha_fn)
+  return a_alpha
+
 
 class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
-  #################################
-  # HELPER FUNCTIONS:             #
-  # Exact computations using      #
-  # multi-precision arithmetic.   #
-  #################################
-
-  def _log_float_mp(self, x):
-    # Convert multi-precision input to float log space.
-    if x >= sys.float_info.min:
-      return float(mpmath.log(x))
-    else:
-      return -np.inf
-
-  def _integral_mp(self, fn, bounds=(-mpmath.inf, mpmath.inf)):
-    integral, _ = mpmath.quad(fn, bounds, error=True, maxdegree=8)
-    return integral
-
-  def _distributions_mp(self, sigma, q):
-
-    def _mu0(x):
-      return mpmath.npdf(x, mu=0, sigma=sigma)
-
-    def _mu1(x):
-      return mpmath.npdf(x, mu=1, sigma=sigma)
-
-    def _mu(x):
-      return (1 - q) * _mu0(x) + q * _mu1(x)
-
-    return _mu0, _mu  # Closure!
-
-  def _mu1_over_mu0(self, x, sigma):
-    # Closed-form expression for N(1, sigma^2) / N(0, sigma^2) at x.
-    return mpmath.exp((2 * x - 1) / (2 * sigma**2))
-
-  def _mu_over_mu0(self, x, q, sigma):
-    return (1 - q) + q * self._mu1_over_mu0(x, sigma)
-
-  def _compute_a_mp(self, sigma, q, alpha):
-    """Compute A_alpha for arbitrary alpha by numerical integration."""
-    mu0, _ = self._distributions_mp(sigma, q)
-    a_alpha_fn = lambda z: mu0(z) * self._mu_over_mu0(z, q, sigma)**alpha
-    a_alpha = self._integral_mp(a_alpha_fn)
-    return a_alpha
 
   # TEST ROUTINES
   def test_compute_heterogeneous_rdp_different_sampling_probabilities(self):
@@ -151,15 +158,6 @@ class TestGaussianMoments(tf.test.TestCase, parameterized.TestCase):
       'sigma': 100,
       'order': 256.1
   })
-
-  # pylint:disable=undefined-variable
-  @parameterized.parameters(p for p in params)
-  def test_compute_log_a_equals_mp(self, q, sigma, order):
-    # Compare the cheap computation of log(A) with an expensive, multi-precision
-    # computation.
-    log_a = rdp_accountant._compute_log_a(q, sigma, order)
-    log_a_mp = self._log_float_mp(self._compute_a_mp(sigma, q, order))
-    np.testing.assert_allclose(log_a, log_a_mp, rtol=1e-4)
 
   def test_get_privacy_spent_check_target_delta(self):
     orders = range(2, 33)

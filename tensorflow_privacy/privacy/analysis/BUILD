@@ -61,6 +61,11 @@ py_library(
     srcs = ["rdp_accountant.py"],
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting:privacy_accountant",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+    ],
 )
 
 py_test(
