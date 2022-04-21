@@ -15,10 +15,10 @@
 from absl.testing import parameterized
 
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.estimators import test_utils
 from tensorflow_privacy.privacy.estimators.v1 import head as head_lib
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
+from tensorflow_estimator.python.estimator import estimator
 
 
 def make_model_fn(head, optimizer, feature_columns):
@@ -70,7 +70,7 @@ class DPHeadTest(tf.test.TestCase, parameterized.TestCase):
         noise_multiplier=0.0,
         num_microbatches=2)
     model_fn = make_model_fn(head, optimizer, feature_columns)
-    classifier = tf_estimator.Estimator(model_fn=model_fn)
+    classifier = estimator.Estimator(model_fn=model_fn)
 
     classifier.train(
         input_fn=test_utils.make_input_fn(train_features, train_labels, True),

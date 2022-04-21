@@ -16,13 +16,12 @@
 
 import tensorflow as tf
 
-from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.estimators.v1 import head as head_lib
 from tensorflow_estimator.python.estimator import estimator
 from tensorflow_estimator.python.estimator.canned import dnn
 
 
-class DNNClassifier(tf_estimator.Estimator):
+class DNNClassifier(estimator.Estimator):
   """DP version of `tf.compat.v1.estimator.DNNClassifier`."""
 
   def __init__(

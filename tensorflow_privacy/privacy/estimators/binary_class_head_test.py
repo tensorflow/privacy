@@ -14,10 +14,10 @@
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import estimator as tf_estimator
 from tensorflow_privacy.privacy.estimators import binary_class_head
 from tensorflow_privacy.privacy.estimators import test_utils
 from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasSGDOptimizer
+from tensorflow_estimator.python.estimator import estimator
 
 
 class DPBinaryClassHeadTest(tf.test.TestCase):
@@ -59,7 +59,7 @@ class DPBinaryClassHeadTest(tf.test.TestCase):
         noise_multiplier=0.0,
         num_microbatches=2)
     model_fn = test_utils.make_model_fn(head, optimizer, feature_columns)
-    classifier = tf_estimator.Estimator(model_fn=model_fn)
+    classifier = estimator.Estimator(model_fn=model_fn)
 
     classifier.train(
         input_fn=test_utils.make_input_fn(train_features, train_labels, True),
