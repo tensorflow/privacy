@@ -79,7 +79,6 @@ def repeat_poisson_rdp(orders, rdp, tau):
 		if orders[i] == 1: continue # forumula doesn't work with lambda=1
 		_, delta, _ = rdp_accountant.get_privacy_spent(orders, rdp, target_eps=math.log1p(1/(orders[i]-1)))
 		rdp_out[i] = rdp[i] + tau*delta + math.log(tau)/(orders[i]-1)
-		#print(str(orders[i])+" -> "+str(delta)) # debug
 	return rdp_out
 
 if load_values_to_reproduce_paper_fig:
@@ -108,16 +107,15 @@ for dist_id in range(4):
 				label = 'logarithmic distribution $\\eta=0$'
 				color = 'b'
 				eps = repeat_logarithmic_rdp(orders, rdp, gamma)
-				# print(eps)
 			elif dist_id == 1:
-				if gamma < 1e-4:
+				if load_values_to_reproduce_paper_fig and gamma < 1e-4:
 					continue
 				K = np.random.geometric(gamma)
 				label = 'geometric distribution $\\eta=1$'
 				color = 'g'
 				eps = repeat_geometric_rdp(orders, rdp, gamma)
 			elif dist_id == 2:
-				if gamma < 1e-07:
+				if load_values_to_reproduce_paper_fig and gamma < 1e-07:
 					continue
 				eta = 0.5
 				K = 0
@@ -127,7 +125,7 @@ for dist_id in range(4):
 				color = 'k'
 				eps = repeat_negativebinomial_rdp(orders, rdp, gamma, eta)
 			elif dist_id == 3:
-				if gamma < 0.0015:
+				if load_values_to_reproduce_paper_fig and gamma < 0.0015:
 					continue
 				gamma_factor = 100
 				K = np.random.poisson(gamma * gamma_factor)
