@@ -13,7 +13,10 @@ py_library(
     name = "compute_dp_sgd_privacy_lib",
     srcs = ["compute_dp_sgd_privacy_lib.py"],
     srcs_version = "PY3",
-    deps = [":rdp_accountant"],
+    deps = [
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+    ],
 )
 
 py_binary(
