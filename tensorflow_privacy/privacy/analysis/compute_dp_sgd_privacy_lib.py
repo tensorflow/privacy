@@ -17,20 +17,22 @@
 import math
 
 from absl import app
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
+
+from com_google_differential_py.python.dp_accounting import dp_event
+from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 
 def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
   """Compute and print results of DP-SGD analysis."""
 
-  # compute_rdp requires that sigma be the ratio of the standard deviation of
-  # the Gaussian noise to the l2-sensitivity of the function to which it is
-  # added. Hence, sigma here corresponds to the `noise_multiplier` parameter
-  # in the DP-SGD implementation found in privacy.optimizers.dp_optimizer
-  rdp = compute_rdp(q, sigma, steps, orders)
+  accountant = rdp_privacy_accountant.RdpAccountant(orders)
 
-  eps, _, opt_order = get_privacy_spent(orders, rdp, target_delta=delta)
+  event = dp_event.SelfComposedDpEvent(
+      dp_event.PoissonSampledDpEvent(q, dp_event.GaussianDpEvent(sigma)), steps)
+
+  accountant.compose(event)
+
+  eps, opt_order = accountant.get_epsilon_and_optimal_order(delta)
 
   print(
       'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
