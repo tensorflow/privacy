@@ -12,32 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import functools
-import os
-from typing import Callable
 import json
-
+import os
 import re
-import jax
-import jax.numpy as jn
+
 import numpy as np
-import tensorflow as tf  # For data augmentation.
-import tensorflow_datasets as tfds
-from absl import app, flags
-from tqdm import tqdm, trange
-import pickle
-from functools import partial
-
 import objax
-from objax.jaxboard import SummaryWriter, Summary
-from objax.util import EasyDict
-from objax.zoo import convnet, wide_resnet
+import tensorflow as tf  # For data augmentation.
+from absl import app
+from absl import flags
 
-from dataset import DataSet
+from train import MemModule
+from train import network
 
-from train import MemModule, network
-
-from collections import defaultdict
 FLAGS = flags.FLAGS
 
 
@@ -142,9 +129,6 @@ if __name__ == '__main__':
     flags.DEFINE_string('dataset', 'cifar10', 'Dataset.')
     flags.DEFINE_string('logdir', 'experiments/', 'Directory where to save checkpoints and tensorboard data.')
     flags.DEFINE_string('regex', '.*experiment.*', 'keep files when matching')
-    flags.DEFINE_bool('random_labels', False, 'use random labels.')
     flags.DEFINE_integer('dataset_size', 50000, 'size of dataset.')
     flags.DEFINE_integer('from_epoch', None, 'which epoch to load from.')
-    flags.DEFINE_integer('seed_mod', None, 'keep mod seed.')
-    flags.DEFINE_integer('modulus', 8, 'modulus.')
     app.run(main)

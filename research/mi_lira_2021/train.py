@@ -24,12 +24,11 @@ import numpy as np
 import tensorflow as tf  # For data augmentation.
 import tensorflow_datasets as tfds
 from absl import app, flags
-from tqdm import tqdm, trange
 
 import objax
 from objax.jaxboard import SummaryWriter, Summary
 from objax.util import EasyDict
-from objax.zoo import convnet, wide_resnet, dnnet
+from objax.zoo import convnet, wide_resnet
 
 from dataset import DataSet
 
@@ -269,7 +268,7 @@ def main(argv):
         logdir = "experiment-"+str(seed)
     logdir = os.path.join(FLAGS.logdir, logdir)
 
-    if os.path.exists(os.path.join(logdir, "ckpt", "%010d.npz"%10)):
+    if os.path.exists(os.path.join(logdir, "ckpt", "%010d.npz"%FLAGS.epochs)):
         print(f"run {FLAGS.expid} already completed.")
         return
     else:

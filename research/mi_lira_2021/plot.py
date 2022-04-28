@@ -220,5 +220,6 @@ def fig_fpr_tpr():
     plt.show()
 
 
-load_data("exp/cifar10/")
-fig_fpr_tpr()
+if __name__ == '__main__':
+    load_data("exp/cifar10/")
+    fig_fpr_tpr()
