@@ -2,9 +2,9 @@
 
 This directory contains code to reproduce our paper:
 
-**"Membership Inference Attacks From First Principles"**
-https://arxiv.org/abs/2112.03570
-by Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and Florian Tramer.
+**"Membership Inference Attacks From First Principles"** <br>
+https://arxiv.org/abs/2112.03570 <br>
+by Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and Florian Tramèr.
 
 
 ### INSTALLING
