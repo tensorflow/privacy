@@ -111,7 +111,7 @@ You can cite this paper with
 ```
 @article{tramer2022truth,
   title={Truth Serum: Poisoning Machine Learning Models to Reveal Their Secrets},
-  author={Tramer, Florian and Shokri, Reza and Joaquin, Ayrton San and Le, Hoang and Jagielski, Matthew and Hong, Sanghyun and Carlini, Nicholas},
+  author={Tramer, Florian and Shokri, Reza and San Joaquin, Ayrton and Le, Hoang and Jagielski, Matthew and Hong, Sanghyun and Carlini, Nicholas},
   journal={arXiv preprint arXiv:2204.00032},
   year={2022}
 }
