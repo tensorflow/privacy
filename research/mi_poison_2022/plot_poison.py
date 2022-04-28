@@ -62,24 +62,29 @@ def do_plot_all(fn, keep, scores, legend='', metric='auc', sweep_fn=sweep, **plo
 def fig_fpr_tpr(poison_mask, scores, keep):
 
     plt.figure(figsize=(4, 3))
+
+    # evaluate LiRA on the points that were not targeted by poisoning
     do_plot_all(functools.partial(generate_ours, fix_variance=True),
                 keep[:, ~poison_mask], scores[:, ~poison_mask],
                 "No poison (LiRA)\n",
                 metric='auc',
     )
 
+    # evaluate the global-threshold attack on the points that were not targeted by poisoning
     do_plot_all(generate_global,
                 keep[:, ~poison_mask], scores[:, ~poison_mask],
                 "No poison (Global threshold)\n",
                 metric='auc', ls="--", c=plt.gca().lines[-1].get_color()
                 )
 
+    # evaluate LiRA on the points that were targeted by poisoning
     do_plot_all(functools.partial(generate_ours, fix_variance=True),
                 keep[:, poison_mask], scores[:, poison_mask],
                 "With poison (LiRA)\n",
                 metric='auc',
                 )
 
+    # evaluate the global-threshold attack on the points that were targeted by poisoning
     do_plot_all(generate_global,
                 keep[:, poison_mask], scores[:, poison_mask],
                 "With poison (Global threshold)\n",
@@ -97,6 +102,7 @@ def fig_fpr_tpr(poison_mask, scores, keep):
     plt.legend(fontsize=8)
     plt.savefig("/tmp/fprtpr.png")
     plt.show()
+
 
 if __name__ == '__main__':
   logdir = "exp/cifar10/"
