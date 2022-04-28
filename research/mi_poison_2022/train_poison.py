@@ -49,6 +49,19 @@ def get_data(seed):
        after FLAGS.num_experiments are done, each example is seen exactly half
        of the time in train, and half of the time not in train.
 
+    Finally, we add some poisons. The same poisoned samples are added for
+    each randomly generated training set.
+    We first select FLAGS.num_poison_targets victim points that will be targeted
+    by the poisoning attack. For each of these victim points, the attacker will
+    insert FLAGS.poison_reps mislabeled replicas of the point into the training
+    set.
+
+    For CIFAR-10, we recommend that:
+
+        `FLAGS.num_poison_targets * FLAGS.poison_reps < 5000`
+
+    Otherwise, the poisons might introduce too much label noise and the model's
+    accuracy (and the attack's success rate) will be degraded.
     """
     DATA_DIR = os.path.join(os.environ['HOME'], 'TFDS')
 
