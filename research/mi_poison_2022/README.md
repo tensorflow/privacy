@@ -88,11 +88,11 @@ which should give (something like) the following output
 ![Log-log ROC Curve for all attacks](fprtpr.png "Log-log ROC Curve")
 
 ```
-Attack No poison
+Attack No poison (LiRA)
    AUC 0.7025, Accuracy 0.6258, TPR@0.1%FPR of 0.0544
 Attack No poison (Global threshold)
    AUC 0.6191, Accuracy 0.6173, TPR@0.1%FPR of 0.0012
-Attack With poison
+Attack With poison (LiRA)
    AUC 0.9943, Accuracy 0.9653, TPR@0.1%FPR of 0.4945
 Attack With poison (Global threshold)
    AUC 0.9922, Accuracy 0.9603, TPR@0.1%FPR of 0.3930
