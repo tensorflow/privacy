@@ -235,6 +235,13 @@ class AttackInputData:
   # corresponding class is absent from the example, and 1s where the
   # corresponding class is present.
   multilabel_data: Optional[bool] = None
+  # In some corner cases, the provided data comes from a multi-label
+  # classification model, but the samples all happen to have just 1 label. In
+  # that case, the `is_multilabel_data()` test will return a `False` value. The
+  # attack models will expect 1D input, which will throw an exception. Handle
+  # this case by letting the user set a flag that forces the input data to be
+  # treated as multilabel data.
+  force_multilabel_data: bool = False
 
   @property
   def num_classes(self):
@@ -450,6 +457,10 @@ class AttackInputData:
     Raises:
       ValueError if the dimensionality of the train and test data are not equal.
     """
+    # If 'force_multilabel_data' is set, then assume multilabel data going
+    # forward.
+    if self.force_multilabel_data:
+      self.multilabel_data = True
     # If the data has already been checked for multihot encoded labels, then
     # return the result of the evaluation.
     if self.multilabel_data is not None:

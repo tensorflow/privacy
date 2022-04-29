@@ -217,6 +217,7 @@ def run_attacks(attack_input: AttackInputData,
   """
   attack_input.validate()
   attack_results = []
+  attack_types = list(attack_types)
 
   if slicing_spec is None:
     slicing_spec = SlicingSpec(entire_dataset=True)
@@ -224,6 +225,10 @@ def run_attacks(attack_input: AttackInputData,
   if slicing_spec.by_class:
     num_classes = attack_input.num_classes
   input_slice_specs = get_single_slice_specs(slicing_spec, num_classes)
+  num_slice_specs = len(input_slice_specs)
+  num_attacks = len(attack_types)
+  logging.info('Will run %s attacks on each of %s slice specifications.',
+               num_attacks, num_slice_specs)
   for single_slice_spec in input_slice_specs:
     attack_input_slice = get_slice(attack_input, single_slice_spec)
     for attack_type in attack_types:
@@ -231,6 +236,9 @@ def run_attacks(attack_input: AttackInputData,
       attack_result = _run_attack(attack_input_slice, attack_type,
                                   balance_attacker_training, min_num_samples)
       if attack_result is not None:
+        logging.info('%s attack had an AUC=%s and attacker advantage=%s',
+                     attack_type.name, attack_result.get_auc(),
+                     attack_result.get_attacker_advantage())
         attack_results.append(attack_result)
 
   privacy_report_metadata = _compute_missing_privacy_report_metadata(
