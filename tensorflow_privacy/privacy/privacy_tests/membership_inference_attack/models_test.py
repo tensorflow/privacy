@@ -17,6 +17,7 @@ import numpy as np
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 
 
 class TrainedAttackerTest(absltest.TestCase):
@@ -88,6 +89,15 @@ class TrainedAttackerTest(absltest.TestCase):
     self.assertLen(attacker_data.features_all, 6)
     self.assertLen(attacker_data.fold_indices, 6)
     self.assertEmpty(attacker_data.left_out_indices)
+
+  def test_training_with_threading_backend(self):
+    with self.assertLogs(level='INFO') as log:
+      attacker = models.create_attacker(AttackType.LOGISTIC_REGRESSION,
+                                        'threading')
+    self.assertIsInstance(attacker, models.LogisticRegressionAttacker)
+    self.assertLen(log.output, 1)
+    self.assertLen(log.records, 1)
+    self.assertRegex(log.output[0], r'.+?Using .+? backend for training.')
 
 
 if __name__ == '__main__':

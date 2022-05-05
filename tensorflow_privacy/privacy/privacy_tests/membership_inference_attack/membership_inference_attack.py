@@ -18,7 +18,7 @@ will be renamed to membership_inference_attack.py after the old API is removed.
 """
 
 import logging
-from typing import Iterable, List, Union
+from typing import Iterable, List, Optional, Union
 
 import numpy as np
 from scipy import special
@@ -54,7 +54,8 @@ def _get_slice_spec(data: AttackInputData) -> SingleSliceSpec:
 def _run_trained_attack(attack_input: AttackInputData,
                         attack_type: AttackType,
                         balance_attacker_training: bool = True,
-                        cross_validation_folds: int = 2):
+                        cross_validation_folds: int = 2,
+                        backend: Optional[str] = None):
   """Classification attack done by ML models."""
   prepared_attacker_data = models.create_attacker_data(
       attack_input, balance=balance_attacker_training)
@@ -84,7 +85,7 @@ def _run_trained_attack(attack_input: AttackInputData,
     # Make sure one sample only got score predicted once
     assert np.all(np.isnan(scores[test_indices]))
 
-    attacker = models.create_attacker(attack_type)
+    attacker = models.create_attacker(attack_type, backend=backend)
     attacker.train_model(features[train_indices], labels[train_indices])
     predictions = attacker.predict(features[test_indices])
     scores[test_indices] = predictions
@@ -161,7 +162,8 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
 def _run_attack(attack_input: AttackInputData,
                 attack_type: AttackType,
                 balance_attacker_training: bool = True,
-                min_num_samples: int = 1):
+                min_num_samples: int = 1,
+                backend: Optional[str] = None):
   """Runs membership inference attacks for specified input and type.
 
   Args:
@@ -172,6 +174,11 @@ def _run_attack(attack_input: AttackInputData,
       number of samples from the training and test sets used to develop the
       model under attack.
     min_num_samples: minimum number of examples in either training or test data.
+    backend: The Scikit-Learn/Joblib backend to use for model training, defaults
+      to `None`, which will use single-threaded training. Note that some systems
+      may not support multiprocessing and in those cases the `threading` backend
+      should be used. See https://joblib.readthedocs.io/en/latest/parallel.html
+      for more details.
 
   Returns:
     the attack result.
@@ -182,8 +189,8 @@ def _run_attack(attack_input: AttackInputData,
     return None
 
   if attack_type.is_trained_attack:
-    return _run_trained_attack(attack_input, attack_type,
-                               balance_attacker_training)
+    return _run_trained_attack(
+        attack_input, attack_type, balance_attacker_training, backend=backend)
   if attack_type == AttackType.THRESHOLD_ENTROPY_ATTACK:
     return _run_threshold_entropy_attack(attack_input)
   return _run_threshold_attack(attack_input)
@@ -195,7 +202,8 @@ def run_attacks(attack_input: AttackInputData,
                     AttackType.THRESHOLD_ATTACK,),
                 privacy_report_metadata: PrivacyReportMetadata = None,
                 balance_attacker_training: bool = True,
-                min_num_samples: int = 1) -> AttackResults:
+                min_num_samples: int = 1,
+                backend: Optional[str] = None) -> AttackResults:
   """Runs membership inference attacks on a classification model.
 
   It runs attacks specified by attack_types on each attack_input slice which is
@@ -211,6 +219,11 @@ def run_attacks(attack_input: AttackInputData,
       number of samples from the training and test sets used to develop the
       model under attack.
     min_num_samples: minimum number of examples in either training or test data.
+    backend: The Scikit-Learn/Joblib backend to use for model training, defaults
+      to `None`, which will use single-threaded training. Note that some systems
+      may not support multiprocessing and in those cases the `threading` backend
+      should be used. See https://joblib.readthedocs.io/en/latest/parallel.html
+      for more details.
 
   Returns:
     the attack result.
@@ -234,7 +247,8 @@ def run_attacks(attack_input: AttackInputData,
     for attack_type in attack_types:
       logging.info('Running attack: %s', attack_type.name)
       attack_result = _run_attack(attack_input_slice, attack_type,
-                                  balance_attacker_training, min_num_samples)
+                                  balance_attacker_training, min_num_samples,
+                                  backend)
       if attack_result is not None:
         logging.info('%s attack had an AUC=%s and attacker advantage=%s',
                      attack_type.name, attack_result.get_auc(),
