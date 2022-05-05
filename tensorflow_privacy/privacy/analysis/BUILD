@@ -45,7 +45,10 @@ py_binary(
 py_library(
     name = "compute_noise_from_budget_lib",
     srcs = ["compute_noise_from_budget_lib.py"],
-    deps = [":rdp_accountant"],
+    deps = [
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+    ],
 )
 
 py_test(
