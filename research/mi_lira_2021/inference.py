@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: skip-file
+# pyformat: disable
+
 import json
 import os
 import re
@@ -43,7 +46,7 @@ def main(argv):
                          lr=.1,
                          batch=0,
                          epochs=0,
-                         weight_decay=0)        
+                         weight_decay=0)
 
     def cache_load(arch):
         thing = []
@@ -55,8 +58,8 @@ def main(argv):
 
     xs_all = np.load(os.path.join(FLAGS.logdir,"x_train.npy"))[:FLAGS.dataset_size]
     ys_all = np.load(os.path.join(FLAGS.logdir,"y_train.npy"))[:FLAGS.dataset_size]
-    
-    
+
+
     def get_loss(model, xbatch, ybatch, shift, reflect=True, stride=1):
 
         outs = []
@@ -77,7 +80,7 @@ def main(argv):
     def features(model, xbatch, ybatch):
         return get_loss(model, xbatch, ybatch,
                         shift=0, reflect=True, stride=1)
-    
+
     for path in sorted(os.listdir(os.path.join(FLAGS.logdir))):
         if re.search(FLAGS.regex, path) is None:
             print("Skipping from regex")
@@ -86,9 +89,9 @@ def main(argv):
         hparams = json.load(open(os.path.join(FLAGS.logdir, path, "hparams.json")))
         arch = hparams['arch']
         model = cache_load(arch)()
-        
+
         logdir = os.path.join(FLAGS.logdir, path)
-        
+
         checkpoint = objax.io.Checkpoint(logdir, keep_ckpts=10, makedir=True)
         max_epoch, last_ckpt = checkpoint.restore(model.vars())
         if max_epoch == 0: continue
@@ -99,12 +102,12 @@ def main(argv):
             first = FLAGS.from_epoch
         else:
             first = max_epoch-1
-            
+
         for epoch in range(first,max_epoch+1):
             if not os.path.exists(os.path.join(FLAGS.logdir, path, "ckpt", "%010d.npz"%epoch)):
                 # no checkpoint saved here
                 continue
-                
+
             if os.path.exists(os.path.join(FLAGS.logdir, path, "logits", "%010d.npy"%epoch)):
                 print("Skipping already generated file", epoch)
                 continue
@@ -114,7 +117,7 @@ def main(argv):
             except:
                 print("Fail to load", epoch)
                 continue
-                
+
             stats = []
 
             for i in range(0,len(xs_all),N):
@@ -132,3 +135,4 @@ if __name__ == '__main__':
     flags.DEFINE_integer('dataset_size', 50000, 'size of dataset.')
     flags.DEFINE_integer('from_epoch', None, 'which epoch to load from.')
     app.run(main)
+

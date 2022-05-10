@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: skip-file
+# pyformat: disable
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -90,7 +93,7 @@ def fig_fpr_tpr(poison_mask, scores, keep):
                 "With poison (Global threshold)\n",
                 metric='auc', ls="--", c=plt.gca().lines[-1].get_color()
     )
-    
+
     plt.semilogx()
     plt.semilogy()
     plt.xlim(1e-3, 1)

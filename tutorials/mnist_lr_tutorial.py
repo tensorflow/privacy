@@ -30,9 +30,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
 from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
+from com_google_differential_py.python.dp_accounting import dp_event
+from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
@@ -169,10 +170,14 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
-  # Compute privacy guarantees for the Sampled Gaussian Mechanism.
-  rdp_sgm = compute_rdp(batch_size / samples, noise_multiplier,
-                        epochs * steps_per_epoch, orders)
-  eps_sgm, _, _ = get_privacy_spent(orders, rdp_sgm, target_delta=delta)
+  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  event = dp_event.SelfComposedDpEvent(
+      dp_event.PoissonSampledDpEvent(
+          batch_size / samples, dp_event.GaussianDpEvent(noise_multiplier)),
+      epochs * steps_per_epoch)
+  accountant.compose(event)
+  eps_sgm = accountant.get_epsilon(target_delta=delta)
+
   print('By comparison, DP-SGD analysis for training done with the same '
         'parameters and random shuffling in each epoch guarantees '
         '({:.2f}, {})-DP for all samples.'.format(eps_sgm, delta))

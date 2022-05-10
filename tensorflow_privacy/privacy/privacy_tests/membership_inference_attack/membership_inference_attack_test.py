@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
@@ -78,12 +78,23 @@ def get_test_input_logits_only(n_train, n_test):
       logits_test=rng.randn(n_test, 5) + 0.2)
 
 
-class RunAttacksTest(absltest.TestCase):
+class RunAttacksTest(parameterized.TestCase):
 
   def test_run_attacks_size(self):
     result = mia.run_attacks(
         get_test_input(100, 100), SlicingSpec(),
         (AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION))
+
+    self.assertLen(result.single_attack_results, 2)
+
+  def test_run_attacks_parallel_backend(self):
+    result = mia.run_attacks(
+        get_multilabel_test_input(100, 100),
+        SlicingSpec(), (
+            AttackType.THRESHOLD_ATTACK,
+            AttackType.LOGISTIC_REGRESSION,
+        ),
+        backend='threading')
 
     self.assertLen(result.single_attack_results, 2)
 
@@ -214,6 +225,14 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
     result = mia.run_attacks(
         get_multilabel_test_input(100, 100), SlicingSpec(),
         (AttackType.LOGISTIC_REGRESSION,))
+
+    self.assertLen(result.single_attack_results, 1)
+
+  def test_run_attacks_parallel_backend(self):
+    result = mia.run_attacks(
+        get_multilabel_test_input(100, 100),
+        SlicingSpec(), (AttackType.LOGISTIC_REGRESSION,),
+        backend='threading')
 
     self.assertLen(result.single_attack_results, 1)
 

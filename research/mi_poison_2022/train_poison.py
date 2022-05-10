@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: skip-file
+# pyformat: disable
+
 import os
 import shutil
 import json
@@ -73,11 +76,11 @@ def get_data(seed):
         data = tfds.as_numpy(tfds.load(name=FLAGS.dataset, batch_size=-1, data_dir=DATA_DIR))
         inputs = data['train']['image']
         labels = data['train']['label']
-            
+
         inputs = (inputs/127.5)-1
         np.save(os.path.join(FLAGS.logdir, "x_train.npy"), inputs)
         np.save(os.path.join(FLAGS.logdir, "y_train.npy"), labels)
-            
+
     nclass = np.max(labels)+1
 
     np.random.seed(seed)
@@ -139,7 +142,7 @@ def main(argv):
         import time
         seed = np.random.randint(0, 1000000000)
         seed ^= int(time.time())
-        
+
     args = EasyDict(arch=FLAGS.arch,
                     lr=FLAGS.lr,
                     batch=FLAGS.batch,
@@ -166,7 +169,7 @@ def main(argv):
         os.makedirs(logdir)
 
     train, test, xs, ys, keep, nclass = get_data(seed)
-        
+
     # Define the network and train_it
     tm = MemModule(network(FLAGS.arch), nclass=nclass,
                    mnist=FLAGS.dataset == 'mnist',
@@ -186,7 +189,7 @@ def main(argv):
 
     tm.train(FLAGS.epochs, len(xs), train, test, logdir,
              save_steps=FLAGS.save_steps)
-    
+
 
 if __name__ == '__main__':
     flags.DEFINE_string('arch', 'cnn32-3-mean', 'Model architecture.')
