@@ -328,12 +328,12 @@ memorized and the privacy of the individual who contributed this data point to
 our dataset is respected. We often refer to this probability as the privacy
 budget: smaller privacy budgets correspond to stronger privacy guarantees.
 
-Accounting required to compute the privacy budget spent to train our machine
-learning model is another feature provided by TF Privacy. Knowing what level of
-differential privacy was achieved allows us to put into perspective the drop in
-utility that is often observed when switching to differentially private
-optimization. It also allows us to compare two models objectively to determine
-which of the two is more privacy-preserving than the other.
+Google's DP library can be used to compute the privacy budget spent to train our
+machine learning model. Knowing what level of differential privacy was achieved
+allows us to put into perspective the drop in utility that is often observed
+when switching to differentially private optimization. It also allows us to
+compare two models objectively to determine which of the two is more
+privacy-preserving than the other.
 
 Before we derive a bound on the privacy guarantee achieved by our optimizer, we
 first need to identify all the parameters that are relevant to measuring the
@@ -378,37 +378,51 @@ We will express our differential privacy guarantee using two parameters:
     However, this is only an upper bound, and a large value of epsilon could
     still mean good practical privacy.
 
-The TF Privacy library provides two methods relevant to derive privacy
-guarantees achieved from the three parameters outlined in the last code snippet:
-`compute_rdp` and `get_privacy_spent`. These methods are found in its
-`analysis.rdp_accountant` module. Here is how to use them.
+To compute the privacy spent using the Google DP library, we need to define a
+`PrivacyAccountant` and a `DpEvent`. The `PrivacyAccountant` specifies what
+method of privacy accounting will be used. In our case that will be RDP, so we
+use the `RdpAccountant`. The `DpEvent` is a representation of the log of
+privacy-impacting actions that have occurred, in our case, the repeated sampling
+of records and estimation of their mean with Gaussian noise added.
 
-First, we need to define a list of orders, at which the Rényi divergence will be
-computed. While some finer points of how to use the RDP accountant are outside
-the scope of this document, it is useful to keep in mind the following. First,
-there is very little downside in expanding the list of orders for which RDP is
-computed. Second, the computed privacy budget is typically not very sensitive to
-the exact value of the order (being close enough will land you in the right
-neighborhood). Finally, if you are targeting a particular range of epsilons
-(say, 1—10) and your delta is fixed (say, `10^-5`), then your orders must cover
-the range between `1+ln(1/delta)/10≈2.15` and `1+ln(1/delta)/1≈12.5`. This last
-rule may appear circular (how do you know what privacy parameters you get
-without running the privacy accountant?!), one or two adjustments of the range
-of the orders would usually suffice.
+To initialize the `PrivacyAccountant`, we need to define a list of orders, at
+which the Rényi divergence will be computed. While some finer points of how to
+use the RDP accountant are outside the scope of this document, it is useful to
+keep in mind the following. First, there is very little downside in expanding
+the list of orders for which RDP is computed. Second, the computed privacy
+budget is typically not very sensitive to the exact value of the order (being
+close enough will land you in the right neighborhood). Finally, if you are
+targeting a particular range of epsilons (say, 1—10) and your delta is fixed
+(say, `10^-5`), then your orders must cover the range between
+`1+ln(1/delta)/10≈2.15` and `1+ln(1/delta)/1≈12.5`. This last rule may appear
+circular (how do you know what privacy parameters you get without running the
+privacy accountant?!), one or two adjustments of the range of the orders would
+usually suffice.
 
 ```python
 orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-rdp = compute_rdp(q=sampling_probability,
-                  noise_multiplier=FLAGS.noise_multiplier,
-                  steps=steps,
-                  orders=orders)
+accountant = privacy_accountant.RdpAccountant(orders)
 ```
 
-Then, the method `get_privacy_spent` computes the best `epsilon` for a given
-`target_delta` value of delta by taking the minimum over all orders.
+Next we create a `DpEvent` and feed it to the accountant for processing using
+its `compose` method:
 
 ```python
-epsilon = get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+event = dp_event.SelfComposedDpEvent(
+    event=dp_event.PoissonSampledDpEvent(
+        sampling_probability=q,
+        event=dp_event.GaussianDpEvent(noise_multiplier)
+    ),
+    count=steps)
+accountant.compose(event)
+```
+
+Finally, we can query the accountant for the best `epsilon` at the given
+`target_delta` by calling the `get_epsilon` method which takes the minimum over
+all orders.
+
+```python
+epsilon = accountant.get_epsilon(target_delta)
 ```
 
 Running the code snippets above with the hyperparameter values used during
