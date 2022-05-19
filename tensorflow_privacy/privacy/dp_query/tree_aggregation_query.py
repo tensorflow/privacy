@@ -21,16 +21,21 @@ and `tree_aggregation.EfficientTreeAggregator`.
 
 Depending on the data streaming setting (single/multi-pass), the privacy
 accounting method ((epsilon,delta)-DP/RDP/zCDP), and the restart strategy (see
-`restart_query`), the DP bound can be computed by one of the public methods
-in `analysis.tree_aggregation_accountant`.
+`restart_query`), the DP bound can be computed using the DP accounting library
+in differential_privacy/python/accounting.
 
 For example, for a single-pass algorithm where a sample may appear at most once
-in the querying process; if `get_noised_result` is called `steps` times, the
+in the querying process, if `get_noised_result` is called `steps` times, the
 corresponding epsilon for a `target_delta` and `noise_multiplier` to achieve
-(epsilon,delta)-DP can be computed as:
+(epsilon, delta)-DP can be computed as:
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  rdp = compute_rdp_tree_restart(noise_multiplier, [steps], orders)
-  eps = rdp_accountant.get_privacy_spent(orders, rdp, target_delta)[0]
+  accountant = privacy_accountant.RdpAccountant(
+      orders,
+      privacy_accountant.NeighboringRelation.REPLACE_SPECIAL
+  )
+  accountant.compose(
+      dp_event.SingleEpochTreeAggregationDpEvent(noise_multiplier, steps))
+  eps = accountant.get_epsilon(target_delta)
 """
 
 import attr
