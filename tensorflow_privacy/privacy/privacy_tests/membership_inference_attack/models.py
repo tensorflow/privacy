@@ -128,18 +128,18 @@ def _column_stack(logits, loss):
 
 
 class TrainedAttacker:
-    """Base class for training attack models.
+  """Base class for training attack models.
 
-    Attributes:
-      backend: Name of Scikit-Learn parallel backend to use for this attack
-        model. The default value of `None` performs single-threaded training.
-      model: The trained attack model.
-      ctx_mgr: The backend context manager within which to perform training.
-        Defaults to the null context manager for single-threaded training.
-      n_jobs: Number of jobs that can run in parallel when using a backend.
-        Set to `1` for single-threading, and to `-1` for all parallel
-        backends.
-    """
+  Attributes:
+    backend: Name of Scikit-Learn parallel backend to use for this attack
+      model. The default value of `None` performs single-threaded training.
+    model: The trained attack model.
+    ctx_mgr: The backend context manager within which to perform training.
+      Defaults to the null context manager for single-threaded training.
+    n_jobs: Number of jobs that can run in parallel when using a backend.
+      Set to `1` for single-threading, and to `-1` for all parallel
+      backends.
+  """
 
   def __init__(self, backend: Optional[str] = None):
     self.model = None
