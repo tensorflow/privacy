@@ -127,18 +127,18 @@ def _column_stack(logits, loss):
   return np.column_stack((logits, loss))
 
 
-class TrainedAttacker:
-    """Base class for training attack models.
+class TrainedAttacker(object):
+  """Base class for training attack models.
 
-    Attributes:
-      backend: Name of Scikit-Learn parallel backend to use for this attack
-        model. The default value of `None` performs single-threaded training.
-      model: The trained attack model.
-      ctx_mgr: The backend context manager within which to perform training.
-        Defaults to the null context manager for single-threaded training.
-      n_jobs: Number of jobs that can run in parallel when using a backend.
-        Set to `1` for single-threading, and to `-1` for all parallel
-        backends.
+  Attributes:
+    backend: Name of Scikit-Learn parallel backend to use for this attack
+      model. The default value of `None` performs single-threaded training.
+    model: The trained attack model.
+    ctx_mgr: The backend context manager within which to perform training.
+      Defaults to the null context manager for single-threaded training.
+    n_jobs: Number of jobs that can run in parallel when using a backend.
+      Set to `1` for single-threading, and to `-1` for all parallel
+      backends.
     """
 
   def __init__(self, backend: Optional[str] = None):
@@ -148,6 +148,7 @@ class TrainedAttacker:
       # Default value of `None` will perform single-threaded training.
       self.ctx_mgr = contextlib.nullcontext()
       self.n_jobs = 1
+      logging.info('Using single-threaded backend for training.')
     else:
       self.n_jobs = -1
       self.ctx_mgr = parallel_backend(
@@ -189,6 +190,9 @@ class TrainedAttacker:
 class LogisticRegressionAttacker(TrainedAttacker):
   """Logistic regression attacker."""
 
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
+
   def train_model(self, input_features, is_training_labels):
     with self.ctx_mgr:
       lr = linear_model.LogisticRegression(solver='lbfgs', n_jobs=self.n_jobs)
@@ -203,6 +207,9 @@ class LogisticRegressionAttacker(TrainedAttacker):
 
 class MultilayerPerceptronAttacker(TrainedAttacker):
   """Multilayer perceptron attacker."""
+
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
 
   def train_model(self, input_features, is_training_labels):
     with self.ctx_mgr:
@@ -220,6 +227,9 @@ class MultilayerPerceptronAttacker(TrainedAttacker):
 
 class RandomForestAttacker(TrainedAttacker):
   """Random forest attacker."""
+
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
 
   def train_model(self, input_features, is_training_labels):
     """Setup a random forest pipeline with cross-validation."""
@@ -241,6 +251,9 @@ class RandomForestAttacker(TrainedAttacker):
 
 class KNearestNeighborsAttacker(TrainedAttacker):
   """K nearest neighbor attacker."""
+
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
 
   def train_model(self, input_features, is_training_labels):
     with self.ctx_mgr:
