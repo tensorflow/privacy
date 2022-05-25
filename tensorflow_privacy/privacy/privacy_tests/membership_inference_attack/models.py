@@ -139,7 +139,7 @@ class TrainedAttacker(object):
     n_jobs: Number of jobs that can run in parallel when using a backend.
       Set to `1` for single-threading, and to `-1` for all parallel
       backends.
-    """
+  """
 
   def __init__(self, backend: Optional[str] = None):
     self.model = None
