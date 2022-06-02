@@ -17,7 +17,7 @@ git_repository(
 git_repository(
   name = "com_google_differential_py",
   remote = "https://github.com/google/differential-privacy.git",
-  commit = "025111e75114a96b8d54ba88e483a2b0f99a2954",
+  commit = "5e7cf28bf55ebac52fc65419364388c33ebc01a4",
 )
 
 # This is a workaround until the @com_google_differential_py WORKSPACE declares
