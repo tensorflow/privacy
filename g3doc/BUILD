@@ -1,8 +1,11 @@
 load("@rules_python//python:defs.bzl", "py_binary")
+load("//third_party/py/tensorflow_docs/google:tf_org.bzl", "tf_org_check_links")
 
 package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
+
+tf_org_check_links(name = "check_links")
 
 py_binary(
     name = "build_docs",
