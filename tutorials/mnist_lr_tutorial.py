@@ -30,7 +30,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 from com_google_differential_py.python.dp_accounting import dp_event
 from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
@@ -167,7 +166,7 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
     rdp = [order * coef for order in orders]
-    eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
+    eps = rdp_privacy_accountant.compute_epsilon(orders, rdp, delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
   accountant = rdp_privacy_accountant.RdpAccountant(orders)
