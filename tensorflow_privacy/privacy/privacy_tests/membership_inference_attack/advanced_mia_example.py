@@ -178,7 +178,7 @@ def main(unused_argv):
         loss_train=scores[in_indices_target],
         loss_test=scores[~in_indices_target])
     result_lira = mia.run_attacks(attack_input).single_attack_results[0]
-    print('Better MIA attack with Gaussian:',
+    print('Advanced MIA attack with Gaussian:',
           f'auc = {result_lira.get_auc():.4f}',
           f'adv = {result_lira.get_attacker_advantage():.4f}')
 
@@ -190,7 +190,7 @@ def main(unused_argv):
         loss_train=scores[in_indices_target],
         loss_test=scores[~in_indices_target])
     result_offset = mia.run_attacks(attack_input).single_attack_results[0]
-    print('Better MIA attack with offset:',
+    print('Advanced MIA attack with offset:',
           f'auc = {result_offset.get_auc():.4f}',
           f'adv = {result_offset.get_attacker_advantage():.4f}')
 

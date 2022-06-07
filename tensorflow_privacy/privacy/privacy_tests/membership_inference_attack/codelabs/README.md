@@ -25,6 +25,15 @@ risk score) developed by Song and Mittal, please see their
 
 The accompanying paper is on [arXiv](https://arxiv.org/abs/2003.10595).
 
+## Word2Vec models
+
+If you're interested in word2vec models, please see the
+[word2vec codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/privacy_tests/membership_inference_attack/codelabs/word2vec_codelab.ipynb).
+
+This notebook implements advanced membership inference, as well as a secret
+sharer attack. Based on [this paper](https://arxiv.org/abs/2004.00053) and
+[this code](https://github.com/google/embedding-tests).
+
 ## Copyright
 
 Copyright 2020 - Google LLC

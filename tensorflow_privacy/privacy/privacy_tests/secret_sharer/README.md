@@ -1,14 +1,14 @@
 # Secret Sharer Attack
 
-A good privacy-preserving model learns from the training data, but
-doesn't memorize it.
-This folder contains codes for conducting the Secret Sharer attack from [this paper](https://arxiv.org/abs/1802.08232).
-It is a method to test if a machine learning model memorizes its training data.
+A good privacy-preserving model learns from the training data, but doesn't
+memorize it. This folder contains codes for conducting the Secret Sharer attack
+from [this paper](https://arxiv.org/abs/1802.08232). It is a method to test if a
+machine learning model memorizes its training data.
 
 The high level idea is to insert some random sequences as “secrets” into the
-training data, and then measure if the model has memorized those secrets.
-If there is significant memorization, it means that there can be potential
-privacy risk.
+training data, and then measure if the model has memorized those secrets. If
+there is significant memorization, it means that there can be potential privacy
+risk.
 
 ## How to Use
 
@@ -19,6 +19,16 @@ privacy risk.
 -   `secret_sharer_example.ipynb` is an example (character-level LSTM) for using
     the above code to conduct secret sharer attack.
 
+### More Usage Examples
+
+## Word2Vec models
+
+If you're interested in word2vec models, please see the
+[word2vec codelab](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/privacy_tests/membership_inference_attack/codelabs/word2vec_codelab.ipynb).
+
+In addition to secret sharer, this notebook also implements membership inference
+attacks. Based on [this paper](https://arxiv.org/abs/2004.00053) and
+[this code](https://github.com/google/embedding-tests).
 
 ### Contact / Feedback
 
