@@ -25,18 +25,6 @@ else:
   # TensorFlow v1 imports
   from tensorflow_privacy import v1
 
-  # DpEvents
-  from com_google_differential_py.python.dp_accounting.dp_event import DpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import NoOpDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import NonPrivateDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import UnsupportedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import GaussianDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SelfComposedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import ComposedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import PoissonSampledDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithReplacementDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithoutReplacementDpEvent
-
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
   from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogeneous_rdp

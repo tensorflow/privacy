@@ -37,7 +37,6 @@ py_library(
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras_vectorized",
         "//tensorflow_privacy/v1:tensorflow_privacy_v1",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 
