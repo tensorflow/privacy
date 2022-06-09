@@ -121,5 +121,7 @@ py_test(
     deps = [
         ":rdp_accountant",
         ":tree_aggregation_accountant",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
