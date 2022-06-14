@@ -14,17 +14,14 @@
 # =============================================================================
 """Run auditing on the FashionMNIST dataset."""
 
-import numpy as np
-import tensorflow.compat.v1 as tf
-
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
-from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
-
 from absl import app
 from absl import flags
-
 import audit
+from differential_privacy.python.accounting import dp_event
+from differential_privacy.python.accounting.rdp import rdp_privacy_accountant
+import numpy as np
+import tensorflow.compat.v1 as tf
+from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
 
 #### FLAGS
 FLAGS = flags.FLAGS
@@ -55,12 +52,12 @@ def compute_epsilon(train_size):
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / train_size
   steps = FLAGS.epochs * train_size / FLAGS.batch_size
-  rdp = compute_rdp(q=sampling_probability,
-                    noise_multiplier=FLAGS.noise_multiplier,
-                    steps=steps,
-                    orders=orders)
+  event = dp_event.PoissonSampledDpEvent(
+      sampling_probability, dp_event.GaussianDpEvent(FLAGS.noise_multiplier))
+  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  accountant.compose(event, steps)
   # Delta is set to approximate 1 / (number of training points).
-  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+  return accountant.get_epsilon(target_delta=1e-5)
 
 def build_model(x, y):
   """Build a keras model."""
