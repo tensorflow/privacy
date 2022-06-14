@@ -16,7 +16,6 @@ py_library(
     deps = [
         ":version",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
-        "//tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//tensorflow_privacy/privacy/analysis:tree_aggregation_accountant",
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:discrete_gaussian_query",
