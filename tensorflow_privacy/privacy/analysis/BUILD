@@ -63,6 +63,27 @@ py_library(
 )
 
 py_library(
+    name = "rdp_accountant",
+    srcs = ["rdp_accountant.py"],
+    srcs_version = "PY3",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting:privacy_accountant",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+    ],
+)
+
+py_test(
+    name = "rdp_accountant_test",
+    size = "small",
+    srcs = ["rdp_accountant_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":rdp_accountant"],
+)
+
+py_library(
     name = "tensor_buffer",
     srcs = ["tensor_buffer.py"],
     srcs_version = "PY3",
@@ -98,6 +119,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
+        ":rdp_accountant",
         ":tree_aggregation_accountant",
         "@com_google_differential_py//python/dp_accounting:dp_event",
         "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
