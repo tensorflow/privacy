@@ -27,7 +27,6 @@ py_library(
         "binary_class_head.py",
     ],
     srcs_version = "PY3",
-    deps = ["//third_party/tensorflow_estimator/python/estimator:binary_class_head"],
 )
 
 py_library(
@@ -36,7 +35,6 @@ py_library(
         "multi_class_head.py",
     ],
     srcs_version = "PY3",
-    deps = ["//third_party/tensorflow_estimator/python/estimator:multi_class_head"],
 )
 
 py_library(
@@ -45,7 +43,6 @@ py_library(
         "multi_label_head.py",
     ],
     srcs_version = "PY3",
-    deps = ["//third_party/tensorflow_estimator/python/estimator:multi_label_head"],
 )
 
 py_library(
