@@ -86,7 +86,6 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
         "@com_google_differential_py//python/dp_accounting:dp_event",
         "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
