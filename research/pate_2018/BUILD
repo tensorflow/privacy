@@ -1,4 +1,6 @@
-package(default_visibility = ["//visibility:private"])
+load("@rules_python//python:defs.bzl", "py_library")
+
+package(default_visibility = ["//visibility:public"])
 
 licenses(["notice"])
 
@@ -11,4 +13,9 @@ filegroup(
         "smooth_sensitivity_test.py",
     ],
     tags = ["ignore_srcs"],
+)
+
+py_library(
+    name = "core",
+    srcs = ["core.py"],
 )
