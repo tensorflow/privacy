@@ -14,12 +14,9 @@
 # ==============================================================================
 
 from absl.testing import parameterized
+from com_google_differential_py.python.dp_accounting
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.analysis import tree_aggregation_accountant
-
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 
 class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
@@ -33,8 +30,7 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     steps_list, target_delta = 1600, 1e-6
     rdp = tree_aggregation_accountant.compute_rdp_tree_restart(
         noise_multiplier, steps_list, orders)
-    new_eps = rdp_privacy_accountant.compute_epsilon(orders, rdp,
-                                                     target_delta)[0]
+    new_eps = dp_accounting.compute_epsilon(orders, rdp, target_delta)[0]
     self.assertLess(new_eps, eps)
 
   @parameterized.named_parameters(
@@ -67,7 +63,7 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     for noise_multiplier in [0.1 * x for x in range(1, 100, 5)]:
       rdp = tree_aggregation_accountant.compute_rdp_tree_restart(
           noise_multiplier, steps_list, orders)
-      eps = rdp_privacy_accountant.compute_epsilon(orders, rdp, target_delta)[0]
+      eps = dp_accounting.compute_epsilon(orders, rdp, target_delta)[0]
       self.assertLess(eps, prev_eps)
       prev_eps = eps
 
@@ -90,8 +86,9 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
     tree_rdp = tree_aggregation_accountant.compute_rdp_tree_restart(
         noise_multiplier, [1] * total_steps, orders)
-    accountant = rdp_privacy_accountant.RdpAccountant(orders)
-    accountant.compose(dp_event.GaussianDpEvent(noise_multiplier), total_steps)
+    accountant = dp_accounting.RdpAccountant(orders)
+    accountant.compose(
+        dp_accounting.GaussianDpEvent(noise_multiplier), total_steps)
     rdp = accountant._rdp  # pylint: disable=protected-access
     self.assertAllClose(tree_rdp, rdp, rtol=1e-12)
 
