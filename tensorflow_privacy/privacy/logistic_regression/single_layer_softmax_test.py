@@ -31,10 +31,9 @@ class SingleLayerSoftmaxTest(parameterized.TestCase):
                                 num_classes, tolerance):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
         num_train, num_test, dimension, num_classes)
-    accuracy = single_layer_softmax.single_layer_softmax_classifier(
+    _, accuracy = single_layer_softmax.single_layer_softmax_classifier(
         train_dataset, test_dataset, epochs, num_classes, 'sgd')
     self.assertAlmostEqual(accuracy[-1], 1, delta=tolerance)
-
 
 if __name__ == '__main__':
   unittest.main()
