@@ -26,13 +26,12 @@ import math
 from absl import app
 from absl import flags
 from absl import logging
+from com_google_differential_py.python.dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 
@@ -166,13 +165,14 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
     rdp = [order * coef for order in orders]
-    eps = rdp_privacy_accountant.compute_epsilon(orders, rdp, delta)
+    eps = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
-  accountant = rdp_privacy_accountant.RdpAccountant(orders)
-  event = dp_event.SelfComposedDpEvent(
-      dp_event.PoissonSampledDpEvent(
-          batch_size / samples, dp_event.GaussianDpEvent(noise_multiplier)),
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(
+          batch_size / samples,
+          dp_accounting.GaussianDpEvent(noise_multiplier)),
       epochs * steps_per_epoch)
   accountant.compose(event)
   eps_sgm = accountant.get_epsilon(target_delta=delta)
