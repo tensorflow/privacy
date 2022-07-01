@@ -27,7 +27,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 
@@ -38,7 +39,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 
@@ -49,7 +51,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 
@@ -60,7 +63,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_vectorized",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 
@@ -83,7 +87,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 
@@ -94,7 +99,8 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//python/dp_accounting",
+        "@com_google_differential_py//python/dp_accounting:dp_event",
+        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
     ],
 )
 

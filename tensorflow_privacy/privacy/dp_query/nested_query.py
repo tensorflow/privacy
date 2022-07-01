@@ -15,10 +15,11 @@
 
 import collections
 
-from com_google_differential_py.python.dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 import tree
+
+from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class NestedQuery(dp_query.DPQuery):
@@ -101,7 +102,7 @@ class NestedQuery(dp_query.DPQuery):
 
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
             tf.nest.pack_sequence_as(self._queries, flat_new_global_states),
-            dp_accounting.ComposedDpEvent(events=flat_events))
+            dp_event.ComposedDpEvent(events=flat_events))
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""

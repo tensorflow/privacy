@@ -28,12 +28,15 @@ the algorithm of Abadi et al.: https://arxiv.org/pdf/1607.00133.pdf%20.
 import math
 from typing import List, Optional, Tuple
 
-from com_google_differential_py.python.dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
+
+from com_google_differential_py.python.dp_accounting import dp_event
+from com_google_differential_py.python.dp_accounting import mechanism_calibration
+from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 
 @tf.keras.utils.register_keras_serializable(package='Custom', name='Kifer')
@@ -173,17 +176,17 @@ def compute_dpsgd_noise_multiplier(num_train: int,
   steps = int(math.ceil(epochs * num_train / batch_size))
 
   def make_event_from_param(noise_multiplier):
-    return dp_accounting.SelfComposedDpEvent(
-        dp_accounting.PoissonSampledDpEvent(
+    return dp_event.SelfComposedDpEvent(
+        dp_event.PoissonSampledDpEvent(
             sampling_probability=batch_size / num_train,
-            event=dp_accounting.GaussianDpEvent(noise_multiplier)), steps)
+            event=dp_event.GaussianDpEvent(noise_multiplier)), steps)
 
-  return dp_accounting.calibrate_dp_mechanism(
-      lambda: dp_accounting.rdp.RdpAccountant(orders),
+  return mechanism_calibration.calibrate_dp_mechanism(
+      lambda: rdp_privacy_accountant.RdpAccountant(orders),
       make_event_from_param,
       epsilon,
       delta,
-      dp_accounting.LowerEndpointAndGuess(0, 1),
+      mechanism_calibration.LowerEndpointAndGuess(0, 1),
       tol=tolerance)
 
 

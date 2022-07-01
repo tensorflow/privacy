@@ -34,11 +34,11 @@ corresponding epsilon for a `target_delta` and `noise_multiplier` to achieve
 """
 
 import attr
-from com_google_differential_py.python.dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 
+from com_google_differential_py.python.dp_accounting import dp_event
 
 # TODO(b/193679963): define `RestartQuery` and move `RestartIndicator` to be
 # in the same module.
@@ -186,7 +186,7 @@ class TreeCumulativeSumQuery(dp_query.SumAggregationDPQuery):
         global_state,
         samples_cumulative_sum=new_cumulative_sum,
         tree_state=new_tree_state)
-    event = dp_accounting.UnsupportedDpEvent()
+    event = dp_event.UnsupportedDpEvent()
     return noised_cumulative_sum, new_global_state, event
 
   def reset_state(self, noised_results, global_state):
@@ -428,7 +428,7 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
                                           global_state.previous_tree_noise)
     new_global_state = attr.evolve(
         global_state, previous_tree_noise=tree_noise, tree_state=new_tree_state)
-    event = dp_accounting.UnsupportedDpEvent()
+    event = dp_event.UnsupportedDpEvent()
     return noised_sample, new_global_state, event
 
   def reset_state(self, noised_results, global_state):

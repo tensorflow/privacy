@@ -16,9 +16,10 @@
 import collections
 import distutils
 
-from com_google_differential_py.python.dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
+
+from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class GaussianSumQuery(dp_query.SumAggregationDPQuery):
@@ -93,6 +94,6 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
 
     result = tf.nest.map_structure(add_noise, sample_state)
     noise_multiplier = global_state.stddev / global_state.l2_norm_clip
-    event = dp_accounting.GaussianDpEvent(noise_multiplier)
+    event = dp_event.GaussianDpEvent(noise_multiplier)
 
     return result, global_state, event
