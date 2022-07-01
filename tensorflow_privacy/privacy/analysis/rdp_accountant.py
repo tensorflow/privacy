@@ -41,11 +41,8 @@ The example code would be:
   eps, _, opt_order = rdp_accountant.get_privacy_spent(rdp, target_delta=delta)
 """
 
+from com_google_differential_py.python.dp_accounting
 import numpy as np
-
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting import privacy_accountant
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 
 def _compute_rdp_from_event(orders, event, count):
@@ -61,15 +58,14 @@ def _compute_rdp_from_event(orders, event, count):
   """
   orders_vec = np.atleast_1d(orders)
 
-  if isinstance(event, dp_event.SampledWithoutReplacementDpEvent):
-    neighboring_relation = privacy_accountant.NeighboringRelation.REPLACE_ONE
-  elif isinstance(event, dp_event.SingleEpochTreeAggregationDpEvent):
-    neighboring_relation = privacy_accountant.NeighboringRelation.REPLACE_SPECIAL
+  if isinstance(event, dp_accounting.SampledWithoutReplacementDpEvent):
+    neighboring_relation = dp_accounting.NeighboringRelation.REPLACE_ONE
+  elif isinstance(event, dp_accounting.SingleEpochTreeAggregationDpEvent):
+    neighboring_relation = dp_accounting.NeighboringRelation.REPLACE_SPECIAL
   else:
-    neighboring_relation = privacy_accountant.NeighboringRelation.ADD_OR_REMOVE_ONE
+    neighboring_relation = dp_accounting.NeighboringRelation.ADD_OR_REMOVE_ONE
 
-  accountant = rdp_privacy_accountant.RdpAccountant(orders_vec,
-                                                    neighboring_relation)
+  accountant = dp_accounting.rdp.RdpAccountant(orders_vec, neighboring_relation)
   accountant.compose(event, count)
   rdp = accountant._rdp  # pylint: disable=protected-access
 
@@ -96,8 +92,8 @@ def compute_rdp(q, noise_multiplier, steps, orders):
   Returns:
     The RDPs at all orders. Can be `np.inf`.
   """
-  event = dp_event.PoissonSampledDpEvent(
-      q, dp_event.GaussianDpEvent(noise_multiplier))
+  event = dp_accounting.PoissonSampledDpEvent(
+      q, dp_accounting.GaussianDpEvent(noise_multiplier))
 
   return _compute_rdp_from_event(orders, event, steps)
 
@@ -129,8 +125,8 @@ def compute_rdp_sample_without_replacement(q, noise_multiplier, steps, orders):
   Returns:
     The RDPs at all orders, can be np.inf.
   """
-  event = dp_event.SampledWithoutReplacementDpEvent(
-      1, q, dp_event.GaussianDpEvent(noise_multiplier))
+  event = dp_accounting.SampledWithoutReplacementDpEvent(
+      1, q, dp_accounting.GaussianDpEvent(noise_multiplier))
 
   return _compute_rdp_from_event(orders, event, steps)
 
@@ -195,7 +191,7 @@ def get_privacy_spent(orders, rdp, target_eps=None, target_delta=None):
     raise ValueError(
         "Exactly one out of eps and delta must be None. (None is).")
 
-  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
   accountant._rdp = rdp  # pylint: disable=protected-access
 
   if target_eps is not None:

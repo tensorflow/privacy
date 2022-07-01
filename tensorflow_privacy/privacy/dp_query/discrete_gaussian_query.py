@@ -15,11 +15,10 @@
 
 import collections
 
+from com_google_differential_py.python.dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import discrete_gaussian_utils
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class DiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
@@ -84,5 +83,5 @@ class DiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
       return tf.ensure_shape(noised_v, v.shape)
 
     result = tf.nest.map_structure(add_noise, sample_state)
-    event = dp_event.UnsupportedDpEvent()
+    event = dp_accounting.UnsupportedDpEvent()
     return result, global_state, event

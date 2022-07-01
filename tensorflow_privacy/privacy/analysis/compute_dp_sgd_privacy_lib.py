@@ -17,18 +17,18 @@
 import math
 
 from absl import app
-
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
+from com_google_differential_py.python.dp_accounting
 
 
 def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
   """Compute and print results of DP-SGD analysis."""
 
-  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
 
-  event = dp_event.SelfComposedDpEvent(
-      dp_event.PoissonSampledDpEvent(q, dp_event.GaussianDpEvent(sigma)), steps)
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(q,
+                                          dp_accounting.GaussianDpEvent(sigma)),
+      steps)
 
   accountant.compose(event)
 

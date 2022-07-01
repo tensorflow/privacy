@@ -16,14 +16,13 @@
 from absl import app
 from absl import flags
 from absl import logging
+from com_google_differential_py.python.dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
 
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -51,13 +50,13 @@ def compute_epsilon(steps):
   if FLAGS.noise_multiplier == 0.0:
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
 
   sampling_probability = FLAGS.batch_size / 60000
-  event = dp_event.SelfComposedDpEvent(
-      dp_event.PoissonSampledDpEvent(
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(
           sampling_probability,
-          dp_event.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
+          dp_accounting.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
 
   accountant.compose(event)
 
