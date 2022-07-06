@@ -33,7 +33,7 @@ setup(
         'matplotlib~=3.3.4',
         'numpy~=1.21.5',
         'pandas~=1.1.4',
-        'scipy~=1.5.0',
+        'scipy~=1.7.1',
         'scikit-learn~=1.0.2',
         'tensorflow-datasets~=4.5.2',
         'tensorflow-estimator~=2.4',
