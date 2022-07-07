@@ -26,7 +26,7 @@ import math
 from absl import app
 from absl import flags
 from absl import logging
-from com_google_differential_py.python.dp_accounting
+import com_google_differential_py.python.dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator

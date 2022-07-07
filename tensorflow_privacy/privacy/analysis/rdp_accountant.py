@@ -41,7 +41,7 @@ The example code would be:
   eps, _, opt_order = rdp_accountant.get_privacy_spent(rdp, target_delta=delta)
 """
 
-from com_google_differential_py.python.dp_accounting
+import com_google_differential_py.python.dp_accounting
 import numpy as np
 
 

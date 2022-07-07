@@ -17,7 +17,7 @@
 import math
 
 from absl import app
-from com_google_differential_py.python.dp_accounting
+import com_google_differential_py.python.dp_accounting
 
 
 def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):

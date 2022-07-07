@@ -28,7 +28,7 @@ the algorithm of Abadi et al.: https://arxiv.org/pdf/1607.00133.pdf%20.
 import math
 from typing import List, Optional, Tuple
 
-from com_google_differential_py.python.dp_accounting
+import com_google_differential_py.python.dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow_privacy.privacy.logistic_regression import datasets
