@@ -13,7 +13,7 @@ py_library(
     name = "compute_dp_sgd_privacy_lib",
     srcs = ["compute_dp_sgd_privacy_lib.py"],
     srcs_version = "PY3",
-    deps = ["@com_google_differential_py//python/dp_accounting:accounting"],
+    deps = ["@com_google_differential_py//dp_accounting:accounting"],
 )
 
 py_binary(
@@ -42,7 +42,7 @@ py_binary(
 py_library(
     name = "compute_noise_from_budget_lib",
     srcs = ["compute_noise_from_budget_lib.py"],
-    deps = ["@com_google_differential_py//python/dp_accounting:accounting"],
+    deps = ["@com_google_differential_py//dp_accounting:accounting"],
 )
 
 py_test(
@@ -61,7 +61,7 @@ py_library(
     srcs = ["rdp_accountant.py"],
     srcs_version = "PY3",
     visibility = ["//visibility:public"],
-    deps = ["@com_google_differential_py//python/dp_accounting:accounting"],
+    deps = ["@com_google_differential_py//dp_accounting:accounting"],
 )
 
 py_test(
@@ -110,6 +110,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":tree_aggregation_accountant",
-        "@com_google_differential_py//python/dp_accounting:accounting",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )

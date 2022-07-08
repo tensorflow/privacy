@@ -14,7 +14,7 @@
 # ==============================================================================
 
 from absl.testing import parameterized
-import com_google_differential_py.python.dp_accounting
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.analysis import tree_aggregation_accountant
 

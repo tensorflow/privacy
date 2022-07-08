@@ -13,7 +13,7 @@
 # limitations under the License.
 """Implements DPQuery interface for no privacy average queries."""
 
-import com_google_differential_py.python.dp_accounting
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 

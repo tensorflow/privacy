@@ -16,7 +16,7 @@
 from absl import app
 from absl import flags
 from absl import logging
-import com_google_differential_py.python.dp_accounting
+import dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras import DPKerasSGDOptimizer

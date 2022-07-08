@@ -17,7 +17,7 @@
 import math
 
 from absl import app
-import com_google_differential_py.python.dp_accounting
+import dp_accounting
 from scipy import optimize
 
 
