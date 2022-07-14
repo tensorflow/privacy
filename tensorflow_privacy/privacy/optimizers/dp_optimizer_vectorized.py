@@ -103,6 +103,7 @@ def make_vectorized_optimizer_class(cls):
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
+      self._was_compute_gradients_called = False
 
     def compute_gradients(self,
                           loss,
@@ -113,6 +114,7 @@ def make_vectorized_optimizer_class(cls):
                           grad_loss=None,
                           gradient_tape=None):
       """DP-SGD version of base class method."""
+      self._was_compute_gradients_called = True
       if callable(loss):
         # TF is running in Eager mode
         raise NotImplementedError('Vectorized optimizer unavailable for TF2.')
@@ -174,6 +176,17 @@ def make_vectorized_optimizer_class(cls):
                                             clipped_grads)
 
         return list(zip(final_grads, var_list))
+
+    def apply_gradients(self, grads_and_vars, global_step=None, name=None):
+      # pylint: disable=g-doc-args, g-doc-return-or-yield
+      """DP-SGD version of base class method."""
+      assert self._was_compute_gradients_called, (
+          'compute_gradients() on the differentially private optimizer was not'
+          ' called. Which means that the training is not differentially '
+          'private. It happens for example in Keras training in TensorFlow '
+          '2.0+.')
+      return super(DPOptimizerClass, self).apply_gradients(
+          grads_and_vars=grads_and_vars, global_step=global_step, name=name)
 
   return DPOptimizerClass
 
