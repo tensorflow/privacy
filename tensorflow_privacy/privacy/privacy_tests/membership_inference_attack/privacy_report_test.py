@@ -38,7 +38,8 @@ class PrivacyReportTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0),
         data_size=DataSize(ntrain=1, ntest=1))
 
     # Classifier that achieves an AUC of 1.0.
@@ -48,7 +49,8 @@ class PrivacyReportTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 1.0, 1.0]),
             fpr=np.array([1.0, 1.0, 0.0]),
-            thresholds=np.array([0, 1, 2])),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0),
         data_size=DataSize(ntrain=1, ntest=1))
 
     self.results_epoch_0 = AttackResults(

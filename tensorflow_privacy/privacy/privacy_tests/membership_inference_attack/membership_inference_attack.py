@@ -98,7 +98,15 @@ def _run_trained_attack(attack_input: AttackInputData,
 
   # Generate ROC curves with scores.
   fpr, tpr, thresholds = metrics.roc_curve(labels, scores)
-  roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
+  # 'test_train_ratio' is the ratio of test data size to train data size. It is
+  # used to compute the Positive Predictive Value.
+  test_train_ratio = ((prepared_attacker_data.data_size.ntest) /
+                      (prepared_attacker_data.data_size.ntrain))
+  roc_curve = RocCurve(
+      tpr=tpr,
+      fpr=fpr,
+      thresholds=thresholds,
+      test_train_ratio=test_train_ratio)
 
   in_train_indices = (labels == 0)
   return SingleAttackResult(
@@ -125,8 +133,15 @@ def _run_threshold_attack(attack_input: AttackInputData):
   fpr, tpr, thresholds = metrics.roc_curve(
       np.concatenate((np.zeros(ntrain), np.ones(ntest))),
       np.concatenate((loss_train, loss_test)))
+  # 'test_train_ratio' is the ratio of test data size to train data size. It is
+  # used to compute the Positive Predictive Value.
+  test_train_ratio = ntest / ntrain
 
-  roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
+  roc_curve = RocCurve(
+      tpr=tpr,
+      fpr=fpr,
+      thresholds=thresholds,
+      test_train_ratio=test_train_ratio)
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
@@ -147,8 +162,15 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
       np.concatenate((np.zeros(ntrain), np.ones(ntest))),
       np.concatenate(
           (attack_input.get_entropy_train(), attack_input.get_entropy_test())))
+  # 'test_train_ratio' is the ratio of test data size to train data size. It is
+  # used to compute the Positive Predictive Value.
+  test_train_ratio = ntest / ntrain
 
-  roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
+  roc_curve = RocCurve(
+      tpr=tpr,
+      fpr=fpr,
+      thresholds=thresholds,
+      test_train_ratio=test_train_ratio)
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
@@ -250,9 +272,11 @@ def run_attacks(attack_input: AttackInputData,
                                   balance_attacker_training, min_num_samples,
                                   backend)
       if attack_result is not None:
-        logging.info('%s attack had an AUC=%s and attacker advantage=%s',
-                     attack_type.name, attack_result.get_auc(),
-                     attack_result.get_attacker_advantage())
+        logging.info(
+            '%s attack had an AUC=%s, attacker advantage=%s and '
+            'positive predictive value=%s', attack_type.name,
+            attack_result.get_auc(), attack_result.get_attacker_advantage(),
+            attack_result.get_ppv())
         attack_results.append(attack_result)
 
   privacy_report_metadata = _compute_missing_privacy_report_metadata(

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
@@ -86,6 +88,19 @@ class RunAttacksTest(parameterized.TestCase):
         (AttackType.THRESHOLD_ATTACK, AttackType.LOGISTIC_REGRESSION))
 
     self.assertLen(result.single_attack_results, 2)
+
+  @parameterized.named_parameters(
+      ('low_ratio', 100, 10),
+      ('ratio_1', 100, 100),
+      ('high_ratio', 100, 1000),
+  )
+  def test_test_train_ratio(self, ntrain, ntest):
+    test_input = get_test_input(ntrain, ntest)
+    expected_test_train_ratio = ntest / ntrain
+    calculated_test_train_ratio = (
+        test_input.get_test_size() / test_input.get_train_size())
+
+    self.assertEqual(expected_test_train_ratio, calculated_test_train_ratio)
 
   def test_run_attacks_parallel_backend(self):
     result = mia.run_attacks(
@@ -179,6 +194,26 @@ class RunAttacksTest(parameterized.TestCase):
         AttackType.THRESHOLD_ENTROPY_ATTACK)
 
     np.testing.assert_almost_equal(result.roc_curve.get_auc(), 0.83, decimal=2)
+
+  @mock.patch('sklearn.metrics.roc_curve')
+  def test_run_attack_threshold_entropy_small_tpr_fpr_correct_ppv(
+      self, patched_fn):
+    # sklearn.metrics.roc_curve returns (fpr, tpr, thresholds).
+    patched_fn.return_value = ([0.2, 0.04, 0.0003], [0.1, 0.0001,
+                                                     0.0002], [0.2, 0.4, 0.6])
+    result = mia._run_attack(
+        AttackInputData(
+            entropy_train=np.array([0.1, 0.2, 1.3, 0.4, 0.5, 0.6]),
+            entropy_test=np.array([1.1, 1.2, 1.3, 0.4, 1.5, 1.6]),
+            force_multilabel_data=False), AttackType.THRESHOLD_ENTROPY_ATTACK)
+    # PPV = TPR / (TPR + test_train_ratio * FPR), except when both TPR and FPR
+    # are close to 0. Then PPV = 1/ (1 + test_train_ratio)
+    # With the above values, TPR / (TPR + test_train_ratio * FPR) =
+    # 0.1 / (0.1 + (6/6) * 0.2) = 0.333,
+    # 0.0001 / (0.0001 + (6/6) * 0.04) = 0.002493,
+    # and 1/ (1+ (6/6)) = 0.5. So PPV is the max of these three values,
+    # namely 0.5.
+    np.testing.assert_almost_equal(result.roc_curve.get_ppv(), 0.5, decimal=2)
 
   def test_run_attack_by_slice(self):
     result = mia.run_attacks(
@@ -280,6 +315,38 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
     self.assertAlmostEqual(
         mia._get_multilabel_accuracy(predictions, labels), 5 / 9, places=6)
     self.assertIsNone(mia._get_accuracy(None, labels))
+
+  def test_run_multilabel_attack_threshold_calculates_correct_ppv(self):
+    result = mia._run_attack(
+        AttackInputData(
+            loss_train=np.array([[0.1, 0.2], [1.3, 0.4], [0.5, 0.6], [0.9,
+                                                                      0.6]]),
+            loss_test=np.array([[1.1, 1.2], [1.3, 0.4], [1.5, 1.6]]),
+            force_multilabel_data=True), AttackType.THRESHOLD_ATTACK)
+
+    np.testing.assert_almost_equal(result.roc_curve.get_ppv(), 1.0, decimal=2)
+
+  @mock.patch('sklearn.metrics.roc_curve')
+  def test_run_multilabel_attack_threshold_small_tpr_fpr_correct_ppv(
+      self, patched_fn):
+    # sklearn.metrics.roc_curve returns (fpr, tpr, thresholds).
+    patched_fn.return_value = ([0.2, 0.04, 0.0003], [0.1, 0.0001,
+                                                     0.0002], [0.2, 0.4, 0.6])
+    result = mia._run_attack(
+        AttackInputData(
+            loss_train=np.array([[0.1, 0.2], [1.3, 0.4], [0.5, 0.6], [0.9,
+                                                                      0.6]]),
+            loss_test=np.array([[1.1, 1.2], [1.3, 0.4], [1.5, 1.6]]),
+            force_multilabel_data=True), AttackType.THRESHOLD_ATTACK)
+    # PPV = TPR / (TPR + test_train_ratio * FPR), except when both TPR and FPR
+    # are close to 0. Then PPV = 1/ (1 + test_train_ratio)
+    # With the above values, TPR / (TPR + test_train_ratio * FPR) =
+    # 0.1 / (0.1 + (3/4) * 0.2) = 0.4,
+    # 0.0001 / (0.0001 + (3/4) * 0.04) = 0.003322,
+    # and 1/ (1+ 0.75) = 0.57142. So PPV is the max of these three values,
+    # namely 0.57142.
+    np.testing.assert_almost_equal(
+        result.roc_curve.get_ppv(), 0.57142, decimal=2)
 
 
 if __name__ == '__main__':

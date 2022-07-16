@@ -14,6 +14,7 @@
 
 import os
 import tempfile
+from unittest import mock
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -394,13 +395,14 @@ class AttackInputDataTest(parameterized.TestCase):
         '"force_multilabel_data" is True but "multilabel_data" is False.')
 
 
-class RocCurveTest(absltest.TestCase):
+class RocCurveTest(parameterized.TestCase):
 
   def test_auc_random_classifier(self):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
         fpr=np.array([0.0, 0.5, 1.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     self.assertEqual(roc.get_auc(), 0.5)
 
@@ -408,7 +410,8 @@ class RocCurveTest(absltest.TestCase):
     roc = RocCurve(
         tpr=np.array([0.0, 1.0, 1.0]),
         fpr=np.array([1.0, 1.0, 0.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     self.assertEqual(roc.get_auc(), 1.0)
 
@@ -416,7 +419,8 @@ class RocCurveTest(absltest.TestCase):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
         fpr=np.array([0.0, 0.5, 1.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     self.assertEqual(roc.get_attacker_advantage(), 0.0)
 
@@ -424,9 +428,58 @@ class RocCurveTest(absltest.TestCase):
     roc = RocCurve(
         tpr=np.array([0.0, 1.0, 1.0]),
         fpr=np.array([1.0, 1.0, 0.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     self.assertEqual(roc.get_auc(), 1.0)
+
+  def test_ppv_random_classifier(self):
+    roc = RocCurve(
+        tpr=np.array([0.0, 0.5, 1.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
+
+    self.assertEqual(roc.get_ppv(), 0.5)
+
+  def test_ppv_perfect_classifier(self):
+    roc = RocCurve(
+        tpr=np.array([0.0, 1.0, 1.0]),
+        fpr=np.array([1.0, 1.0, 0.0]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
+
+    self.assertEqual(roc.get_ppv(), 1.0)
+
+  # Parameters to test: test-train ratio, expected PPV.
+  @parameterized.named_parameters(
+      ('test_train_ratio_small', 0.001, 1.0),
+      ('test_train_ratio_large', 1000.0, 0.0),
+  )
+  @mock.patch(
+      'tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures._ABSOLUTE_TOLERANCE',
+      1e-4)
+  def test_ppv_perfect_classifier_when_tpr_fpr_small(self, test_train_ratio,
+                                                     expected_ppv):
+    roc = RocCurve(
+        tpr=np.array([0.00001, 0.0001, 0.002]),
+        fpr=np.array([0.00002, 0.0002, 0.002]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=test_train_ratio)
+
+    np.testing.assert_allclose(roc.get_ppv(), expected_ppv, atol=1e-3)
+
+  @mock.patch(
+      'tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures._ABSOLUTE_TOLERANCE',
+      1e-4)
+  def test_ppv_random_classifier_when_tpr_fpr_small_and_test_train_is_1(self):
+    roc = RocCurve(
+        tpr=np.array([0.00001, 0.0001, 0.002]),
+        fpr=np.array([0.00002, 0.0002, 0.002]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
+
+    np.testing.assert_allclose(roc.get_ppv(), 0.5, atol=1e-3)
 
 
 class SingleAttackResultTest(absltest.TestCase):
@@ -436,7 +489,8 @@ class SingleAttackResultTest(absltest.TestCase):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
         fpr=np.array([0.0, 0.5, 1.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     result = SingleAttackResult(
         roc_curve=roc,
@@ -451,7 +505,8 @@ class SingleAttackResultTest(absltest.TestCase):
     roc = RocCurve(
         tpr=np.array([0.0, 0.5, 1.0]),
         fpr=np.array([0.0, 0.5, 1.0]),
-        thresholds=np.array([0, 1, 2]))
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
 
     result = SingleAttackResult(
         roc_curve=roc,
@@ -460,6 +515,22 @@ class SingleAttackResultTest(absltest.TestCase):
         data_size=DataSize(ntrain=1, ntest=1))
 
     self.assertEqual(result.get_attacker_advantage(), 0.0)
+
+  # Only a basic test, as this method calls RocCurve which is tested separately.
+  def test_ppv_random_classifier(self):
+    roc = RocCurve(
+        tpr=np.array([0.0, 0.5, 1.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0)
+
+    result = SingleAttackResult(
+        roc_curve=roc,
+        slice_spec=SingleSliceSpec(None),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        data_size=DataSize(ntrain=1, ntest=1))
+
+    self.assertEqual(result.get_ppv(), 0.5)
 
 
 class SingleMembershipProbabilityResultTest(absltest.TestCase):
@@ -492,7 +563,8 @@ class AttackResultsCollectionTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0),
         data_size=DataSize(ntrain=1, ntest=1))
 
     self.results_epoch_10 = AttackResults(
@@ -552,7 +624,8 @@ class AttackResultsTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 1.0, 1.0]),
             fpr=np.array([1.0, 1.0, 0.0]),
-            thresholds=np.array([0, 1, 2])),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0),
         data_size=DataSize(ntrain=1, ntest=1))
 
     # ROC curve of a random classifier
@@ -562,7 +635,8 @@ class AttackResultsTest(absltest.TestCase):
         roc_curve=RocCurve(
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
-            thresholds=np.array([0, 1, 2])),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0),
         data_size=DataSize(ntrain=1, ntest=1))
 
   def test_get_result_with_max_auc_first(self):
@@ -589,37 +663,58 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(results.get_result_with_max_attacker_advantage(),
                      self.perfect_classifier_result)
 
+  def test_get_result_with_max_positive_predictive_value_first(self):
+    results = AttackResults(
+        [self.perfect_classifier_result, self.random_classifier_result])
+    self.assertEqual(results.get_result_with_max_ppv(),
+                     self.perfect_classifier_result)
+
+  def test_get_result_with_max_positive_predictive_value_second(self):
+    results = AttackResults(
+        [self.random_classifier_result, self.perfect_classifier_result])
+    self.assertEqual(results.get_result_with_max_ppv(),
+                     self.perfect_classifier_result)
+
   def test_summary_by_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
-    self.assertEqual(
+    self.assertSequenceEqual(
         results.summary(by_slices=True),
         'Best-performing attacks over all slices\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n\n' +
-        'Best-performing attacks over slice: "CORRECTLY_CLASSIFIED=True"\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' AUC of 1.00\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' advantage of 1.00\n\n' +
-        'Best-performing attacks over slice: "Entire dataset"\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' AUC of 0.50\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' advantage of 0.00')
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
+        ' positive predictive value of 1.00 on slice CORRECTLY_CLASSIFIED='
+        'True\n\n'
+        'Best-performing attacks over slice: "CORRECTLY_CLASSIFIED=True"\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' AUC of 1.00\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' advantage of 1.00\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
+        ' positive predictive value of 1.00\n\n'
+        'Best-performing attacks over slice: "Entire dataset"\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' AUC of 0.50\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' advantage of 0.00\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
+        ' positive predictive value of 0.50')
 
   def test_summary_without_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
-    self.assertEqual(
+    self.assertSequenceEqual(
         results.summary(by_slices=False),
-        'Best-performing attacks over all slices\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an' +
-        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True')
+        'Best-performing attacks over all slices\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
+        ' positive predictive value of 1.00 on slice CORRECTLY_CLASSIFIED=True')
 
   def test_save_load(self):
     results = AttackResults(
@@ -645,6 +740,7 @@ class AttackResultsTest(absltest.TestCase):
         'test size': [1, 1],
         'attack type': ['THRESHOLD_ATTACK', 'THRESHOLD_ATTACK'],
         'Attacker advantage': [1.0, 0.0],
+        'Positive predictive value': [1.0, 0.5],
         'AUC': [1.0, 0.5]
     })
     pd.testing.assert_frame_equal(df, df_expected)

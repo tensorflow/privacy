@@ -90,7 +90,7 @@ class UtilsTest(absltest.TestCase):
     self.assertLen(att_types, 2)
     self.assertLen(att_slices, 2)
     self.assertLen(att_metrics, 2)
-    self.assertLen(att_values, 2)
+    self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
   def test_run_attack_on_tf_estimator_model(self):
     """Test the attack on the final models."""
@@ -110,7 +110,7 @@ class UtilsTest(absltest.TestCase):
     self.assertLen(att_types, 2)
     self.assertLen(att_slices, 2)
     self.assertLen(att_metrics, 2)
-    self.assertLen(att_values, 2)
+    self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
 
 if __name__ == '__main__':
