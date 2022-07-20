@@ -57,23 +57,6 @@ py_library(
 )
 
 py_library(
-    name = "rdp_accountant",
-    srcs = ["rdp_accountant.py"],
-    srcs_version = "PY3",
-    visibility = ["//visibility:public"],
-    deps = ["@com_google_differential_py//dp_accounting:accounting"],
-)
-
-py_test(
-    name = "rdp_accountant_test",
-    size = "small",
-    srcs = ["rdp_accountant_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":rdp_accountant"],
-)
-
-py_library(
     name = "tensor_buffer",
     srcs = ["tensor_buffer.py"],
     srcs_version = "PY3",
