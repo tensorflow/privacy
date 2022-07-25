@@ -163,8 +163,7 @@ def compute_epsilon(steps):
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')

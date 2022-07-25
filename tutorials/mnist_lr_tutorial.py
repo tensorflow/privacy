@@ -183,8 +183,7 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.data_l2_norm <= 0:
     raise ValueError('data_l2_norm must be positive.')

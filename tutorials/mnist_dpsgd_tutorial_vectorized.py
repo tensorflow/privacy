@@ -146,8 +146,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')
