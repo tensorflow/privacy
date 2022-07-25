@@ -85,7 +85,7 @@ def cnn_model_fn(features, labels, mode, params):  # pylint: disable=unused-argu
   elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.metrics.accuracy(
+            tf.compat.v1.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
     return tf_estimator.EstimatorSpec(

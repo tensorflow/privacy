@@ -56,12 +56,12 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   logits = tf.keras.layers.Dense(
       units=nclasses,
       kernel_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer),
-      bias_regularizer=tf.keras.regularizers.L2(
-          l2=FLAGS.regularizer)).apply(input_layer)
+      bias_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer))(
+          input_layer)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=labels, logits=logits) + tf.losses.get_regularization_loss()
+      labels, logits) + tf.compat.v1.losses.get_regularization_loss()
   # Define mean of loss across minibatch (for reporting through tf.Estimator).
   scalar_loss = tf.reduce_mean(vector_loss)
 
@@ -94,7 +94,7 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.metrics.accuracy(
+            tf.compat.v1.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
     return tf_estimator.EstimatorSpec(
@@ -165,7 +165,7 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
     rdp = [order * coef for order in orders]
-    eps = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)
+    eps, _ = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
   accountant = dp_accounting.rdp.RdpAccountant(orders)

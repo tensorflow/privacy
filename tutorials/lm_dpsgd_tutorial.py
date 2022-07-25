@@ -73,8 +73,8 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   x = tf.reshape(x, [-1, SEQ_LEN])
   input_layer = x[:, :-1]
   input_one_hot = tf.one_hot(input_layer, 256)
-  lstm = tf.keras.layers.LSTM(256, return_sequences=True).apply(input_one_hot)
-  logits = tf.keras.layers.Dense(256).apply(lstm)
+  lstm = tf.keras.layers.LSTM(256, return_sequences=True)(input_one_hot)
+  logits = tf.keras.layers.Dense(256)(lstm)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.softmax_cross_entropy_with_logits(
