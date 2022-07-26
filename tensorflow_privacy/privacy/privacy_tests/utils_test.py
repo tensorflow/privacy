@@ -16,7 +16,24 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
+from tensorflow_privacy.privacy.privacy_tests import utils
+
+
+class LossFunctionFromStringTest(parameterized.TestCase):
+
+  @parameterized.parameters(
+      (utils.LossFunction.CROSS_ENTROPY, 'cross_entropy'),
+      (utils.LossFunction.SQUARED, 'squared'),
+  )
+  def test_from_str(self, en, string):
+    self.assertEqual(utils.string_to_loss_function(string), en)
+
+  @parameterized.parameters(
+      ('random string'),
+      (''),
+  )
+  def test_from_str_wrong_input(self, string):
+    self.assertRaises(ValueError, utils.string_to_loss_function, string)
 
 
 class TestLogLoss(parameterized.TestCase):

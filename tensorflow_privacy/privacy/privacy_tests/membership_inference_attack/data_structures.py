@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 from scipy import special
 from sklearn import metrics
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
+from tensorflow_privacy.privacy.privacy_tests import utils
 
 # The minimum TPR or FPR below which they are considered equal.
 _ABSOLUTE_TOLERANCE = 1e-3
@@ -183,12 +183,6 @@ def _log_value(probs, small_value=1e-30):
   return -np.log(np.maximum(probs, small_value))
 
 
-class LossFunction(enum.Enum):
-  """An enum that defines loss function to use in `AttackInputData`."""
-  CROSS_ENTROPY = 'cross_entropy'
-  SQUARED = 'squared'
-
-
 @dataclasses.dataclass
 class AttackInputData:
   """Input data for running an attack.
@@ -225,7 +219,7 @@ class AttackInputData:
   # If a callable is provided, it should take in two argument, the 1st is
   # labels, the 2nd is logits or probs.
   loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray],
-                       LossFunction] = LossFunction.CROSS_ENTROPY
+                       utils.LossFunction] = utils.LossFunction.CROSS_ENTROPY
   # Whether `loss_function` will be called with logits or probs. If not set
   # (None), will decide by availablity of logits and probs and logits is
   # preferred when both are available.
@@ -298,52 +292,6 @@ class AttackInputData:
                                                   true_labels]
       return np.sum(np.multiply(modified_probs, modified_log_probs), axis=1)
 
-  @staticmethod
-  def _get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
-                logits: Optional[np.ndarray], probs: Optional[np.ndarray],
-                loss_function: Union[Callable[[np.ndarray, np.ndarray],
-                                              np.ndarray], LossFunction],
-                loss_function_using_logits: Optional[bool],
-                multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
-    """Calculates (if needed) losses.
-
-    Args:
-      loss: the loss of each example.
-      labels: the scalar label of each example.
-      logits: the logits vector of each example.
-      probs: the probability vector of each example.
-      loss_function: if `loss` is not available, `labels` and one of `logits`
-        and `probs` are available, we will use this function to compute loss. It
-        is supposed to take in (label, logits / probs) as input.
-      loss_function_using_logits: if `loss_function` expects `logits` or
-        `probs`.
-      multilabel_data: if the data is from a multilabel classification problem.
-
-    Returns:
-      Loss (or None if neither the loss nor the labels are present).
-    """
-    if loss is not None:
-      return loss
-    if labels is None or (logits is None and probs is None):
-      return None
-    if loss_function_using_logits and logits is None:
-      raise ValueError('We need logits to compute loss, but it is set to None.')
-    if not loss_function_using_logits and probs is None:
-      raise ValueError('We need probs to compute loss, but it is set to None.')
-
-    predictions = logits if loss_function_using_logits else probs
-    if loss_function == LossFunction.CROSS_ENTROPY:
-      if multilabel_data:
-        loss = utils.multilabel_bce_loss(labels, predictions,
-                                         loss_function_using_logits)
-      else:
-        loss = utils.log_loss(labels, predictions, loss_function_using_logits)
-    elif loss_function == LossFunction.SQUARED:
-      loss = utils.squared_loss(labels, predictions)
-    else:
-      loss = loss_function(labels, predictions)
-    return loss
-
   def __post_init__(self):
     """Checks performed after instantiation of the AttackInputData dataclass."""
     # Check if the data is multilabel.
@@ -358,7 +306,7 @@ class AttackInputData:
     """
     if self.loss_function_using_logits is None:
       self.loss_function_using_logits = (self.logits_train is not None)
-    return self._get_loss(self.loss_train, self.labels_train, self.logits_train,
+    return utils.get_loss(self.loss_train, self.labels_train, self.logits_train,
                           self.probs_train, self.loss_function,
                           self.loss_function_using_logits, self.multilabel_data)
 
@@ -370,7 +318,7 @@ class AttackInputData:
     """
     if self.loss_function_using_logits is None:
       self.loss_function_using_logits = bool(self.logits_test)
-    return self._get_loss(self.loss_test, self.labels_test, self.logits_test,
+    return utils.get_loss(self.loss_test, self.labels_test, self.logits_test,
                           self.probs_test, self.loss_function,
                           self.loss_function_using_logits, self.multilabel_data)
 

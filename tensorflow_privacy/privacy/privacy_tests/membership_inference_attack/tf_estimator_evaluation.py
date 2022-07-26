@@ -20,9 +20,9 @@ from absl import logging
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
+from tensorflow_privacy.privacy.privacy_tests import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils_tensorboard
 
 

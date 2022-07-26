@@ -21,11 +21,10 @@ from absl import flags
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-
+from tensorflow_privacy.privacy.privacy_tests import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import advanced_mia as amia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import plotting as mia_plotting
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 
 FLAGS = flags.FLAGS

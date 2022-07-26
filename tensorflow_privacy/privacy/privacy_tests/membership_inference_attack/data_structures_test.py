@@ -20,13 +20,13 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import pandas as pd
+from tensorflow_privacy.privacy.privacy_tests import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import _log_value
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import LossFunction
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleAttackResult
@@ -123,7 +123,7 @@ class AttackInputDataTest(parameterized.TestCase):
         probs_test=np.array([1, 1.]),
         labels_train=np.array([1, 0.]),
         labels_test=np.array([0, 2.]),
-        loss_function=LossFunction.SQUARED,
+        loss_function=utils.LossFunction.SQUARED,
         loss_function_using_logits=loss_function_using_logits,
     )
     np.testing.assert_allclose(attack_input.get_loss_train(), expected_train)
@@ -175,7 +175,7 @@ class AttackInputDataTest(parameterized.TestCase):
         probs_test=probs,
         labels_train=np.array([1, 0.]),
         labels_test=np.array([1, 0.]),
-        loss_function=LossFunction.SQUARED,
+        loss_function=utils.LossFunction.SQUARED,
     )
     np.testing.assert_allclose(attack_input.get_loss_train(), expected)
     np.testing.assert_allclose(attack_input.get_loss_test(), expected)
