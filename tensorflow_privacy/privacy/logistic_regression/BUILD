@@ -5,6 +5,11 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 py_library(
+    name = "logistic_regression",
+    srcs = ["__init__.py"],
+)
+
+py_library(
     name = "multinomial_logistic",
     srcs = ["multinomial_logistic.py"],
     srcs_version = "PY3",

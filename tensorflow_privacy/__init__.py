@@ -71,4 +71,13 @@ else:
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasSGDOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import make_vectorized_keras_optimizer_class
 
+  # Logistic regression
+  from tensorflow_privacy.privacy.logistic_regression.datasets import linearly_separable_labeled_examples
+  from tensorflow_privacy.privacy.logistic_regression.datasets import synthetic_linearly_separable_data
+
+  from tensorflow_privacy.privacy.logistic_regression.multinomial_logistic import logistic_objective_perturbation
+  from tensorflow_privacy.privacy.logistic_regression.multinomial_logistic import logistic_dpsgd
+
+  from tensorflow_privacy.privacy.logistic_regression.single_layer_softmax import single_layer_softmax_classifier
+
   # module `bolt_on` not yet available in this version of TF Privacy
