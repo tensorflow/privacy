@@ -215,10 +215,11 @@ class AttackInputData:
   entropy_test: Optional[np.ndarray] = None
 
   # If loss is not explicitly specified, this function will be used to derive
-  # loss from logits and labels. It can be a pre-defined `LossFunction`.
+  # loss from logits and labels. It can be a pre-defined `LossFunction` or its
+  # string representation, or a callable.
   # If a callable is provided, it should take in two argument, the 1st is
   # labels, the 2nd is logits or probs.
-  loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray],
+  loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray], str,
                        utils.LossFunction] = utils.LossFunction.CROSS_ENTROPY
   # Whether `loss_function` will be called with logits or probs. If not set
   # (None), will decide by availablity of logits and probs and logits is

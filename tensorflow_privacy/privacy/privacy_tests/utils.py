@@ -146,7 +146,7 @@ def string_to_loss_function(string: str):
 def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
              logits: Optional[np.ndarray], probs: Optional[np.ndarray],
              loss_function: Union[Callable[[np.ndarray, np.ndarray],
-                                           np.ndarray], LossFunction],
+                                           np.ndarray], LossFunction, str],
              loss_function_using_logits: Optional[bool],
              multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
   """Calculates (if needed) losses.
@@ -176,6 +176,9 @@ def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
     raise ValueError('We need probs to compute loss, but it is set to None.')
 
   predictions = logits if loss_function_using_logits else probs
+
+  if isinstance(loss_function, str):
+    loss_function = string_to_loss_function(loss_function)
   if loss_function == LossFunction.CROSS_ENTROPY:
     if multilabel_data:
       loss = multilabel_bce_loss(labels, predictions,
