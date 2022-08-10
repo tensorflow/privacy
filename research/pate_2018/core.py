@@ -190,7 +190,7 @@ def rdp_gaussian(logq, sigma, orders):
   assert np.all(ret >= 0)
 
   if np.isscalar(orders):
-    return np.asscalar(ret)
+    return ret.item()
   else:
     return ret
 
@@ -357,7 +357,7 @@ def rdp_pure_eps(logq, pure_eps, orders):
       np.minimum(0.5 * pure_eps * pure_eps * orders_vec,
                  log_t / (orders_vec - 1)), pure_eps)
   if np.isscalar(orders):
-    return np.asscalar(ret)
+    return ret.item()
   else:
     return ret
 
