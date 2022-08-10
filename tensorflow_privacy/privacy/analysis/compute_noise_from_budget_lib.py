@@ -18,19 +18,6 @@ import math
 
 from absl import app
 import dp_accounting
-from scipy import optimize
-
-
-def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
-  """Compute and print results of DP-SGD analysis."""
-
-  accountant = dp_accounting.rdp.RdpAccountant(orders)
-  event = dp_accounting.SelfComposedDpEvent(
-      dp_accounting.PoissonSampledDpEvent(q,
-                                          dp_accounting.GaussianDpEvent(sigma)),
-      steps)
-  accountant.compose(event)
-  return accountant.get_epsilon_and_optimal_order(delta)
 
 
 def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
@@ -42,26 +29,26 @@ def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
             list(range(5, 64)) + [128, 256, 512])
   steps = int(math.ceil(epochs * n / batch_size))
 
-  init_noise = noise_lbd  # minimum possible noise
-  init_epsilon, _ = apply_dp_sgd_analysis(q, init_noise, steps, orders, delta)
+  def make_event_from_noise(sigma):
+    return dp_accounting.SelfComposedDpEvent(
+        dp_accounting.PoissonSampledDpEvent(
+            q, dp_accounting.GaussianDpEvent(sigma)), steps)
+
+  def make_accountant():
+    return dp_accounting.rdp.RdpAccountant(orders)
+
+  accountant = make_accountant()
+  accountant.compose(make_event_from_noise(noise_lbd))
+  init_epsilon = accountant.get_epsilon(delta)
 
   if init_epsilon < target_epsilon:  # noise_lbd was an overestimate
-    print('min_noise too large for target epsilon.')
+    print('noise_lbd too large for target epsilon.')
     return 0
 
-  cur_epsilon = init_epsilon
-  max_noise, min_noise = init_noise, 0
+  target_noise = dp_accounting.calibrate_dp_mechanism(
+      make_accountant, make_event_from_noise, target_epsilon, delta,
+      dp_accounting.LowerEndpointAndGuess(noise_lbd, noise_lbd * 2))
 
-  # doubling to find the right range
-  while cur_epsilon > target_epsilon:  # until noise is large enough
-    max_noise, min_noise = max_noise * 2, max_noise
-    cur_epsilon, _ = apply_dp_sgd_analysis(q, max_noise, steps, orders, delta)
-
-  def epsilon_fn(noise):  # should return 0 if guess_epsilon==target_epsilon
-    guess_epsilon = apply_dp_sgd_analysis(q, noise, steps, orders, delta)[0]
-    return guess_epsilon - target_epsilon
-
-  target_noise = optimize.bisect(epsilon_fn, min_noise, max_noise)
   print(
       'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
       ' over {} steps satisfies'.format(100 * q, target_noise, steps),
