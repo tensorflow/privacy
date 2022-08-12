@@ -13,4 +13,4 @@
 # limitations under the License.
 """TensorFlow Privacy version."""
 
-__version__ = '0.8.2'
+__version__ = '0.8.3'
