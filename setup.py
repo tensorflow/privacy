@@ -38,7 +38,7 @@ setup(
         'scipy~=1.7.1',
         'tensorflow-datasets~=4.5.2',
         'tensorflow-estimator~=2.4',
-        'tensorflow-probability~=0.15.0',
+        'tensorflow-probability~=0.15',
         'tensorflow~=2.4',
     ],
     packages=find_packages())
