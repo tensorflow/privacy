@@ -13,7 +13,9 @@
 # limitations under the License.
 """Measuring exposure for secret sharer attack."""
 
-from typing import Iterable, TypeVar, Mapping
+import logging
+from typing import Mapping, Sequence, TypeVar
+
 import numpy as np
 from scipy import stats
 
@@ -22,8 +24,8 @@ _KT = TypeVar('_KT')
 
 
 def compute_exposure_interpolation(
-    perplexities: Mapping[_KT, Iterable[float]],
-    perplexities_reference: Iterable[float]) -> Mapping[_KT, Iterable[float]]:
+    perplexities: Mapping[_KT, Sequence[float]],
+    perplexities_reference: Sequence[float]) -> Mapping[_KT, Sequence[float]]:
   """Gets exposure using interpolation.
 
   Args:
@@ -37,6 +39,12 @@ def compute_exposure_interpolation(
     The exposure of every secret measured using interpolation (not necessarily
     in the same order as the input), keyed in the same way as perplexities.
   """
+  logging.info(
+      'Will compute exposure (with interpolation) for '
+      'splits %s with %s examples using %s references.',
+      str(perplexities.keys()), str([len(p) for p in perplexities.values()]),
+      len(perplexities_reference))
+
   # Get the keys in some fixed order which will be used internally only
   # further down.
   keys = list(perplexities)
@@ -67,8 +75,8 @@ def compute_exposure_interpolation(
 
 
 def compute_exposure_extrapolation(
-    perplexities: Mapping[_KT, Iterable[float]],
-    perplexities_reference: Iterable[float]) -> Mapping[_KT, Iterable[float]]:
+    perplexities: Mapping[_KT, Sequence[float]],
+    perplexities_reference: Sequence[float]) -> Mapping[_KT, Sequence[float]]:
   """Gets exposure using extrapolation.
 
   Args:
@@ -82,6 +90,12 @@ def compute_exposure_extrapolation(
     The exposure of every secret measured using extrapolation, keyed in the same
     way as perplexities.
   """
+  logging.info(
+      'Will compute exposure (with extrapolation) for '
+      'splits %s with %s examples using %s references.',
+      str(perplexities.keys()), str([len(p) for p in perplexities.values()]),
+      len(perplexities_reference))
+
   # Fit a skew normal distribution using the perplexities of the references
   snormal_param = stats.skewnorm.fit(perplexities_reference)
 
