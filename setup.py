@@ -32,7 +32,7 @@ setup(
         'dm-tree~=0.1.7',
         'dp-accounting~=0.1.2',
         'matplotlib~=3.3.4',
-        'numpy~=1.23.2',
+        'numpy~=1.21.4',
         'pandas~=1.4.3',
         'scikit-learn~=1.0.2',
         'scipy~=1.7.1',

@@ -15,8 +15,8 @@ git_repository(
     tag = "0.5.0",
 )
 
-dp_lib_commit = "802db81af4f5efb69df784efb3ba90833fba7246"
-dp_lib_tar_sha256 = "721121d92c4c4e239d027a4201f4ceb27c36b39a2987c8b13ce2dc5260fb51eb"
+dp_lib_commit = "d93052f71960cefc533b64c7201a35fce2deeb9e"
+dp_lib_tar_sha256 = "9fa2f9834efff5635ce60be5724919fe17a6e55ab7a5a2dbd3137d9442b8972d"
 dp_lib_url = "https://github.com/google/differential-privacy/archive/" + dp_lib_commit + ".tar.gz"
 
 http_archive(
