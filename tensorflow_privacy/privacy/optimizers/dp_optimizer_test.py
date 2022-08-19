@@ -26,6 +26,11 @@ from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
+  @classmethod
+  def setUpClass(cls):
+    super(DPOptimizerTest, cls).setUpClass()
+    tf.compat.v1.disable_eager_execution()
+
   def _loss(self, val0, val1):
     """Loss function that is minimized at the mean of the input points."""
     return 0.5 * tf.reduce_sum(
