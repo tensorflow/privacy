@@ -19,6 +19,18 @@ py_library(
 )
 
 py_library(
+    name = "dp_optimizer_factory",
+    srcs = [
+        "dp_optimizer_keras.py",
+    ],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_privacy/privacy/dp_query",
+        "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+    ],
+)
+
+py_library(
     name = "dp_optimizer_vectorized",
     srcs = [
         "dp_optimizer_vectorized.py",
@@ -32,7 +44,10 @@ py_library(
         "dp_optimizer_keras.py",
     ],
     srcs_version = "PY3",
-    deps = ["//tensorflow_privacy/privacy/dp_query:gaussian_query"],
+    deps = [
+        "//tensorflow_privacy/privacy/dp_query",
+        "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+    ],
 )
 
 py_library(
@@ -84,7 +99,7 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras_vectorized",
+        ":dp_optimizer_keras",
+        ":dp_optimizer_keras_vectorized",
     ],
 )
