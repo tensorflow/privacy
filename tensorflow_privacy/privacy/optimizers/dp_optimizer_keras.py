@@ -271,10 +271,12 @@ def make_keras_optimizer_class(cls):
         jacobian = tape.jacobian(
             microbatch_losses, var_list, unconnected_gradients='zero')
 
-        # Clip gradients to given l2_norm_clip.
         def clip_gradients(g):
+          """Clips gradients to given l2_norm_clip."""
           return tf.clip_by_global_norm(g, self._l2_norm_clip)[0]
 
+        # Clip all gradients. Note that `tf.map_fn` applies the given function
+        # to its arguments unstacked along axis 0.
         clipped_gradients = tf.map_fn(clip_gradients, jacobian)
 
         def reduce_noise_normalize_batch(g):
