@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: skip-file
+# pyformat: disable
+
 import os
 import scipy.stats
 
@@ -113,7 +116,7 @@ def generate_ours_offline(keep, scores, check_keep, check_scores, in_size=100000
         dat_out.append(scores[~keep[:, j], j, :])
 
     out_size = min(min(map(len,dat_out)), out_size)
-    
+
     dat_out = np.array([x[:out_size] for x in dat_out])
 
     mean_out = np.median(dat_out, 1)
@@ -160,7 +163,7 @@ def do_plot(fn, keep, scores, ntest, legend='', metric='auc', sweep_fn=sweep, **
     fpr, tpr, auc, acc = sweep_fn(np.array(prediction), np.array(answers, dtype=bool))
 
     low = tpr[np.where(fpr<.001)[0][-1]]
-    
+
     print('Attack %s   AUC %.4f, Accuracy %.4f, TPR@0.1%%FPR of %.4f'%(legend, auc,acc, low))
 
     metric_text = ''
@@ -206,7 +209,7 @@ def fig_fpr_tpr():
             "Global threshold\n",
             metric='auc'
     )
-    
+
     plt.semilogx()
     plt.semilogy()
     plt.xlim(1e-5,1)
@@ -220,5 +223,6 @@ def fig_fpr_tpr():
     plt.show()
 
 
-load_data("exp/cifar10/")
-fig_fpr_tpr()
+if __name__ == '__main__':
+    load_data("exp/cifar10/")
+    fig_fpr_tpr()

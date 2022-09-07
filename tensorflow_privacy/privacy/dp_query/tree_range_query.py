@@ -21,12 +21,11 @@ import math
 from typing import Optional
 
 import attr
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 def _build_tree_from_leaf(leaf_nodes: tf.Tensor, arity: int) -> tf.RaggedTensor:
@@ -204,7 +203,7 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     ]
     tree = tf.RaggedTensor.from_row_splits(
         values=sample_state, row_splits=row_splits)
-    event = dp_event.UnsupportedDpEvent()
+    event = dp_accounting.UnsupportedDpEvent()
     return tree, new_global_state, event
 
   @classmethod

@@ -28,14 +28,12 @@ the algorithm of Abadi et al.: https://arxiv.org/pdf/1607.00133.pdf%20.
 import math
 from typing import List, Optional, Tuple
 
+import dp_accounting
 import numpy as np
 import tensorflow as tf
-from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_keras
-
-from com_google_differential_py.python.dp_accounting import common
 
 
 @tf.keras.utils.register_keras_serializable(package='Custom', name='Kifer')
@@ -170,15 +168,23 @@ def compute_dpsgd_noise_multiplier(num_train: int,
     the given tolerance) for which using DPKerasAdamOptimizer will result in an
     (epsilon, delta)-differentially private trained model.
   """
-  search_parameters = common.BinarySearchParameters(
-      lower_bound=0, upper_bound=math.inf, initial_guess=1, tolerance=tolerance)
+  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
+            list(range(5, 64)) + [128, 256, 512])
+  steps = int(math.ceil(epochs * num_train / batch_size))
 
-  def _func(x):
-    result = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy(
-        num_train, batch_size, x, epochs, delta)
-    return result[0]
+  def make_event_from_param(noise_multiplier):
+    return dp_accounting.SelfComposedDpEvent(
+        dp_accounting.PoissonSampledDpEvent(
+            sampling_probability=batch_size / num_train,
+            event=dp_accounting.GaussianDpEvent(noise_multiplier)), steps)
 
-  return common.inverse_monotone_function(_func, epsilon, search_parameters)
+  return dp_accounting.calibrate_dp_mechanism(
+      lambda: dp_accounting.rdp.RdpAccountant(orders),
+      make_event_from_param,
+      epsilon,
+      delta,
+      dp_accounting.LowerEndpointAndGuess(0, 1),
+      tol=tolerance)
 
 
 def logistic_dpsgd(train_dataset: datasets.RegressionDataset,

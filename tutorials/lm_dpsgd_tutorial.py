@@ -35,14 +35,14 @@ import os
 from absl import app
 from absl import flags
 from absl import logging
+import dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 import tensorflow_datasets as tfds
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
+
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -73,8 +73,8 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   x = tf.reshape(x, [-1, SEQ_LEN])
   input_layer = x[:, :-1]
   input_one_hot = tf.one_hot(input_layer, 256)
-  lstm = tf.keras.layers.LSTM(256, return_sequences=True).apply(input_one_hot)
-  logits = tf.keras.layers.Dense(256).apply(lstm)
+  lstm = tf.keras.layers.LSTM(256, return_sequences=True)(input_one_hot)
+  logits = tf.keras.layers.Dense(256)(lstm)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.softmax_cross_entropy_with_logits(
@@ -150,18 +150,20 @@ def compute_epsilon(steps):
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
   sampling_probability = FLAGS.batch_size / NB_TRAIN
-  rdp = compute_rdp(
-      q=sampling_probability,
-      noise_multiplier=FLAGS.noise_multiplier,
-      steps=steps,
-      orders=orders)
+
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(
+          sampling_probability,
+          dp_accounting.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
+  accountant.compose(event)
+
   # Delta is set to 1e-5 because Penn TreeBank has 60000 training points.
-  return get_privacy_spent(orders, rdp, target_delta=1e-5)[0]
+  return accountant.get_epsilon(target_delta=1e-5)
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')

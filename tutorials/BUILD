@@ -17,7 +17,6 @@ py_binary(
         ":mnist_dpsgd_tutorial_common",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -28,8 +27,7 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
-        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -40,8 +38,7 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
-        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -52,8 +49,7 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
-        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -64,10 +60,7 @@ py_binary(
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_vectorized",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
-        "@com_google_differential_py//python/dp_accounting/rdp:rdp_privacy_accountant",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -80,7 +73,6 @@ py_binary(
         ":mnist_dpsgd_tutorial_common",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -90,10 +82,8 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -103,10 +93,8 @@ py_binary(
     python_version = "PY3",
     srcs_version = "PY3",
     deps = [
-        "//tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -116,8 +104,6 @@ py_binary(
     deps = [
         "//tensorflow_privacy/privacy/analysis:gdp_accountant",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 

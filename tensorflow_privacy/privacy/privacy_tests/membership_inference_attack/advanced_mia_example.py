@@ -21,11 +21,10 @@ from absl import flags
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-
+from tensorflow_privacy.privacy.privacy_tests import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import advanced_mia as amia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import plotting as mia_plotting
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 
 FLAGS = flags.FLAGS
@@ -178,7 +177,7 @@ def main(unused_argv):
         loss_train=scores[in_indices_target],
         loss_test=scores[~in_indices_target])
     result_lira = mia.run_attacks(attack_input).single_attack_results[0]
-    print('Better MIA attack with Gaussian:',
+    print('Advanced MIA attack with Gaussian:',
           f'auc = {result_lira.get_auc():.4f}',
           f'adv = {result_lira.get_attacker_advantage():.4f}')
 
@@ -190,7 +189,7 @@ def main(unused_argv):
         loss_train=scores[in_indices_target],
         loss_test=scores[~in_indices_target])
     result_offset = mia.run_attacks(attack_input).single_attack_results[0]
-    print('Better MIA attack with offset:',
+    print('Advanced MIA attack with offset:',
           f'auc = {result_offset.get_auc():.4f}',
           f'adv = {result_offset.get_attacker_advantage():.4f}')
 

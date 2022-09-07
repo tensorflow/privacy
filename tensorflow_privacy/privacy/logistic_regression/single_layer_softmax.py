@@ -13,7 +13,7 @@
 # limitations under the License.
 """Implementation of a single-layer softmax classifier."""
 
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple, Any
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.logistic_regression import datasets
@@ -28,7 +28,7 @@ def single_layer_softmax_classifier(
     loss: Union[tf.keras.losses.Loss, str] = 'categorical_crossentropy',
     batch_size: int = 32,
     kernel_regularizer: Optional[tf.keras.regularizers.Regularizer] = None
-) -> List[float]:
+) -> Tuple[Any, List[float]]:
   """Trains a single layer neural network classifier with softmax activation.
 
   Args:
@@ -63,4 +63,5 @@ def single_layer_softmax_classifier(
       epochs=epochs,
       validation_data=(test_dataset.points, one_hot_test_labels),
       verbose=0)
-  return history.history['val_accuracy']
+  weights = model.layers[0].weights
+  return weights, history.history['val_accuracy']

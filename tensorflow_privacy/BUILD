@@ -16,7 +16,6 @@ py_library(
     deps = [
         ":version",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
-        "//tensorflow_privacy/privacy/analysis:rdp_accountant",
         "//tensorflow_privacy/privacy/analysis:tree_aggregation_accountant",
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:discrete_gaussian_query",
@@ -34,10 +33,12 @@ py_library(
         "//tensorflow_privacy/privacy/dp_query:tree_range_query",
         "//tensorflow_privacy/privacy/estimators:dnn",
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
+        "//tensorflow_privacy/privacy/logistic_regression:datasets",
+        "//tensorflow_privacy/privacy/logistic_regression:multinomial_logistic",
+        "//tensorflow_privacy/privacy/logistic_regression:single_layer_softmax",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras_vectorized",
         "//tensorflow_privacy/v1:tensorflow_privacy_v1",
-        "@com_google_differential_py//python/dp_accounting:dp_event",
     ],
 )
 

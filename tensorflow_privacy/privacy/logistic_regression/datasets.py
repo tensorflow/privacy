@@ -29,7 +29,7 @@ Includes two types of datasets:
 """
 
 import dataclasses
-from typing import Tuple
+from typing import Tuple, Optional
 
 import numpy as np
 from sklearn import preprocessing
@@ -46,9 +46,13 @@ class RegressionDataset:
     labels: array of shape (num_examples,) containing the corresponding labels,
       each belonging to the set {0,1,...,num_classes-1}, where num_classes is
       the number of classes.
+    weights: dimension by num_classes matrix containing coefficients of linear
+      separator, where dimension is the dimension and num_classes is the number
+      of classes.
   """
   points: np.ndarray
   labels: np.ndarray
+  weights: Optional[np.ndarray]
 
 
 def linearly_separable_labeled_examples(
@@ -71,7 +75,7 @@ def linearly_separable_labeled_examples(
   points = preprocessing.normalize(points_non_normalized)
   # Compute labels.
   labels = np.argmax(np.matmul(points, weights), axis=1)
-  return RegressionDataset(points, labels)
+  return RegressionDataset(points, labels, weights)
 
 
 def synthetic_linearly_separable_data(
@@ -122,5 +126,5 @@ def mnist_dataset() -> Tuple[RegressionDataset, RegressionDataset]:
       (num_test, -1))
   train_points = preprocessing.normalize(train_points_non_normalized)
   test_points = preprocessing.normalize(test_points_non_normalized)
-  return (RegressionDataset(train_points, train_labels),
-          RegressionDataset(test_points, test_labels))
+  return (RegressionDataset(train_points, train_labels, None),
+          RegressionDataset(test_points, test_labels, None))

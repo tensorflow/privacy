@@ -13,7 +13,10 @@
 # limitations under the License.
 """Utility functions for membership inference attacks."""
 
+import enum
 import logging
+from typing import Callable, Optional, Union
+
 import numpy as np
 from scipy import special
 
@@ -122,3 +125,68 @@ def multilabel_bce_loss(labels: np.ndarray,
   bce = labels * np.log(pred + small_value)
   bce += (1 - labels) * np.log(1 - pred + small_value)
   return -bce
+
+
+class LossFunction(enum.Enum):
+  """An enum that defines loss function."""
+  CROSS_ENTROPY = 'cross_entropy'
+  SQUARED = 'squared'
+
+
+def string_to_loss_function(string: str):
+  """Convert string to the corresponding LossFunction."""
+
+  if string == LossFunction.CROSS_ENTROPY.value:
+    return LossFunction.CROSS_ENTROPY
+  if string == LossFunction.SQUARED.value:
+    return LossFunction.SQUARED
+  raise ValueError(f'{string} is not a valid loss function name.')
+
+
+def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
+             logits: Optional[np.ndarray], probs: Optional[np.ndarray],
+             loss_function: Union[Callable[[np.ndarray, np.ndarray],
+                                           np.ndarray], LossFunction, str],
+             loss_function_using_logits: Optional[bool],
+             multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
+  """Calculates (if needed) losses.
+
+  Args:
+    loss: the loss of each example.
+    labels: the scalar label of each example.
+    logits: the logits vector of each example.
+    probs: the probability vector of each example.
+    loss_function: if `loss` is not available, `labels` and one of `logits`
+      and `probs` are available, we will use this function to compute loss. It
+      is supposed to take in (label, logits / probs) as input.
+    loss_function_using_logits: if `loss_function` expects `logits` or
+      `probs`.
+    multilabel_data: if the data is from a multilabel classification problem.
+
+  Returns:
+    Loss (or None if neither the loss nor the labels are present).
+  """
+  if loss is not None:
+    return loss
+  if labels is None or (logits is None and probs is None):
+    return None
+  if loss_function_using_logits and logits is None:
+    raise ValueError('We need logits to compute loss, but it is set to None.')
+  if not loss_function_using_logits and probs is None:
+    raise ValueError('We need probs to compute loss, but it is set to None.')
+
+  predictions = logits if loss_function_using_logits else probs
+
+  if isinstance(loss_function, str):
+    loss_function = string_to_loss_function(loss_function)
+  if loss_function == LossFunction.CROSS_ENTROPY:
+    if multilabel_data:
+      loss = multilabel_bce_loss(labels, predictions,
+                                 loss_function_using_logits)
+    else:
+      loss = log_loss(labels, predictions, loss_function_using_logits)
+  elif loss_function == LossFunction.SQUARED:
+    loss = squared_loss(labels, predictions)
+  else:
+    loss = loss_function(labels, predictions)
+  return loss

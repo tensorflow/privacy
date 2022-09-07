@@ -16,14 +16,13 @@
 from absl import app
 from absl import flags
 from absl import logging
+import dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
 from tensorflow_privacy.privacy.optimizers import dp_optimizer_vectorized
 
-from com_google_differential_py.python.dp_accounting import dp_event
-from com_google_differential_py.python.dp_accounting.rdp import rdp_privacy_accountant
 
 flags.DEFINE_boolean(
     'dpsgd', True, 'If True, train with DP-SGD. If False, '
@@ -51,13 +50,13 @@ def compute_epsilon(steps):
   if FLAGS.noise_multiplier == 0.0:
     return float('inf')
   orders = [1 + x / 10. for x in range(1, 100)] + list(range(12, 64))
-  accountant = rdp_privacy_accountant.RdpAccountant(orders)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
 
   sampling_probability = FLAGS.batch_size / 60000
-  event = dp_event.SelfComposedDpEvent(
-      dp_event.PoissonSampledDpEvent(
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(
           sampling_probability,
-          dp_event.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
+          dp_accounting.GaussianDpEvent(FLAGS.noise_multiplier)), steps)
 
   accountant.compose(event)
 
@@ -71,14 +70,16 @@ def cnn_model_fn(features, labels, mode):
   # Define CNN architecture using tf.keras.layers.
   input_layer = tf.reshape(features['x'], [-1, 28, 28, 1])
   y = tf.keras.layers.Conv2D(
-      16, 8, strides=2, padding='same', activation='relu').apply(input_layer)
-  y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
+      16, 8, strides=2, padding='same', activation='relu')(
+          input_layer)
+  y = tf.keras.layers.MaxPool2D(2, 1)(y)
   y = tf.keras.layers.Conv2D(
-      32, 4, strides=2, padding='valid', activation='relu').apply(y)
-  y = tf.keras.layers.MaxPool2D(2, 1).apply(y)
-  y = tf.keras.layers.Flatten().apply(y)
-  y = tf.keras.layers.Dense(32, activation='relu').apply(y)
-  logits = tf.keras.layers.Dense(10).apply(y)
+      32, 4, strides=2, padding='valid', activation='relu')(
+          y)
+  y = tf.keras.layers.MaxPool2D(2, 1)(y)
+  y = tf.keras.layers.Flatten()(y)
+  y = tf.keras.layers.Dense(32, activation='relu')(y)
+  logits = tf.keras.layers.Dense(10)(y)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -116,7 +117,7 @@ def cnn_model_fn(features, labels, mode):
   elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.metrics.accuracy(
+            tf.compat.v1.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
 
@@ -147,8 +148,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.dpsgd and FLAGS.batch_size % FLAGS.microbatches != 0:
     raise ValueError('Number of microbatches should divide evenly batch_size')

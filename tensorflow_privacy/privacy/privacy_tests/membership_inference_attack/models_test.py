@@ -13,13 +13,15 @@
 # limitations under the License.
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import numpy as np
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 
 
-class TrainedAttackerTest(absltest.TestCase):
+class TrainedAttackerTest(parameterized.TestCase):
 
   def test_base_attacker_train_and_predict(self):
     base_attacker = models.TrainedAttacker()
@@ -89,6 +91,19 @@ class TrainedAttackerTest(absltest.TestCase):
     self.assertLen(attacker_data.fold_indices, 6)
     self.assertEmpty(attacker_data.left_out_indices)
 
+  # Parameters for testing: backend.
+  @parameterized.named_parameters(
+      ('threading_backend', 'threading'),
+      ('None_backend', None),
+  )
+  def test_training_with_backends(self, backend):
+    with self.assertLogs(level='INFO') as log:
+      attacker = models.create_attacker(
+          AttackType.MULTI_LAYERED_PERCEPTRON, backend=backend)
+    self.assertIsInstance(attacker, models.MultilayerPerceptronAttacker)
+    self.assertLen(log.output, 1)
+    self.assertLen(log.records, 1)
+    self.assertRegex(log.output[0], r'.+?Using .+? backend for training.')
 
 if __name__ == '__main__':
   absltest.main()

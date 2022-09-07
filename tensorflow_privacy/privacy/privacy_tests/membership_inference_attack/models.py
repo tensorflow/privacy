@@ -13,7 +13,9 @@
 # limitations under the License.
 """Trained models for membership inference attacks."""
 
+import contextlib
 import dataclasses
+import logging
 from typing import Optional
 import numpy as np
 from sklearn import ensemble
@@ -21,6 +23,7 @@ from sklearn import linear_model
 from sklearn import model_selection
 from sklearn import neighbors
 from sklearn import neural_network
+from sklearn.utils import parallel_backend
 
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 
@@ -101,19 +104,6 @@ def create_attacker_data(attack_input_data: data_structures.AttackInputData,
       data_size=data_structures.DataSize(ntrain=ntrain, ntest=ntest))
 
 
-def create_attacker(attack_type):
-  """Returns the corresponding attacker for the provided attack_type."""
-  if attack_type == data_structures.AttackType.LOGISTIC_REGRESSION:
-    return LogisticRegressionAttacker()
-  if attack_type == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON:
-    return MultilayerPerceptronAttacker()
-  if attack_type == data_structures.AttackType.RANDOM_FOREST:
-    return RandomForestAttacker()
-  if attack_type == data_structures.AttackType.K_NEAREST_NEIGHBORS:
-    return KNearestNeighborsAttacker()
-  raise NotImplementedError('Attack type %s not implemented yet.' % attack_type)
-
-
 def _sample_multidimensional_array(array, size):
   indices = np.random.choice(len(array), size, replace=False)
   return array[indices]
@@ -137,9 +127,36 @@ def _column_stack(logits, loss):
   return np.column_stack((logits, loss))
 
 
-class TrainedAttacker:
-  """Base class for training attack models."""
-  model = None
+class TrainedAttacker(object):
+  """Base class for training attack models.
+
+  Attributes:
+    backend: Name of Scikit-Learn parallel backend to use for this attack
+      model. The default value of `None` performs single-threaded training.
+    model: The trained attack model.
+    ctx_mgr: The backend context manager within which to perform training.
+      Defaults to the null context manager for single-threaded training.
+    n_jobs: Number of jobs that can run in parallel when using a backend.
+      Set to `1` for single-threading, and to `-1` for all parallel
+      backends.
+  """
+
+  def __init__(self, backend: Optional[str] = None):
+    self.model = None
+    self.backend = backend
+    if backend is None:
+      # Default value of `None` will perform single-threaded training.
+      self.ctx_mgr = contextlib.nullcontext()
+      self.n_jobs = 1
+      logging.info('Using single-threaded backend for training.')
+    else:
+      self.n_jobs = -1
+      self.ctx_mgr = parallel_backend(
+          # Values for 'backend': `loky`, `threading`, `multiprocessing`.
+          # Can also use `dask`, `distributed`, `ray` if they are installed.
+          backend=backend,
+          n_jobs=self.n_jobs)
+      logging.info('Using %s backend for training.', backend)
 
   def train_model(self, input_features, is_training_labels):
     """Train an attacker model.
@@ -173,64 +190,92 @@ class TrainedAttacker:
 class LogisticRegressionAttacker(TrainedAttacker):
   """Logistic regression attacker."""
 
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
+
   def train_model(self, input_features, is_training_labels):
-    lr = linear_model.LogisticRegression(solver='lbfgs')
-    param_grid = {
-        'C': np.logspace(-4, 2, 10),
-    }
-    model = model_selection.GridSearchCV(
-        lr, param_grid=param_grid, cv=3, n_jobs=1, verbose=0)
-    model.fit(input_features, is_training_labels)
+    with self.ctx_mgr:
+      lr = linear_model.LogisticRegression(solver='lbfgs', n_jobs=self.n_jobs)
+      param_grid = {
+          'C': np.logspace(-4, 2, 10),
+      }
+      model = model_selection.GridSearchCV(
+          lr, param_grid=param_grid, cv=3, n_jobs=self.n_jobs, verbose=0)
+      model.fit(input_features, is_training_labels)
     self.model = model
 
 
 class MultilayerPerceptronAttacker(TrainedAttacker):
   """Multilayer perceptron attacker."""
 
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
+
   def train_model(self, input_features, is_training_labels):
-    mlp_model = neural_network.MLPClassifier()
-    param_grid = {
-        'hidden_layer_sizes': [(64,), (32, 32)],
-        'solver': ['adam'],
-        'alpha': [0.0001, 0.001, 0.01],
-    }
-    n_jobs = -1
-    model = model_selection.GridSearchCV(
-        mlp_model, param_grid=param_grid, cv=3, n_jobs=n_jobs, verbose=0)
-    model.fit(input_features, is_training_labels)
+    with self.ctx_mgr:
+      mlp_model = neural_network.MLPClassifier()
+      param_grid = {
+          'hidden_layer_sizes': [(64,), (32, 32)],
+          'solver': ['adam'],
+          'alpha': [0.0001, 0.001, 0.01],
+      }
+      model = model_selection.GridSearchCV(
+          mlp_model, param_grid=param_grid, cv=3, n_jobs=self.n_jobs, verbose=0)
+      model.fit(input_features, is_training_labels)
     self.model = model
 
 
 class RandomForestAttacker(TrainedAttacker):
   """Random forest attacker."""
 
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
+
   def train_model(self, input_features, is_training_labels):
     """Setup a random forest pipeline with cross-validation."""
-    rf_model = ensemble.RandomForestClassifier()
+    with self.ctx_mgr:
+      rf_model = ensemble.RandomForestClassifier(n_jobs=self.n_jobs)
 
-    param_grid = {
-        'n_estimators': [100],
-        'max_features': ['auto', 'sqrt'],
-        'max_depth': [5, 10, 20, None],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
-    }
-    n_jobs = -1
-    model = model_selection.GridSearchCV(
-        rf_model, param_grid=param_grid, cv=3, n_jobs=n_jobs, verbose=0)
-    model.fit(input_features, is_training_labels)
+      param_grid = {
+          'n_estimators': [100],
+          'max_features': ['auto', 'sqrt'],
+          'max_depth': [5, 10, 20, None],
+          'min_samples_split': [2, 5, 10],
+          'min_samples_leaf': [1, 2, 4]
+      }
+      model = model_selection.GridSearchCV(
+          rf_model, param_grid=param_grid, cv=3, n_jobs=self.n_jobs, verbose=0)
+      model.fit(input_features, is_training_labels)
     self.model = model
 
 
 class KNearestNeighborsAttacker(TrainedAttacker):
   """K nearest neighbor attacker."""
 
+  def __init__(self, backend: Optional[str] = None):
+    super().__init__(backend=backend)
+
   def train_model(self, input_features, is_training_labels):
-    knn_model = neighbors.KNeighborsClassifier()
-    param_grid = {
-        'n_neighbors': [3, 5, 7],
-    }
-    model = model_selection.GridSearchCV(
-        knn_model, param_grid=param_grid, cv=3, n_jobs=1, verbose=0)
-    model.fit(input_features, is_training_labels)
+    with self.ctx_mgr:
+      knn_model = neighbors.KNeighborsClassifier(n_jobs=self.n_jobs)
+      param_grid = {
+          'n_neighbors': [3, 5, 7],
+      }
+      model = model_selection.GridSearchCV(
+          knn_model, param_grid=param_grid, cv=3, n_jobs=self.n_jobs, verbose=0)
+      model.fit(input_features, is_training_labels)
     self.model = model
+
+
+def create_attacker(attack_type,
+                    backend: Optional[str] = None) -> TrainedAttacker:
+  """Returns the corresponding attacker for the provided attack_type."""
+  if attack_type == data_structures.AttackType.LOGISTIC_REGRESSION:
+    return LogisticRegressionAttacker(backend=backend)
+  if attack_type == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON:
+    return MultilayerPerceptronAttacker(backend=backend)
+  if attack_type == data_structures.AttackType.RANDOM_FOREST:
+    return RandomForestAttacker(backend=backend)
+  if attack_type == data_structures.AttackType.K_NEAREST_NEIGHBORS:
+    return KNearestNeighborsAttacker(backend=backend)
+  raise NotImplementedError('Attack type %s not implemented yet.' % attack_type)

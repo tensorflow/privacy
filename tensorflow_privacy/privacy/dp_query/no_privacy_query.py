@@ -13,10 +13,9 @@
 # limitations under the License.
 """Implements DPQuery interface for no privacy average queries."""
 
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
@@ -27,7 +26,7 @@ class NoPrivacySumQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    return sample_state, global_state, dp_event.NonPrivateDpEvent()
+    return sample_state, global_state, dp_accounting.NonPrivateDpEvent()
 
 
 class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
@@ -86,4 +85,4 @@ class NoPrivacyAverageQuery(dp_query.SumAggregationDPQuery):
     sum_state, denominator = sample_state
 
     result = tf.nest.map_structure(lambda t: t / denominator, sum_state)
-    return result, global_state, dp_event.NonPrivateDpEvent()
+    return result, global_state, dp_accounting.NonPrivateDpEvent()

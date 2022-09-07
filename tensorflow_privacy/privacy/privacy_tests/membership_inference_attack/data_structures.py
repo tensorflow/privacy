@@ -26,7 +26,10 @@ import numpy as np
 import pandas as pd
 from scipy import special
 from sklearn import metrics
-import tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.utils as utils
+from tensorflow_privacy.privacy.privacy_tests import utils
+
+# The minimum TPR or FPR below which they are considered equal.
+_ABSOLUTE_TOLERANCE = 1e-3
 
 ENTIRE_DATASET_SLICE_STR = 'Entire dataset'
 
@@ -116,7 +119,6 @@ class AttackType(enum.Enum):
   K_NEAREST_NEIGHBORS = 'knn'
   THRESHOLD_ATTACK = 'threshold'
   THRESHOLD_ENTROPY_ATTACK = 'threshold-entropy'
-  TF_LOGISTIC_REGRESSION = 'tf_lr'
 
   @property
   def is_trained_attack(self):
@@ -133,6 +135,7 @@ class PrivacyMetric(enum.Enum):
   """An enum for the supported privacy risk metrics."""
   AUC = 'AUC'
   ATTACKER_ADVANTAGE = 'Attacker advantage'
+  PPV = 'Positive predictive value'
 
   def __str__(self):
     """Returns 'AUC' instead of PrivacyMetric.AUC."""
@@ -180,12 +183,6 @@ def _log_value(probs, small_value=1e-30):
   return -np.log(np.maximum(probs, small_value))
 
 
-class LossFunction(enum.Enum):
-  """An enum that defines loss function to use in `AttackInputData`."""
-  CROSS_ENTROPY = 'cross_entropy'
-  SQUARED = 'squared'
-
-
 @dataclasses.dataclass
 class AttackInputData:
   """Input data for running an attack.
@@ -218,11 +215,12 @@ class AttackInputData:
   entropy_test: Optional[np.ndarray] = None
 
   # If loss is not explicitly specified, this function will be used to derive
-  # loss from logits and labels. It can be a pre-defined `LossFunction`.
+  # loss from logits and labels. It can be a pre-defined `LossFunction` or its
+  # string representation, or a callable.
   # If a callable is provided, it should take in two argument, the 1st is
   # labels, the 2nd is logits or probs.
-  loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray],
-                       LossFunction] = LossFunction.CROSS_ENTROPY
+  loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray], str,
+                       utils.LossFunction] = utils.LossFunction.CROSS_ENTROPY
   # Whether `loss_function` will be called with logits or probs. If not set
   # (None), will decide by availablity of logits and probs and logits is
   # preferred when both are available.
@@ -235,6 +233,13 @@ class AttackInputData:
   # corresponding class is absent from the example, and 1s where the
   # corresponding class is present.
   multilabel_data: Optional[bool] = None
+  # In some corner cases, the provided data comes from a multi-label
+  # classification model, but the samples all happen to have just 1 label. In
+  # that case, the `is_multilabel_data()` test will return a `False` value. The
+  # attack models will expect 1D input, which will throw an exception. Handle
+  # this case by letting the user set a flag that forces the input data to be
+  # treated as multilabel data.
+  force_multilabel_data: bool = False
 
   @property
   def num_classes(self):
@@ -288,52 +293,6 @@ class AttackInputData:
                                                   true_labels]
       return np.sum(np.multiply(modified_probs, modified_log_probs), axis=1)
 
-  @staticmethod
-  def _get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
-                logits: Optional[np.ndarray], probs: Optional[np.ndarray],
-                loss_function: Union[Callable[[np.ndarray, np.ndarray],
-                                              np.ndarray], LossFunction],
-                loss_function_using_logits: Optional[bool],
-                multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
-    """Calculates (if needed) losses.
-
-    Args:
-      loss: the loss of each example.
-      labels: the scalar label of each example.
-      logits: the logits vector of each example.
-      probs: the probability vector of each example.
-      loss_function: if `loss` is not available, `labels` and one of `logits`
-        and `probs` are available, we will use this function to compute loss. It
-        is supposed to take in (label, logits / probs) as input.
-      loss_function_using_logits: if `loss_function` expects `logits` or
-        `probs`.
-      multilabel_data: if the data is from a multilabel classification problem.
-
-    Returns:
-      Loss (or None if neither the loss nor the labels are present).
-    """
-    if loss is not None:
-      return loss
-    if labels is None or (logits is None and probs is None):
-      return None
-    if loss_function_using_logits and logits is None:
-      raise ValueError('We need logits to compute loss, but it is set to None.')
-    if not loss_function_using_logits and probs is None:
-      raise ValueError('We need probs to compute loss, but it is set to None.')
-
-    predictions = logits if loss_function_using_logits else probs
-    if loss_function == LossFunction.CROSS_ENTROPY:
-      if multilabel_data:
-        loss = utils.multilabel_bce_loss(labels, predictions,
-                                         loss_function_using_logits)
-      else:
-        loss = utils.log_loss(labels, predictions, loss_function_using_logits)
-    elif loss_function == LossFunction.SQUARED:
-      loss = utils.squared_loss(labels, predictions)
-    else:
-      loss = loss_function(labels, predictions)
-    return loss
-
   def __post_init__(self):
     """Checks performed after instantiation of the AttackInputData dataclass."""
     # Check if the data is multilabel.
@@ -348,7 +307,7 @@ class AttackInputData:
     """
     if self.loss_function_using_logits is None:
       self.loss_function_using_logits = (self.logits_train is not None)
-    return self._get_loss(self.loss_train, self.labels_train, self.logits_train,
+    return utils.get_loss(self.loss_train, self.labels_train, self.logits_train,
                           self.probs_train, self.loss_function,
                           self.loss_function_using_logits, self.multilabel_data)
 
@@ -360,7 +319,7 @@ class AttackInputData:
     """
     if self.loss_function_using_logits is None:
       self.loss_function_using_logits = bool(self.logits_test)
-    return self._get_loss(self.loss_test, self.labels_test, self.logits_test,
+    return utils.get_loss(self.loss_test, self.labels_test, self.logits_test,
                           self.probs_test, self.loss_function,
                           self.loss_function_using_logits, self.multilabel_data)
 
@@ -450,6 +409,10 @@ class AttackInputData:
     Raises:
       ValueError if the dimensionality of the train and test data are not equal.
     """
+    # If 'force_multilabel_data' is set, then assume multilabel data going
+    # forward.
+    if self.force_multilabel_data:
+      self.multilabel_data = True
     # If the data has already been checked for multihot encoded labels, then
     # return the result of the evaluation.
     if self.multilabel_data is not None:
@@ -616,6 +579,11 @@ class RocCurve:
   # False positive rates based on thresholds
   fpr: np.ndarray
 
+  # Ratio of test to train set size.
+  # In Jayaraman et al. (https://arxiv.org/pdf/2005.10881.pdf) it is referred to
+  # as 'gamma' (see Table 1 for the definition).
+  test_train_ratio: np.float64
+
   def get_auc(self):
     """Calculates area under curve (aka AUC)."""
     return metrics.auc(self.fpr, self.tpr)
@@ -632,12 +600,69 @@ class RocCurve:
     """
     return max(np.abs(self.tpr - self.fpr))
 
+  def get_ppv(self) -> float:
+    """Calculates Positive Predictive Value of the membership attacker.
+
+    The Positive Predictive Value (PPV) is the proportion of positive
+    predictions that are true positives. It can be expressed as PPV=TP/(TP+FP).
+    It was suggested by Jayaraman et al. (https://arxiv.org/pdf/2005.10881.pdf)
+    that this would be a suitable metric for membership attacks on datasets
+    where the number of samples from the training set and the number of samples
+    from the test set are very different. These are referred to as imbalanced
+    datasets.
+
+    Returns:
+      A single float number for the Positive Predictive Value.
+    """
+
+    # The Positive Predictive Value (PPV) is the proportion of positive
+    # predictions that are true positives. It is expressed as PPV=TP/(TP+FP).
+    # It was suggested by Jayaraman et al.
+    # (https://arxiv.org/pdf/2005.10881.pdf) that this would be a suitable
+    # metric for membership attack models trained on datasets where the number
+    # of samples from the training set and the number of samples from the test
+    # set are very different. These are referred to as imbalanced datasets.
+    num = np.asarray(self.tpr)
+    den = num + np.asarray([r * self.test_train_ratio for r in self.fpr])
+    # There is a special case when both `num` and `den` are 0. Both would be 0
+    # when TPR and FPR are both 0, since test_train_ratio is strictly positive
+    # (exclude the case when there is no test set). Then TPR = 0 means that all
+    # positive (train set) examples are misclassified and FPR = 0 means that all
+    # negatives (test set) were correctly classified.
+    # Consider that when TPR and FPR are close to 0, TPR ~ FPR. Call this value
+    # 'R'. So the expression for PPV can be rewritten as:
+    #   PPV = R / (R + test_train_ratio * R) = 1 / (1 + test_train_ratio).
+    # We can check this expression when test_train_ratio = 0, i.e. there is no
+    # test set, then PPV = 1 (perfect classification). When
+    # test_train_ratio >> 0, i,e, the test set size >> train set size, and
+    # PPV = 0 (perfect mis-classification).
+    # When test_train_ratio = 1, test and train sets are of the same size, and
+    # PPV = 0.5 (random guessing). This is because TPR = 0 means all positives
+    # are misclassified (i.e. classified as negatives) and FPR = 0 means all
+    # negatives are correctly classified (i.e. classified as neegatives).
+    # The normal case is when both `num` and `den` are not 0, and PPV is just
+    # the ratio of `num` to `den`.
+
+    # Find when `tpr` and `fpr` are 0.
+    tpr_is_0 = np.isclose(self.tpr, 0.0, atol=_ABSOLUTE_TOLERANCE)
+    fpr_is_0 = np.isclose(self.fpr, 0.0, atol=_ABSOLUTE_TOLERANCE)
+    tpr_and_fpr_both_0 = np.logical_and(tpr_is_0, fpr_is_0)
+    # PPV when both are zero is given by the expression below.
+    ppv_when_tpr_fpr_both_0 = 1. / (1. + self.test_train_ratio)
+    # PPV when one is not zero is given by the expression below.
+    ppv_when_one_of_tpr_fpr_not_0 = np.divide(
+        num, den, out=np.zeros_like(den), where=den != 0)
+    return np.max(
+        np.where(tpr_and_fpr_both_0, ppv_when_tpr_fpr_both_0,
+                 ppv_when_one_of_tpr_fpr_not_0))
+
   def __str__(self):
-    """Returns AUC and advantage metrics."""
+    """Returns AUC, advantage and PPV metrics."""
     return '\n'.join([
         'RocCurve(',
         '  AUC: %.2f' % self.get_auc(),
-        '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
+        '  Attacker advantage: %.2f' % self.get_attacker_advantage(),
+        '  Positive predictive value: %.2f' % self.get_ppv(), ')'
     ])
 
 
@@ -684,6 +709,11 @@ class SingleAttackResult:
   def get_attacker_advantage(self):
     return self.roc_curve.get_attacker_advantage()
 
+  def get_ppv(self) -> float:
+    if self.data_size.ntrain == 0:
+      raise ValueError('Size of the training data cannot be zero.')
+    return self.roc_curve.get_ppv()
+
   def get_auc(self):
     return self.roc_curve.get_auc()
 
@@ -696,7 +726,8 @@ class SingleAttackResult:
         (self.data_size.ntrain, self.data_size.ntest),
         '  AttackType: %s' % str(self.attack_type),
         '  AUC: %.2f' % self.get_auc(),
-        '  Attacker advantage: %.2f' % self.get_attacker_advantage(), ')'
+        '  Attacker advantage: %.2f' % self.get_attacker_advantage(),
+        '  Positive Predictive Value: %.2f' % self.get_ppv(), ')'
     ])
 
 
@@ -780,7 +811,14 @@ class SingleMembershipProbabilityResult:
                           np.zeros(len(self.test_membership_probs)))),
           np.concatenate(
               (self.train_membership_probs, self.test_membership_probs)))
-      roc_curve = RocCurve(tpr=tpr, fpr=fpr, thresholds=thresholds)
+      ntrain = np.shape(self.train_membership_probs)[0]
+      ntest = np.shape(self.test_membership_probs)[0]
+      test_train_ratio = ntest / ntrain
+      roc_curve = RocCurve(
+          tpr=tpr,
+          fpr=fpr,
+          thresholds=thresholds,
+          test_train_ratio=test_train_ratio)
       summary.append(
           '  thresholding on membership probability achieved an AUC of %.2f' %
           (roc_curve.get_auc()))
@@ -849,6 +887,7 @@ class AttackResults:
     data_size_test = []
     attack_types = []
     advantages = []
+    ppvs = []
     aucs = []
 
     for attack_result in self.single_attack_results:
@@ -863,6 +902,7 @@ class AttackResults:
       data_size_test.append(attack_result.data_size.ntest)
       attack_types.append(str(attack_result.attack_type))
       advantages.append(float(attack_result.get_attacker_advantage()))
+      ppvs.append(float(attack_result.get_ppv()))
       aucs.append(float(attack_result.get_auc()))
 
     df = pd.DataFrame({
@@ -872,6 +912,7 @@ class AttackResults:
         str(AttackResultsDFColumns.DATA_SIZE_TEST): data_size_test,
         str(AttackResultsDFColumns.ATTACK_TYPE): attack_types,
         str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
+        str(PrivacyMetric.PPV): ppvs,
         str(PrivacyMetric.AUC): aucs
     })
     return df
@@ -907,6 +948,14 @@ class AttackResults:
            max_advantage_result_all.get_attacker_advantage(),
            max_advantage_result_all.slice_spec))
 
+    max_ppv_result_all = self.get_result_with_max_ppv()
+    summary.append(
+        '  %s (with %d training and %d test examples) achieved a positive '
+        'predictive value of %.2f on slice %s' %
+        (max_ppv_result_all.attack_type, max_ppv_result_all.data_size.ntrain,
+         max_ppv_result_all.data_size.ntest, max_ppv_result_all.get_ppv(),
+         max_ppv_result_all.slice_spec))
+
     slice_dict = self._group_results_by_slice()
 
     if by_slices and len(slice_dict.keys()) > 1:
@@ -926,6 +975,12 @@ class AttackResults:
                max_advantage_result.data_size.ntrain,
                max_auc_result.data_size.ntest,
                max_advantage_result.get_attacker_advantage()))
+        max_ppv_result = results.get_result_with_max_ppv()
+        summary.append(
+            '  %s (with %d training and %d test examples) achieved a positive '
+            'predictive value of %.2f' %
+            (max_ppv_result.attack_type, max_ppv_result.data_size.ntrain,
+             max_ppv_result.data_size.ntest, max_ppv_result.get_ppv()))
 
     return '\n'.join(summary)
 
@@ -954,6 +1009,11 @@ class AttackResults:
     return self.single_attack_results[np.argmax([
         result.get_attacker_advantage() for result in self.single_attack_results
     ])]
+
+  def get_result_with_max_ppv(self) -> SingleAttackResult:
+    """Gets the result with max positive predictive value for all attacks and slices."""
+    return self.single_attack_results[np.argmax(
+        [result.get_ppv() for result in self.single_attack_results])]
 
   def save(self, filepath):
     """Saves self to a pickle file."""
@@ -1024,6 +1084,7 @@ def get_flattened_attack_metrics(results: AttackResults):
     attack_metrics += ['adv', 'auc']
     values += [
         float(attack_result.get_attacker_advantage()),
-        float(attack_result.get_auc())
+        float(attack_result.get_auc()),
+        float(attack_result.get_ppv()),
     ]
   return types, slices, attack_metrics, values

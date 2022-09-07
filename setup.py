@@ -43,4 +43,5 @@ setup(
         'tf': ['tensorflow>=2.4'],
         'tf_gpu': ['tensorflow-gpu>=2.4'],
     },
-    packages=find_packages())
+    packages=find_packages()
+)

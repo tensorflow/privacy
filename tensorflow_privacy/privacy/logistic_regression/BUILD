@@ -5,15 +5,19 @@ package(default_visibility = ["//visibility:public"])
 licenses(["notice"])
 
 py_library(
+    name = "logistic_regression",
+    srcs = ["__init__.py"],
+)
+
+py_library(
     name = "multinomial_logistic",
     srcs = ["multinomial_logistic.py"],
     srcs_version = "PY3",
     deps = [
         ":datasets",
         ":single_layer_softmax",
-        "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
-        "@com_google_differential_py//python/dp_accounting:common",
+        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 

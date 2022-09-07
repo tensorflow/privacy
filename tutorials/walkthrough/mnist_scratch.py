@@ -89,8 +89,7 @@ def load_mnist():
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   # Load training and test data.
   train_data, train_labels, test_data, test_labels = load_mnist()

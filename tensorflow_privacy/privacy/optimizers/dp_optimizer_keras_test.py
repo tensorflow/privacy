@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -131,6 +132,52 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     # Expected gradient is sum of differences.
     grads_and_vars = opt._compute_gradients(loss, [var0])
     self.assertAllCloseAccordingToType([-0.6, -0.8], grads_and_vars[0][0])
+
+  @parameterized.named_parameters(
+      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.5, 1),
+      ('DPGradientDescent 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2.5, 2),
+      ('DPGradientDescent 4', dp_optimizer_keras.DPKerasSGDOptimizer, 2.5, 4),
+      ('DPGradientDescentVectorized',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2.5, 1),
+  )
+  def testClippingNormMultipleVariables(self, cls, l2_clip_norm,
+                                        num_microbatches):
+    var0 = tf.Variable([1.0, 2.0])
+    var1 = tf.Variable([3.0])
+    data0 = tf.Variable([[3.0, 6.0], [5.0, 6.0], [4.0, 8.0], [-1.0, 0.0]])
+    data1 = tf.Variable([[8.0], [2.0], [3.0], [1.0]])
+
+    opt = cls(
+        l2_norm_clip=l2_clip_norm,
+        noise_multiplier=0.0,
+        num_microbatches=num_microbatches,
+        learning_rate=2.0)
+
+    loss = lambda: self._loss(data0, var0) + self._loss(data1, var1)
+
+    # Expected gradient is sum of differences.
+    grads_and_vars = opt._compute_gradients(loss, [var0, var1])
+
+    # Compute expected gradients.
+    batch_size = data0.shape[0]
+    grad0 = (data0 - var0).numpy()
+    grad1 = (data1 - var1).numpy()
+    grads = np.concatenate([grad0, grad1], axis=1)
+
+    grads = np.reshape(
+        grads, (num_microbatches, int(batch_size / num_microbatches), -1))
+    grads = np.mean(grads, axis=1)
+
+    norms = np.apply_along_axis(np.linalg.norm, axis=1, arr=grads)
+    grad_factors = l2_clip_norm / np.maximum(l2_clip_norm, norms)
+
+    scaled_grads = grads * grad_factors[:, None]
+    mean_scaled_grads = -np.mean(scaled_grads, axis=0)
+    expected0, expected1 = np.split(mean_scaled_grads, [2], axis=0)
+
+    # Compare expected with actual gradients.
+    self.assertAllCloseAccordingToType(expected0, grads_and_vars[0][0])
+    self.assertAllCloseAccordingToType(expected1, grads_and_vars[1][0])
 
   @parameterized.named_parameters(
       ('DPGradientDescent 2 4 1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
@@ -468,6 +515,200 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertNotAllClose([[1.0, 2.0]], var0)
     self.assertNotAllClose([3.0], var1)
 
+
+class SimpleEmbeddingModel(tf.keras.Model):
+  """Simple embedding model."""
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.embed_layer = tf.keras.layers.Embedding(
+        name='embedding',
+        input_dim=10,  # vocabulary size.
+        output_dim=6,  # embedding size.
+        embeddings_initializer='uniform',
+        input_length=4)  # sequence length.
+    self.pool_layer = tf.keras.layers.Dense(
+        name='pooler',
+        units=6,
+        activation='tanh',
+        kernel_initializer='zeros',
+        bias_initializer='zeros')
+    self.probs_layer = tf.keras.layers.Dense(
+        units=1, activation='softmax', name='classification')
+
+  def call(self, inputs, training=None):
+    # The shape of the sequence output from the embedding layer is
+    # [batch_size, sequence_length, embedding_size]
+    sequence_output = self.embed_layer(inputs)
+    first_token_tensor = tf.squeeze(sequence_output[:, 0:1, :], axis=1)
+    # The shape of the pooled output from the embedding layer is
+    # [batch_size, embedding_size]
+    pooled_output = self.pool_layer(first_token_tensor)
+    return sequence_output, pooled_output
+
+
+def keras_embedding_model_fn(opt_cls,
+                             l2_norm_clip: float,
+                             noise_multiplier: float,
+                             num_microbatches: int,
+                             learning_rate: float,
+                             use_seq_output: bool = False,
+                             unconnected_gradients_to_zero: bool = False):
+  """Construct a simple embedding model with a classification layer."""
+
+  # Every sample has 4 tokens (sequence length=4).
+  x = tf.keras.layers.Input(shape=(4,), dtype=tf.float32, name='input')
+  sequence_output, pooled_output = SimpleEmbeddingModel()(x)
+  if use_seq_output:
+    embedding = sequence_output
+  else:
+    embedding = pooled_output
+  probs = tf.keras.layers.Dense(
+      units=1, activation='softmax', name='classification')(
+          embedding)
+  model = tf.keras.Model(inputs=x, outputs=probs, name='model')
+
+  optimizer = opt_cls(
+      l2_norm_clip=l2_norm_clip,
+      noise_multiplier=noise_multiplier,
+      num_microbatches=num_microbatches,
+      unconnected_gradients_to_zero=unconnected_gradients_to_zero,
+      learning_rate=learning_rate)
+
+  model.compile(
+      optimizer=optimizer,
+      loss=tf.keras.losses.MeanSquaredError(
+          # Return per-sample loss
+          reduction=tf.keras.losses.Reduction.NONE),
+      metrics=['accuracy'])
+  return model
+
+
+class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
+                                                parameterized.TestCase):
+  """Tests for vectorized optimizers when there are unconnected nodes.
+
+  Subclassed Keras models can have layers that are defined in the graph, but
+  not connected to the input or output. Or a condition expression could
+  determine if the layer in question was connected or not. In such cases, the
+  gradients are not present for that unconnected layer. The vectorized DP
+  optimizers compute the per-microbatch losses using the Jacobian. The Jacobian
+  will contain 'None' values corresponding to that layer. This causes an error
+  in the gradient computation.
+  This error can be mitigated by setting those unconnected gradients to 0
+  instead of 'None'. This is done using the 'unconnected_gradients' flag of the
+  tf.GradientTape.jacobian() method.
+  This class of tests tests the possible combinations of presence/absence of
+  unconnected layers and setting unconnected gradients to 'None' or 0. In these
+  tests, this is done by setting 'unconnected_gradients_to_zero' to True if the
+  gradients are to be set to zero, or False if they are to be set to None.
+  """
+
+  # Parameters for testing: optimizer.
+  @parameterized.named_parameters(
+      ('DPSGDVectorized_SeqOutput_UnconnectedGradients',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),)
+  def testSeqOutputUnconnectedGradientsAsNoneFails(self, cls):
+    """Tests that DP vectorized optimizers with 'None' unconnected gradients fail.
+
+    Sequence models that have unconnected gradients (with
+    'tf.UnconnectedGradients.NONE' passed to tf.GradientTape.jacobian) will
+    return a 'None' in the corresponding entry in the Jacobian. To mitigate this
+    the 'unconnected_gradients_to_zero' flag is added to the differentially
+    private optimizers to support setting these gradients to zero.
+
+    These tests test the various combinations of this flag and the model.
+
+    Args:
+      cls: The DP optimizer class to test.
+    """
+
+    embedding_model = keras_embedding_model_fn(
+        cls,
+        l2_norm_clip=1.0,
+        noise_multiplier=0.5,
+        num_microbatches=1,
+        learning_rate=1.0,
+        use_seq_output=True,
+        unconnected_gradients_to_zero=False)
+
+    train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
+    train_labels = np.random.randint(0, 2, size=(1000, 1), dtype=np.int32)
+
+    def train_data_input_fn():
+      return tf.data.Dataset.from_tensor_slices(
+          (train_data, train_labels)).batch(8)
+
+    self.assertRaisesRegex(
+        ValueError,
+        'None values not supported',
+        embedding_model.fit,
+        x=train_data_input_fn(),
+        epochs=1,
+        verbose=0)
+
+  # Parameters for testing: optimizer.
+  @parameterized.named_parameters(
+      ('DPSGDVectorized_PooledOutput_UnconnectedGradients',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),)
+  def testPooledOutputUnconnectedGradientsAsNonePasses(self, cls):
+    """Tests that DP vectorized optimizers with 'None' unconnected gradients fail."""
+
+    embedding_model = keras_embedding_model_fn(
+        cls,
+        l2_norm_clip=1.0,
+        noise_multiplier=0.5,
+        num_microbatches=1,
+        learning_rate=1.0,
+        use_seq_output=False,
+        unconnected_gradients_to_zero=False)
+
+    train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
+    train_labels = np.random.randint(0, 2, size=(1000, 1), dtype=np.int32)
+
+    def train_data_input_fn():
+      return tf.data.Dataset.from_tensor_slices(
+          (train_data, train_labels)).batch(8)
+
+    try:
+      embedding_model.fit(x=train_data_input_fn(), epochs=1, verbose=0)
+    except ValueError:
+      # For a 'ValueError' exception the test should record a failure. All
+      # other exceptions are errors.
+      self.fail('ValueError raised by model.fit().')
+
+  # Parameters for testing: optimizer, use sequence output flag.
+  @parameterized.named_parameters(
+      ('DPSGDVectorized_SeqOutput_UnconnectedGradientsAreZero',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, True),
+      ('DPSGDVectorized_PooledOutput_UnconnectedGradientsAreZero',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, False),
+  )
+  def testUnconnectedGradientsAsZeroPasses(self, cls, use_seq_output):
+    """Tests that DP vectorized optimizers with 'Zero' unconnected gradients pass."""
+
+    embedding_model = keras_embedding_model_fn(
+        cls,
+        l2_norm_clip=1.0,
+        noise_multiplier=0.5,
+        num_microbatches=1,
+        learning_rate=1.0,
+        use_seq_output=use_seq_output,
+        unconnected_gradients_to_zero=True)
+
+    train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
+    train_labels = np.random.randint(0, 2, size=(1000, 1), dtype=np.int32)
+
+    def train_data_input_fn():
+      return tf.data.Dataset.from_tensor_slices(
+          (train_data, train_labels)).batch(8)
+
+    try:
+      embedding_model.fit(x=train_data_input_fn(), epochs=1, verbose=0)
+    except ValueError:
+      # For a 'ValueError' exception the test should record a failure. All
+      # other exceptions are errors.
+      self.fail('ValueError raised by model.fit().')
 
 if __name__ == '__main__':
   tf.test.main()

@@ -12,11 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from unittest import mock
+
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import utils
+from tensorflow_privacy.privacy.privacy_tests import utils
+
+
+class LossFunctionFromStringTest(parameterized.TestCase):
+
+  @parameterized.parameters(
+      (utils.LossFunction.CROSS_ENTROPY, 'cross_entropy'),
+      (utils.LossFunction.SQUARED, 'squared'),
+  )
+  def test_from_str(self, en, string):
+    self.assertEqual(utils.string_to_loss_function(string), en)
+
+  @parameterized.parameters(
+      ('random string'),
+      (''),
+  )
+  def test_from_str_wrong_input(self, string):
+    self.assertRaises(ValueError, utils.string_to_loss_function, string)
 
 
 class TestLogLoss(parameterized.TestCase):
@@ -179,6 +198,40 @@ class TestMultilabelBCELoss(parameterized.TestCase):
   def test_multilabel_bce_loss_raises(self, label, pred, from_logits, regex):
     self.assertRaisesRegex(ValueError, regex, utils.multilabel_bce_loss, label,
                            pred, from_logits)
+
+
+class TestGetLoss(parameterized.TestCase):
+
+  @parameterized.named_parameters(
+      ('xe', utils.LossFunction.CROSS_ENTROPY, False),
+      ('xe str', 'cross_entropy', False),
+      ('xe multi', utils.LossFunction.CROSS_ENTROPY, True),
+      ('xe multi str', 'cross_entropy', True),
+      ('sq', utils.LossFunction.SQUARED, False),
+      ('sq str', 'squared', False),
+  )
+  @mock.patch.object(utils, 'squared_loss')
+  @mock.patch.object(utils, 'multilabel_bce_loss')
+  @mock.patch.object(utils, 'log_loss')
+  def test_get_loss_call_loss_function(self, loss_function, multilabel_data,
+                                       mock_log_loss, mock_multilabel_bce_loss,
+                                       mock_squared_loss):
+    """Test if get_loss calls the correct loss_function."""
+    utils.get_loss(
+        loss=None,
+        labels=np.array([0]),
+        logits=np.array([[0.1, -0.1]]),
+        probs=None,
+        loss_function=loss_function,
+        loss_function_using_logits=True,
+        multilabel_data=multilabel_data)
+    if loss_function in ['cross_entropy', utils.LossFunction.CROSS_ENTROPY]:
+      if not multilabel_data:
+        mock_log_loss.assert_called_once()
+      else:
+        mock_multilabel_bce_loss.assert_called_once()
+    else:
+      mock_squared_loss.assert_called_once()
 
 
 if __name__ == '__main__':

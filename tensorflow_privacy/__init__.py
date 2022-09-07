@@ -25,23 +25,8 @@ else:
   # TensorFlow v1 imports
   from tensorflow_privacy import v1
 
-  # DpEvents
-  from com_google_differential_py.python.dp_accounting.dp_event import DpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import NoOpDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import NonPrivateDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import UnsupportedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import GaussianDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SelfComposedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import ComposedDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import PoissonSampledDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithReplacementDpEvent
-  from com_google_differential_py.python.dp_accounting.dp_event import SampledWithoutReplacementDpEvent
-
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
-  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_heterogeneous_rdp
-  from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-  from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_tree_restart
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_single_tree
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_zcdp_single_tree
@@ -85,5 +70,14 @@ else:
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasAdamOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import VectorizedDPKerasSGDOptimizer
   from tensorflow_privacy.privacy.optimizers.dp_optimizer_keras_vectorized import make_vectorized_keras_optimizer_class
+
+  # Logistic regression
+  from tensorflow_privacy.privacy.logistic_regression.datasets import linearly_separable_labeled_examples
+  from tensorflow_privacy.privacy.logistic_regression.datasets import synthetic_linearly_separable_data
+
+  from tensorflow_privacy.privacy.logistic_regression.multinomial_logistic import logistic_objective_perturbation
+  from tensorflow_privacy.privacy.logistic_regression.multinomial_logistic import logistic_dpsgd
+
+  from tensorflow_privacy.privacy.logistic_regression.single_layer_softmax import single_layer_softmax_classifier
 
   # module `bolt_on` not yet available in this version of TF Privacy

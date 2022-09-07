@@ -15,11 +15,10 @@
 
 import collections
 
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import normalized_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class DistributedSkellamSumQuery(dp_query.SumAggregationDPQuery):
@@ -127,7 +126,7 @@ class DistributedSkellamSumQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """The noise was already added locally, therefore just continue."""
-    event = dp_event.UnsupportedDpEvent()
+    event = dp_accounting.UnsupportedDpEvent()
     return sample_state, global_state, event
 
 

@@ -17,24 +17,7 @@
 import math
 
 from absl import app
-from scipy import optimize
-
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp  # pylint: disable=g-import-not-at-top
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
-
-
-def apply_dp_sgd_analysis(q, sigma, steps, orders, delta):
-  """Compute and print results of DP-SGD analysis."""
-
-  # compute_rdp requires that sigma be the ratio of the standard deviation of
-  # the Gaussian noise to the l2-sensitivity of the function to which it is
-  # added. Hence, sigma here corresponds to the `noise_multiplier` parameter
-  # in the DP-SGD implementation found in privacy.optimizers.dp_optimizer
-  rdp = compute_rdp(q, sigma, steps, orders)
-
-  eps, _, opt_order = get_privacy_spent(orders, rdp, target_delta=delta)
-
-  return eps, opt_order
+import dp_accounting
 
 
 def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
@@ -46,26 +29,26 @@ def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
             list(range(5, 64)) + [128, 256, 512])
   steps = int(math.ceil(epochs * n / batch_size))
 
-  init_noise = noise_lbd  # minimum possible noise
-  init_epsilon, _ = apply_dp_sgd_analysis(q, init_noise, steps, orders, delta)
+  def make_event_from_noise(sigma):
+    return dp_accounting.SelfComposedDpEvent(
+        dp_accounting.PoissonSampledDpEvent(
+            q, dp_accounting.GaussianDpEvent(sigma)), steps)
+
+  def make_accountant():
+    return dp_accounting.rdp.RdpAccountant(orders)
+
+  accountant = make_accountant()
+  accountant.compose(make_event_from_noise(noise_lbd))
+  init_epsilon = accountant.get_epsilon(delta)
 
   if init_epsilon < target_epsilon:  # noise_lbd was an overestimate
-    print('min_noise too large for target epsilon.')
+    print('noise_lbd too large for target epsilon.')
     return 0
 
-  cur_epsilon = init_epsilon
-  max_noise, min_noise = init_noise, 0
+  target_noise = dp_accounting.calibrate_dp_mechanism(
+      make_accountant, make_event_from_noise, target_epsilon, delta,
+      dp_accounting.LowerEndpointAndGuess(noise_lbd, noise_lbd * 2))
 
-  # doubling to find the right range
-  while cur_epsilon > target_epsilon:  # until noise is large enough
-    max_noise, min_noise = max_noise * 2, max_noise
-    cur_epsilon, _ = apply_dp_sgd_analysis(q, max_noise, steps, orders, delta)
-
-  def epsilon_fn(noise):  # should return 0 if guess_epsilon==target_epsilon
-    guess_epsilon = apply_dp_sgd_analysis(q, noise, steps, orders, delta)[0]
-    return guess_epsilon - target_epsilon
-
-  target_noise = optimize.bisect(epsilon_fn, min_noise, max_noise)
   print(
       'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'
       ' over {} steps satisfies'.format(100 * q, target_noise, steps),

@@ -26,12 +26,11 @@ import math
 from absl import app
 from absl import flags
 from absl import logging
+import dp_accounting
 import numpy as np
 import tensorflow as tf
 from tensorflow import estimator as tf_estimator
 from tensorflow.compat.v1 import estimator as tf_compat_v1_estimator
-from tensorflow_privacy.privacy.analysis.rdp_accountant import compute_rdp
-from tensorflow_privacy.privacy.analysis.rdp_accountant import get_privacy_spent
 from tensorflow_privacy.privacy.optimizers import dp_optimizer
 
 GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
@@ -57,12 +56,12 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   logits = tf.keras.layers.Dense(
       units=nclasses,
       kernel_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer),
-      bias_regularizer=tf.keras.regularizers.L2(
-          l2=FLAGS.regularizer)).apply(input_layer)
+      bias_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer))(
+          input_layer)
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-      labels=labels, logits=logits) + tf.losses.get_regularization_loss()
+      labels, logits) + tf.compat.v1.losses.get_regularization_loss()
   # Define mean of loss across minibatch (for reporting through tf.Estimator).
   scalar_loss = tf.reduce_mean(vector_loss)
 
@@ -95,7 +94,7 @@ def lr_model_fn(features, labels, mode, nclasses, dim):
   elif mode == tf_estimator.ModeKeys.EVAL:
     eval_metric_ops = {
         'accuracy':
-            tf.metrics.accuracy(
+            tf.compat.v1.metrics.accuracy(
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
     return tf_estimator.EstimatorSpec(
@@ -166,21 +165,25 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
     rdp = [order * coef for order in orders]
-    eps, _, _ = get_privacy_spent(orders, rdp, target_delta=delta)
+    eps, _ = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
-  # Compute privacy guarantees for the Sampled Gaussian Mechanism.
-  rdp_sgm = compute_rdp(batch_size / samples, noise_multiplier,
-                        epochs * steps_per_epoch, orders)
-  eps_sgm, _, _ = get_privacy_spent(orders, rdp_sgm, target_delta=delta)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)
+  event = dp_accounting.SelfComposedDpEvent(
+      dp_accounting.PoissonSampledDpEvent(
+          batch_size / samples,
+          dp_accounting.GaussianDpEvent(noise_multiplier)),
+      epochs * steps_per_epoch)
+  accountant.compose(event)
+  eps_sgm = accountant.get_epsilon(target_delta=delta)
+
   print('By comparison, DP-SGD analysis for training done with the same '
         'parameters and random shuffling in each epoch guarantees '
         '({:.2f}, {})-DP for all samples.'.format(eps_sgm, delta))
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.INFO)
+  logging.set_verbosity(logging.INFO)
 
   if FLAGS.data_l2_norm <= 0:
     raise ValueError('data_l2_norm must be positive.')

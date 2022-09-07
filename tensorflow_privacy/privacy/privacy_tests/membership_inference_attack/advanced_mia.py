@@ -17,7 +17,7 @@ import functools
 from typing import Sequence, Union
 import numpy as np
 import scipy.stats
-from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.utils import log_loss
+from tensorflow_privacy.privacy.privacy_tests.utils import log_loss
 
 
 def replace_nan_with_column_mean(a: np.ndarray):

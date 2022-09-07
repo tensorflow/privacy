@@ -2,10 +2,9 @@
 
 This directory contains code to reproduce our paper:
 
-**"Membership Inference Attacks From First Principles"**
-https://arxiv.org/abs/2112.03570
-by Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and Florian Tramer.
-
+**"Membership Inference Attacks From First Principles"** <br>
+https://arxiv.org/abs/2112.03570 <br>
+by Nicholas Carlini, Steve Chien, Milad Nasr, Shuang Song, Andreas Terzis, and Florian Tramèr.
 
 ### INSTALLING
 
@@ -18,21 +17,20 @@ with JAX + ObJAX so you will need to follow build instructions for that
 https://github.com/google/objax
 https://objax.readthedocs.io/en/latest/installation_setup.html
 
-
 ### RUNNING THE CODE
 
 #### 1. Train the models
 
-The first step in our attack is to train shadow models. As a baseline
-that should give most of the gains in our attack, you should start by
-training 16 shadow models with the command
+The first step in our attack is to train shadow models. As a baseline that
+should give most of the gains in our attack, you should start by training 16
+shadow models with the command
 
 > bash scripts/train_demo.sh
 
-or if you have multiple GPUs on your machine and want to train these models
-in parallel, then modify and run
+or if you have multiple GPUs on your machine and want to train these models in
+parallel, then modify and run
 
-> bash scripts/train_demo_multigpu.sh 
+> bash scripts/train_demo_multigpu.sh
 
 This will train several CIFAR-10 wide ResNet models to ~91% accuracy each, and
 will output a bunch of files under the directory exp/cifar10 with structure:
@@ -63,14 +61,13 @@ exp/cifar10/
 --- 0000000100.npy
 ```
 
-where this new file has shape (50000, 10) and stores the model's 
-output features for each example.
-
+where this new file has shape (50000, 10) and stores the model's output features
+for each example.
 
 #### 3. Compute membership inference scores
 
-Finally we take the output features and generate our logit-scaled membership inference
-scores for each example for each model.
+Finally we take the output features and generate our logit-scaled membership
+inference scores for each example for each model.
 
 > python3 score.py exp/cifar10/
 
@@ -85,7 +82,6 @@ exp/cifar10/
 
 with shape (50000,) storing just our scores.
 
-
 ### PLOTTING THE RESULTS
 
 Finally we can generate pretty pictures, and run the plotting code
@@ -93,7 +89,6 @@ Finally we can generate pretty pictures, and run the plotting code
 > python3 plot.py
 
 which should give (something like) the following output
-
 
 ![Log-log ROC Curve for all attacks](fprtpr.png "Log-log ROC Curve")
 
@@ -111,9 +106,9 @@ Attack Global threshold
 ```
 
 where the global threshold attack is the baseline, and our online,
-online-with-fixed-variance, offline, and offline-with-fixed-variance
-attack variants are the four other curves. Note that because we only
-train a few models, the fixed variance variants perform best.
+online-with-fixed-variance, offline, and offline-with-fixed-variance attack
+variants are the four other curves. Note that because we only train a few
+models, the fixed variance variants perform best.
 
 ### Citation
 

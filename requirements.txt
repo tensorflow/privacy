@@ -1,13 +1,36 @@
-absl-py~=1.0.0
-attrs~=21.2.0
-dm-tree~=0.1.1
-matplotlib~=3.3.4
-mpmath
-numpy~=1.21.5
-pandas~=1.1.4
-scipy~=1.5.0
-scikit-learn~=1.0.2
-tensorflow-datasets~=4.5.2
+# Requirements for Tensorflow Privacy.
+#
+# If you add a dependency here, also add the dependency to setup.py.
+#
+# *   For packages that have a stable release, we use a version that is
+#     compatible with that release (e.g. `~=x.y`). See
+#     https://peps.python.org/pep-0440/#compatible-release for more information.
+# *   For packages that do not have a stable release, we use a version that
+#     matches a release that has been tested (e.g. `==x.y.z`). See
+#     https://peps.python.org/pep-0440/#version-matching for more information.
+#
+# This assumes that the packages follows Semantic Versioning, see
+# https://semver.org/. If a package follows a different versioning scheme or
+# requires unique handling, we use a different version specifier and comment the
+# versioning scheme or reasoning.
+#
+# Note: As of 2022-08-17 there is bug in `pip` when multiple packages use the
+# compatible release operator `~=` to specify a version and one of those
+# versions ends in `0`. See https://github.com/pypa/pip/issues/9613 for more
+# information. In this case, use the equivalent clause `>=x.0,==x.*` instead of
+# `~=x.0`.
+
+absl-py>=1.0,==1.*
+attrs~=21.4
+dm-tree==0.1.7
+dp-accounting==0.3.0
+matplotlib~=3.3
+mpmath~=1.2
+numpy~=1.21
+pandas~=1.4
+scikit-learn>=1.0,==1.*
+scipy~=1.7
+tensorflow-datasets~=4.5
 tensorflow-estimator~=2.4
-tensorflow-probability~=0.15.0
+tensorflow-probability~=0.15
 tensorflow~=2.4

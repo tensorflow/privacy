@@ -33,7 +33,7 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
                                            tolerance):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
         num_train, num_test, dimension, num_classes)
-    accuracy = multinomial_logistic.logistic_objective_perturbation(
+    _, accuracy = multinomial_logistic.logistic_objective_perturbation(
         train_dataset, test_dataset, epsilon, delta, epochs, num_classes, 1)
     # Since the synthetic data is linearly separable, we expect the test
     # accuracy to come arbitrarily close to 1 as the number of training examples
@@ -67,11 +67,9 @@ class MultinomialLogisticRegressionTest(parameterized.TestCase):
                           num_microbatches, clipping_norm):
     (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
         num_train, num_test, dimension, num_classes)
-    accuracy = multinomial_logistic.logistic_dpsgd(train_dataset, test_dataset,
-                                                   epsilon, delta, epochs,
-                                                   num_classes, batch_size,
-                                                   num_microbatches,
-                                                   clipping_norm)
+    _, accuracy = multinomial_logistic.logistic_dpsgd(
+        train_dataset, test_dataset, epsilon, delta, epochs, num_classes,
+        batch_size, num_microbatches, clipping_norm)
     # Since the synthetic data is linearly separable, we expect the test
     # accuracy to come arbitrarily close to 1 as the number of training examples
     # grows.

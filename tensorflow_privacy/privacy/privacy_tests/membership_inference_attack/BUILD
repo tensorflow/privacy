@@ -15,21 +15,6 @@ py_library(
     srcs_version = "PY3",
 )
 
-py_library(
-    name = "utils",
-    srcs = ["utils.py"],
-    srcs_version = "PY3",
-)
-
-py_test(
-    name = "utils_test",
-    timeout = "long",
-    srcs = ["utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
-    deps = [":utils"],
-)
-
 py_test(
     name = "membership_inference_attack_test",
     timeout = "long",
@@ -45,7 +30,10 @@ py_test(
     srcs = ["data_structures_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//tensorflow_privacy/privacy/privacy_tests:utils",
+    ],
 )
 
 py_test(
@@ -95,7 +83,7 @@ py_library(
         "seq2seq_mia.py",
     ],
     srcs_version = "PY3",
-    deps = [":utils"],
+    deps = ["//tensorflow_privacy/privacy/privacy_tests:utils"],
 )
 
 py_library(
@@ -113,8 +101,6 @@ py_test(
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -124,9 +110,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":membership_inference_attack",
-        ":utils",
         ":utils_tensorboard",
-        "//third_party/py/tensorflow:tensorflow_estimator",
+        "//tensorflow_privacy/privacy/privacy_tests:utils",
     ],
 )
 
@@ -138,8 +123,6 @@ py_binary(
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
-        "//third_party/py/tensorflow:tensorflow_compat_v1_estimator",
-        "//third_party/py/tensorflow:tensorflow_estimator",
     ],
 )
 
@@ -149,8 +132,8 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":membership_inference_attack",
-        ":utils",
         ":utils_tensorboard",
+        "//tensorflow_privacy/privacy/privacy_tests:utils",
     ],
 )
 
@@ -190,7 +173,7 @@ py_library(
         "advanced_mia.py",
     ],
     srcs_version = "PY3",
-    deps = [":utils"],
+    deps = ["//tensorflow_privacy/privacy/privacy_tests:utils"],
 )
 
 py_test(
@@ -210,6 +193,6 @@ py_binary(
     deps = [
         ":advanced_mia",
         ":membership_inference_attack",
-        ":utils",
+        "//tensorflow_privacy/privacy/privacy_tests:utils",
     ],
 )

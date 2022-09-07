@@ -106,6 +106,7 @@ def make_vectorized_keras_optimizer_class(cls):
         l2_norm_clip,
         noise_multiplier,
         num_microbatches=None,
+        unconnected_gradients_to_zero=False,
         *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
         **kwargs):
       """Initialize the DPOptimizerClass.
@@ -115,6 +116,10 @@ def make_vectorized_keras_optimizer_class(cls):
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
         num_microbatches: Number of microbatches into which each minibatch is
           split.
+        unconnected_gradients_to_zero: The Jacobian is used to compute the
+          microbatch losses. If a node in the graph is deliberately not
+          connected, then the Jacobian computation will return a `None` for that
+          node. Set this flag to True to treat these Jacobians as zero.
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
@@ -122,6 +127,7 @@ def make_vectorized_keras_optimizer_class(cls):
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
+      self._unconnected_gradients_to_zero = unconnected_gradients_to_zero
       self._dp_sum_query = gaussian_query.GaussianSumQuery(
           l2_norm_clip, l2_norm_clip * noise_multiplier)
       self._global_state = None
@@ -164,7 +170,12 @@ def make_vectorized_keras_optimizer_class(cls):
 
       # Compute the per-microbatch losses using helpful jacobian method.
       with tf.keras.backend.name_scope(self._name + '/gradients'):
-        jacobian = tape.jacobian(microbatch_losses, var_list)
+        jacobian = tape.jacobian(
+            microbatch_losses,
+            var_list,
+            unconnected_gradients=(tf.UnconnectedGradients.ZERO
+                                   if self._unconnected_gradients_to_zero else
+                                   tf.UnconnectedGradients.NONE))
 
         clipped_gradients = tf.vectorized_map(
             lambda g: clip_gradients_vmap(g, self._l2_norm_clip), jacobian)

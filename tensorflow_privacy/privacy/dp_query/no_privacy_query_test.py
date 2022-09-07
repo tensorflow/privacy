@@ -21,40 +21,34 @@ from tensorflow_privacy.privacy.dp_query import test_utils
 class NoPrivacyQueryTest(tf.test.TestCase, parameterized.TestCase):
 
   def test_sum(self):
-    with self.cached_session() as sess:
-      record1 = tf.constant([2.0, 0.0])
-      record2 = tf.constant([-1.0, 1.0])
+    record1 = tf.constant([2.0, 0.0])
+    record2 = tf.constant([-1.0, 1.0])
 
-      query = no_privacy_query.NoPrivacySumQuery()
-      query_result, _ = test_utils.run_query(query, [record1, record2])
-      result = sess.run(query_result)
-      expected = [1.0, 1.0]
-      self.assertAllClose(result, expected)
+    query = no_privacy_query.NoPrivacySumQuery()
+    query_result, _ = test_utils.run_query(query, [record1, record2])
+    expected = [1.0, 1.0]
+    self.assertAllClose(query_result, expected)
 
   def test_no_privacy_average(self):
-    with self.cached_session() as sess:
-      record1 = tf.constant([5.0, 0.0])
-      record2 = tf.constant([-1.0, 2.0])
+    record1 = tf.constant([5.0, 0.0])
+    record2 = tf.constant([-1.0, 2.0])
 
-      query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result, _ = test_utils.run_query(query, [record1, record2])
-      result = sess.run(query_result)
-      expected = [2.0, 1.0]
-      self.assertAllClose(result, expected)
+    query = no_privacy_query.NoPrivacyAverageQuery()
+    query_result, _ = test_utils.run_query(query, [record1, record2])
+    expected = [2.0, 1.0]
+    self.assertAllClose(query_result, expected)
 
   def test_no_privacy_weighted_average(self):
-    with self.cached_session() as sess:
-      record1 = tf.constant([4.0, 0.0])
-      record2 = tf.constant([-1.0, 1.0])
+    record1 = tf.constant([4.0, 0.0])
+    record2 = tf.constant([-1.0, 1.0])
 
-      weights = [1, 3]
+    weights = [1, 3]
 
-      query = no_privacy_query.NoPrivacyAverageQuery()
-      query_result, _ = test_utils.run_query(
-          query, [record1, record2], weights=weights)
-      result = sess.run(query_result)
-      expected = [0.25, 0.75]
-      self.assertAllClose(result, expected)
+    query = no_privacy_query.NoPrivacyAverageQuery()
+    query_result, _ = test_utils.run_query(
+        query, [record1, record2], weights=weights)
+    expected = [0.25, 0.75]
+    self.assertAllClose(query_result, expected)
 
   @parameterized.named_parameters(
       ('type_mismatch', [1.0], (1.0,), TypeError),

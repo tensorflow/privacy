@@ -92,8 +92,7 @@ def load_cifar10():
 
 
 def main(unused_argv):
-  logger = tf.get_logger()
-  logger.set_level(logging.ERROR)
+  logging.set_verbosity(logging.ERROR)
 
   # Load training and test data.
   x_train, y_train, x_test, y_test = load_cifar10()

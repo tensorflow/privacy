@@ -15,12 +15,11 @@
 
 import collections
 
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 from tensorflow_privacy.privacy.dp_query import quantile_estimator_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
@@ -138,7 +137,7 @@ class QuantileAdaptiveClipSumQuery(dp_query.SumAggregationDPQuery):
                                          new_sum_query_state,
                                          new_quantile_estimator_state)
 
-    event = dp_event.ComposedDpEvent(events=[sum_event, quantile_event])
+    event = dp_accounting.ComposedDpEvent(events=[sum_event, quantile_event])
     return noised_vectors, new_global_state, event
 
   def derive_metrics(self, global_state):

@@ -15,11 +15,10 @@
 
 import collections
 
+import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import discrete_gaussian_utils
 from tensorflow_privacy.privacy.dp_query import dp_query
-
-from com_google_differential_py.python.dp_accounting import dp_event
 
 
 class DistributedDiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
@@ -108,5 +107,5 @@ class DistributedDiscreteGaussianSumQuery(dp_query.SumAggregationDPQuery):
   def get_noised_result(self, sample_state, global_state):
     # Note that by directly returning the aggregate, this assumes that there
     # will not be missing local noise shares during execution.
-    event = dp_event.UnsupportedDpEvent()
+    event = dp_accounting.UnsupportedDpEvent()
     return sample_state, global_state, event
