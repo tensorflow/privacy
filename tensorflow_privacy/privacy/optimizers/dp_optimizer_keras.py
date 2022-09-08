@@ -20,11 +20,11 @@ from tensorflow_privacy.privacy.dp_query import gaussian_query
 
 
 def make_keras_optimizer_class(cls):
-  """Given a subclass of `tf.keras.optimizers.Optimizer`, returns a DP-SGD subclass of it.
+  """Given a subclass of `tf.keras.optimizers.legacy.Optimizer`, returns a DP-SGD subclass of it.
 
   Args:
     cls: Class from which to derive a DP subclass. Should be a subclass of
-      `tf.keras.optimizers.Optimizer`.
+      `tf.keras.optimizers.legacy.Optimizer`.
 
   Returns:
     A DP-SGD subclass of `cls`.
@@ -123,11 +123,11 @@ def make_keras_optimizer_class(cls):
     called `steps_per_epoch` times per epoch, and one call only returns
     `one_step_batch_size` (instead of `effective_batch_size`) examples now.
     """.format(
-        base_class='tf.keras.optimizers.' + cls.__name__,
+        base_class='tf.keras.optimizers.legacy' + cls.__name__,
         short_base_class=cls.__name__,
         dp_keras_class='DPKeras' + cls.__name__)
 
-    # The class tf.keras.optimizers.Optimizer has two methods to compute
+    # The class tf.keras.optimizers.legacy.Optimizer has two methods to compute
     # gradients, `_compute_gradients` and `get_gradients`. The first works
     # with eager execution, while the second runs in graph mode and is used
     # by canned estimators.
@@ -371,6 +371,7 @@ def make_keras_optimizer_class(cls):
 
 
 DPKerasAdagradOptimizer = make_keras_optimizer_class(
-    tf.keras.optimizers.Adagrad)
-DPKerasAdamOptimizer = make_keras_optimizer_class(tf.keras.optimizers.Adam)
-DPKerasSGDOptimizer = make_keras_optimizer_class(tf.keras.optimizers.SGD)
+    tf.keras.optimizers.legacy.Adagrad)
+DPKerasAdamOptimizer = make_keras_optimizer_class(
+    tf.keras.optimizers.legacy.Adam)
+DPKerasSGDOptimizer = make_keras_optimizer_class(tf.keras.optimizers.legacy.SGD)

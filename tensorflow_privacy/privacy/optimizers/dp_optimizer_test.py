@@ -369,12 +369,12 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
   def testWriteOutAndReloadAdam(self):
     optimizer_class = dp_optimizer.make_gaussian_optimizer_class(
-        tf.keras.optimizers.Adam)
+        tf.keras.optimizers.legacy.Adam)
     self._test_write_out_and_reload(optimizer_class)
 
   def testWriteOutAndReloadSGD(self):
     optimizer_class = dp_optimizer.make_gaussian_optimizer_class(
-        tf.keras.optimizers.SGD)
+        tf.keras.optimizers.legacy.SGD)
     self._test_write_out_and_reload(optimizer_class)
 
 
