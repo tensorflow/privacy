@@ -13,7 +13,7 @@
 # limitations under the License.
 """Specifying and creating AttackInputData slices."""
 
-import collections
+from collections import abc
 import copy
 import logging
 from typing import List, Optional
@@ -143,7 +143,7 @@ def get_single_slice_specs(
         result.append(SingleSliceSpec(SlicingFeature.CLASS, c))
   elif isinstance(by_class, int):
     result.append(SingleSliceSpec(SlicingFeature.CLASS, by_class))
-  elif isinstance(by_class, collections.Iterable):
+  elif isinstance(by_class, abc.Iterable):
     for c in by_class:
       result.append(SingleSliceSpec(SlicingFeature.CLASS, c))
 
