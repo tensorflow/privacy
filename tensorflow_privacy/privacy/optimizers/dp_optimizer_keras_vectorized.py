@@ -252,8 +252,8 @@ def make_vectorized_keras_optimizer_class(cls):
 
 
 VectorizedDPKerasAdagradOptimizer = make_vectorized_keras_optimizer_class(
-    tf.keras.optimizers.Adagrad)
+    tf.keras.optimizers.legacy.Adagrad)
 VectorizedDPKerasAdamOptimizer = make_vectorized_keras_optimizer_class(
-    tf.keras.optimizers.Adam)
+    tf.keras.optimizers.legacy.Adam)
 VectorizedDPKerasSGDOptimizer = make_vectorized_keras_optimizer_class(
-    tf.keras.optimizers.SGD)
+    tf.keras.optimizers.legacy.SGD)
