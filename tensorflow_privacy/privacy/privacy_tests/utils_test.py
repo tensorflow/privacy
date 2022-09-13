@@ -142,6 +142,25 @@ class TestSquaredLoss(parameterized.TestCase):
     loss = utils.squared_loss(y_true, y_pred)
     np.testing.assert_allclose(loss, expected_loss, atol=1e-7)
 
+  def test_squared_loss_need_squeeze(self):
+    y_true = np.array([1, 2, 3, 4.]).reshape((-1, 1))
+    y_pred = np.array([4, 3, 2, 1.]).reshape((1, -1))
+    expected_loss = np.array([9, 1, 1, 9.])
+    loss = utils.squared_loss(y_true, y_pred)
+    np.testing.assert_allclose(loss, expected_loss, atol=1e-7)
+
+  @parameterized.named_parameters(
+      ('wrong shape y_true', np.ones((2, 2)), np.ones((4,))),
+      ('wrong shape y_pred', np.ones((4,)), np.ones((2, 2))),
+  )
+  def test_squared_loss_wrong_shape(self, y_true, y_pred):
+    self.assertRaises(ValueError, utils.squared_loss, y_true, y_pred)
+
+  def test_squared_loss_different_num_of_elements(self):
+    y_true = np.array([1, 2, 3, 4.])
+    y_pred = np.array([4, 3, 2])
+    self.assertRaises(ValueError, utils.squared_loss, y_true, y_pred)
+
 
 class TestMultilabelBCELoss(parameterized.TestCase):
 

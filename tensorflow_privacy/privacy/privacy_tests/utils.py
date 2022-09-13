@@ -79,6 +79,20 @@ def squared_loss(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
   Returns:
     the squared loss of each sample.
   """
+  if y_true.ndim != 1:
+    logging.warning(('Squared loss expects the labels to have shape '
+                     '(num_examples, ) but got shape %s. Will use np.squeeze.'),
+                    y_true.shape)
+    y_true = np.squeeze(y_true)
+  if y_pred.ndim != 1:
+    logging.warning(('Squared loss expects the predictions to have shape '
+                     '(num_examples, ) but got shape %s. Will use np.squeeze.'),
+                    y_pred.shape)
+    y_pred = np.squeeze(y_pred)
+  if y_true.shape != y_pred.shape:
+    raise ValueError('Squared loss expects the labels and predictions to have '
+                     'shape (num_examples, ), but after np.squeeze, the shapes '
+                     'are %s and %s.' % (y_true.shape, y_pred.shape))
   return (y_true - y_pred)**2
 
 
