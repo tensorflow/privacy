@@ -42,7 +42,7 @@ In addition to TensorFlow and its dependencies, other prerequisites are:
 
 If you only want to use TensorFlow Privacy as a library, you can simply execute
 
-`pip install tensorflow-privacy`
+`pip install 'tensorflow-privacy[tf]'`
 
 Otherwise, you can clone this GitHub repository into a directory of your choice:
 
@@ -55,7 +55,7 @@ your `PYTHONPATH`:
 
 ```
 cd privacy
-pip install -e .
+pip install -e '.[tf]'
 ```
 
 If you'd like to make contributions, we recommend first forking the repository

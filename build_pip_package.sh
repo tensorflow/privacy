@@ -41,8 +41,8 @@ main() {
   pip install --upgrade pip
 
   # Build pip package
-  pip install --upgrade setuptools wheel
-  python "setup.py" sdist bdist_wheel
+  pip install build
+  python -m build
 
   cp "dist/"* "${output_dir}"
 }
