@@ -72,12 +72,35 @@ def get_multilabel_test_input(n_train, n_test):
       labels_test=get_multihot_labels_for_test(n_test, num_classes))
 
 
+def get_multilabel_test_input_with_sample_weights(n_train, n_test):
+  """Get example multilabel inputs for attacks."""
+  rng = np.random.RandomState(4)
+  num_classes = max(n_train // 20, 5)  # use at least 5 classes.
+  return AttackInputData(
+      logits_train=rng.randn(n_train, num_classes) + 0.2,
+      logits_test=rng.randn(n_test, num_classes) + 0.2,
+      labels_train=get_multihot_labels_for_test(n_train, num_classes),
+      labels_test=get_multihot_labels_for_test(n_test, num_classes),
+      sample_weight_train=rng.randn(n_train, 1),
+      sample_weight_test=rng.randn(n_test, 1))
+
+
 def get_test_input_logits_only(n_train, n_test):
   """Get example input logits for attacks."""
   rng = np.random.RandomState(4)
   return AttackInputData(
       logits_train=rng.randn(n_train, 5) + 0.2,
       logits_test=rng.randn(n_test, 5) + 0.2)
+
+
+def get_test_input_logits_only_with_sample_weights(n_train, n_test):
+  """Get example input logits for attacks."""
+  rng = np.random.RandomState(4)
+  return AttackInputData(
+      logits_train=rng.randn(n_train, 5) + 0.2,
+      logits_test=rng.randn(n_test, 5) + 0.2,
+      sample_weight_train=rng.randn(n_train, 1),
+      sample_weight_test=rng.randn(n_test, 1))
 
 
 class RunAttacksTest(parameterized.TestCase):
@@ -113,9 +136,27 @@ class RunAttacksTest(parameterized.TestCase):
 
     self.assertLen(result.single_attack_results, 2)
 
+  def test_run_attacks_parallel_backend_with_sample_weights(self):
+    result = mia.run_attacks(
+        get_multilabel_test_input_with_sample_weights(100, 100),
+        SlicingSpec(), (
+            AttackType.LOGISTIC_REGRESSION,
+            AttackType.RANDOM_FOREST,
+        ),
+        backend='threading')
+
+    self.assertLen(result.single_attack_results, 2)
+
   def test_trained_attacks_logits_only_size(self):
     result = mia.run_attacks(
         get_test_input_logits_only(100, 100), SlicingSpec(),
+        (AttackType.LOGISTIC_REGRESSION,))
+
+    self.assertLen(result.single_attack_results, 1)
+
+  def test_trained_attacks_logits_only_with_sample_weights_size(self):
+    result = mia.run_attacks(
+        get_test_input_logits_only_with_sample_weights(100, 100), SlicingSpec(),
         (AttackType.LOGISTIC_REGRESSION,))
 
     self.assertLen(result.single_attack_results, 1)
@@ -270,6 +311,15 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
         backend='threading')
 
     self.assertLen(result.single_attack_results, 1)
+
+  def test_run_attacks_parallel_backend_with_sample_weights(self):
+    result = mia.run_attacks(
+        get_multilabel_test_input_with_sample_weights(100, 100),
+        SlicingSpec(),
+        (AttackType.LOGISTIC_REGRESSION, AttackType.RANDOM_FOREST),
+        backend='threading')
+
+    self.assertLen(result.single_attack_results, 2)
 
   def test_run_attack_trained_sets_attack_type(self):
     result = mia._run_attack(

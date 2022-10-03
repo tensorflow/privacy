@@ -16,6 +16,8 @@
 import functools
 import gc
 import os
+from typing import Optional
+
 from absl import app
 from absl import flags
 import matplotlib.pyplot as plt
@@ -69,7 +71,11 @@ def plot_curve_with_area(x, y, xlabel, ylabel, ax, label, title=None):
   ax.title.set_text(title)
 
 
-def get_stat_and_loss_aug(model, x, y, batch_size=4096):
+def get_stat_and_loss_aug(model,
+                          x,
+                          y,
+                          sample_weight: Optional[np.ndarray] = None,
+                          batch_size=4096):
   """A helper function to get the statistics and losses.
 
   Here we get the statistics and losses for the original and
@@ -80,6 +86,10 @@ def get_stat_and_loss_aug(model, x, y, batch_size=4096):
     model: model to make prediction
     x: samples
     y: true labels of samples (integer valued)
+    sample_weight: a vector of weights of shape (n_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
     batch_size: the batch size for model.predict
 
   Returns:
@@ -89,8 +99,10 @@ def get_stat_and_loss_aug(model, x, y, batch_size=4096):
   for data in [x, x[:, :, ::-1, :]]:
     prob = amia.convert_logit_to_prob(
         model.predict(data, batch_size=batch_size))
-    losses.append(utils.log_loss(y, prob))
-    stat.append(amia.calculate_statistic(prob, y, convert_to_prob=False))
+    losses.append(utils.log_loss(y, prob, sample_weight=sample_weight))
+    stat.append(
+        amia.calculate_statistic(
+            prob, y, sample_weight=sample_weight, convert_to_prob=False))
   return np.vstack(stat).transpose(1, 0), np.vstack(losses).transpose(1, 0)
 
 
@@ -103,6 +115,8 @@ def main(unused_argv):
 
   # Load data.
   x, y = load_cifar10()
+  # Sample weights are set to `None` by default, but can be changed here.
+  sample_weight = None
   n = x.shape[0]
 
   # Train the target and shadow models. We will use one of the model in `models`
@@ -144,7 +158,7 @@ def main(unused_argv):
       print(f'Trained model #{i} with {in_indices[-1].sum()} examples.')
 
     # Get the statistics of the current model.
-    s, l = get_stat_and_loss_aug(model, x, y)
+    s, l = get_stat_and_loss_aug(model, x, y, sample_weight)
     stat.append(s)
     losses.append(l)
 
@@ -175,7 +189,9 @@ def main(unused_argv):
         stat_target, stat_in, stat_out, fix_variance=True)
     attack_input = AttackInputData(
         loss_train=scores[in_indices_target],
-        loss_test=scores[~in_indices_target])
+        loss_test=scores[~in_indices_target],
+        sample_weight_train=sample_weight,
+        sample_weight_test=sample_weight)
     result_lira = mia.run_attacks(attack_input).single_attack_results[0]
     print('Advanced MIA attack with Gaussian:',
           f'auc = {result_lira.get_auc():.4f}',
@@ -187,7 +203,9 @@ def main(unused_argv):
     scores = -amia.compute_score_offset(stat_target, stat_in, stat_out)
     attack_input = AttackInputData(
         loss_train=scores[in_indices_target],
-        loss_test=scores[~in_indices_target])
+        loss_test=scores[~in_indices_target],
+        sample_weight_train=sample_weight,
+        sample_weight_test=sample_weight)
     result_offset = mia.run_attacks(attack_input).single_attack_results[0]
     print('Advanced MIA attack with offset:',
           f'auc = {result_offset.get_auc():.4f}',
@@ -197,7 +215,9 @@ def main(unused_argv):
     loss_target = losses[idx][:, 0]
     attack_input = AttackInputData(
         loss_train=loss_target[in_indices_target],
-        loss_test=loss_target[~in_indices_target])
+        loss_test=loss_target[~in_indices_target],
+        sample_weight_train=sample_weight,
+        sample_weight_test=sample_weight)
     result_baseline = mia.run_attacks(attack_input).single_attack_results[0]
     print('Baseline MIA attack:', f'auc = {result_baseline.get_auc():.4f}',
           f'adv = {result_baseline.get_attacker_advantage():.4f}')

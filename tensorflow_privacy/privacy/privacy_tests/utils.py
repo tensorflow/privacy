@@ -21,8 +21,20 @@ import numpy as np
 from scipy import special
 
 
+class LossFunction(enum.Enum):
+  """An enum that defines loss function."""
+  CROSS_ENTROPY = 'cross_entropy'
+  SQUARED = 'squared'
+
+
+LossFunctionCallable = Callable[[np.ndarray, np.ndarray, Optional[np.ndarray]],
+                                np.ndarray]
+LossFunctionType = Union[LossFunctionCallable, LossFunction, str]
+
+
 def log_loss(labels: np.ndarray,
              pred: np.ndarray,
+             sample_weight: Optional[np.ndarray] = None,
              from_logits=False,
              small_value=1e-8) -> np.ndarray:
   """Computes the per-example cross entropy loss.
@@ -35,6 +47,10 @@ def log_loss(labels: np.ndarray,
       num_classes) and pred[i] is the logits or probability vector of the i-th
       sample. For binary logistic loss, the shape should be (num_samples,) and
       pred[i] is the probability of the positive class.
+    sample_weight: a vector of weights of shape (num_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
     from_logits: whether `pred` is logits or probability vector.
     small_value: a scalar. np.log can become -inf if the probability is too
       close to 0, so the probability is clipped below by small_value.
@@ -46,6 +62,15 @@ def log_loss(labels: np.ndarray,
     raise ValueError('labels and pred should have the same number of examples,',
                      f'but got {labels.shape[0]} and {pred.shape[0]}.')
   classes = np.unique(labels)
+  if sample_weight is None:
+    # If sample weights are not provided, set them to 1.0.
+    sample_weight = 1.0
+  else:
+    if np.shape(sample_weight)[0] != np.shape(labels)[0]:
+      # Number of elements should be the same.
+      raise ValueError(
+          'Expected sample weights to have the same length as the labels, '
+          f'received {np.shape(sample_weight)[0]} and {np.shape(labels)[0]}.')
 
   # Binary logistic loss
   if pred.size == pred.shape[0]:
@@ -59,22 +84,29 @@ def log_loss(labels: np.ndarray,
     indices_class0 = (labels == 0)
     prob_correct = np.copy(pred)
     prob_correct[indices_class0] = 1 - prob_correct[indices_class0]
-    return -np.log(np.maximum(prob_correct, small_value))
+    return -np.log(np.maximum(prob_correct, small_value)) * sample_weight
 
   # Multi-class categorical cross entropy loss
   if classes.min() < 0 or classes.max() >= pred.shape[1]:
     raise ValueError('labels should be in the range [0, num_classes-1].')
   if from_logits:
     pred = special.softmax(pred, axis=-1)
-  return -np.log(np.maximum(pred[range(labels.size), labels], small_value))
+  return (-np.log(np.maximum(pred[range(labels.size), labels], small_value)) *
+          sample_weight)
 
 
-def squared_loss(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
+def squared_loss(y_true: np.ndarray,
+                 y_pred: np.ndarray,
+                 sample_weight: Optional[np.ndarray] = None) -> np.ndarray:
   """Computes the per-example squared loss.
 
   Args:
     y_true: numpy array of shape (num_samples,) representing the true labels.
     y_pred: numpy array of shape (num_samples,) representing the predictions.
+    sample_weight: a vector of weights of shape (num_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
 
   Returns:
     the squared loss of each sample.
@@ -93,11 +125,15 @@ def squared_loss(y_true: np.ndarray, y_pred: np.ndarray) -> np.ndarray:
     raise ValueError('Squared loss expects the labels and predictions to have '
                      'shape (num_examples, ), but after np.squeeze, the shapes '
                      'are %s and %s.' % (y_true.shape, y_pred.shape))
-  return (y_true - y_pred)**2
+  if sample_weight is None:
+    # If sample weights are not provided, set them to 1.0.
+    sample_weight = 1.0
+  return sample_weight * (y_true - y_pred)**2
 
 
 def multilabel_bce_loss(labels: np.ndarray,
                         pred: np.ndarray,
+                        sample_weight: Optional[np.ndarray] = None,
                         from_logits=False,
                         small_value=1e-8) -> np.ndarray:
   """Computes the per-multi-label-example cross entropy loss.
@@ -108,6 +144,10 @@ def multilabel_bce_loss(labels: np.ndarray,
       of the vector is one of {0, 1}.
     pred: numpy array of shape (num_samples, num_classes).  pred[i] is the
       logits or probability vector of the i-th sample.
+    sample_weight: a vector of weights of shape (num_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
     from_logits: whether `pred` is logits or probability vector.
     small_value: a scalar. np.log can become -inf if the probability is too
       close to 0, so the probability is clipped below by small_value.
@@ -132,19 +172,21 @@ def multilabel_bce_loss(labels: np.ndarray,
   if not from_logits and ((pred < 0.0) | (pred > 1.0)).any():
     raise ValueError(('Prediction probabilities are not in [0, 1] and '
                       '`from_logits` is set to False.'))
+  if sample_weight is None:
+    # If sample weights are not provided, set them to 1.0.
+    sample_weight = 1.0
+  if isinstance(sample_weight, list):
+    sample_weight = np.asarray(sample_weight)
+  if isinstance(sample_weight, np.ndarray) and (sample_weight.ndim == 1):
+    # NOMUTANTS--np.reshape(X, (-1, 1)) == np.reshape(X, (-N, 1)), N >=1.
+    sample_weight = np.reshape(sample_weight, (-1, 1))
 
   # Multi-class multi-label binary cross entropy loss
   if from_logits:
     pred = special.expit(pred)
   bce = labels * np.log(pred + small_value)
   bce += (1 - labels) * np.log(1 - pred + small_value)
-  return -bce
-
-
-class LossFunction(enum.Enum):
-  """An enum that defines loss function."""
-  CROSS_ENTROPY = 'cross_entropy'
-  SQUARED = 'squared'
+  return -bce * sample_weight
 
 
 def string_to_loss_function(string: str):
@@ -157,12 +199,15 @@ def string_to_loss_function(string: str):
   raise ValueError(f'{string} is not a valid loss function name.')
 
 
-def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
-             logits: Optional[np.ndarray], probs: Optional[np.ndarray],
-             loss_function: Union[Callable[[np.ndarray, np.ndarray],
-                                           np.ndarray], LossFunction, str],
-             loss_function_using_logits: Optional[bool],
-             multilabel_data: Optional[bool]) -> Optional[np.ndarray]:
+def get_loss(
+    loss: Optional[np.ndarray],
+    labels: Optional[np.ndarray],
+    logits: Optional[np.ndarray],
+    probs: Optional[np.ndarray],
+    loss_function: LossFunctionCallable,
+    loss_function_using_logits: Optional[bool],
+    multilabel_data: Optional[bool],
+    sample_weight: Optional[np.ndarray] = None) -> Optional[np.ndarray]:
   """Calculates (if needed) losses.
 
   Args:
@@ -176,6 +221,10 @@ def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
     loss_function_using_logits: if `loss_function` expects `logits` or
       `probs`.
     multilabel_data: if the data is from a multilabel classification problem.
+    sample_weight: a vector of weights of shape (num_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
 
   Returns:
     Loss (or None if neither the loss nor the labels are present).
@@ -195,12 +244,13 @@ def get_loss(loss: Optional[np.ndarray], labels: Optional[np.ndarray],
     loss_function = string_to_loss_function(loss_function)
   if loss_function == LossFunction.CROSS_ENTROPY:
     if multilabel_data:
-      loss = multilabel_bce_loss(labels, predictions,
+      loss = multilabel_bce_loss(labels, predictions, sample_weight,
                                  loss_function_using_logits)
     else:
-      loss = log_loss(labels, predictions, loss_function_using_logits)
+      loss = log_loss(labels, predictions, sample_weight,
+                      loss_function_using_logits)
   elif loss_function == LossFunction.SQUARED:
-    loss = squared_loss(labels, predictions)
+    loss = squared_loss(labels, predictions, sample_weight)
   else:
-    loss = loss_function(labels, predictions)
+    loss = loss_function(labels, predictions, sample_weight)
   return loss

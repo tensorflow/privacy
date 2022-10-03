@@ -158,19 +158,21 @@ class TestCalculateStatistic(absltest.TestCase):
     #        [0.09003057, 0.66524096, 0.24472847]])
     labels = np.array([1, 2])
 
-    stat = amia.calculate_statistic(logit, labels, is_logits, 'conf with prob')
+    stat = amia.calculate_statistic(logit, labels, None, is_logits,
+                                    'conf with prob')
     np.testing.assert_allclose(stat, np.array([0.72747516, 0.24472847]))
 
-    stat = amia.calculate_statistic(logit, labels, is_logits, 'xe')
+    stat = amia.calculate_statistic(logit, labels, None, is_logits, 'xe')
     np.testing.assert_allclose(stat, np.array([0.31817543, 1.40760596]))
 
-    stat = amia.calculate_statistic(logit, labels, is_logits, 'logit')
+    stat = amia.calculate_statistic(logit, labels, None, is_logits, 'logit')
     np.testing.assert_allclose(stat, np.array([0.98185009, -1.12692802]))
 
-    stat = amia.calculate_statistic(logit, labels, is_logits, 'conf with logit')
+    stat = amia.calculate_statistic(logit, labels, None, is_logits,
+                                    'conf with logit')
     np.testing.assert_allclose(stat, np.array([2, 0.]))
 
-    stat = amia.calculate_statistic(logit, labels, is_logits, 'hinge')
+    stat = amia.calculate_statistic(logit, labels, None, is_logits, 'hinge')
     np.testing.assert_allclose(stat, np.array([1, -1.]))
 
   def test_calculate_statistic_prob(self):
@@ -179,19 +181,74 @@ class TestCalculateStatistic(absltest.TestCase):
     prob = np.array([[0.1, 0.85, 0.05], [0.1, 0.5, 0.4]])
     labels = np.array([1, 2])
 
-    stat = amia.calculate_statistic(prob, labels, is_logits, 'conf with prob')
+    stat = amia.calculate_statistic(prob, labels, None, is_logits,
+                                    'conf with prob')
     np.testing.assert_allclose(stat, np.array([0.85, 0.4]))
 
-    stat = amia.calculate_statistic(prob, labels, is_logits, 'xe')
+    stat = amia.calculate_statistic(prob, labels, None, is_logits, 'xe')
     np.testing.assert_allclose(stat, np.array([0.16251893, 0.91629073]))
 
-    stat = amia.calculate_statistic(prob, labels, is_logits, 'logit')
+    stat = amia.calculate_statistic(prob, labels, None, is_logits, 'logit')
     np.testing.assert_allclose(stat, np.array([1.73460106, -0.40546511]))
 
     np.testing.assert_raises(ValueError, amia.calculate_statistic, prob, labels,
-                             is_logits, 'conf with logit')
+                             None, is_logits, 'conf with logit')
     np.testing.assert_raises(ValueError, amia.calculate_statistic, prob, labels,
-                             is_logits, 'hinge')
+                             None, is_logits, 'hinge')
+
+  def test_calculate_statistic_logit_with_sample_weights(self):
+    """Test calculate_statistic with input as logit."""
+    is_logits = True
+    logit = np.array([[1, 2, -3.], [-1, 1, 0]])
+    # expected probability vector
+    # array([[0.26762315, 0.72747516, 0.00490169],
+    #        [0.09003057, 0.66524096, 0.24472847]])
+    labels = np.array([1, 2])
+    sample_weight = np.array([1.0, 0.5])
+
+    stat = amia.calculate_statistic(logit, labels, sample_weight, is_logits,
+                                    'conf with prob')
+    np.testing.assert_allclose(stat, np.array([0.72747516, 0.24472847]))
+
+    stat = amia.calculate_statistic(logit, labels, sample_weight, is_logits,
+                                    'xe')
+    np.testing.assert_allclose(stat, np.array([0.31817543, 0.70380298]))
+
+    stat = amia.calculate_statistic(logit, labels, sample_weight, is_logits,
+                                    'logit')
+    np.testing.assert_allclose(stat, np.array([0.98185009, -1.12692802]))
+
+    stat = amia.calculate_statistic(logit, labels, sample_weight, is_logits,
+                                    'conf with logit')
+    np.testing.assert_allclose(stat, np.array([2, 0.]))
+
+    stat = amia.calculate_statistic(logit, labels, sample_weight, is_logits,
+                                    'hinge')
+    np.testing.assert_allclose(stat, np.array([1, -1.]))
+
+  def test_calculate_statistic_prob_with_sample_weights(self):
+    """Test calculate_statistic with input as probability vector."""
+    is_logits = False
+    prob = np.array([[0.1, 0.85, 0.05], [0.1, 0.5, 0.4]])
+    labels = np.array([1, 2])
+    sample_weight = np.array([1.0, 0.5])
+
+    stat = amia.calculate_statistic(prob, labels, sample_weight, is_logits,
+                                    'conf with prob')
+    np.testing.assert_allclose(stat, np.array([0.85, 0.4]))
+
+    stat = amia.calculate_statistic(prob, labels, sample_weight, is_logits,
+                                    'xe')
+    np.testing.assert_allclose(stat, np.array([0.16251893, 0.458145365]))
+
+    stat = amia.calculate_statistic(prob, labels, sample_weight, is_logits,
+                                    'logit')
+    np.testing.assert_allclose(stat, np.array([1.73460106, -0.40546511]))
+
+    np.testing.assert_raises(ValueError, amia.calculate_statistic, prob, labels,
+                             None, is_logits, 'conf with logit')
+    np.testing.assert_raises(ValueError, amia.calculate_statistic, prob, labels,
+                             None, is_logits, 'hinge')
 
 
 if __name__ == '__main__':

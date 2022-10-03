@@ -63,6 +63,20 @@ class AttackInputDataTest(parameterized.TestCase):
     np.testing.assert_allclose(
         attack_input.get_loss_test(), [0.29860897, 0.95618669], atol=1e-7)
 
+  def test_get_xe_loss_from_logits_with_sample_weights(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[-0.3, 1.5, 0.2], [2, 3, 0.5]]),
+        logits_test=np.array([[2, 0.3, 0.2], [0.3, -0.5, 0.2]]),
+        labels_train=np.array([1, 0]),
+        labels_test=np.array([0, 2]),
+        sample_weight_train=np.array([1.0, 0.5]),
+        sample_weight_test=np.array([0.5, 1.0]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), [0.36313551, 0.685769515], atol=1e-7)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [0.149304485, 0.95618669], atol=1e-7)
+
   def test_get_xe_loss_from_probs(self):
     attack_input = AttackInputData(
         probs_train=np.array([[0.1, 0.1, 0.8], [0.8, 0.2, 0]]),
@@ -87,6 +101,30 @@ class AttackInputDataTest(parameterized.TestCase):
         attack_input.get_loss_train(), expected_loss0, rtol=1e-2)
     np.testing.assert_allclose(
         attack_input.get_loss_test(), expected_loss0[::-1], rtol=1e-2)
+
+  def test_get_binary_xe_loss_from_logits_with_sample_weights(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([-10, -5, 0., 5, 10]),
+        logits_test=np.array([-10, -5, 0., 5, 10]),
+        labels_train=np.zeros((5,)),
+        labels_test=np.ones((5,)),
+        sample_weight_train=np.array([1.0, 0.0, 0.5, 0.2, 1.0]),
+        sample_weight_test=np.array([0.0, 0.1, 0.5, 0.2, 1.0]),
+        loss_function_using_logits=True)
+    expected_train_loss = np.array(
+        [4.539890e-05, 0.0, 0.3465736, 1.001343, 10.0])
+    expected_test_loss = np.array(
+        [4.539890e-05, 0.001343070, 0.3465736, 0.5006715, 0.0])
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(),
+        expected_train_loss,
+        rtol=1e-2,
+        err_msg='Failure in binary xe training loss calculation.')
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(),
+        expected_test_loss[::-1],
+        rtol=1e-2,
+        err_msg='Failure in binary xe test loss calculation.')
 
   def test_get_binary_xe_loss_from_probs(self):
     attack_input = AttackInputData(
@@ -137,7 +175,8 @@ class AttackInputDataTest(parameterized.TestCase):
   def test_get_customized_loss(self, loss_function_using_logits, expected_train,
                                expected_test):
 
-    def fake_loss(x, y):
+    def fake_loss(x, y, sample_weight=None):
+      del sample_weight  # Unused.
       return 2 * x + y
 
     attack_input = AttackInputData(
@@ -332,6 +371,23 @@ class AttackInputDataTest(parameterized.TestCase):
         attack_input.get_loss_test(), [[0.22314354, 0.35667493, 2.30258499]],
         atol=1e-6)
 
+  def test_multilabel_get_bce_loss_from_probs_with_sample_weights(self):
+    attack_input = AttackInputData(
+        probs_train=np.array([[0.2, 0.3, 0.7], [0.8, 0.6, 0.9]]),
+        probs_test=np.array([[0.8, 0.7, 0.9]]),
+        labels_train=np.array([[0, 1, 1], [1, 1, 0]]),
+        labels_test=np.array([[1, 1, 0]]),
+        sample_weight_train=np.array([1.0, 0.5]),
+        sample_weight_test=np.array([0.5]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(), [[0.22314343, 1.20397247, 0.3566748],
+                                        [0.111571715, 0.25541273, 1.151292045]],
+        atol=1e-6)
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [[0.11157177, 0.17833747, 1.1512925]],
+        atol=1e-6)
+
   def test_multilabel_get_bce_loss_from_logits(self):
     attack_input = AttackInputData(
         logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
@@ -349,6 +405,25 @@ class AttackInputDataTest(parameterized.TestCase):
         [[0.68815966, 0.20141327], [0.47407697, 0.04858734]],
         atol=1e-6)
 
+  def test_multilabel_get_bce_loss_from_logits_with_sample_weights(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[-1.0, -2.0], [0.01, 1.5], [0.5, -3]]),
+        logits_test=np.array([[0.01, 1.5], [0.5, -3]]),
+        labels_train=np.array([[0, 0], [0, 1], [1, 1]]),
+        labels_test=np.array([[1, 1], [1, 0]]),
+        sample_weight_train=np.array([1.0, 0.0, 0.5]),
+        sample_weight_test=np.array([0.0, 0.5]))
+
+    np.testing.assert_allclose(
+        attack_input.get_loss_train(),
+        [[0.31326167, 0.126928], [0.0, 0.0], [0.23703848, 1.52429357]],
+        atol=1e-6,
+        err_msg='Failure in multilabel bce training loss calculation.')
+    np.testing.assert_allclose(
+        attack_input.get_loss_test(), [[0.0, 0.0], [0.23703848, 0.02429367]],
+        atol=1e-6,
+        err_msg='Failure in multilabel bce test loss calculation.')
+
   def test_multilabel_get_loss_explicitly_provided(self):
     attack_input = AttackInputData(
         loss_train=np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]),
@@ -358,6 +433,23 @@ class AttackInputDataTest(parameterized.TestCase):
                             np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]))
     np.testing.assert_equal(attack_input.get_loss_test().tolist(),
                             np.array([[1.0, 4.0, 6.0], [1.0, 2.0, 3.0]]))
+
+  def test_multilabel_get_loss_explicitly_provided_with_sample_weights(self):
+    attack_input = AttackInputData(
+        loss_train=np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]),
+        loss_test=np.array([[1.0, 4.0, 6.0], [1.0, 2.0, 3.0]]),
+        sample_weight_train=np.array([1.0, 0.5]),
+        sample_weight_test=np.array([0.0, 0.5]))
+
+    # Since loss is provided, sample weights have no effect.
+    np.testing.assert_equal(
+        attack_input.get_loss_train().tolist(),
+        np.array([[1.0, 3.0, 6.0], [6.0, 8.0, 9.0]]),
+        err_msg='Failure in multilabel get training loss calculation.')
+    np.testing.assert_equal(
+        attack_input.get_loss_test().tolist(),
+        np.array([[1.0, 4.0, 6.0], [1.0, 2.0, 3.0]]),
+        err_msg='Failure in multilabel get test loss calculation.')
 
   def test_validate_with_force_multilabel_false(self):
     attack_input = AttackInputData(

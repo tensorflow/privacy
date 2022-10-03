@@ -36,6 +36,8 @@ class UtilsTest(absltest.TestCase):
     self.test_data = np.random.rand(self.ntest, self.ndim)
     self.train_labels = np.random.randint(self.nclass, size=self.ntrain)
     self.test_labels = np.random.randint(self.nclass, size=self.ntest)
+    self.sample_weight_train = np.random.rand(self.ntrain)
+    self.sample_weight_test = np.random.rand(self.ntest)
 
     # Define a simple model function
     def model_fn(features, labels, mode):
@@ -71,6 +73,14 @@ class UtilsTest(absltest.TestCase):
     self.assertEqual(loss.shape, (self.ntrain,))
 
     pred, loss = tf_estimator_evaluation.calculate_losses(
+        self.classifier,
+        self.input_fn_train,
+        self.train_labels,
+        sample_weight=self.sample_weight_train)
+    self.assertEqual(pred.shape, (self.ntrain, self.nclass))
+    self.assertEqual(loss.shape, (self.ntrain,))
+
+    pred, loss = tf_estimator_evaluation.calculate_losses(
         self.classifier, self.input_fn_test, self.test_labels)
     self.assertEqual(pred.shape, (self.ntest, self.nclass))
     self.assertEqual(loss.shape, (self.ntest,))
@@ -83,6 +93,27 @@ class UtilsTest(absltest.TestCase):
         self.input_fn_test,
         self.train_labels,
         self.test_labels,
+        self.sample_weight_train,
+        self.sample_weight_test,
+        attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
+    self.assertIsInstance(results, data_structures.AttackResults)
+    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
+        results)
+    self.assertLen(att_types, 2)
+    self.assertLen(att_slices, 2)
+    self.assertLen(att_metrics, 2)
+    self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
+
+  def test_run_attack_helper_with_sample_weights(self):
+    """Test the attack."""
+    results = tf_estimator_evaluation.run_attack_helper(
+        self.classifier,
+        self.input_fn_train,
+        self.input_fn_test,
+        self.train_labels,
+        self.test_labels,
+        in_train_sample_weight=self.sample_weight_train,
+        out_train_sample_weight=self.sample_weight_test,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, data_structures.AttackResults)
     att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
@@ -101,6 +132,27 @@ class UtilsTest(absltest.TestCase):
 
     results = tf_estimator_evaluation.run_attack_on_tf_estimator_model(
         self.classifier, (self.train_data, self.train_labels),
+        (self.test_data, self.test_labels),
+        input_fn_constructor,
+        attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
+    self.assertIsInstance(results, data_structures.AttackResults)
+    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
+        results)
+    self.assertLen(att_types, 2)
+    self.assertLen(att_slices, 2)
+    self.assertLen(att_metrics, 2)
+    self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
+
+  def test_run_attack_on_tf_estimator_model_with_sample_weights(self):
+    """Test the attack on the final models."""
+
+    def input_fn_constructor(x, y):
+      return tf_compat_v1_estimator.inputs.numpy_input_fn(
+          x={'x': x}, y=y, shuffle=False)
+
+    results = tf_estimator_evaluation.run_attack_on_tf_estimator_model(
+        self.classifier,
+        (self.train_data, self.train_labels, self.sample_weight_train),
         (self.test_data, self.test_labels),
         input_fn_constructor,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])

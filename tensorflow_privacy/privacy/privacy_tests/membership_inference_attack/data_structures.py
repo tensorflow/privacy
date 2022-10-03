@@ -20,7 +20,7 @@ import glob
 import logging
 import os
 import pickle
-from typing import Any, Callable, Iterable, MutableSequence, Optional, Union
+from typing import Any, Iterable, MutableSequence, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -203,6 +203,10 @@ class AttackInputData:
   labels_train: Optional[np.ndarray] = None
   labels_test: Optional[np.ndarray] = None
 
+  # Sample weights, if provided.
+  sample_weight_train: Optional[np.ndarray] = None
+  sample_weight_test: Optional[np.ndarray] = None
+
   # Explicitly specified loss. If provided, this is used instead of deriving
   # loss from logits and labels
   loss_train: Optional[np.ndarray] = None
@@ -219,8 +223,7 @@ class AttackInputData:
   # string representation, or a callable.
   # If a callable is provided, it should take in two argument, the 1st is
   # labels, the 2nd is logits or probs.
-  loss_function: Union[Callable[[np.ndarray, np.ndarray], np.ndarray], str,
-                       utils.LossFunction] = utils.LossFunction.CROSS_ENTROPY
+  loss_function: utils.LossFunctionCallable = utils.LossFunction.CROSS_ENTROPY
   # Whether `loss_function` will be called with logits or probs. If not set
   # (None), will decide by availablity of logits and probs and logits is
   # preferred when both are available.
@@ -309,7 +312,8 @@ class AttackInputData:
       self.loss_function_using_logits = (self.logits_train is not None)
     return utils.get_loss(self.loss_train, self.labels_train, self.logits_train,
                           self.probs_train, self.loss_function,
-                          self.loss_function_using_logits, self.multilabel_data)
+                          self.loss_function_using_logits, self.multilabel_data,
+                          self.sample_weight_train)
 
   def get_loss_test(self):
     """Calculates (if needed) cross-entropy losses for the test set.
@@ -321,7 +325,8 @@ class AttackInputData:
       self.loss_function_using_logits = bool(self.logits_test)
     return utils.get_loss(self.loss_test, self.labels_test, self.logits_test,
                           self.probs_test, self.loss_function,
-                          self.loss_function_using_logits, self.multilabel_data)
+                          self.loss_function_using_logits, self.multilabel_data,
+                          self.sample_weight_test)
 
   def get_entropy_train(self):
     """Calculates prediction entropy for the training set."""
@@ -366,6 +371,11 @@ class AttackInputData:
   def get_test_size(self):
     """Returns the number of examples of the test set."""
     return self.get_test_shape()[0]
+
+  def has_nonnull_sample_weights(self):
+    """Whether both the train and test input data have sample weights."""
+    return (self.sample_weight_train is not None and
+            self.sample_weight_test is not None)
 
   def is_multihot_labels(self, arr, arr_name) -> bool:
     """Check if the 2D array is multihot, with values in [0, 1].
@@ -556,6 +566,8 @@ class AttackInputData:
     _append_array_shape(self.probs_test, 'probs_test', result)
     _append_array_shape(self.labels_train, 'labels_train', result)
     _append_array_shape(self.labels_test, 'labels_test', result)
+    _append_array_shape(self.sample_weight_train, 'sample_weight_train', result)
+    _append_array_shape(self.sample_weight_test, 'sample_weight_test', result)
     result.append(')')
     return '\n'.join(result)
 

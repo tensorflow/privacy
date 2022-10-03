@@ -14,7 +14,7 @@
 """Functions for advanced membership inference attacks."""
 
 import functools
-from typing import Sequence, Union
+from typing import Optional, Sequence, Union
 import numpy as np
 import scipy.stats
 from tensorflow_privacy.privacy.privacy_tests.utils import log_loss
@@ -197,6 +197,7 @@ def convert_logit_to_prob(logit: np.ndarray) -> np.ndarray:
 
 def calculate_statistic(pred: np.ndarray,
                         labels: np.ndarray,
+                        sample_weight: Optional[np.ndarray] = None,
                         is_logits: bool = True,
                         option: str = 'logit',
                         small_value: float = 1e-45):
@@ -215,6 +216,10 @@ def calculate_statistic(pred: np.ndarray,
       An array of size n by c where n is the number of samples and c is the
       number of classes
     labels: true labels of samples (integer valued)
+    sample_weight: a vector of weights of shape (num_samples, ) that are
+      assigned to individual samples. If not provided, then each sample is
+      given unit weight. Only the LogisticRegressionAttacker and the
+      RandomForestAttacker support sample weights.
     is_logits: whether pred is logits or probability vectors
     option: confidence using probability, xe loss, logit of confidence,
       confidence using logits, hinge loss
@@ -241,7 +246,7 @@ def calculate_statistic(pred: np.ndarray,
   if option in ['conf with prob', 'conf with logit']:
     return pred[range(n), labels]
   if option == 'xe':
-    return log_loss(labels, pred)
+    return log_loss(labels, pred, sample_weight=sample_weight)
   if option == 'logit':
     p_true = pred[range(n), labels]
     pred[range(n), labels] = 0

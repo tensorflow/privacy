@@ -96,6 +96,8 @@ def main(unused_argv):
 
   # Load training and test data.
   x_train, y_train, x_test, y_test = load_cifar10()
+  # Sample weights are set to `None` by default, but can be changed here.
+  sample_weight_train, sample_weight_test = None, None
 
   # Instantiate the tf.Estimator.
   classifier = tf_estimator.Estimator(
@@ -142,7 +144,8 @@ def main(unused_argv):
 
   print('End of training attack')
   attack_results = run_attack_on_tf_estimator_model(
-      classifier, (x_train, y_train), (x_test, y_test),
+      classifier, (x_train, y_train, sample_weight_train),
+      (x_test, y_test, sample_weight_test),
       input_fn_constructor,
       slicing_spec=SlicingSpec(entire_dataset=True, by_class=True),
       attack_types=[

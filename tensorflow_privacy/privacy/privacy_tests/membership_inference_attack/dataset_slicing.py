@@ -42,6 +42,9 @@ def _slice_data_by_indices(data: AttackInputData, idx_train,
   result.labels_train = _slice_if_not_none(data.labels_train, idx_train)
   result.loss_train = _slice_if_not_none(data.loss_train, idx_train)
   result.entropy_train = _slice_if_not_none(data.entropy_train, idx_train)
+  # Copy over sample weights if provided.
+  result.sample_weight_train = data.sample_weight_train
+  result.sample_weight_test = data.sample_weight_test
 
   # Slice test data.
   result.logits_test = _slice_if_not_none(data.logits_test, idx_test)

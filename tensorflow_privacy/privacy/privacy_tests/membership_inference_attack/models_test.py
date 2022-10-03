@@ -68,6 +68,25 @@ class TrainedAttackerTest(parameterized.TestCase):
         attack_input.is_multilabel_data(),
         msg='Expected multilabel check to pass.')
 
+  def test_multilabel_create_attacker_data_logits_labels_sample_weights(self):
+    attack_input = AttackInputData(
+        logits_train=np.array([[1, 2], [5, 6], [8, 9]]),
+        logits_test=np.array([[10, 11], [14, 15]]),
+        labels_train=np.array([[0, 1], [1, 1], [1, 0]]),
+        labels_test=np.array([[1, 0], [1, 1]]),
+        sample_weight_train=np.array([1.0, 0.5, 0.0]),
+        sample_weight_test=np.array([1.0, 0.5]))
+    attacker_data = models.create_attacker_data(attack_input, balance=False)
+    self.assertLen(attacker_data.features_all, 5)
+    self.assertLen(attacker_data.fold_indices, 5)
+    self.assertEmpty(attacker_data.left_out_indices)
+    self.assertTrue(
+        attack_input.is_multilabel_data(),
+        msg='Expected multilabel check to pass.')
+    self.assertTrue(
+        attack_input.has_nonnull_sample_weights(),
+        msg='Expected to have sample weights.')
+
   def test_unbalanced_create_attacker_data_loss_and_logits(self):
     attack_input = AttackInputData(
         logits_train=np.array([[1, 2], [5, 6], [8, 9]]),

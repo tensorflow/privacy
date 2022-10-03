@@ -89,6 +89,15 @@ class TestLogLoss(parameterized.TestCase):
     loss = utils.log_loss(labels, logits, from_logits=True)
     np.testing.assert_allclose(expected_loss, loss, atol=1e-7)
 
+  def test_log_loss_from_logits_with_sample_weights(self):
+    logits = np.array([[1, 2, 0, -1], [1, 2, 0, -1], [-1, 3, 0, 0]])
+    labels = np.array([0, 3, 1])
+    sample_weight = np.array([1.0, 0.0, 0.5])
+    expected_loss = np.array([1.4401897, 0.0, 0.05572139])
+
+    loss = utils.log_loss(labels, logits, sample_weight, from_logits=True)
+    np.testing.assert_allclose(expected_loss, loss, atol=1e-7)
+
   @parameterized.named_parameters(
       ('label0', 0,
        np.array([
@@ -161,6 +170,14 @@ class TestSquaredLoss(parameterized.TestCase):
     y_pred = np.array([4, 3, 2])
     self.assertRaises(ValueError, utils.squared_loss, y_true, y_pred)
 
+  def test_squared_loss_with_sample_weights(self):
+    y_true = np.array([1, 2, 3, 4.])
+    y_pred = np.array([4, 3, 2, 1.])
+    sample_weight = np.array([1.0, 0.0, 0.5, 1.0])
+    expected_loss = np.array([9, 0, 0.5, 9.])
+    loss = utils.squared_loss(y_true, y_pred, sample_weight)
+    np.testing.assert_allclose(loss, expected_loss, atol=1e-7)
+
 
 class TestMultilabelBCELoss(parameterized.TestCase):
 
@@ -185,6 +202,16 @@ class TestMultilabelBCELoss(parameterized.TestCase):
   def test_multilabel_bce_loss(self, label, pred, expected_losses, from_logits):
     loss = utils.multilabel_bce_loss(label, pred, from_logits=from_logits)
     np.testing.assert_allclose(loss, expected_losses, atol=1e-6)
+
+  def test_multilabel_bce_loss_with_sample_weights(self):
+    label = np.array([[0, 1, 0], [1, 1, 0]])
+    pred = np.array([[-1.2, -0.3, 2.1], [0.0, 0.5, 1.5]])
+    sample_weight = np.array([1.0, 0.5])
+    expected_loss = np.array([[0.26328245, 0.85435522, 2.21551943],
+                              [0.34657358, 0.23703848, 0.85070661]])
+    loss = utils.multilabel_bce_loss(
+        label, pred, sample_weight=sample_weight, from_logits=True)
+    np.testing.assert_allclose(loss, expected_loss, atol=1e-6)
 
   @parameterized.named_parameters(
       ('from_logits_true_and_incorrect_values_example1',
@@ -216,7 +243,7 @@ class TestMultilabelBCELoss(parameterized.TestCase):
   )
   def test_multilabel_bce_loss_raises(self, label, pred, from_logits, regex):
     self.assertRaisesRegex(ValueError, regex, utils.multilabel_bce_loss, label,
-                           pred, from_logits)
+                           pred, None, from_logits)
 
 
 class TestGetLoss(parameterized.TestCase):
