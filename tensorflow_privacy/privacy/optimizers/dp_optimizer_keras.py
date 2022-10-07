@@ -251,7 +251,11 @@ def make_keras_optimizer_class(cls):
           else:
             num_microbatches = self._num_microbatches
           microbatch_losses = tf.reduce_mean(
-              tf.reshape(loss, [num_microbatches, -1]), axis=1)
+              tf.reshape(
+                  loss,
+                  [num_microbatches,
+                   tf.shape(loss)[0] / num_microbatches]),
+              axis=1)
 
           if callable(var_list):
             var_list = var_list()
@@ -262,7 +266,11 @@ def make_keras_optimizer_class(cls):
           else:
             num_microbatches = self._num_microbatches
           microbatch_losses = tf.reduce_mean(
-              tf.reshape(loss, [num_microbatches, -1]), axis=1)
+              tf.reshape(
+                  loss,
+                  [num_microbatches,
+                   tf.shape(loss)[0] / num_microbatches]),
+              axis=1)
 
       var_list = tf.nest.flatten(var_list)
 
@@ -308,7 +316,10 @@ def make_keras_optimizer_class(cls):
       # This code mostly follows the logic in the original DPOptimizerClass
       # in dp_optimizer.py, except that this returns only the gradients,
       # not the gradients and variables.
-      microbatch_losses = tf.reshape(loss, [self._num_microbatches, -1])
+      microbatch_losses = tf.reshape(
+          loss,
+          [self._num_microbatches,
+           tf.shape(loss)[0] / self._num_microbatches])
       sample_params = (
           self._dp_sum_query.derive_sample_params(self._global_state))
 
