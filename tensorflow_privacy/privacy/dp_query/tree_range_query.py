@@ -18,7 +18,7 @@
 
 import distutils
 import math
-from typing import Optional
+from typing import Any, Optional
 
 import attr
 import dp_accounting
@@ -135,6 +135,12 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
     return TreeRangeSumQuery.GlobalState(
         arity=self._arity,
         inner_query_state=self._inner_query.initial_global_state())
+
+  def initial_sample_state(self, template: Optional[Any] = None):
+    """Implements `tensorflow_privacy.DPQuery.initial_sample_state`."""
+    return self.preprocess_record(
+        self.derive_sample_params(self.initial_global_state()),
+        super().initial_sample_state(template))
 
   def derive_sample_params(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_sample_params`."""

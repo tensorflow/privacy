@@ -268,10 +268,11 @@ class DPQuery(metaclass=abc.ABCMeta):
 
 def _zeros_like(arg):
   """A `zeros_like` function that also works for `tf.TensorSpec`s."""
-  try:
-    arg = tf.convert_to_tensor(value=arg)
-  except TypeError:
-    pass
+  if not isinstance(arg, tf.TensorSpec):
+    try:
+      arg = tf.convert_to_tensor(value=arg)
+    except TypeError:
+      pass
   return tf.zeros(arg.shape, arg.dtype)
 
 
