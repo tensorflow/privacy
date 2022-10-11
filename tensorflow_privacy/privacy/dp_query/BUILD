@@ -15,6 +15,14 @@ py_library(
     srcs_version = "PY3",
 )
 
+py_test(
+    name = "dp_query_test",
+    srcs = ["dp_query_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":no_privacy_query"],
+)
+
 py_library(
     name = "discrete_gaussian_utils",
     srcs = ["discrete_gaussian_utils.py"],
