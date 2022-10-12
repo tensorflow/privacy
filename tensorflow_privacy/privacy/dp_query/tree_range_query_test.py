@@ -79,6 +79,17 @@ class TreeRangeSumQueryTest(tf.test.TestCase, parameterized.TestCase):
     self.assertIsInstance(global_state,
                           tree_range_query.TreeRangeSumQuery.GlobalState)
 
+  def test_pass_initial_sample_state_to_get_noised_result(self):
+    query = tree_range_query.TreeRangeSumQuery.build_distributed_discrete_gaussian_query(
+        10., 0., 2)
+    global_state = query.initial_global_state()
+    template = tf.TensorSpec.from_tensor(
+        tf.constant([1, 2, 3, 4], dtype=tf.int32))
+    sample_state = query.initial_sample_state(template)
+    result = query.get_noised_result(sample_state, global_state)[0]
+    expected_result = [[0], [0] * 2, [0] * 4]
+    self.assertAllClose(result, expected_result)
+
   @parameterized.product(
       inner_query=['central', 'distributed'],
       clip_norm=[0.1, 1.0, 10.0],
