@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
@@ -29,36 +28,30 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     return 0.5 * tf.reduce_sum(
         input_tensor=tf.math.squared_difference(val0, val1), axis=1)
 
-  # Parameters for testing: optimizer, num_microbatches, expected gradient for
-  # var0, expected gradient for var1.
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdam 2', dp_optimizer_keras.DPKerasAdamOptimizer, 2, [-2.5, -2.5
-                                                               ], [-0.5]),
-      ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
-       [-2.5, -2.5], [-0.5]),
-      ('DPGradientDescentVectorized 1',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdamVectorized 2',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdagradVectorized 4',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdagradVectorized None',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None,
-       [-2.5, -2.5], [-0.5]),
+      ('DPGradientDescent_1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPGradientDescent_None', dp_optimizer_keras.DPKerasSGDOptimizer, None),
+      ('DPAdam_2', dp_optimizer_keras.DPKerasAdamOptimizer, 2),
+      ('DPAdagrad _4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4),
+      ('DPGradientDescentVectorized_1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
+      ('DPAdamVectorized_2',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2),
+      ('DPAdagradVectorized_4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4),
+      ('DPAdagradVectorized_None',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None),
   )
-  def testBaselineWithCallableLoss(self, cls, num_microbatches, expected_grad0,
-                                   expected_grad1):
+  def testBaselineWithCallableLossNoNoise(self, optimizer_class,
+                                          num_microbatches):
     var0 = tf.Variable([1.0, 2.0])
     var1 = tf.Variable([3.0])
     data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
     data1 = tf.Variable([[8.0], [2.0], [3.0], [1.0]])
+    expected_grad0 = [-2.5, -2.5]
+    expected_grad1 = [-0.5]
 
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         num_microbatches=num_microbatches,
@@ -66,40 +59,68 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
     loss = lambda: self._loss(data0, var0) + self._loss(data1, var1)
 
-    grads_and_vars = opt._compute_gradients(loss, [var0, var1])
+    grads_and_vars = optimizer._compute_gradients(loss, [var0, var1])
+
     self.assertAllCloseAccordingToType(expected_grad0, grads_and_vars[0][0])
     self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
 
-  # Parameters for testing: optimizer, num_microbatches, expected gradient for
-  # var0, expected gradient for var1.
+  def testKerasModelBaselineNoNoiseNoneMicrobatches(self):
+    """Tests that DP optimizers work with tf.keras.Model."""
+
+    model = tf.keras.models.Sequential(layers=[
+        tf.keras.layers.Dense(
+            1,
+            activation='linear',
+            name='dense',
+            kernel_initializer='zeros',
+            bias_initializer='zeros')
+    ])
+
+    optimizer = dp_optimizer_keras.DPKerasSGDOptimizer(
+        l2_norm_clip=100.0,
+        noise_multiplier=0.0,
+        num_microbatches=None,
+        learning_rate=0.05)
+    loss = tf.keras.losses.MeanSquaredError(reduction='none')
+    model.compile(optimizer, loss)
+
+    true_weights = np.array([[-5], [4], [3], [2]]).astype(np.float32)
+    true_bias = np.array([6.0]).astype(np.float32)
+    train_data = np.random.normal(scale=3.0, size=(1000, 4)).astype(np.float32)
+
+    train_labels = np.matmul(train_data,
+                             true_weights) + true_bias + np.random.normal(
+                                 scale=0.0, size=(1000, 1)).astype(np.float32)
+
+    model.fit(train_data, train_labels, batch_size=8, epochs=1, shuffle=False)
+
+    self.assertAllClose(model.get_weights()[0], true_weights, atol=0.05)
+    self.assertAllClose(model.get_weights()[1], true_bias, atol=0.05)
+
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdam 2', dp_optimizer_keras.DPKerasAdamOptimizer, 2, [-2.5, -2.5
-                                                               ], [-0.5]),
-      ('DPAdagrad 4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4,
-       [-2.5, -2.5], [-0.5]),
-      ('DPGradientDescentVectorized 1',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdamVectorized 2',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdagradVectorized 4',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4,
-       [-2.5, -2.5], [-0.5]),
-      ('DPAdagradVectorized None',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None,
-       [-2.5, -2.5], [-0.5]),
+      ('DPGradientDescent_1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPGradientDescent_None', dp_optimizer_keras.DPKerasSGDOptimizer, None),
+      ('DPAdam_2', dp_optimizer_keras.DPKerasAdamOptimizer, 2),
+      ('DPAdagrad_4', dp_optimizer_keras.DPKerasAdagradOptimizer, 4),
+      ('DPGradientDescentVectorized_1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
+      ('DPAdamVectorized_2',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer, 2),
+      ('DPAdagradVectorized_4',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, 4),
+      ('DPAdagradVectorized_None',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasAdagradOptimizer, None),
   )
-  def testBaselineWithTensorLoss(self, cls, num_microbatches, expected_grad0,
-                                 expected_grad1):
+  def testBaselineWithTensorLossNoNoise(self, optimizer_class,
+                                        num_microbatches):
     var0 = tf.Variable([1.0, 2.0])
     var1 = tf.Variable([3.0])
     data0 = tf.Variable([[3.0, 4.0], [5.0, 6.0], [7.0, 8.0], [-1.0, 0.0]])
     data1 = tf.Variable([[8.0], [2.0], [3.0], [1.0]])
+    expected_grad0 = [-2.5, -2.5]
+    expected_grad1 = [-0.5]
 
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         num_microbatches=num_microbatches,
@@ -109,7 +130,7 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     with tape:
       loss = self._loss(data0, var0) + self._loss(data1, var1)
 
-    grads_and_vars = opt._compute_gradients(loss, [var0, var1], tape=tape)
+    grads_and_vars = optimizer._compute_gradients(loss, [var0, var1], tape=tape)
     self.assertAllCloseAccordingToType(expected_grad0, grads_and_vars[0][0])
     self.assertAllCloseAccordingToType(expected_grad1, grads_and_vars[1][0])
 
@@ -118,11 +139,11 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPGradientDescentVectorized',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),
   )
-  def testClippingNorm(self, cls):
+  def testClippingNorm(self, optimizer_class):
     var0 = tf.Variable([0.0, 0.0])
     data0 = tf.Variable([[3.0, 4.0], [6.0, 8.0]])
 
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=1.0,
         noise_multiplier=0.0,
         num_microbatches=1,
@@ -130,7 +151,7 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
     loss = lambda: self._loss(data0, var0)
     # Expected gradient is sum of differences.
-    grads_and_vars = opt._compute_gradients(loss, [var0])
+    grads_and_vars = optimizer._compute_gradients(loss, [var0])
     self.assertAllCloseAccordingToType([-0.6, -0.8], grads_and_vars[0][0])
 
   @parameterized.named_parameters(
@@ -180,33 +201,35 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllCloseAccordingToType(expected1, grads_and_vars[1][0])
 
   @parameterized.named_parameters(
-      ('DPGradientDescent 2 4 1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
+      ('DPGradientDescent_2_4_1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
        4.0, 1),
-      ('DPGradientDescent 4 1 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4.0,
+      ('DPGradientDescent_4_1_4', dp_optimizer_keras.DPKerasSGDOptimizer, 4.0,
        1.0, 4),
-      ('DPGradientDescentVectorized 2 4 1',
+      ('DPGradientDescentVectorized_2_4_1',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2.0, 4.0,
        1),
-      ('DPGradientDescentVectorized 4 1 4',
+      ('DPGradientDescentVectorized_4_1_4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 4.0, 1.0,
        4),
   )
-  def testNoiseMultiplier(self, cls, l2_norm_clip, noise_multiplier,
+  def testNoiseMultiplier(self, optimizer_class, l2_norm_clip, noise_multiplier,
                           num_microbatches):
+    tf.random.set_seed(2)
     var0 = tf.Variable(tf.zeros([1000], dtype=tf.float32))
     data0 = tf.Variable(tf.zeros([16, 1000], dtype=tf.float32))
 
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=l2_norm_clip,
         noise_multiplier=noise_multiplier,
         num_microbatches=num_microbatches,
         learning_rate=2.0)
 
     loss = lambda: self._loss(data0, var0)
-    grads_and_vars = opt._compute_gradients(loss, [var0])
+    grads_and_vars = optimizer._compute_gradients(loss, [var0])
     grads = grads_and_vars[0][0].numpy()
 
     # Test standard deviation is close to l2_norm_clip * noise_multiplier.
+
     self.assertNear(
         np.std(grads), l2_norm_clip * noise_multiplier / num_microbatches, 0.5)
 
@@ -221,9 +244,9 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdamVectorized',
        dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer),
   )
-  def testAssertOnNoCallOfComputeGradients(self, cls):
+  def testRaisesOnNoCallOfComputeGradients(self, optimizer_class):
     """Tests that assertion fails when DP gradients are not computed."""
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         num_microbatches=1,
@@ -231,14 +254,14 @@ class DPOptimizerComputeGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaises(AssertionError):
       grads_and_vars = tf.Variable([0.0])
-      opt.apply_gradients(grads_and_vars)
+      optimizer.apply_gradients(grads_and_vars)
 
     # Expect no exception if _compute_gradients is called.
     var0 = tf.Variable([0.0])
     data0 = tf.Variable([[0.0]])
     loss = lambda: self._loss(data0, var0)
-    grads_and_vars = opt._compute_gradients(loss, [var0])
-    opt.apply_gradients(grads_and_vars)
+    grads_and_vars = optimizer._compute_gradients(loss, [var0])
+    optimizer.apply_gradients(grads_and_vars)
 
 
 class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
@@ -248,8 +271,8 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   the Estimator framework.
   """
 
-  def _make_linear_model_fn(self, opt_cls, l2_norm_clip, noise_multiplier,
-                            num_microbatches, learning_rate):
+  def _make_linear_model_fn(self, optimizer_class, l2_norm_clip,
+                            noise_multiplier, num_microbatches, learning_rate):
     """Returns a model function for a linear regressor."""
 
     def linear_model_fn(features, labels, mode):
@@ -264,7 +287,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       vector_loss = 0.5 * tf.math.squared_difference(labels, preds)
       scalar_loss = tf.reduce_mean(input_tensor=vector_loss)
 
-      optimizer = opt_cls(
+      optimizer = optimizer_class(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
           num_microbatches=num_microbatches,
@@ -280,26 +303,26 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
     return linear_model_fn
 
-  # Parameters for testing: optimizer, num_microbatches.
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
-      ('DPGradientDescent 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
-      ('DPGradientDescent 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
-      ('DPGradientDescentVectorized 1',
+      ('DPGradientDescent_1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPGradientDescent_2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
+      ('DPGradientDescent_4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
+      ('DPGradientDescent_None', dp_optimizer_keras.DPKerasSGDOptimizer, None),
+      ('DPGradientDescentVectorized_1',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
-      ('DPGradientDescentVectorized 2',
+      ('DPGradientDescentVectorized_2',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2),
-      ('DPGradientDescentVectorized 4',
+      ('DPGradientDescentVectorized_4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 4),
-      ('DPGradientDescentVectorized None',
+      ('DPGradientDescentVectorized_None',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, None),
   )
-  def testBaseline(self, cls, num_microbatches):
+  def testBaselineNoNoise(self, optimizer_class, num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
     linear_regressor = tf_estimator.Estimator(
-        model_fn=self._make_linear_model_fn(cls, 100.0, 0.0, num_microbatches,
-                                            0.05))
+        model_fn=self._make_linear_model_fn(optimizer_class, 100.0, 0.0,
+                                            num_microbatches, 0.05))
 
     true_weights = np.array([[-5], [4], [3], [2]]).astype(np.float32)
     true_bias = np.array([6.0]).astype(np.float32)
@@ -322,13 +345,12 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(
         linear_regressor.get_variable_value('dense/bias'), true_bias, atol=0.05)
 
-  # Parameters for testing: optimizer, num_microbatches.
   @parameterized.named_parameters(
-      ('DPGradientDescent 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
-      ('DPGradientDescentVectorized 1',
-       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 1),
+      ('DPGradientDescent_1', dp_optimizer_keras.DPKerasSGDOptimizer),
+      ('DPGradientDescentVectorized_1',
+       dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),
   )
-  def testClippingNorm(self, cls, num_microbatches):
+  def testClippingNorm(self, optimizer_class):
     """Tests that DP optimizers work with tf.estimator."""
 
     true_weights = np.array([[6.0], [0.0], [0], [0]]).astype(np.float32)
@@ -342,8 +364,12 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
           (train_data, train_labels)).batch(1)
 
     unclipped_linear_regressor = tf_estimator.Estimator(
-        model_fn=self._make_linear_model_fn(cls, 1.0e9, 0.0, num_microbatches,
-                                            1.0))
+        model_fn=self._make_linear_model_fn(
+            optimizer_class=optimizer_class,
+            l2_norm_clip=1.0e9,
+            noise_multiplier=0.0,
+            num_microbatches=1,
+            learning_rate=1.0))
     unclipped_linear_regressor.train(input_fn=train_input_fn, steps=1)
 
     kernel_value = unclipped_linear_regressor.get_variable_value('dense/kernel')
@@ -351,8 +377,12 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     global_norm = np.linalg.norm(np.concatenate((kernel_value, [bias_value])))
 
     clipped_linear_regressor = tf_estimator.Estimator(
-        model_fn=self._make_linear_model_fn(cls, 1.0, 0.0, num_microbatches,
-                                            1.0))
+        model_fn=self._make_linear_model_fn(
+            optimizer_class=optimizer_class,
+            l2_norm_clip=1.0,
+            noise_multiplier=0.0,
+            num_microbatches=1,
+            learning_rate=1.0))
     clipped_linear_regressor.train(input_fn=train_input_fn, steps=1)
 
     self.assertAllClose(
@@ -367,29 +397,29 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
   # Parameters for testing: optimizer, l2_norm_clip, noise_multiplier,
   # num_microbatches.
   @parameterized.named_parameters(
-      ('DPGradientDescent 2 4 1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
+      ('DPGradientDescent_2_4_1', dp_optimizer_keras.DPKerasSGDOptimizer, 2.0,
        4.0, 1),
-      ('DPGradientDescent 3 2 4', dp_optimizer_keras.DPKerasSGDOptimizer, 3.0,
+      ('DPGradientDescent_3_2_4', dp_optimizer_keras.DPKerasSGDOptimizer, 3.0,
        2.0, 4),
-      ('DPGradientDescent 8 6 8', dp_optimizer_keras.DPKerasSGDOptimizer, 8.0,
+      ('DPGradientDescent_8_6_8', dp_optimizer_keras.DPKerasSGDOptimizer, 8.0,
        6.0, 8),
-      ('DPGradientDescentVectorized 2 4 1',
+      ('DPGradientDescentVectorized_2_4_1',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 2.0, 4.0,
        1),
-      ('DPGradientDescentVectorized 3 2 4',
+      ('DPGradientDescentVectorized_3_2_4',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 3.0, 2.0,
        4),
-      ('DPGradientDescentVectorized 8 6 8',
+      ('DPGradientDescentVectorized_8_6_8',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, 8.0, 6.0,
        8),
   )
-  def testNoiseMultiplier(self, cls, l2_norm_clip, noise_multiplier,
+  def testNoiseMultiplier(self, optimizer_class, l2_norm_clip, noise_multiplier,
                           num_microbatches):
     """Tests that DP optimizers work with tf.estimator."""
 
     linear_regressor = tf_estimator.Estimator(
         model_fn=self._make_linear_model_fn(
-            cls,
+            optimizer_class,
             l2_norm_clip,
             noise_multiplier,
             num_microbatches,
@@ -423,9 +453,9 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
       ('DPAdamVectorized',
        dp_optimizer_keras_vectorized.VectorizedDPKerasAdamOptimizer),
   )
-  def testAssertOnNoCallOfGetGradients(self, cls):
+  def testRaisesOnNoCallOfGetGradients(self, optimizer_class):
     """Tests that assertion fails when DP gradients are not computed."""
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         num_microbatches=1,
@@ -433,7 +463,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
 
     with self.assertRaises(AssertionError):
       grads_and_vars = tf.Variable([0.0])
-      opt.apply_gradients(grads_and_vars)
+      optimizer.apply_gradients(grads_and_vars)
 
   def testLargeBatchEmulationNoNoise(self):
     # Test for emulation of large batch training.
@@ -454,7 +484,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     x2 = tf.constant([[4.0, 2.0], [2.0, 1.0]], dtype=tf.float32)
     loss2 = lambda: tf.matmul(var0, x2, transpose_b=True) + var1
 
-    opt = dp_optimizer_keras.DPKerasSGDOptimizer(
+    optimizer = dp_optimizer_keras.DPKerasSGDOptimizer(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         gradient_accumulation_steps=2,
@@ -464,35 +494,36 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
     self.assertAllCloseAccordingToType([3.0], var1)
 
-    opt.minimize(loss1, [var0, var1])
+    optimizer.minimize(loss1, [var0, var1])
     # After first call to optimizer values didn't change
     self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
     self.assertAllCloseAccordingToType([3.0], var1)
 
-    opt.minimize(loss2, [var0, var1])
+    optimizer.minimize(loss2, [var0, var1])
     # After second call to optimizer updates were applied
     self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
     self.assertAllCloseAccordingToType([2.0], var1)
 
-    opt.minimize(loss2, [var0, var1])
+    optimizer.minimize(loss2, [var0, var1])
     # After third call to optimizer values didn't change
     self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
     self.assertAllCloseAccordingToType([2.0], var1)
 
-    opt.minimize(loss2, [var0, var1])
+    optimizer.minimize(loss2, [var0, var1])
     # After fourth call to optimizer updates were applied again
     self.assertAllCloseAccordingToType([[-4.0, -0.5]], var0)
     self.assertAllCloseAccordingToType([1.0], var1)
 
   @parameterized.named_parameters(
-      ('DPKerasSGDOptimizer 1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
-      ('DPKerasSGDOptimizer 2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
-      ('DPKerasSGDOptimizer 4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
-      ('DPKerasAdamOptimizer 2', dp_optimizer_keras.DPKerasAdamOptimizer, 1),
-      ('DPKerasAdagradOptimizer 2', dp_optimizer_keras.DPKerasAdagradOptimizer,
+      ('DPKerasSGDOptimizer_1', dp_optimizer_keras.DPKerasSGDOptimizer, 1),
+      ('DPKerasSGDOptimizer_2', dp_optimizer_keras.DPKerasSGDOptimizer, 2),
+      ('DPKerasSGDOptimizer_4', dp_optimizer_keras.DPKerasSGDOptimizer, 4),
+      ('DPKerasAdamOptimizer_2', dp_optimizer_keras.DPKerasAdamOptimizer, 1),
+      ('DPKerasAdagradOptimizer_2', dp_optimizer_keras.DPKerasAdagradOptimizer,
        2),
   )
-  def testLargeBatchEmulation(self, cls, gradient_accumulation_steps):
+  def testLargeBatchEmulation(self, optimizer_class,
+                              gradient_accumulation_steps):
     # Tests various optimizers with large batch emulation.
     # Uses clipping and noise, thus does not test specific values
     # of the variables and only tests how often variables are updated.
@@ -501,7 +532,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     x = tf.constant([[2.0, 0.0], [0.0, 1.0]], dtype=tf.float32)
     loss = lambda: tf.matmul(var0, x, transpose_b=True) + var1
 
-    opt = cls(
+    optimizer = optimizer_class(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
         gradient_accumulation_steps=gradient_accumulation_steps,
@@ -510,7 +541,7 @@ class DPOptimizerGetGradientsTest(tf.test.TestCase, parameterized.TestCase):
     for _ in range(gradient_accumulation_steps):
       self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
       self.assertAllCloseAccordingToType([3.0], var1)
-      opt.minimize(loss, [var0, var1])
+      optimizer.minimize(loss, [var0, var1])
 
     self.assertNotAllClose([[1.0, 2.0]], var0)
     self.assertNotAllClose([3.0], var1)
@@ -547,19 +578,19 @@ class SimpleEmbeddingModel(tf.keras.Model):
     return sequence_output, pooled_output
 
 
-def keras_embedding_model_fn(opt_cls,
+def keras_embedding_model_fn(optimizer_class,
                              l2_norm_clip: float,
                              noise_multiplier: float,
                              num_microbatches: int,
                              learning_rate: float,
-                             use_seq_output: bool = False,
+                             use_sequence_output: bool = False,
                              unconnected_gradients_to_zero: bool = False):
   """Construct a simple embedding model with a classification layer."""
 
   # Every sample has 4 tokens (sequence length=4).
   x = tf.keras.layers.Input(shape=(4,), dtype=tf.float32, name='input')
   sequence_output, pooled_output = SimpleEmbeddingModel()(x)
-  if use_seq_output:
+  if use_sequence_output:
     embedding = sequence_output
   else:
     embedding = pooled_output
@@ -568,7 +599,7 @@ def keras_embedding_model_fn(opt_cls,
           embedding)
   model = tf.keras.Model(inputs=x, outputs=probs, name='model')
 
-  optimizer = opt_cls(
+  optimizer = optimizer_class(
       l2_norm_clip=l2_norm_clip,
       noise_multiplier=noise_multiplier,
       num_microbatches=num_microbatches,
@@ -608,7 +639,7 @@ class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
   @parameterized.named_parameters(
       ('DPSGDVectorized_SeqOutput_UnconnectedGradients',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),)
-  def testSeqOutputUnconnectedGradientsAsNoneFails(self, cls):
+  def testSeqOutputUnconnectedGradientsAsNoneFails(self, optimizer_class):
     """Tests that DP vectorized optimizers with 'None' unconnected gradients fail.
 
     Sequence models that have unconnected gradients (with
@@ -620,16 +651,16 @@ class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
     These tests test the various combinations of this flag and the model.
 
     Args:
-      cls: The DP optimizer class to test.
+      optimizer_class: The DP optimizer class to test.
     """
 
     embedding_model = keras_embedding_model_fn(
-        cls,
+        optimizer_class,
         l2_norm_clip=1.0,
         noise_multiplier=0.5,
         num_microbatches=1,
         learning_rate=1.0,
-        use_seq_output=True,
+        use_sequence_output=True,
         unconnected_gradients_to_zero=False)
 
     train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
@@ -651,16 +682,17 @@ class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
   @parameterized.named_parameters(
       ('DPSGDVectorized_PooledOutput_UnconnectedGradients',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer),)
-  def testPooledOutputUnconnectedGradientsAsNonePasses(self, cls):
-    """Tests that DP vectorized optimizers with 'None' unconnected gradients fail."""
+  def testPooledOutputUnconnectedGradientsAsNonePasses(self, optimizer_class):
+    """Tests that DP vectorized optimizers with 'None' unconnected gradients fail.
+    """
 
     embedding_model = keras_embedding_model_fn(
-        cls,
+        optimizer_class,
         l2_norm_clip=1.0,
         noise_multiplier=0.5,
         num_microbatches=1,
         learning_rate=1.0,
-        use_seq_output=False,
+        use_sequence_output=False,
         unconnected_gradients_to_zero=False)
 
     train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
@@ -684,16 +716,18 @@ class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
       ('DPSGDVectorized_PooledOutput_UnconnectedGradientsAreZero',
        dp_optimizer_keras_vectorized.VectorizedDPKerasSGDOptimizer, False),
   )
-  def testUnconnectedGradientsAsZeroPasses(self, cls, use_seq_output):
-    """Tests that DP vectorized optimizers with 'Zero' unconnected gradients pass."""
+  def testUnconnectedGradientsAsZeroPasses(self, optimizer_class,
+                                           use_sequence_output):
+    """Tests that DP vectorized optimizers with 'Zero' unconnected gradients pass.
+    """
 
     embedding_model = keras_embedding_model_fn(
-        cls,
+        optimizer_class,
         l2_norm_clip=1.0,
         noise_multiplier=0.5,
         num_microbatches=1,
         learning_rate=1.0,
-        use_seq_output=use_seq_output,
+        use_sequence_output=use_sequence_output,
         unconnected_gradients_to_zero=True)
 
     train_data = np.random.randint(0, 10, size=(1000, 4), dtype=np.int32)
@@ -709,6 +743,7 @@ class DPVectorizedOptimizerUnconnectedNodesTest(tf.test.TestCase,
       # For a 'ValueError' exception the test should record a failure. All
       # other exceptions are errors.
       self.fail('ValueError raised by model.fit().')
+
 
 if __name__ == '__main__':
   tf.test.main()
