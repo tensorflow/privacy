@@ -27,6 +27,8 @@ py_library(
     deps = [
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+        "//tensorflow_privacy/privacy/dp_query:restart_query",
+        "//tensorflow_privacy/privacy/dp_query:tree_aggregation_query",
     ],
 )
 
@@ -47,6 +49,8 @@ py_library(
     deps = [
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+        "//tensorflow_privacy/privacy/dp_query:restart_query",
+        "//tensorflow_privacy/privacy/dp_query:tree_aggregation_query",
     ],
 )
 

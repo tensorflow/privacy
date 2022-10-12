@@ -61,25 +61,24 @@ class PeriodicRoundRestartIndicator(RestartIndicator):
   The indicator will maintain an internal counter as state.
   """
 
-  def __init__(self, frequency: int, warmup: Optional[int] = None):
+  def __init__(self, period: int, warmup: Optional[int] = None):
     """Construct the `PeriodicRoundRestartIndicator`.
 
     Args:
-      frequency: The `next` function will return `True` every `frequency` number
-        of `next` calls.
+      period: The `next` function will return `True` every `period` number of
+        `next` calls.
       warmup: The first `True` will be returned at the `warmup` times call of
         `next`.
     """
-    if frequency < 1:
-      raise ValueError('Restart frequency should be equal or larger than 1, '
-                       f'got {frequency}')
+    if period < 1:
+      raise ValueError('Restart period should be equal or larger than 1, '
+                       f'got {period}')
     if warmup is None:
       warmup = 0
-    elif warmup <= 0 or warmup >= frequency:
-      raise ValueError(
-          f'Warmup should be between 1 and `frequency-1={frequency-1}`, '
-          f'got {warmup}')
-    self.frequency = frequency
+    elif warmup <= 0 or warmup >= period:
+      raise ValueError(f'Warmup must be between 1 and `period`-1={period-1}, '
+                       f'got {warmup}')
+    self.period = period
     self.warmup = warmup
 
   def initialize(self):
@@ -96,10 +95,10 @@ class PeriodicRoundRestartIndicator(RestartIndicator):
       A pair (value, new_state) where value is the bool indicator and new_state
         of `state+1`.
     """
-    frequency = tf.constant(self.frequency, tf.int32)
+    period = tf.constant(self.period, tf.int32)
     warmup = tf.constant(self.warmup, tf.int32)
     state = state + tf.constant(1, tf.int32)
-    flag = tf.math.equal(tf.math.floormod(state, frequency), warmup)
+    flag = tf.math.equal(tf.math.floormod(state, period), warmup)
     return flag, state
 
 

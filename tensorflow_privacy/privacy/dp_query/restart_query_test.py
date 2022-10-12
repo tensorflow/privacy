@@ -23,44 +23,48 @@ from tensorflow_privacy.privacy.dp_query import tree_aggregation_query
 
 class RoundRestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
 
+  def assertRestartsOnPeriod(self, indicator: restart_query.RestartIndicator,
+                             state: tf.Tensor, total_steps: int, period: int,
+                             offset: int):
+    """Asserts a restart occurs only every `period` steps."""
+    for step in range(total_steps):
+      flag, state = indicator.next(state)
+      if step % period == offset - 1:
+        self.assertTrue(flag)
+      else:
+        self.assertFalse(flag)
+
   @parameterized.named_parameters(('zero', 0), ('negative', -1))
-  def test_round_raise(self, frequency):
+  def test_round_raise(self, period):
     with self.assertRaisesRegex(
-        ValueError, 'Restart frequency should be equal or larger than 1'):
-      restart_query.PeriodicRoundRestartIndicator(frequency)
+        ValueError, 'Restart period should be equal or larger than 1'):
+      restart_query.PeriodicRoundRestartIndicator(period)
 
   @parameterized.named_parameters(('zero', 0), ('negative', -1), ('equal', 2),
                                   ('large', 3))
   def test_round_raise_warmup(self, warmup):
-    frequency = 2
+    period = 2
     with self.assertRaisesRegex(
-        ValueError,
-        f'Warmup should be between 1 and `frequency-1={frequency-1}`'):
-      restart_query.PeriodicRoundRestartIndicator(frequency, warmup)
+        ValueError, f'Warmup must be between 1 and `period`-1={period-1}'):
+      restart_query.PeriodicRoundRestartIndicator(period, warmup)
 
-  @parameterized.named_parameters(('f1', 1), ('f2', 2), ('f4', 4), ('f5', 5))
-  def test_round_indicator(self, frequency):
+  @parameterized.named_parameters(('period_1', 1), ('period_2', 2),
+                                  ('period_4', 4), ('period_5', 5))
+  def test_round_indicator(self, period):
     total_steps = 20
-    indicator = restart_query.PeriodicRoundRestartIndicator(frequency)
+    indicator = restart_query.PeriodicRoundRestartIndicator(period)
     state = indicator.initialize()
-    for i in range(total_steps):
-      flag, state = indicator.next(state)
-      if i % frequency == frequency - 1:
-        self.assertTrue(flag)
-      else:
-        self.assertFalse(flag)
 
-  @parameterized.named_parameters(('f2', 2, 1), ('f4', 4, 3), ('f5', 5, 2))
-  def test_round_indicator_warmup(self, frequency, warmup):
+    self.assertRestartsOnPeriod(indicator, state, total_steps, period, period)
+
+  @parameterized.named_parameters(('period_2', 2, 1), ('period_4', 4, 3),
+                                  ('period_5', 5, 2))
+  def test_round_indicator_warmup(self, period, warmup):
     total_steps = 20
-    indicator = restart_query.PeriodicRoundRestartIndicator(frequency, warmup)
+    indicator = restart_query.PeriodicRoundRestartIndicator(period, warmup)
     state = indicator.initialize()
-    for i in range(total_steps):
-      flag, state = indicator.next(state)
-      if i % frequency == warmup - 1:
-        self.assertTrue(flag)
-      else:
-        self.assertFalse(flag)
+
+    self.assertRestartsOnPeriod(indicator, state, total_steps, period, warmup)
 
 
 class TimeRestartIndicatorTest(tf.test.TestCase, parameterized.TestCase):
@@ -116,9 +120,9 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
       ('s1t5f6', 1., 5., 6),
   )
   def test_sum_scalar_tree_aggregation_reset(self, scalar_value,
-                                             tree_node_value, frequency):
+                                             tree_node_value, period):
     total_steps = 20
-    indicator = restart_query.PeriodicRoundRestartIndicator(frequency)
+    indicator = restart_query.PeriodicRoundRestartIndicator(period)
     query = tree_aggregation_query.TreeCumulativeSumQuery(
         clip_fn=_get_l2_clip_fn(),
         clip_value=scalar_value + 1.,  # no clip
@@ -138,8 +142,8 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
       # be inferred from the binary representation of the current step.
       expected = (
           scalar_value * (i + 1) +
-          i // frequency * tree_node_value * bin(frequency)[2:].count('1') +
-          tree_node_value * bin(i % frequency + 1)[2:].count('1'))
+          i // period * tree_node_value * bin(period)[2:].count('1') +
+          tree_node_value * bin(i % period + 1)[2:].count('1'))
       self.assertEqual(query_result, expected)
 
   @parameterized.named_parameters(
@@ -151,9 +155,9 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
       ('s1t5f6', 1., 5., 6),
   )
   def test_scalar_tree_aggregation_reset(self, scalar_value, tree_node_value,
-                                         frequency):
+                                         period):
     total_steps = 20
-    indicator = restart_query.PeriodicRoundRestartIndicator(frequency)
+    indicator = restart_query.PeriodicRoundRestartIndicator(period)
     query = tree_aggregation_query.TreeResidualSumQuery(
         clip_fn=_get_l2_clip_fn(),
         clip_value=scalar_value + 1.,  # no clip
@@ -172,8 +176,7 @@ class RestartQueryTest(tf.test.TestCase, parameterized.TestCase):
       # two continous tree aggregation values. The tree aggregation value can
       # be inferred from the binary representation of the current step.
       expected = scalar_value + tree_node_value * (
-          bin(i % frequency + 1)[2:].count('1') -
-          bin(i % frequency)[2:].count('1'))
+          bin(i % period + 1)[2:].count('1') - bin(i % period)[2:].count('1'))
       self.assertEqual(query_result, expected)
 
 

@@ -13,12 +13,16 @@
 # limitations under the License.
 # ==============================================================================
 """Differentially private version of Keras optimizer v2."""
-from typing import Optional, Type
+from typing import List, Optional, Type, Union
 import warnings
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import gaussian_query
+from tensorflow_privacy.privacy.dp_query import restart_query
+from tensorflow_privacy.privacy.dp_query import tree_aggregation_query
+
+_VarListType = List[Union[tf.Tensor, tf.Variable]]
 
 
 def _normalize(microbatch_gradient: tf.Tensor,
@@ -462,6 +466,102 @@ def make_gaussian_query_optimizer_class(cls):
   return return_gaussian_query_optimizer
 
 
+def make_dpftrl_tree_aggregation_optimizer_class(cls):
+  """Returns a differentially private follow-the-regularized-leader optimizer.
+
+  Args:
+    cls: `DPOptimizerClass`, the output of `make_keras_optimizer_class`.
+  """
+
+  def return_dpftrl_tree_aggregation_optimizer(
+      l2_norm_clip: float,
+      noise_multiplier: float,
+      var_list_or_model: Union[_VarListType, tf.keras.Model],
+      num_microbatches: Optional[int] = None,
+      gradient_accumulation_steps: int = 1,
+      restart_period: Optional[int] = None,
+      restart_warmup: Optional[int] = None,
+      noise_seed: Optional[int] = None,
+      *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
+      **kwargs):
+    """Returns a `DPOptimizerClass` `cls` using the `TreeAggregationQuery`.
+
+    Combining this query with a SGD optimizer can be used to implement the
+    DP-FTRL algorithm in
+    "Practical and Private (Deep) Learning without Sampling or Shuffling".
+
+    This function is a thin wrapper around
+    `make_keras_optimizer_class.<locals>.DPOptimizerClass` which can be used to
+    apply a `TreeAggregationQuery` to any `DPOptimizerClass`.
+
+    Args:
+      l2_norm_clip: Clipping norm (max L2 norm of per microbatch gradients).
+      noise_multiplier: Ratio of the standard deviation to the clipping norm.
+      var_list_or_model: Either a tf.keras.Model or a list of tf.variables from
+        which `tf.TensorSpec`s can be defined. These specify the structure and
+        shapes of records (gradients).
+      num_microbatches: Number of microbatches into which each minibatch is
+        split. Default is `None` which means that number of microbatches is
+        equal to batch size (i.e. each microbatch contains exactly one example).
+        If `gradient_accumulation_steps` is greater than 1 and
+        `num_microbatches` is not `None` then the effective number of
+        microbatches is equal to `num_microbatches *
+        gradient_accumulation_steps`.
+      gradient_accumulation_steps: If greater than 1 then optimizer will be
+        accumulating gradients for this number of optimizer steps before
+        applying them to update model weights. If this argument is set to 1 then
+        updates will be applied on each optimizer step.
+      restart_period: (Optional) Restart wil occur after `restart_period` steps.
+        The default (None) means there will be no periodic restarts. Must be a
+        positive integer. If `restart_warmup` is passed, this only applies to
+        the second restart and onwards and must be not None.
+      restart_warmup: (Optional) The first restart will occur after
+        `restart_warmup` steps. The default (None) means no warmup. Must be an
+        integer in the range [1, `restart_period` - 1].
+      noise_seed: (Optional) Integer seed for the Gaussian noise generator. If
+        `None`, a nondeterministic seed based on system time will be generated.
+      *args: These will be passed on to the base class `__init__` method.
+      **kwargs: These will be passed on to the base class `__init__` method.
+    Raise:
+      ValueError: If restart_warmup is not None and restart_period is None.
+    """
+    if restart_warmup is not None and restart_period is None:
+      raise ValueError(
+          '`restart_period` was None when `restart_warmup` was not None.')
+
+    if isinstance(var_list_or_model, tf.keras.layers.Layer):
+      model_trainable_specs = tf.nest.map_structure(
+          lambda t: tf.TensorSpec(t.shape),
+          var_list_or_model.trainable_variables)
+    else:
+      model_trainable_specs = tf.nest.map_structure(
+          lambda t: tf.TensorSpec(tf.shape(t)), var_list_or_model)
+
+    if restart_period is not None:
+      sum_query = (
+          tree_aggregation_query.TreeResidualSumQuery.build_l2_gaussian_query(
+              l2_norm_clip, noise_multiplier, model_trainable_specs,
+              noise_seed))
+      restart_indicator = restart_query.PeriodicRoundRestartIndicator(
+          period=restart_period, warmup=restart_warmup)
+      tree_aggregation_sum_query = restart_query.RestartQuery(
+          sum_query, restart_indicator)
+    else:
+      tree_aggregation_sum_query = (
+          tree_aggregation_query.TreeResidualSumQuery.build_l2_gaussian_query(
+              l2_norm_clip, noise_multiplier, model_trainable_specs,
+              noise_seed))
+
+    return cls(
+        dp_sum_query=tree_aggregation_sum_query,
+        num_microbatches=num_microbatches,
+        gradient_accumulation_steps=gradient_accumulation_steps,
+        *args,
+        **kwargs)
+
+  return return_dpftrl_tree_aggregation_optimizer
+
+
 def make_keras_optimizer_class(cls: Type[tf.keras.optimizers.Optimizer]):
   """Returns a differentially private optimizer using the `GaussianSumQuery`.
 
@@ -487,6 +587,8 @@ GenericDPAdamOptimizer = make_keras_generic_optimizer_class(
 GenericDPSGDOptimizer = make_keras_generic_optimizer_class(
     tf.keras.optimizers.legacy.SGD)
 
+DPFTRLTreeAggregationOptimizer = (
+    make_dpftrl_tree_aggregation_optimizer_class(GenericDPSGDOptimizer))
 # We keep the same names for backwards compatibility.
 DPKerasAdagradOptimizer = make_gaussian_query_optimizer_class(
     GenericDPAdagradOptimizer)
