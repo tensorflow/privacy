@@ -10,6 +10,18 @@ py_library(
 )
 
 py_library(
+    name = "clip_and_aggregate_gradients",
+    srcs = [
+        "clip_and_aggregate_gradients.py",
+    ],
+    srcs_version = "PY3",
+    deps = [
+        "//third_party/py/six",
+        "//third_party/tensorflow/python/ops/parallel_for:control_flow_ops",
+    ],
+)
+
+py_library(
     name = "dp_optimizer",
     srcs = [
         "dp_optimizer.py",
@@ -61,6 +73,14 @@ py_library(
     ],
     srcs_version = "PY3",
     deps = ["//tensorflow_privacy/privacy/dp_query:gaussian_query"],
+)
+
+py_test(
+    name = "clip_and_aggregate_gradients_test",
+    srcs = ["clip_and_aggregate_gradients_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":clip_and_aggregate_gradients"],
 )
 
 py_test(
