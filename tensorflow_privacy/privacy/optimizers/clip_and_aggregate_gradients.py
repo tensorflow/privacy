@@ -16,10 +16,8 @@
 
 Modified from tape.jacobian to support sparse gradients.
 """
-import sys
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
-import six
 import tensorflow as tf
 
 from tensorflow.python.ops.parallel_for import control_flow_ops  # pylint: disable=g-direct-tensorflow-import
@@ -192,14 +190,10 @@ def clip_and_aggregate_gradients(
   try:
     output = control_flow_ops.pfor(loop_fn, target_size)
   except ValueError as err:
-    six.reraise(
-        ValueError,
-        ValueError(
-            str(err) + '\nEncountered an exception while vectorizing the '
-            'jacobian computation. Consider using a non-vectorized version, '
-            'i.e. by computing the gradient for each output sequentially.'),
-        sys.exc_info()[2])
-
+    raise ValueError(
+        'Encountered an exception while vectorizing the '
+        'batch_jacobian computation. Vectorization can be disabled by '
+        'setting experimental_use_pfor to False.') from err
   grads = []
   for i, out in enumerate(output):
     if out is not None:
