@@ -101,6 +101,8 @@ class DPQuery(metaclass=abc.ABCMeta):
     just an empty tuple for implementing classes that do not have any persistent
     state.
 
+    This object must be processable via tf.nest.map_structure.
+
     Returns:
       The global state.
     """
@@ -288,7 +290,8 @@ class SumAggregationDPQuery(DPQuery):
     return tf.nest.map_structure(_zeros_like, template)
 
   def accumulate_preprocessed_record(self, sample_state, preprocessed_record):
-    """Implements `tensorflow_privacy.DPQuery.accumulate_preprocessed_record`."""
+    """Implements `tensorflow_privacy.DPQuery.accumulate_preprocessed_record`.
+    """
     return tf.nest.map_structure(_safe_add, sample_state, preprocessed_record)
 
   def merge_sample_states(self, sample_state_1, sample_state_2):

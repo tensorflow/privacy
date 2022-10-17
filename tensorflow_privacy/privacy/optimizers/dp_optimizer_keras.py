@@ -378,8 +378,13 @@ def make_keras_generic_optimizer_class(
           Python dictionary.
       """
       config = super().get_config()
+
+      # The below is necessary to ensure that the global state can be serialized
+      # by JSON serializers inside of tensorflow saving.
+      global_state_as_numpy = tf.nest.map_structure(lambda x: x.numpy(),
+                                                    self._global_state)
       config.update({
-          'global_state': self._global_state._asdict(),
+          'global_state': global_state_as_numpy._asdict(),
           'num_microbatches': self._num_microbatches,
       })
       return config
