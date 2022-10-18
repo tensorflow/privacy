@@ -191,9 +191,8 @@ def clip_and_aggregate_gradients(
     output = control_flow_ops.pfor(loop_fn, target_size)
   except ValueError as err:
     raise ValueError(
-        'Encountered an exception while vectorizing the '
-        'batch_jacobian computation. Vectorization can be disabled by '
-        'setting experimental_use_pfor to False.') from err
+        'Encountered an exception while vectorizing the jacobian computation. '
+        'Consider using a non-vectorized optimizer instead.') from err
   grads = []
   for i, out in enumerate(output):
     if out is not None:

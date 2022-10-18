@@ -15,7 +15,6 @@ py_library(
         "clip_and_aggregate_gradients.py",
     ],
     srcs_version = "PY3",
-    deps = ["//third_party/tensorflow/python/ops/parallel_for:control_flow_ops"],
 )
 
 py_library(
