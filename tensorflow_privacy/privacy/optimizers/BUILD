@@ -41,6 +41,15 @@ py_library(
 )
 
 py_library(
+    name = "dp_optimizer_keras_sparse",
+    srcs = [
+        "dp_optimizer_keras_sparse.py",
+    ],
+    srcs_version = "PY3",
+    deps = [":clip_and_aggregate_gradients"],
+)
+
+py_library(
     name = "dp_optimizer_vectorized",
     srcs = [
         "dp_optimizer_vectorized.py",
@@ -89,6 +98,15 @@ py_test(
         ":dp_optimizer",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
     ],
+)
+
+py_test(
+    name = "dp_optimizer_keras_sparse_test",
+    timeout = "long",
+    srcs = ["dp_optimizer_keras_sparse_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dp_optimizer_keras_sparse"],
 )
 
 py_test(
