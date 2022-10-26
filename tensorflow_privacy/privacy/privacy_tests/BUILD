@@ -15,7 +15,10 @@ py_test(
     srcs = ["utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":utils"],
+    deps = [
+        ":utils",
+        "//third_party/py/parameterized",
+    ],
 )
 
 py_test(

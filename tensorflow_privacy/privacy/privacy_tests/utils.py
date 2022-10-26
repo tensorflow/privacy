@@ -15,7 +15,8 @@
 
 import enum
 import logging
-from typing import Callable, Optional, Union
+import numbers
+from typing import Callable, Iterable, Optional, Union
 
 import numpy as np
 from scipy import special
@@ -254,3 +255,9 @@ def get_loss(
   else:
     loss = loss_function(labels, predictions, sample_weight)
   return loss
+
+
+def format_number_list(input_list: Iterable[numbers.Number],
+                       precision: int = 4) -> str:
+  """Formats list of numbers as a string."""
+  return ', '.join([f'{x:.{precision}f}' for x in input_list])
