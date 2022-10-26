@@ -18,8 +18,23 @@ py_test(
     deps = [":utils"],
 )
 
+py_test(
+    name = "epsilon_lower_bound_test",
+    srcs = ["epsilon_lower_bound_test.py"],
+    deps = [":epsilon_lower_bound"],
+)
+
 py_library(
     name = "utils",
     srcs = ["utils.py"],
     srcs_version = "PY3",
+)
+
+py_library(
+    name = "epsilon_lower_bound",
+    srcs = ["epsilon_lower_bound.py"],
+    deps = [
+        "//third_party/py/immutabledict",
+        "//third_party/py/statsmodels",
+    ],
 )
