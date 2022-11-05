@@ -115,8 +115,8 @@ class GetSliceTest(absltest.TestCase):
     loss_test = np.array([0.5, 3.5, 7, 4.5])
     entropy_train = np.array([0.4, 8, 0.6, 10])
     entropy_test = np.array([15, 10.5, 4.5, 0.3])
-    sample_weight_train = np.array([1.0, 0.5])
-    sample_weight_test = np.array([0.5, 1.0])
+    sample_weight_train = np.array([1.0, 0.2, 0.5, 0.8])
+    sample_weight_test = np.array([0.5, 1.0, 0.1, 0.8])
 
     self.input_data = AttackInputData(
         logits_train=logits_train,
@@ -175,8 +175,8 @@ class GetSliceTest(absltest.TestCase):
     # Check sample weights
     self.assertLen(output.sample_weight_train, 2)
     np.testing.assert_array_equal(output.sample_weight_train, [1.0, 0.5])
-    self.assertLen(output.sample_weight_test, 2)
-    np.testing.assert_array_equal(output.sample_weight_test, [0.5, 1.0])
+    self.assertLen(output.sample_weight_test, 1)
+    np.testing.assert_array_equal(output.sample_weight_test, [0.5])
 
   def test_slice_by_percentile(self):
     percentile_slice = SingleSliceSpec(SlicingFeature.PERCENTILE, (0, 50))
