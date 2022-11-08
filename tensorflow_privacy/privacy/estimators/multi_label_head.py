@@ -14,7 +14,6 @@
 """Multiclass head for Estimator that allow integration with TF Privacy."""
 
 import tensorflow as tf
-from tensorflow.python.keras.utils import losses_utils  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_estimator.python.estimator import model_fn
 from tensorflow_estimator.python.estimator.canned import prediction_keys
 from tensorflow_estimator.python.estimator.export import export_output
@@ -61,7 +60,7 @@ class DPMultiLabelHead(multi_label_head.MultiLabelHead):
       labels = self._processed_labels(logits, labels)
       unweighted_loss, weights = self._unweighted_loss_and_weights(
           logits, labels, features)
-      vector_training_loss = losses_utils.compute_weighted_loss(
+      vector_training_loss = tf.keras.__internal__.losses.compute_weighted_loss(
           unweighted_loss,
           sample_weight=weights,
           reduction=tf.keras.losses.Reduction.NONE)
