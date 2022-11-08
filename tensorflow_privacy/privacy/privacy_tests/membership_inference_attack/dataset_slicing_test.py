@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import logging
+
 from absl.testing import absltest
+from absl.testing import parameterized
 from absl.testing.absltest import mock
 import numpy as np
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleSliceSpec
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingFeature
@@ -38,7 +39,7 @@ def _are_lists_equal(lhs, rhs) -> bool:
   return True
 
 
-class SingleSliceSpecsTest(absltest.TestCase):
+class SingleSliceSpecsTest(parameterized.TestCase):
   """Tests for get_single_slice_specs."""
 
   ENTIRE_DATASET_SLICE = SingleSliceSpec()
@@ -95,8 +96,81 @@ class SingleSliceSpecsTest(absltest.TestCase):
     output = get_single_slice_specs(input_data, n_classes)
     self.assertLen(output, expected_slices)
 
+  @parameterized.parameters(
+      (np.array([1, 2, 1, 2]), np.array([2, 2, 1, 2]), [1, 2]),
+      (np.array([0, -1, 2, -1, 2]), np.array([2, 2, -1, 2]), [-1, 2]),
+      (np.array([1, 2, 1, 2] + list(range(5000))), np.array([2, 2, 1]), [1, 2]),
+      (np.array([1, 2, 1, 2]), np.array([3, 4]), []),
+  )
+  def test_slicing_by_custom_indices_one_pair(self, custom_train_indices,
+                                              custom_test_indices,
+                                              expected_groups):
+    input_data = SlicingSpec(
+        all_custom_train_indices=[custom_train_indices],
+        all_custom_test_indices=[custom_test_indices])
+    expected = [self.ENTIRE_DATASET_SLICE] + [
+        SingleSliceSpec(SlicingFeature.CUSTOM,
+                        (custom_train_indices, custom_test_indices, g))
+        for g in expected_groups
+    ]
+    output = get_single_slice_specs(input_data)
+    self.assertTrue(_are_lists_equal(output, expected))
 
-class GetSliceTest(absltest.TestCase):
+  def test_slicing_by_custom_indices_multi_pairs(self):
+    all_custom_train_indices = [
+        np.array([1, 2, 1, 2]),
+        np.array([0, -1, 2, -1, 2]),
+        np.array([1, 2, 1, 2] + list(range(5000))),
+        np.array([1, 2, 1, 2])
+    ]
+    all_custom_test_indices = [
+        np.array([2, 2, 1, 2]),
+        np.array([2, 2, -1, 2]),
+        np.array([2, 2, 1]),
+        np.array([3, 4])
+    ]
+    expected_group_values = [[1, 2], [-1, 2], [1, 2], []]
+
+    input_data = SlicingSpec(
+        all_custom_train_indices=all_custom_train_indices,
+        all_custom_test_indices=all_custom_test_indices)
+    expected = [self.ENTIRE_DATASET_SLICE]
+    for custom_train_indices, custom_test_indices, eg in zip(
+        all_custom_train_indices, all_custom_test_indices,
+        expected_group_values):
+      expected.extend([
+          SingleSliceSpec(SlicingFeature.CUSTOM,
+                          (custom_train_indices, custom_test_indices, g))
+          for g in eg
+      ])
+    output = get_single_slice_specs(input_data)
+    self.assertTrue(_are_lists_equal(output, expected))
+
+  @parameterized.parameters(
+      ([np.array([1, 2])], None),
+      (None, [np.array([1, 2])]),
+      ([], [np.array([1, 2])]),
+      ([np.array([1, 2])], [np.array([1, 2]),
+                            np.array([1, 2])]),
+  )
+  def test_slicing_by_custom_indices_wrong_indices(self,
+                                                   all_custom_train_indices,
+                                                   all_custom_test_indices):
+    self.assertRaises(
+        ValueError,
+        SlicingSpec,
+        all_custom_train_indices=all_custom_train_indices,
+        all_custom_test_indices=all_custom_test_indices)
+
+  def test_slicing_by_custom_indices_too_many_groups(self):
+    input_data = SlicingSpec(
+        all_custom_train_indices=[np.arange(1001),
+                                  np.arange(3)],
+        all_custom_test_indices=[np.arange(1001), np.arange(3)])
+    self.assertRaises(ValueError, get_single_slice_specs, input_data)
+
+
+class GetSliceTest(parameterized.TestCase):
 
   def __init__(self, methodname):
     """Initialize the test class."""
@@ -210,6 +284,40 @@ class GetSliceTest(absltest.TestCase):
     self.assertTrue((output.labels_train == [0, 2]).all())
     self.assertTrue((output.labels_test == [1, 2, 0]).all())
 
+  def test_slice_by_custom_indices(self):
+    custom_train_indices = np.array([2, 2, 100, 4])
+    custom_test_indices = np.array([100, 2, 2, 2])
+    custom_slice = SingleSliceSpec(
+        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+    output = get_slice(self.input_data, custom_slice)
+    np.testing.assert_array_equal(output.logits_train,
+                                  np.array([[0, 1, 0], [2, 0, 3]]))
+    np.testing.assert_array_equal(
+        output.logits_test, np.array([[12, 13, 0], [14, 15, 0], [0, 16, 17]]))
+    np.testing.assert_array_equal(output.probs_train,
+                                  np.array([[0, 1, 0], [0.1, 0, 0.7]]))
+    np.testing.assert_array_equal(
+        output.probs_test, np.array([[0.1, 0.9, 0], [0.15, 0.85, 0], [0, 0,
+                                                                      1]]))
+    np.testing.assert_array_equal(output.labels_train, np.array([1, 0]))
+    np.testing.assert_array_equal(output.labels_test, np.array([2, 0, 2]))
+    np.testing.assert_array_equal(output.loss_train, np.array([2, 0.25]))
+    np.testing.assert_array_equal(output.loss_test, np.array([3.5, 7, 4.5]))
+    np.testing.assert_array_equal(output.entropy_train, np.array([0.4, 8]))
+    np.testing.assert_array_equal(output.entropy_test,
+                                  np.array([10.5, 4.5, 0.3]))
+
+  @parameterized.parameters(
+      (np.array([2, 2, 100]), np.array([100, 2, 2])),
+      (np.array([2, 2, 100, 4]), np.array([100, 2, 2])),
+      (np.array([2, 100, 4]), np.array([100, 2, 2, 2])),
+  )
+  def test_slice_by_custom_indices_wrong_size(self, custom_train_indices,
+                                              custom_test_indices):
+    custom_slice = SingleSliceSpec(
+        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+    self.assertRaises(ValueError, get_slice, self.input_data, custom_slice)
+
 
 class GetSliceTestForMultilabelData(absltest.TestCase):
 
@@ -287,6 +395,26 @@ class GetSliceTestForMultilabelData(absltest.TestCase):
     percentile_slice = SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED,
                                        False)
     self.assertRaises(ValueError, get_slice, self.input_data, percentile_slice)
+
+  def test_slice_by_custom_indices(self):
+    custom_train_indices = np.array([2, 2, 100, 4])
+    custom_test_indices = np.array([100, 2, 2, 2])
+    custom_slice = SingleSliceSpec(
+        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+    output = get_slice(self.input_data, custom_slice)
+    # Check logits.
+    with self.subTest(msg='Check logits'):
+      np.testing.assert_array_equal(output.logits_train,
+                                    np.array([[0, 1, 0], [2, 0, 3]]))
+      np.testing.assert_array_equal(
+          output.logits_test, np.array([[12, 13, 0], [14, 15, 0], [0, 16, 17]]))
+
+    # Check labels.
+    with self.subTest(msg='Check labels'):
+      np.testing.assert_array_equal(output.labels_train,
+                                    np.array([[0, 1, 1], [1, 0, 1]]))
+      np.testing.assert_array_equal(output.labels_test,
+                                    np.array([[0, 1, 0], [0, 1, 0], [0, 0, 1]]))
 
 
 if __name__ == '__main__':

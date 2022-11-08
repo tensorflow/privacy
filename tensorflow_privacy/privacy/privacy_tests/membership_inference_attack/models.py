@@ -285,12 +285,13 @@ class KNearestNeighborsAttacker(TrainedAttacker):
 def create_attacker(attack_type,
                     backend: Optional[str] = None) -> TrainedAttacker:
   """Returns the corresponding attacker for the provided attack_type."""
-  if attack_type == data_structures.AttackType.LOGISTIC_REGRESSION:
+  # Compare by name instead of the variable itself to support module reload.
+  if attack_type.name == data_structures.AttackType.LOGISTIC_REGRESSION.name:
     return LogisticRegressionAttacker(backend=backend)
-  if attack_type == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON:
+  if attack_type.name == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON.name:
     return MultilayerPerceptronAttacker(backend=backend)
-  if attack_type == data_structures.AttackType.RANDOM_FOREST:
+  if attack_type.name == data_structures.AttackType.RANDOM_FOREST.name:
     return RandomForestAttacker(backend=backend)
-  if attack_type == data_structures.AttackType.K_NEAREST_NEIGHBORS:
+  if attack_type.name == data_structures.AttackType.K_NEAREST_NEIGHBORS.name:
     return KNearestNeighborsAttacker(backend=backend)
   raise NotImplementedError('Attack type %s not implemented yet.' % attack_type)

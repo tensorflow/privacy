@@ -26,13 +26,16 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_s
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SlicingSpec
 
 
+_MAX_NUM_OF_SLICES = 1000
+
+
 def _slice_if_not_none(a, idx):
   return None if a is None else a[idx]
 
 
 def _slice_data_by_indices(data: AttackInputData, idx_train,
                            idx_test) -> AttackInputData:
-  """Slices train fields with with idx_train and test fields with and idx_test."""
+  """Slices train fields with idx_train and test fields with idx_test."""
 
   result = AttackInputData()
 
@@ -128,10 +131,55 @@ def _slice_by_classification_correctness(data: AttackInputData,
   return _slice_data_by_indices(data, idx_train, idx_test)
 
 
+def _slice_by_custom_indices(data: AttackInputData,
+                             custom_train_indices: np.ndarray,
+                             custom_test_indices: np.ndarray,
+                             group_value: int) -> AttackInputData:
+  """Slices attack inputs by custom indices.
+
+  Args:
+    data: Data to be used as input to the attack models.
+    custom_train_indices: The group indices of each training example.
+    custom_test_indices: The group indices of each test example.
+    group_value: The group value to pick.
+
+  Returns:
+    AttackInputData object containing the sliced data.
+  """
+  train_size, test_size = data.get_train_size(), data.get_test_size()
+  if custom_train_indices.shape[0] != train_size:
+    raise ValueError(
+        "custom_train_indices should have the same number of elements as "
+        f"the training data, but got {custom_train_indices.shape} and "
+        f"{train_size}")
+  if custom_test_indices.shape[0] != test_size:
+    raise ValueError(
+        "custom_test_indices should have the same number of elements as "
+        f"the test data, but got {custom_test_indices.shape} and "
+        f"{test_size}")
+  idx_train = custom_train_indices == group_value
+  idx_test = custom_test_indices == group_value
+  return _slice_data_by_indices(data, idx_train, idx_test)
+
+
 def get_single_slice_specs(
     slicing_spec: SlicingSpec,
     num_classes: Optional[int] = None) -> List[SingleSliceSpec]:
-  """Returns slices of data according to slicing_spec."""
+  """Returns slices of data according to slicing_spec.
+
+  Args:
+    slicing_spec: the slicing specification
+    num_classes: number of classes of the examples. Required when slicing by
+      class.
+
+  Returns:
+    Slices of data according to the slicing specification.
+
+  Raises:
+    ValueError: If the number of slices is above `_MAX_NUM_OF_SLICES` when
+      slicing by class or slicing with custom indices. Or, if `num_classes` is
+      not provided when slicing by class.
+  """
   result = []
 
   if slicing_spec.entire_dataset:
@@ -141,10 +189,12 @@ def get_single_slice_specs(
   by_class = slicing_spec.by_class
   if isinstance(by_class, bool):
     if by_class:
-      assert num_classes, "When by_class == True, num_classes should be given."
-      assert 0 <= num_classes <= 1000, (
-          f"Too much classes for slicing by classes. "
-          f"Found {num_classes}.")
+      if not num_classes:
+        raise ValueError("When by_class == True, num_classes should be given.")
+      if not 0 <= num_classes <= _MAX_NUM_OF_SLICES:
+        raise ValueError(f"Too many classes for slicing by classes. "
+                         f"Found {num_classes}."
+                         f"Should be no more than {_MAX_NUM_OF_SLICES}.")
       for c in range(num_classes):
         result.append(SingleSliceSpec(SlicingFeature.CLASS, c))
   elif isinstance(by_class, int):
@@ -164,6 +214,23 @@ def get_single_slice_specs(
     result.append(SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED, True))
     result.append(SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED, False))
 
+  # Create slices by custom indices.
+  if slicing_spec.all_custom_train_indices:
+    for custom_train_indices, custom_test_indices in zip(
+        slicing_spec.all_custom_train_indices,
+        slicing_spec.all_custom_test_indices):
+      groups = np.intersect1d(
+          np.unique(custom_train_indices),
+          np.unique(custom_test_indices),
+          assume_unique=True)
+      if not 0 <= groups.size <= _MAX_NUM_OF_SLICES:
+        raise ValueError(
+            f"Too many groups ({groups.size}) for slicing by custom indices. "
+            f"Should be no more than {_MAX_NUM_OF_SLICES}.")
+      for g in groups:
+        result.append(
+            SingleSliceSpec(SlicingFeature.CUSTOM,
+                            (custom_train_indices, custom_test_indices, g)))
   return result
 
 
@@ -179,6 +246,10 @@ def get_slice(data: AttackInputData,
     data_slice = _slice_by_percentiles(data, from_percentile, to_percentile)
   elif slice_spec.feature == SlicingFeature.CORRECTLY_CLASSIFIED:
     data_slice = _slice_by_classification_correctness(data, slice_spec.value)
+  elif slice_spec.feature == SlicingFeature.CUSTOM:
+    custom_train_indices, custom_test_indices, group_value = slice_spec.value
+    data_slice = _slice_by_custom_indices(data, custom_train_indices,
+                                          custom_test_indices, group_value)
   else:
     raise ValueError('Unknown slice spec feature "%s"' % slice_spec.feature)
 

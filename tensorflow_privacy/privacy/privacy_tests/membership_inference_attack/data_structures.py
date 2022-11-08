@@ -20,7 +20,7 @@ import glob
 import logging
 import os
 import pickle
-from typing import Any, Iterable, MutableSequence, Optional, Union
+from typing import Any, Iterable, MutableSequence, Optional, Union, Sequence
 
 import numpy as np
 import pandas as pd
@@ -39,6 +39,7 @@ class SlicingFeature(enum.Enum):
   CLASS = 'class'
   PERCENTILE = 'percentile'
   CORRECTLY_CLASSIFIED = 'correctly_classified'
+  CUSTOM = 'custom'
 
 
 @dataclasses.dataclass
@@ -64,6 +65,11 @@ class SingleSliceSpec:
 
     if self.feature == SlicingFeature.PERCENTILE:
       return 'Loss percentiles: %d-%d' % self.value
+
+    if self.feature == SlicingFeature.CUSTOM:
+      custom_train_indices, custom_test_indices, group_value = self.value
+      return (f'Custom indices: train = {custom_train_indices}, '
+              f'test = {custom_test_indices}, group_value = {group_value}')
 
     return '%s=%s' % (self.feature.name, self.value)
 
@@ -91,6 +97,37 @@ class SlicingSpec:
   # examples will be generated.
   by_classification_correctness: bool = False
 
+  # When both `all_custom_train_indices` and `all_custom_test_indices` are set,
+  # will slice by custom indices.
+  # `custom_train_indices` and `custom_test_indices` are sequences containing
+  # the same number of arrays. Each array indicates the grouping of training and
+  # test examples, and should have a length equal to the number of training and
+  # test examples.
+  # For example, suppose we have 3 training examples (a1, a2, a3), and
+  # 2 test examples (b1, b2). Then,
+  # all_custom_train_indices = [np.array([2, 1, 2]), np.array([0, 0, 1])]
+  # all_custom_test_indices = [np.array([1, 2]), np.array([1, 0])]
+  # means we are going to consider two ways of slicing them:
+  # 1. two groups: (a2, b1) corresponding to value 1, (a1, a3, b2) corresponding
+  #                to value 2.
+  # 2. two groups: (a1, a2, b2) corresponding to value 0, (a3, b1) corresponding
+  #                to value 1.
+  all_custom_train_indices: Optional[Sequence[np.ndarray]] = None
+  all_custom_test_indices: Optional[Sequence[np.ndarray]] = None
+
+  def __post_init__(self):
+    if not self.all_custom_train_indices and not self.all_custom_test_indices:
+      return
+    if bool(self.all_custom_train_indices) != bool(
+        self.all_custom_test_indices):
+      raise ValueError('custom_train_indices and custom_test_indices must '
+                       'be provided or set to None at the same time.')
+    if len(self.all_custom_train_indices) != len(self.all_custom_test_indices):
+      raise ValueError('all_custom_train_indices and all_custom_test_indices '
+                       'should have the same length, but got'
+                       f'{len(self.all_custom_train_indices)} and '
+                       f'{len(self.all_custom_test_indices)}.')
+
   def __str__(self):
     """Only keeps the True values."""
     result = ['SlicingSpec(']
@@ -107,6 +144,8 @@ class SlicingSpec:
       result.append(' By percentiles,')
     if self.by_classification_correctness:
       result.append(' By classification correctness,')
+    if self.all_custom_train_indices:
+      result.append(' By custom indices,')
     result.append(')')
     return '\n'.join(result)
 
@@ -123,8 +162,9 @@ class AttackType(enum.Enum):
   @property
   def is_trained_attack(self):
     """Returns whether this type of attack requires training a model."""
-    return (self != AttackType.THRESHOLD_ATTACK) and (
-        self != AttackType.THRESHOLD_ENTROPY_ATTACK)
+    # Compare by name instead of the variable itself to support module reload.
+    return self.name not in (AttackType.THRESHOLD_ATTACK.name,
+                             AttackType.THRESHOLD_ENTROPY_ATTACK.name)
 
   def __str__(self):
     """Returns LOGISTIC_REGRESSION instead of AttackType.LOGISTIC_REGRESSION."""
