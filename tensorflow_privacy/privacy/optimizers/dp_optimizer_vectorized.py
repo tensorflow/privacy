@@ -104,6 +104,9 @@ def make_vectorized_optimizer_class(cls):
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
       self._was_compute_gradients_called = False
+      # For microbatching version, the sensitivity is 2*l2_norm_clip.
+      self._sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                             num_microbatches > 1) else 1.0
 
     def compute_gradients(self,
                           loss,
@@ -166,7 +169,7 @@ def make_vectorized_optimizer_class(cls):
 
         def reduce_noise_normalize_batch(stacked_grads):
           summed_grads = tf.reduce_sum(input_tensor=stacked_grads, axis=0)
-          noise_stddev = self._l2_norm_clip * self._noise_multiplier
+          noise_stddev = self._l2_norm_clip * self._noise_multiplier * self._sensitivity_multiplier
           noise = tf.random.normal(
               tf.shape(input=summed_grads), stddev=noise_stddev)
           noised_grads = summed_grads + noise

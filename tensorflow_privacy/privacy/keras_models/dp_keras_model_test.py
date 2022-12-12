@@ -189,7 +189,11 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
 
     model_weights = model.get_weights()
     measured_std = np.std(model_weights[0])
+
     expected_std = l2_norm_clip * noise_multiplier / num_microbatches
+    # When microbatching is used, sensitivity becomes 2C.
+    if num_microbatches > 1:
+      expected_std *= 2
 
     # Test standard deviation is close to l2_norm_clip * noise_multiplier.
     self.assertNear(measured_std, expected_std, 0.1 * expected_std)

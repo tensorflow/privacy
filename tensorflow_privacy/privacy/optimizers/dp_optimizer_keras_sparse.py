@@ -185,13 +185,18 @@ def make_sparse_keras_optimizer_class(cls):
       self._num_microbatches = num_microbatches
       self._was_dp_gradients_called = False
       self._noise_stddev = None
+      # For microbatching version, the sensitivity is 2*l2_norm_clip.
+      self._sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                             num_microbatches > 1) else 1.0
+
       if self._num_microbatches is not None:
         # The loss/gradients is the mean over the microbatches so we
         # divide the noise by num_microbatches too to obtain the correct
         # normalized noise.  If _num_microbatches is not set, the noise stddev
         # will be set later when the loss is given.
-        self._noise_stddev = (self._l2_norm_clip * self._noise_multiplier /
-                              self._num_microbatches)
+        self._noise_stddev = (
+            self._l2_norm_clip * self._noise_multiplier *
+            self._sensitivity_multiplier / self._num_microbatches)
 
     def _generate_noise(self, g):
       """Returns noise to be added to `g`."""
@@ -297,9 +302,13 @@ def make_sparse_keras_optimizer_class(cls):
 
         if self._num_microbatches is None:
           num_microbatches = tf.shape(input=loss)[0]
+
+          sensitivity_multiplier = tf.cond(num_microbatches > 1, lambda: 2.0,
+                                           lambda: 1.0)
+
           self._noise_stddev = tf.divide(
-              self._l2_norm_clip * self._noise_multiplier,
-              tf.cast(num_microbatches, tf.float32))
+              sensitivity_multiplier * self._l2_norm_clip *
+              self._noise_multiplier, tf.cast(num_microbatches, tf.float32))
         else:
           num_microbatches = self._num_microbatches
         microbatch_losses = tf.reduce_mean(
