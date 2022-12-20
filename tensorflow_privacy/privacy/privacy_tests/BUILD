@@ -15,10 +15,7 @@ py_test(
     srcs = ["utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        ":utils",
-        "//third_party/py/parameterized",
-    ],
+    deps = [":utils"],
 )
 
 py_test(
@@ -36,8 +33,4 @@ py_library(
 py_library(
     name = "epsilon_lower_bound",
     srcs = ["epsilon_lower_bound.py"],
-    deps = [
-        "//third_party/py/immutabledict",
-        "//third_party/py/statsmodels",
-    ],
 )

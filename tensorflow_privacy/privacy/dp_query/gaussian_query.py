@@ -14,9 +14,8 @@
 """Implements DPQuery interface for Gaussian sum queries."""
 
 import collections
-import distutils
-
 import dp_accounting
+import packaging
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 
@@ -79,8 +78,8 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
 
   def get_noised_result(self, sample_state, global_state):
     """Implements `tensorflow_privacy.DPQuery.get_noised_result`."""
-    if distutils.version.LooseVersion(
-        tf.__version__) < distutils.version.LooseVersion('2.0.0'):
+    if packaging.version.Version(
+        tf.__version__) < packaging.version.Version('2.0.0'):
 
       def add_noise(v):
         return v + tf.random.normal(
