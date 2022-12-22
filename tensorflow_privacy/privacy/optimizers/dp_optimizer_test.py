@@ -43,7 +43,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
         np.reshape(
             per_example_gradients,
             [num_microbatches,
-             np.int(batch_size / num_microbatches), num_vars]),
+             int(batch_size / num_microbatches), num_vars]),
         axis=1)
     microbatch_gradients_norms = np.linalg.norm(microbatch_gradients, axis=1)
 

@@ -152,7 +152,7 @@ def rdp_gaussian(logq, sigma, orders):
     if np.isscalar(orders):
       return 0.
     else:
-      return np.full_like(orders, 0., dtype=np.float)
+      return np.full_like(orders, 0., dtype=float)
 
   variance = sigma**2
 
