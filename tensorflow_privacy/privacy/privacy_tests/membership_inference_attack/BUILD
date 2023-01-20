@@ -69,7 +69,10 @@ py_library(
     name = "privacy_report",
     srcs = ["privacy_report.py"],
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//third_party/py/tkinter",  # buildcleaner: keep
+    ],
 )
 
 py_library(
