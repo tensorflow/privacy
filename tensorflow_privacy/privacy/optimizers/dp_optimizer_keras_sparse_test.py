@@ -282,8 +282,13 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     if num_microbatches is None:
       num_microbatches = 16
-    noise_stddev = (3 * l2_norm_clip * noise_multiplier / num_microbatches /
+
+    # For microbatching version, the sensitivity is 2*l2_norm_clip.
+    sensitivity_multiplier = 2.0 if (num_microbatches > 1) else 1.0
+    noise_stddev = (3 * sensitivity_multiplier * l2_norm_clip *
+                    noise_multiplier / num_microbatches /
                     gradient_accumulation_steps)
+
     self.assertNear(np.std(weights), noise_stddev, 0.5)
 
   @parameterized.named_parameters(

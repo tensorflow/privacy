@@ -128,8 +128,13 @@ def make_vectorized_keras_optimizer_class(cls):
       self._noise_multiplier = noise_multiplier
       self._num_microbatches = num_microbatches
       self._unconnected_gradients_to_zero = unconnected_gradients_to_zero
+
+      # For microbatching version, the sensitivity is 2*l2_norm_clip.
+      self._sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                             num_microbatches > 1) else 1.0
       self._dp_sum_query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip, l2_norm_clip * noise_multiplier)
+          l2_norm_clip,
+          self._sensitivity_multiplier * l2_norm_clip * noise_multiplier)
       self._global_state = None
       self._was_dp_gradients_called = False
 
@@ -185,7 +190,7 @@ def make_vectorized_keras_optimizer_class(cls):
           summed_gradient = tf.reduce_sum(g, axis=0)
 
           # Add noise to summed gradients.
-          noise_stddev = self._l2_norm_clip * self._noise_multiplier
+          noise_stddev = self._sensitivity_multiplier * self._l2_norm_clip * self._noise_multiplier
           noise = tf.random.normal(
               tf.shape(input=summed_gradient), stddev=noise_stddev)
           noised_gradient = tf.add(summed_gradient, noise)

@@ -340,8 +340,13 @@ def make_gaussian_optimizer_class(cls):
       self._num_microbatches = num_microbatches
       self._base_optimizer_class = cls
 
+      # For microbatching version, the sensitivity is 2*l2_norm_clip.
+      sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                       num_microbatches > 1) else 1.0
+
       dp_sum_query = gaussian_query.GaussianSumQuery(
-          l2_norm_clip, l2_norm_clip * noise_multiplier)
+          l2_norm_clip,
+          sensitivity_multiplier * l2_norm_clip * noise_multiplier)
 
       super(DPGaussianOptimizerClass,
             self).__init__(dp_sum_query, num_microbatches, unroll_microbatches,

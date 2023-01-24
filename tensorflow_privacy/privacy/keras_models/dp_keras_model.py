@@ -82,6 +82,9 @@ def make_dp_model_class(cls):
       super().__init__(*args, **kwargs)
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
+      # For microbatching version, the sensitivity is 2*l2_norm_clip.
+      self._sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                             num_microbatches > 1) else 1.0
 
       # Given that `num_microbatches` was added as an argument after the fact,
       # this check helps detect unintended calls to the earlier API.
@@ -109,7 +112,7 @@ def make_dp_model_class(cls):
 
     def _reduce_per_example_grads(self, stacked_grads):
       summed_grads = tf.reduce_sum(input_tensor=stacked_grads, axis=0)
-      noise_stddev = self._l2_norm_clip * self._noise_multiplier
+      noise_stddev = self._l2_norm_clip * self._sensitivity_multiplier * self._noise_multiplier
       noise = tf.random.normal(
           tf.shape(input=summed_grads), stddev=noise_stddev)
       noised_grads = summed_grads + noise

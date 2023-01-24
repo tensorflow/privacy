@@ -459,8 +459,12 @@ def make_gaussian_query_optimizer_class(cls):
       *args: These will be passed on to the base class `__init__` method.
       **kwargs: These will be passed on to the base class `__init__` method.
     """
+    # For microbatching version, the sensitivity is 2*l2_norm_clip.
+    sensitivity_multiplier = 2.0 if (num_microbatches is not None and
+                                     num_microbatches > 1) else 1.0
+
     dp_sum_query = gaussian_query.GaussianSumQuery(
-        l2_norm_clip, l2_norm_clip * noise_multiplier)
+        l2_norm_clip, sensitivity_multiplier * l2_norm_clip * noise_multiplier)
     return cls(
         dp_sum_query=dp_sum_query,
         num_microbatches=num_microbatches,
