@@ -12,6 +12,5 @@ py_binary(
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack",
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack:privacy_report",
-        "//third_party/py/tkinter",  # buildcleaner: keep
     ],
 )
