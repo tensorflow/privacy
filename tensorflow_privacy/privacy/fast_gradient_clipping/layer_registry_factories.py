@@ -100,8 +100,11 @@ def embedding_layer_computation(layer_instance, inputs):
     and `base_vars` is the intermediate Tensor used in the chain-rule / "fast"
     clipping trick.
   """
-  if layer_instance.sparse:
-    raise NotImplementedError("Sparse output vectors are not supported.")
+  if hasattr(layer_instance, "sparse"):  # for backwards compatibility
+    if layer_instance.sparse:
+      raise NotImplementedError("Sparse output vectors are not supported.")
+  if tf.rank(*inputs) != 2:
+    raise NotImplementedError("Only 2D embedding inputs are supported.")
   # The logic below is applied to properly handle repeated embedding indices.
   # Specifically, sqr_grad_norms will contain the total counts of each embedding
   # index (see how it is processed in the combine_pre_and_post_sqr_norms()
