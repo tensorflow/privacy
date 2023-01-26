@@ -13,10 +13,9 @@
 # limitations under the License.
 
 from absl.testing import parameterized
-
 import numpy as np
 import tensorflow as tf
-
+from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry_factories
 from tensorflow_privacy.privacy.keras_models import dp_keras_model
 
 
@@ -27,6 +26,13 @@ def get_data():
   data = np.array([[3, 4]])
   labels = np.matmul(data, [[3], [1]]) + 2
   return data, labels
+
+
+def get_layer_registries():
+  # Outputs a list of testable layer registries.
+  # The empty registry {} tests the behavior of the standard approach,
+  # while the other one tests the fast gradient clipping algorithm.
+  return [{}, layer_registry_factories.make_default_layer_registry()]
 
 
 class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
@@ -65,32 +71,35 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
     """Tests that clipping norm works."""
     train_data, train_labels = get_data()
 
-    # Simple linear model returns w * x + b.
-    model = dp_keras_model.DPSequential(
-        l2_norm_clip=l2_norm_clip,
-        noise_multiplier=0.0,
-        layers=[
-            tf.keras.layers.InputLayer(input_shape=(2,)),
-            tf.keras.layers.Dense(
-                1, kernel_initializer='zeros', bias_initializer='zeros')
-        ])
-    learning_rate = 0.01
-    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
-    loss = tf.keras.losses.MeanSquaredError()
+    for test_reg in get_layer_registries():
+      # Simple linear model returns w * x + b.
+      model = dp_keras_model.DPSequential(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=0.0,
+          layer_registry=test_reg,
+          layers=[
+              tf.keras.layers.InputLayer(input_shape=(2,)),
+              tf.keras.layers.Dense(
+                  1, kernel_initializer='zeros', bias_initializer='zeros'
+              ),
+          ],
+      )
+      learning_rate = 0.01
+      optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+      loss = tf.keras.losses.MeanSquaredError()
+      model.compile(optimizer=optimizer, loss=loss)
+      model.fit(train_data, train_labels, epochs=1, batch_size=1)
 
-    model.compile(optimizer=optimizer, loss=loss)
-    model.fit(train_data, train_labels, epochs=1, batch_size=1)
+      model_weights = model.get_weights()
 
-    model_weights = model.get_weights()
+      unclipped_gradient = np.sqrt(90**2 + 120**2 + 30**2)
+      scale = min(1.0, l2_norm_clip / unclipped_gradient)
+      expected_weights = np.array([[90], [120]]) * scale * learning_rate
+      expected_bias = np.array([30]) * scale * learning_rate
 
-    unclipped_gradient = np.sqrt(90**2 + 120**2 + 30**2)
-    scale = min(1.0, l2_norm_clip / unclipped_gradient)
-    expected_weights = np.array([[90], [120]]) * scale * learning_rate
-    expected_bias = np.array([30]) * scale * learning_rate
-
-    # Check parameters are as expected, taking into account the learning rate.
-    self.assertAllClose(model_weights[0], expected_weights)
-    self.assertAllClose(model_weights[1], expected_bias)
+      # Check parameters are as expected, taking into account the learning rate.
+      self.assertAllClose(model_weights[0], expected_weights)
+      self.assertAllClose(model_weights[1], expected_bias)
 
   def _compute_expected_gradients(self, data, labels, w, l2_norm_clip,
                                   num_microbatches):
@@ -98,9 +107,10 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
     if num_microbatches is None:
       num_microbatches = batch_size
 
-    preds = np.matmul(data, w)
+    preds = np.matmul(data, np.expand_dims(w, axis=1))
 
-    grads = 2 * data * (labels - preds)[:, np.newaxis]
+    grads = 2 * data * (preds - labels)
+
     grads = np.reshape(grads,
                        [num_microbatches, batch_size // num_microbatches, -1])
 
@@ -123,32 +133,45 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
   def testMicrobatches(self, l2_norm_clip, num_microbatches):
     train_data = np.array([[2.0, 3.0], [4.0, 5.0], [6.0, 7.0], [8.0, 9.0]])
     w = np.zeros((2))
-    train_labels = np.array([1.0, 3.0, -2.0, -4.0])
+    train_labels = np.array([[1.0], [3.0], [-2.0], [-4.0]])
     learning_rate = 1.0
 
-    expected_grads = self._compute_expected_gradients(train_data, train_labels,
-                                                      w, l2_norm_clip,
-                                                      num_microbatches)
-    expected_weights = np.squeeze(learning_rate * expected_grads)
+    for test_reg, test_nm in zip(
+        get_layer_registries(), [num_microbatches, None]
+    ):
+      optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+      loss = tf.keras.losses.MeanSquaredError()
 
-    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
-    loss = tf.keras.losses.MeanSquaredError()
+      # Simple linear model returns w * x.
+      model = dp_keras_model.DPSequential(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=0.0,
+          num_microbatches=test_nm,
+          layer_registry=test_reg,
+          layers=[
+              tf.keras.layers.InputLayer(input_shape=(2,)),
+              tf.keras.layers.Dense(
+                  1, use_bias=False, kernel_initializer='zeros'
+              ),
+          ],
+      )
+      model.compile(optimizer=optimizer, loss=loss)
+      model.fit(train_data, train_labels, epochs=1, batch_size=4, shuffle=False)
 
-    # Simple linear model returns w * x + b.
-    model = dp_keras_model.DPSequential(
-        l2_norm_clip=l2_norm_clip,
-        noise_multiplier=0.0,
-        num_microbatches=num_microbatches,
-        layers=[
-            tf.keras.layers.InputLayer(input_shape=(2,)),
-            tf.keras.layers.Dense(
-                1, use_bias=False, kernel_initializer='zeros')
-        ])
-    model.compile(optimizer=optimizer, loss=loss)
-    model.fit(train_data, train_labels, epochs=1, batch_size=4, shuffle=False)
+      model_weights = np.squeeze(model.get_weights())
 
-    model_weights = np.squeeze(model.get_weights())
-    self.assertAllClose(model_weights, expected_weights)
+      effective_num_microbatches = (
+          train_data.shape[0]
+          if model._num_microbatches is None
+          else num_microbatches
+      )
+
+      expected_grads = self._compute_expected_gradients(
+          train_data, train_labels, w, l2_norm_clip, effective_num_microbatches
+      )
+      expected_weights = np.squeeze(-learning_rate * expected_grads)
+
+      self.assertAllClose(model_weights, expected_weights)
 
   @parameterized.named_parameters(
       ('noise_multiplier 3 2 1', 3.0, 2.0, 1),
@@ -168,59 +191,81 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
 
     # Data is one example of length 1000, set to zero, with label zero.
     train_data = np.zeros((4, 1000))
-    train_labels = np.array([0.0, 0.0, 0.0, 0.0])
+    train_labels = np.array([[0.0], [0.0], [0.0], [0.0]])
 
     learning_rate = 1.0
-    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
-    loss = tf.keras.losses.MeanSquaredError()
 
-    # Simple linear model returns w * x + b.
-    model = dp_keras_model.DPSequential(
-        l2_norm_clip=l2_norm_clip,
-        noise_multiplier=noise_multiplier,
-        num_microbatches=num_microbatches,
-        layers=[
-            tf.keras.layers.InputLayer(input_shape=(1000,)),
-            tf.keras.layers.Dense(
-                1, kernel_initializer='zeros', bias_initializer='zeros')
-        ])
-    model.compile(optimizer=optimizer, loss=loss)
-    model.fit(train_data, train_labels, epochs=1, batch_size=4)
+    for test_reg, test_nm in zip(
+        get_layer_registries(), [num_microbatches, None]
+    ):
+      optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+      loss = tf.keras.losses.MeanSquaredError()
 
-    model_weights = model.get_weights()
-    measured_std = np.std(model_weights[0])
-    expected_std = l2_norm_clip * noise_multiplier / num_microbatches
+      # Simple linear model returns w * x + b.
+      model = dp_keras_model.DPSequential(
+          l2_norm_clip=l2_norm_clip,
+          noise_multiplier=noise_multiplier,
+          num_microbatches=test_nm,
+          layer_registry=test_reg,
+          layers=[
+              tf.keras.layers.InputLayer(input_shape=(1000,)),
+              tf.keras.layers.Dense(
+                  1, kernel_initializer='zeros', bias_initializer='zeros'
+              ),
+          ],
+      )
+      model.compile(optimizer=optimizer, loss=loss)
+      model.fit(train_data, train_labels, epochs=1, batch_size=4)
 
-    # Test standard deviation is close to l2_norm_clip * noise_multiplier.
-    self.assertNear(measured_std, expected_std, 0.1 * expected_std)
+      effective_num_microbatches = (
+          train_data.shape[0]
+          if model._num_microbatches is None
+          else num_microbatches
+      )
+
+      model_weights = model.get_weights()
+      measured_std = np.std(model_weights[0])
+      expected_std = (
+          l2_norm_clip * noise_multiplier / effective_num_microbatches
+      )
+
+      # Test standard deviation is close to l2_norm_clip * noise_multiplier.
+      self.assertNear(measured_std, expected_std, 0.1 * expected_std)
 
   # Simple check to make sure dimensions are correct when output has
   # dimension > 1.
   @parameterized.named_parameters(
-      ('mb_test None 1', None, 1),
+      ('mb_test None 2', None, 2),
       ('mb_test 1 2', 1, 2),
       ('mb_test 2 2', 2, 2),
       ('mb_test 4 4', 4, 4),
   )
   def testMultiDimensionalOutput(self, num_microbatches, output_dimension):
     train_data = np.array([[2.0, 3.0], [4.0, 5.0], [6.0, 7.0], [8.0, 9.0]])
-    train_labels = np.array([0, 1, 1, 0])
+    train_labels = np.array([[0], [1], [1], [0]])
     learning_rate = 1.0
 
-    optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
-    loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
+    for test_reg, test_nm in zip(
+        get_layer_registries(), [num_microbatches, None]
+    ):
+      optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
+      loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
-    model = dp_keras_model.DPSequential(
-        l2_norm_clip=1.0e9,
-        noise_multiplier=0.0,
-        num_microbatches=num_microbatches,
-        layers=[
-            tf.keras.layers.InputLayer(input_shape=(2,)),
-            tf.keras.layers.Dense(
-                output_dimension, use_bias=False, kernel_initializer='zeros')
-        ])
-    model.compile(optimizer=optimizer, loss=loss_fn)
-    model.fit(train_data, train_labels, epochs=1, batch_size=4, shuffle=False)
+      model = dp_keras_model.DPSequential(
+          l2_norm_clip=1.0e9,
+          noise_multiplier=0.0,
+          num_microbatches=test_nm,
+          layer_registry=test_reg,
+          layers=[
+              tf.keras.layers.InputLayer(input_shape=(2,)),
+              tf.keras.layers.Dense(
+                  output_dimension, use_bias=False, kernel_initializer='zeros'
+              ),
+              tf.keras.layers.Dense(1),
+          ],
+      )
+      model.compile(optimizer=optimizer, loss=loss_fn)
+      model.fit(train_data, train_labels, epochs=1, batch_size=4, shuffle=False)
 
   # Checks that calls to earlier API using `use_xla` as a positional argument
   # raise an exception.
@@ -237,8 +282,11 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
           layers=[
               tf.keras.layers.InputLayer(input_shape=(2,)),
               tf.keras.layers.Dense(
-                  2, use_bias=False, kernel_initializer='zeros')
-          ])
+                  2, use_bias=False, kernel_initializer='zeros'
+              ),
+              tf.keras.layers.Dense(1),
+          ],
+      )
 
 if __name__ == '__main__':
   tf.test.main()

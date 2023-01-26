@@ -93,8 +93,6 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
     loss_config['reduction'] = tf.keras.losses.Reduction.NONE
     per_example_loss_fn = input_model.loss.from_config(loss_config)
     losses = per_example_loss_fn(y_batch, model_outputs)
-    if tf.rank(tf.squeeze(losses)) > 1:
-      raise NotImplementedError('Vector losses are not supported.')
     summed_loss = tf.reduce_sum(losses)
   # Second loop computes the norm of the gradient of the loss with respect to
   # the pre-activation tensors, and multiplies these norms with the results of

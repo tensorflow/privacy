@@ -126,9 +126,14 @@ def embedding_layer_computation(layer_instance, inputs):
   indices = tf.cast(*inputs, tf.int32)
   if isinstance(indices, tf.SparseTensor):
     indices = tf.sparse.to_dense(indices)
-  counts = tf.math.bincount(indices, axis=-1)
+
+  def get_row_bincounts(row_tsr):
+    _, hashed_idx = tf.unique(row_tsr)
+    hashed_counts = tf.math.bincount(hashed_idx)
+    return tf.gather(hashed_counts, hashed_idx)
+
   sqr_grad_norms = tf.cast(
-      tf.gather(counts, indices, batch_dims=1), base_vars.dtype
+      tf.map_fn(get_row_bincounts, indices), base_vars.dtype
   )
   return sqr_grad_norms, base_vars, None
 
