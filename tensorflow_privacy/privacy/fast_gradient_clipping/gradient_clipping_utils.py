@@ -48,14 +48,15 @@ def forward_norm_pass(input_model, x_batch, tape, layer_registry):
       details, see `layer_registry_factories.py`.
 
   Returns:
-    Four objects (outputs, norm_list, var_list, layer_hash_list). The first are
-    the outputs that are generated as a result of a forward pass. The second is
-    either `None` or a collection of squared norms for each example that helps
-    in computing the gradient norm of an example (if such a "nice" computation
-    exists). The third is an ordered list of tf.Tensor() objects that are
-    intended to be evaluated with respect to the summed loss of the model. The
-    fourth is a list whose i-th element is the hash of the layer class of the
-    i-th element of var_list.
+    A `tuple` `(outputs, base_var_list, sqr_norm_fn_list)`. `outputs` is the
+    `tf.Tensor` that is generated as a result of a forward pass. `base_var_list`
+    is an ordered list of `tf.Tensor` objects that are intended to be
+    differentiated with respect to the summed loss of the model.
+    `sqr_norm_fn_list` is either `None` or a `list` of functions that return
+    the squared L2 gradient norms for a specific trainable layer.
+    Specifically, the i-th function takes, as input, the output of
+    `tape.gradient(summed_loss, base_var_list[i])` and returns the gradient
+    norms for the layer corresponding to index `i`.
   """
   # TODO: Avoid or remove the references to protected methods of `input_model`.  # pylint: disable=g-bad-todo
   # Prepare the inputs and BFS variables.
@@ -71,9 +72,8 @@ def forward_norm_pass(input_model, x_batch, tape, layer_registry):
   nodes_by_depth = input_model._nodes_by_depth  # pylint: disable=protected-access
   depth_keys = list(nodes_by_depth.keys())
   depth_keys.sort(reverse=True)
-  var_list = []
-  norm_list = []
-  layer_hash_list = []
+  base_var_list = []
+  sqr_norm_fn_list = []
   node_outputs = None
   # Perform BFS feedforward computations.
   for depth in depth_keys:
@@ -85,36 +85,34 @@ def forward_norm_pass(input_model, x_batch, tape, layer_registry):
       args, kwargs = node.map_arguments(tensor_dict)
       if has_internal_compute_graph(node.layer):
         # If this node has an internal computational graph, we can recurse.
-        node_outputs, node_norm_list, node_var_list, node_layer_hash_list = (
-            forward_norm_pass(node.layer, args, tape, layer_registry)
+        node_outputs, node_vars, node_sqr_norm_fn = forward_norm_pass(
+            node.layer, args, tape, layer_registry
         )
-        var_list += node_var_list
-        norm_list += node_norm_list
-        layer_hash_list += node_layer_hash_list
+        base_var_list.extend(node_vars)
+        sqr_norm_fn_list.extend(node_sqr_norm_fn)
       else:
         # Either pass through or record some metadata.
         if not node.layer.trainable_variables:
           node_outputs = node.layer(*args, **kwargs)
         else:
-          lyr_hash = hash(node.layer.__class__)
-          if lyr_hash not in layer_registry:
+          layer_hash = hash(node.layer.__class__)
+          if layer_hash not in layer_registry:
             raise NotImplementedError(
                 'Layer %s is not in the registry of known layers that can'
                 'be used for efficient gradient clipping.'
                 % node.layer.__class__.__name__
             )
-          lyr = layer_registry[lyr_hash]
-          node_norms, node_vars, transform = lyr(node.layer, args)
+          registry_fn = layer_registry[layer_hash]
+          node_vars, transform, node_sqr_norm_fn = registry_fn(node.layer, args)
           tape.watch(node_vars)
           node_outputs = transform(node_vars) if transform else node_vars
-          var_list.append(node_vars)
-          norm_list.append(node_norms)
-          layer_hash_list.append(lyr_hash)
-      # update the current dictionary of inputs for the next node.
+          base_var_list.append(node_vars)
+          sqr_norm_fn_list.append(node_sqr_norm_fn)
+      # Update the current dictionary of inputs for the next node.
       for x_id, y in zip(node.flat_output_ids, tf.nest.flatten(node_outputs)):
         tensor_dict[x_id] = [y] * tensor_usage_count[x_id]
 
-  return node_outputs, norm_list, var_list, layer_hash_list
+  return node_outputs, base_var_list, sqr_norm_fn_list
 
 
 def get_trainable_hidden_layers(input_model):

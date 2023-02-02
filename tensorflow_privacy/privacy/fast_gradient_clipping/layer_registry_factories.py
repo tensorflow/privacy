@@ -16,23 +16,28 @@
 Defines "fast" gradient norm layer registry functions for use in the "fast"
 gradient clipping algorithm. Specifically, each registry function takes
 in two inputs (i) a layer instance and (ii) `tf.Tensor` inputs to produce three
-outputs: (a) a `tf.Tensor` `G` of gradient norms, (b) a differentiable
-`tf.Tensor` `Z`, and (c) either `None` or a function that maps the object in
-(b) to the layer instance's output when using the inputs in (ii). If (c) is
-`None`, then (b) contains the layer outputs.
+outputs: (a) a differentiable `tf.Tensor` `Z`, (b) either `None` or a function
+that maps the object in (b) to the layer instance's output when using the
+inputs in (ii), and (c) a function `F` that generates the per-example gradient
+norms when it is fed an object representing the gradient of the summed loss
+with respect to `Z` in (a). If (b) is `None`, then (a) is expected to contain
+the layer outputs.
 
 When a layer registry function is defined, it is generally assumed that the
-following relation holds for each pair `(g, z)` in `zip(G, Z)`:
+following relation holds:
 
-  `|dL/dw|^2 == |dL/dz|^2 * g^2`
+  `|dL/dW|^2 == F(grad_Z)`
 
-where `L` is any per-example loss function and `w` are the trainable variables
-corresponding to `(g, z)`.
+where `gradient_Z` is the gradient of the summed loss with respect to `Z`.
 
-For example, this relation holds if the layer instance is tf.keras.layers.Dense,
-Z contains the pre-activation tensors, i.e., `z = X * w` for input `X`, and `g`
-is the norm of the input corresponding to the given per-example loss (see the
-formulae in https://arxiv.org/abs/1510.01799 for more details).
+For example, if the layer instance is tf.keras.layers.Dense, Z contains the
+pre-activation tensors, i.e., `z = X * w` for input `X`, and `g` is a tensor
+whose i-th entry is the L2 norm of the i-th input vector, then
+
+  `F(grad_Z) = g^2 * l2_row_norm(grad_Z)^2`,
+
+where `l2_row_norm(y)` computes the L2 norm for each row of an input `y`.
+Details of this decomposition can be found in https://arxiv.org/abs/1510.01799
 
 The registry functions are registered in a `dict` (registry) whose key is the
 hash of the layer class and whose value is the registry function.
@@ -59,25 +64,38 @@ def dense_layer_computation(layer_instance, inputs):
       `layer_instance(inputs)` returns a valid output.
 
   Returns:
-    A `tuple` `(sqr_grad_norms, base_vars, transform)`, where `norms` is a 1D
-    `tf.Tensor` of the squared l2-norms of the input tensors, `base_vars` is the
-    intermediate Tensor used in the chain-rule / "fast" clipping trick, and
-    `transform` is a function that maps `base_vars` to the layer outputs.
+    A `tuple` `(base_vars, transform, sqr_norm_fn)`, `base_vars` is the
+    intermediate Tensor used in the chain-rule / "fast" clipping trick,
+    `transform` is a function that maps `base_vars` to the layer outputs, and
+    `sqr_norm_fn` is a function that takes two inputs, a `tf.Tensor`
+    representing the summed loss of the model containing `layer_instance` and
+    a `tf.GradientTape()` recording the Tensorflow ops in this model, and
+    returns the squared L2 gradient norms of the trainable variables in
+    `layer_instance`. These squared norms should be a 1D `tf.Tensor` of
+    length `batch_size`.
   """
+
   orig_activation = layer_instance.activation
   layer_instance.activation = None
   base_vars = layer_instance(*inputs)
-  sqr_inputs = tf.square(*inputs)
-  inputs_reduction_axes = tf.range(1, tf.rank(sqr_inputs))
-  sqr_grad_norms = tf.reduce_sum(tf.square(*inputs), axis=inputs_reduction_axes)
-  if layer_instance.use_bias:
-    # Adding a bias term is equivalent to a layer with no bias term and which
-    # adds an additional variable to the layer input that only takes a constant
-    # value of 1.0. This is thus equivalent to adding 1.0 to the sum of the
-    # squared values of the inputs.
-    sqr_grad_norms += tf.cast(1.0, dtype=sqr_grad_norms.dtype)
   layer_instance.activation = orig_activation
-  return sqr_grad_norms, base_vars, layer_instance.activation
+  def sqr_norm_fn(base_vars_grads):
+    sqr_inputs = tf.square(*inputs)
+    inputs_reduction_axes = tf.range(1, tf.rank(sqr_inputs))
+    input_sqr_norms = tf.reduce_sum(sqr_inputs, axis=inputs_reduction_axes)
+    if layer_instance.use_bias:
+      # Adding a bias term is equivalent to a layer with no bias term and which
+      # adds an additional variable to the layer input that only takes a
+      # constant value of 1.0. This is thus equivalent to adding 1.0 to the sum
+      # of the squared values of the inputs.
+      input_sqr_norms += tf.cast(1.0, dtype=input_sqr_norms.dtype)
+    reduction_axes = tf.range(1, tf.rank(base_vars_grads))
+    base_vars_sqr_norms = tf.reduce_sum(
+        tf.square(base_vars_grads), axis=reduction_axes
+    )
+    return input_sqr_norms * base_vars_sqr_norms
+
+  return base_vars, layer_instance.activation, sqr_norm_fn
 
 
 def embedding_layer_computation(layer_instance, inputs):
@@ -95,15 +113,19 @@ def embedding_layer_computation(layer_instance, inputs):
       `layer_instance(inputs)` returns a valid output.
 
   Returns:
-    A `tuple` `(sqr_grad_norms, base_vars, None)`, where `sqr_grad_norms` is
-    a `tf.Tensor` that is related to the squared l2-norms of the input tensors
-    and `base_vars` is the intermediate Tensor used in the chain-rule / "fast"
-    clipping trick.
+    A `tuple` `(base_vars, None, sqr_norm_fn)`, `base_vars` is the
+    intermediate Tensor used in the chain-rule / "fast" clipping trick, and
+    `sqr_norm_fn` is a function that takes two inputs, a `tf.Tensor`
+    representing the summed loss of the model containing `layer_instance` and
+    a `tf.GradientTape()` recording the Tensorflow ops in this model, and
+    returns the squared L2 gradient norms of the trainable variables in
+    `layer_instance`. These squared norms should be a 1D `tf.Tensor` of
+    length `batch_size`.
   """
   if hasattr(layer_instance, "sparse"):  # for backwards compatibility
     if layer_instance.sparse:
       raise NotImplementedError("Sparse output vectors are not supported.")
-  if tf.rank(*inputs) != 2:
+  if len(inputs[0].shape) != 2:
     raise NotImplementedError("Only 2D embedding inputs are supported.")
   # The logic below is applied to properly handle repeated embedding indices.
   # Specifically, sqr_grad_norms will contain the total counts of each embedding
@@ -118,26 +140,32 @@ def embedding_layer_computation(layer_instance, inputs):
   #     [[3 1 2]
   #      [1 2 3]]
   #
-  #   sqr_grad_norms =
+  #   input_counts =
   #     [[3 3 3 1 2 2],
   #      [1 3 3 3 2 2]]
   #
   base_vars = layer_instance(*inputs)
-  indices = tf.cast(*inputs, tf.int32)
-  if isinstance(indices, tf.SparseTensor):
-    indices = tf.sparse.to_dense(indices)
-  counts = tf.math.bincount(indices, axis=-1)
-  sqr_grad_norms = tf.cast(
-      tf.gather(counts, indices, batch_dims=1), base_vars.dtype
-  )
-  return sqr_grad_norms, base_vars, None
+  def sqr_norm_fn(base_vars_grads):
+    indices = tf.cast(*inputs, tf.int32)
+    if isinstance(indices, tf.SparseTensor):
+      indices = tf.sparse.to_dense(indices)
+    counts = tf.math.bincount(indices, axis=-1)
+    input_counts = tf.expand_dims(
+        tf.cast(tf.gather(counts, indices, batch_dims=1), base_vars.dtype),
+        axis=-1,
+    )
+    scaled_grads = input_counts * tf.square(base_vars_grads)
+    reduction_axes = tf.range(1, tf.rank(scaled_grads))
+    return tf.reduce_sum(scaled_grads, axis=reduction_axes)
+
+  return base_vars, None, sqr_norm_fn
 
 
 # ==============================================================================
 # Main factory methods
 # ==============================================================================
 def make_default_layer_registry():
-  registry = {}
-  registry[hash(tf.keras.layers.Dense)] = dense_layer_computation
-  registry[hash(tf.keras.layers.Embedding)] = embedding_layer_computation
-  return registry
+  return {
+      hash(tf.keras.layers.Dense): dense_layer_computation,
+      hash(tf.keras.layers.Embedding): embedding_layer_computation,
+  }
