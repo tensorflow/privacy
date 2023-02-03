@@ -124,10 +124,10 @@ def make_dp_model_class(cls):
       # chain rule trick for computing per-example gradients (peg).
       if (
           layer_registry is not None
-          and gradient_clipping_utils.all_trainable_layers_are_registered(
+          and gradient_clipping_utils._all_trainable_layers_are_registered(
               self, layer_registry
           )
-          and gradient_clipping_utils.has_internal_compute_graph(self)
+          and gradient_clipping_utils._has_internal_compute_graph(self)
       ):
         if num_microbatches is not None:
           raise ValueError(

@@ -17,48 +17,17 @@ For a given Keras model and batch of inputs, computes the per-example
 clip weights so that the gradient of the loss function, weighted by these
 weights, is equivalent to the gradient of the original loss function but
 with the per-example gradients clipped by some clip weight. Uses a variant
-of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
-`compute_gradient_norms()` function).
+of the approach given in https://arxiv.org/pdf/2009.03106.pdf.
 """
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 
 
-def combine_pre_and_post_sqr_norms(pre_sqr_norm, post_grad, layer_hash):
-  """Combines pre and post-activation tensors for a given variable.
-
-  The logic for combining norms depends on the variable's underlying layer.
-
-  Args:
-    pre_sqr_norm: A `tf.Tensor` whose first dimension is the batch dimension.
-      Contains squared norms that are related to the pre-activation Tensor.
-    post_grad: A `tf.Tensor` whose first dimension is the batch dimension.
-      Contains gradients that are related to the post-activation Tensor.
-    layer_hash: A `float` that is the hash of the variable's underlying layer
-      class.
-
-  Returns:
-    A 1D `tf.Tensor` whose i-th entry is the norm of the gradient of the i-th
-    per-example loss function with respect to the given variable.
-  """
-  post_sqr_grads = tf.square(post_grad)
-  if layer_hash == hash(tf.keras.layers.Embedding):
-    scaled_grads = tf.expand_dims(pre_sqr_norm, axis=-1) * post_sqr_grads
-    reduction_axes = tf.range(1, tf.rank(scaled_grads))
-    return tf.reduce_sum(scaled_grads, axis=reduction_axes)
-  else:
-    reduction_axes = tf.range(1, tf.rank(post_sqr_grads))
-    post_sqr_norm = tf.reduce_sum(post_sqr_grads, axis=reduction_axes)
-    return pre_sqr_norm * post_sqr_norm
-
-
 def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
   """Computes the per-example loss gradient norms for given data.
 
-  Applies the approach given in https://arxiv.org/pdf/2009.03106.pdf, except
-  the batch matrix multiplication operation in Algorithm 2 is replaced with
-  the computation of two norm computations.
+  Applies approaches similar to https://arxiv.org/pdf/2009.03106.pdf.
 
   Args:
     input_model: The `tf.keras.Model` from which to obtain the layers from. The
@@ -69,22 +38,19 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
       must be the batch dimension. The number of examples should match the
       number of examples in `x_batch`.
     layer_registry: A `dict` of layers that support "fast" gradient norm
-      computations. The key is the class of the layer and the value is a
-      function that returns a `tuple` `(output, sqr_grad_norms, vars)`, where
-      `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
-      squared norms of a layer's pre-activation tensor, and `vars` are relevant
-      trainable weights (see `layer_registry_factories.py` for examples).
+      computations. The key is the hash of the class of the layer and the value
+      is a "registry" function (see `layer_registry_factories.py` for details).
 
   Returns:
     A 1D `tf.Tensor` whose i-th entry is the norm of the gradient of the i-th
     per-example loss function.
   """
   tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
-  # First loop computes the norms of the layer inputs, caches these inputs,
-  # and computes the summed loss.
+  # First loop computes model outputs, records ops in a tape, and caches the
+  # squared L2 norm functions.
   with tape:
-    model_outputs, pre_norm_list, var_list, layer_hash_list = (
-        gradient_clipping_utils.forward_norm_pass(
+    model_outputs, base_vars_list, sqr_norm_fn_list = (
+        gradient_clipping_utils.model_forward_pass(
             input_model, x_batch, tape, layer_registry
         )
     )
@@ -92,22 +58,16 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
     loss_config = input_model.loss.get_config()
     loss_config['reduction'] = tf.keras.losses.Reduction.NONE
     per_example_loss_fn = input_model.loss.from_config(loss_config)
-    losses = per_example_loss_fn(y_batch, model_outputs)
+    losses = per_example_loss_fn(y_batch, *model_outputs)
     summed_loss = tf.reduce_sum(losses)
-  # Second loop computes the norm of the gradient of the loss with respect to
-  # the pre-activation tensors, and multiplies these norms with the results of
-  # the first loop.
-  full_norm_list = []
-  grads = tape.gradient(summed_loss, var_list)
-  for i in range(len(var_list)):
-    full_norm = combine_pre_and_post_sqr_norms(
-        pre_norm_list[i], grads[i], layer_hash_list[i]
-    )
-    full_norm_list.append(full_norm)
+  # Second loop evaluates the squared L2 norm functions and appends the results.
+  base_vars_grad_list = tape.gradient(summed_loss, base_vars_list)
+  sqr_norm_list = []
+  for grads, f in zip(base_vars_grad_list, sqr_norm_fn_list):
+    sqr_norm_list.append(f(grads))
   del tape
-  # Post-processing for compatibility with non-eager mode (very annoying).
-  full_norm_tsr = tf.stack(full_norm_list, axis=1)
-  return tf.sqrt(tf.reduce_sum(full_norm_tsr, axis=1))
+  sqr_norm_tsr = tf.stack(sqr_norm_list, axis=1)
+  return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
 
 
 def compute_clip_weights(l2_norm_clip, gradient_norms):
@@ -160,11 +120,8 @@ def compute_pred_and_clipped_gradients(
       will be clipped. That is, all gradients of the per-example loss functions
       will have norm at most `l2_norm_clip`.
     layer_registry: A `dict` of layers that support "fast" gradient norm
-      computations. The key is the class of the layer and the value is a
-      function that returns a `tuple` `(output, sqr_grad_norms, vars)`, where
-      `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
-      squared norms of a layer's pre-activation tensor, and `vars` are relevant
-      trainable weights (see `layer_registry_factories.py` for examples).
+      computations. The key is the hash of the class of the layer and the value
+      is a "registry" function (see `layer_registry_factories.py` for details).
 
   Returns:
     A `tuple` `(y_pred, grad)`. The first element is the prediction generated by
