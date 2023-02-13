@@ -97,11 +97,12 @@ class UtilsTest(absltest.TestCase):
         self.sample_weight_test,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, data_structures.AttackResults)
-    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
-        results)
-    self.assertLen(att_types, 2)
-    self.assertLen(att_slices, 2)
-    self.assertLen(att_metrics, 2)
+    att_types, att_slices, att_metrics, att_values = (
+        data_structures.get_flattened_attack_metrics(results)
+    )
+    self.assertLen(att_types, 3)
+    self.assertLen(att_slices, 3)
+    self.assertLen(att_metrics, 3)
     self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
   def test_run_attack_helper_with_sample_weights(self):
@@ -116,11 +117,12 @@ class UtilsTest(absltest.TestCase):
         out_train_sample_weight=self.sample_weight_test,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, data_structures.AttackResults)
-    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
-        results)
-    self.assertLen(att_types, 2)
-    self.assertLen(att_slices, 2)
-    self.assertLen(att_metrics, 2)
+    att_types, att_slices, att_metrics, att_values = (
+        data_structures.get_flattened_attack_metrics(results)
+    )
+    self.assertLen(att_types, 3)
+    self.assertLen(att_slices, 3)
+    self.assertLen(att_metrics, 3)
     self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
   def test_run_attack_on_tf_estimator_model(self):
@@ -136,11 +138,12 @@ class UtilsTest(absltest.TestCase):
         input_fn_constructor,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, data_structures.AttackResults)
-    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
-        results)
-    self.assertLen(att_types, 2)
-    self.assertLen(att_slices, 2)
-    self.assertLen(att_metrics, 2)
+    att_types, att_slices, att_metrics, att_values = (
+        data_structures.get_flattened_attack_metrics(results)
+    )
+    self.assertLen(att_types, 3)
+    self.assertLen(att_slices, 3)
+    self.assertLen(att_metrics, 3)
     self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
   def test_run_attack_on_tf_estimator_model_with_sample_weights(self):
@@ -157,11 +160,12 @@ class UtilsTest(absltest.TestCase):
         input_fn_constructor,
         attack_types=[data_structures.AttackType.THRESHOLD_ATTACK])
     self.assertIsInstance(results, data_structures.AttackResults)
-    att_types, att_slices, att_metrics, att_values = data_structures.get_flattened_attack_metrics(
-        results)
-    self.assertLen(att_types, 2)
-    self.assertLen(att_slices, 2)
-    self.assertLen(att_metrics, 2)
+    att_types, att_slices, att_metrics, att_values = (
+        data_structures.get_flattened_attack_metrics(results)
+    )
+    self.assertLen(att_types, 3)
+    self.assertLen(att_slices, 3)
+    self.assertLen(att_metrics, 3)
     self.assertLen(att_values, 3)  # Attacker Advantage, AUC, PPV
 
 
