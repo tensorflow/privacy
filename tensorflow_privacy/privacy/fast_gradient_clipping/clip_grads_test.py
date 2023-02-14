@@ -17,7 +17,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
-from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry_factories
+from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 
 
 # ==============================================================================
@@ -81,7 +81,7 @@ def get_computed_and_true_norms(
   )
   y_pred = model(x_input)
   y_batch = tf.ones_like(y_pred)
-  registry = layer_registry_factories.make_default_layer_registry()
+  registry = layer_registry.make_default_layer_registry()
   computed_norms = clip_grads.compute_gradient_norms(
       model, x_input, y_batch, layer_registry=registry
   )

@@ -28,8 +28,19 @@ def has_internal_compute_graph(input_object):
   )
 
 
-def forward_norm_pass(input_model, x_batch, tape, layer_registry):
-  """Does a forward pass of a model and returns some useful intermediates.
+def _get_internal_layers(input_layer):
+  """Returns a list of layers that are nested within a given layer."""
+  internal_layers = []
+  if isinstance(input_layer, tf.keras.Model) and hasattr(input_layer, 'layers'):
+    for layer in input_layer.layers:
+      internal_layers.extend(_get_internal_layers(layer))
+  else:
+    internal_layers.append(input_layer)
+  return internal_layers
+
+
+def model_forward_pass(input_model, inputs, generator_fn=None):
+  """Does a forward pass of a model and returns useful intermediates.
 
   NOTE: the graph traversal algorithm is an adaptation of the logic in the
     _run_internal_graph() method in the functional.Functional class. Hence,
@@ -37,44 +48,42 @@ def forward_norm_pass(input_model, x_batch, tape, layer_registry):
     instance is an instance of the functional.Functional class.
 
   Args:
-    input_model: A Keras functional model to compute the quantities for.
-    x_batch: A collection of Tensors to be fed into the input layer of the
-      model.
-    tape: A tf.GradientTape() instance used to record certain operations.
-      Assumes that this function is being called inside of this tape.
-    layer_registry: A dictionary of layers that support "fast" gradient norm
-      computations. The key is the class of the layer and the value is a
-      function that returns a triple (norm_list, var_list, transform). For more
-      details, see `layer_registry_factories.py`.
+    input_model: A `tf.keras.Model` to compute the quantities for.
+    inputs: Arbitrary input to be fed into the input layer of the model. It is
+      expected that `input_model(inputs)` returns a valid output.
+    generator_fn: A function with signature `(tf.keras.layers.Layer, Any, Any)
+      -> (tf.Tensor, Any)`, where we require `generator_fn(layer_instance, args,
+      kwargs)[0] == layer_instance(*args, **kwargs)`. If `None`, then
+      `layer_fn(layer_instance, args, kwargs)[1] == None`.
 
   Returns:
-    Four objects (outputs, norm_list, var_list, layer_hash_list). The first are
-    the outputs that are generated as a result of a forward pass. The second is
-    either `None` or a collection of squared norms for each example that helps
-    in computing the gradient norm of an example (if such a "nice" computation
-    exists). The third is an ordered list of tf.Tensor() objects that are
-    intended to be evaluated with respect to the summed loss of the model. The
-    fourth is a list whose i-th element is the hash of the layer class of the
-    i-th element of var_list.
+    A `tuple` `(outputs, generator_outputs_list)`. `outputs` is the
+    `tf.Tensor` that is generated as a result of a forward pass.
+    `generator_outputs_list` is a `list` whose i-th entry is the output of
+    `generator_fn(lyr, args, kwargs)[1]` where `lyr` is the i-th
+    layer when the compute graph of `input_model` is traversed in BFS order.
   """
   # TODO: Avoid or remove the references to protected methods of `input_model`.  # pylint: disable=g-bad-todo
+
+  # Default generator.
+  generator_outputs_list = []
+  if generator_fn is None:
+
+    def generator_fn(layer_instance, args, kwargs):
+      return layer_instance(*args, **kwargs), None
+
   # Prepare the inputs and BFS variables.
-  flattened_inputs = input_model._flatten_to_reference_inputs(x_batch)  # pylint: disable=protected-access
+  flattened_inputs = input_model._flatten_to_reference_inputs(inputs)  # pylint: disable=protected-access
   tensor_dict = {}
   tensor_usage_count = input_model._tensor_usage_count  # pylint: disable=protected-access
   for x, y in zip(input_model.inputs, flattened_inputs):
     y = input_model._conform_to_reference_input(y, ref_input=x)  # pylint: disable=protected-access
     x_id = str(id(x))
     tensor_dict[x_id] = [y] * tensor_usage_count[x_id]
-
-  # Main computations.
   nodes_by_depth = input_model._nodes_by_depth  # pylint: disable=protected-access
   depth_keys = list(nodes_by_depth.keys())
   depth_keys.sort(reverse=True)
-  var_list = []
-  norm_list = []
-  layer_hash_list = []
-  node_outputs = None
+
   # Perform BFS feedforward computations.
   for depth in depth_keys:
     for node in nodes_by_depth[depth]:
@@ -85,62 +94,28 @@ def forward_norm_pass(input_model, x_batch, tape, layer_registry):
       args, kwargs = node.map_arguments(tensor_dict)
       if has_internal_compute_graph(node.layer):
         # If this node has an internal computational graph, we can recurse.
-        node_outputs, node_norm_list, node_var_list, node_layer_hash_list = (
-            forward_norm_pass(node.layer, args, tape, layer_registry)
+        node_layer_outputs, node_generator_outputs = model_forward_pass(
+            node.layer, args, generator_fn
         )
-        var_list += node_var_list
-        norm_list += node_norm_list
-        layer_hash_list += node_layer_hash_list
+        generator_outputs_list.extend(node_generator_outputs)
       else:
-        # Either pass through or record some metadata.
-        if not node.layer.trainable_variables:
-          node_outputs = node.layer(*args, **kwargs)
-        else:
-          lyr_hash = hash(node.layer.__class__)
-          if lyr_hash not in layer_registry:
-            raise NotImplementedError(
-                'Layer %s is not in the registry of known layers that can'
-                'be used for efficient gradient clipping.'
-                % node.layer.__class__.__name__
-            )
-          lyr = layer_registry[lyr_hash]
-          node_norms, node_vars, transform = lyr(node.layer, args)
-          tape.watch(node_vars)
-          node_outputs = transform(node_vars) if transform else node_vars
-          var_list.append(node_vars)
-          norm_list.append(node_norms)
-          layer_hash_list.append(lyr_hash)
-      # update the current dictionary of inputs for the next node.
-      for x_id, y in zip(node.flat_output_ids, tf.nest.flatten(node_outputs)):
+        # Otherwise, we parse the node directly.
+        node_layers = _get_internal_layers(node.layer)
+        for layer in node_layers:
+          node_layer_outputs, layer_generator_outputs = generator_fn(
+              layer, args, kwargs
+          )
+          generator_outputs_list.append(layer_generator_outputs)
+          args = (node_layer_outputs,)
+          kwargs = {}
+
+      # Update the current dictionary of inputs for the next node.
+      for x_id, y in zip(
+          node.flat_output_ids, tf.nest.flatten(node_layer_outputs)
+      ):
         tensor_dict[x_id] = [y] * tensor_usage_count[x_id]
 
-  return node_outputs, norm_list, var_list, layer_hash_list
-
-
-def get_trainable_hidden_layers(input_model):
-  """Obtains the trainable hidden layers of a Keras model.
-
-  Args:
-    input_model: The Keras model to obtain the layers from.
-
-  Returns:
-    A list of Keras layers where the tensorflow.keras.layers.Layer
-    ancestor class MUST precede any existing tensorflow.keras.models.Model
-    ancestor class.
-  """
-  hidden_layers = []
-  for l in input_model.layers:
-    for c in l.__class__.__mro__:
-      if c == tf.keras.models.Model:
-        hidden_layers += get_trainable_hidden_layers(l)
-        break
-      elif c == tf.keras.layers.InputLayer:
-        break
-      elif c == tf.keras.layers.Layer:
-        if l.trainable_variables:
-          hidden_layers.append(l)
-        break
-  return hidden_layers
+  return node_layer_outputs, generator_outputs_list
 
 
 def all_trainable_layers_are_registered(input_model, layer_registry):
@@ -148,21 +123,19 @@ def all_trainable_layers_are_registered(input_model, layer_registry):
 
   Args:
     input_model: The Keras model from which to obtain the layers from.
-    layer_registry: A dictionary of layers that support "fast" gradient norm
-      computations. The key is the class of the layer and the value is a
-      function that returns a triple (output, sqr_grad_norms, vars), where
-      output is the pre-activator tensor, sqr_grad_norms is the square of the
-      norm of the layer's input, and vars is an ordered list of the trainable
-      weights.
+    layer_registry: A `LayerRegistry` instance containing functions that help
+      compute gradient norms quickly. See
+      `tensorflow_privacy.privacy.fast_gradient_clipping.layer_registry` for
+      more details.
 
   Returns:
     True if all the trainable layers in `input_model` are in `layer_registry`.
     False otherwise.
   """
-  hidden_layers = get_trainable_hidden_layers(input_model)
-  for l in hidden_layers:
-    if hash(l.__class__) not in layer_registry:
-      return False
+  for layer in input_model.layers:
+    for sublayer in _get_internal_layers(layer):
+      if not layer_registry.is_elem(sublayer) and sublayer.trainable_variables:
+        return False
   return True
 
 
@@ -212,3 +185,19 @@ def add_aggregate_noise(
     )
 
   return tf.nest.map_structure(add_noise, clipped_grads)
+
+
+def generate_model_outputs_using_core_keras_layers(input_model):
+  """Returns the model outputs generated by only core Keras layers."""
+  cust_obj_dict = dict.copy(tf.keras.utils.get_custom_objects())
+  cust_hash_set = set([hash(v) for v in cust_obj_dict.values()])
+
+  def generator_fn(layer_instance, args, kwargs):
+    if hash(layer_instance.__class__) in cust_hash_set:
+      # Using `.call()` does not register the layer in the compute graph of
+      # a forward pass.
+      return layer_instance.call(*args, **kwargs), None
+    else:
+      return layer_instance(*args, **kwargs), None
+
+  return model_forward_pass(input_model, input_model.inputs, generator_fn)[0]

@@ -9,8 +9,8 @@ py_library(
 )
 
 py_library(
-    name = "layer_registry_factories",
-    srcs = ["layer_registry_factories.py"],
+    name = "layer_registry",
+    srcs = ["layer_registry.py"],
     srcs_version = "PY3",
 )
 
@@ -20,7 +20,7 @@ py_library(
     srcs_version = "PY3",
     deps = [
         ":gradient_clipping_utils",
-        ":layer_registry_factories",
+        ":layer_registry",
     ],
 )
 
@@ -31,6 +31,6 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":clip_grads",
-        ":layer_registry_factories",
+        ":layer_registry",
     ],
 )
