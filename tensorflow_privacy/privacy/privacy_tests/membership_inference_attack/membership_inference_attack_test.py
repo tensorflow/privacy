@@ -398,6 +398,21 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
     np.testing.assert_almost_equal(
         result.roc_curve.get_ppv(), 0.57142, decimal=2)
 
+  def test_run_attacks_insufficient_examples(self):
+    result = mia.run_attacks(
+        get_test_input(1, 100),
+        SlicingSpec(),
+        (
+            AttackType.THRESHOLD_ATTACK,
+            AttackType.LOGISTIC_REGRESSION,
+        ),
+    )
+    self.assertLen(result.single_attack_results, 1)
+    self.assertEqual(
+        result.single_attack_results[0].attack_type.value,
+        AttackType.THRESHOLD_ATTACK.value,
+    )
+
 
 if __name__ == '__main__':
   absltest.main()
