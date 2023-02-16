@@ -1071,8 +1071,10 @@ class AttackResults:
       slice_dict[slice_str].single_attack_results.append(attack_result)
     return slice_dict
 
-  def get_result_with_max_auc(self) -> SingleAttackResult:
+  def get_result_with_max_auc(self) -> Optional[SingleAttackResult]:
     """Get the result with maximum AUC for all attacks and slices."""
+    if not self.single_attack_results:
+      return None
     aucs = [result.get_auc() for result in self.single_attack_results]
 
     if min(aucs) < 0.4:
@@ -1081,14 +1083,20 @@ class AttackResults:
 
     return self.single_attack_results[np.argmax(aucs)]
 
-  def get_result_with_max_attacker_advantage(self) -> SingleAttackResult:
+  def get_result_with_max_attacker_advantage(
+      self,
+  ) -> Optional[SingleAttackResult]:
     """Get the result with maximum advantage for all attacks and slices."""
+    if not self.single_attack_results:
+      return None
     return self.single_attack_results[np.argmax([
         result.get_attacker_advantage() for result in self.single_attack_results
     ])]
 
-  def get_result_with_max_ppv(self) -> SingleAttackResult:
+  def get_result_with_max_ppv(self) -> Optional[SingleAttackResult]:
     """Gets the result with max positive predictive value for all attacks and slices."""
+    if not self.single_attack_results:
+      return None
     return self.single_attack_results[np.argmax(
         [result.get_ppv() for result in self.single_attack_results])]
 
