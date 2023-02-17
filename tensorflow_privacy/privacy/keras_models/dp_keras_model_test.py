@@ -15,7 +15,7 @@
 from absl.testing import parameterized
 import numpy as np
 import tensorflow as tf
-from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry_factories
+from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.keras_models import dp_keras_model
 
 
@@ -32,7 +32,10 @@ def get_layer_registries():
   # Outputs a list of testable layer registries.
   # The empty registry {} tests the behavior of the standard approach,
   # while the other one tests the fast gradient clipping algorithm.
-  return [{}, layer_registry_factories.make_default_layer_registry()]
+  return [
+      layer_registry.LayerRegistry(),
+      layer_registry.make_default_layer_registry(),
+  ]
 
 
 class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):

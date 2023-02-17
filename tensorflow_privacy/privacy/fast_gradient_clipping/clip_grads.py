@@ -25,40 +25,42 @@ import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 
 
-def combine_pre_and_post_sqr_norms(pre_sqr_norm, post_grad, layer_hash):
-  """Combines pre and post-activation tensors for a given variable.
-
-  The logic for combining norms depends on the variable's underlying layer.
-
-  Args:
-    pre_sqr_norm: A `tf.Tensor` whose first dimension is the batch dimension.
-      Contains squared norms that are related to the pre-activation Tensor.
-    post_grad: A `tf.Tensor` whose first dimension is the batch dimension.
-      Contains gradients that are related to the post-activation Tensor.
-    layer_hash: A `float` that is the hash of the variable's underlying layer
-      class.
-
-  Returns:
-    A 1D `tf.Tensor` whose i-th entry is the norm of the gradient of the i-th
-    per-example loss function with respect to the given variable.
-  """
-  post_sqr_grads = tf.square(post_grad)
-  if layer_hash == hash(tf.keras.layers.Embedding):
-    scaled_grads = tf.expand_dims(pre_sqr_norm, axis=-1) * post_sqr_grads
-    reduction_axes = tf.range(1, tf.rank(scaled_grads))
-    return tf.reduce_sum(scaled_grads, axis=reduction_axes)
+def get_registry_generator_fn(tape, layer_registry):
+  """Creates the generator function for `compute_gradient_norms()`."""
+  if layer_registry is None:
+    # Needed for backwards compatibility.
+    registry_generator_fn = None
   else:
-    reduction_axes = tf.range(1, tf.rank(post_sqr_grads))
-    post_sqr_norm = tf.reduce_sum(post_sqr_grads, axis=reduction_axes)
-    return pre_sqr_norm * post_sqr_norm
+
+    def registry_generator_fn(layer_instance, args, kwargs):
+      if layer_instance.trainable_variables:
+        # Only trainable variables factor into the gradient.
+        if not layer_registry.is_elem(layer_instance):
+          raise NotImplementedError(
+              'Layer %s is not in the registry of known layers that can '
+              'be used for efficient gradient clipping.'
+              % layer_instance.__class__.__name__
+          )
+        registry_fn = layer_registry.lookup(layer_instance)
+        (layer_vars, transform, layer_sqr_norm_fn) = registry_fn(
+            layer_instance, args
+        )
+        if tape is not None:
+          tape.watch(layer_vars)
+        layer_outputs = transform(layer_vars) if transform else layer_vars
+        return layer_outputs, (layer_vars, layer_sqr_norm_fn)
+      else:
+        # Non-trainable layer.
+        return layer_instance(*args, **kwargs), None
+
+    return registry_generator_fn
 
 
 def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
   """Computes the per-example loss gradient norms for given data.
 
-  Applies the approach given in https://arxiv.org/pdf/2009.03106.pdf, except
-  the batch matrix multiplication operation in Algorithm 2 is replaced with
-  the computation of two norm computations.
+  Applies a variant of the approach given in
+    https://arxiv.org/pdf/2009.03106.pdf
 
   Args:
     input_model: The `tf.keras.Model` from which to obtain the layers from. The
@@ -68,24 +70,22 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
     y_batch: A `tf.Tensor` representing a batch of output labels. The first axis
       must be the batch dimension. The number of examples should match the
       number of examples in `x_batch`.
-    layer_registry: A `dict` of layers that support "fast" gradient norm
-      computations. The key is the class of the layer and the value is a
-      function that returns a `tuple` `(output, sqr_grad_norms, vars)`, where
-      `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
-      squared norms of a layer's pre-activation tensor, and `vars` are relevant
-      trainable weights (see `layer_registry_factories.py` for examples).
+    layer_registry: A `LayerRegistry` instance containing functions that help
+      compute gradient norms quickly. See
+      `tensorflow_privacy.privacy.fast_gradient_clipping.layer_registry` for
+      more details.
 
   Returns:
     A 1D `tf.Tensor` whose i-th entry is the norm of the gradient of the i-th
     per-example loss function.
   """
   tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
-  # First loop computes the norms of the layer inputs, caches these inputs,
-  # and computes the summed loss.
+  registry_generator_fn = get_registry_generator_fn(tape, layer_registry)
+  # First loop computes the model outputs, summed loss, and generator outputs.
   with tape:
-    model_outputs, pre_norm_list, var_list, layer_hash_list = (
-        gradient_clipping_utils.forward_norm_pass(
-            input_model, x_batch, tape, layer_registry
+    model_outputs, generator_outputs_list = (
+        gradient_clipping_utils.model_forward_pass(
+            input_model, x_batch, generator_fn=registry_generator_fn
         )
     )
     # Ignore the original loss function's reduction to get per-example loss.
@@ -94,20 +94,19 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
     per_example_loss_fn = input_model.loss.from_config(loss_config)
     losses = per_example_loss_fn(y_batch, model_outputs)
     summed_loss = tf.reduce_sum(losses)
-  # Second loop computes the norm of the gradient of the loss with respect to
-  # the pre-activation tensors, and multiplies these norms with the results of
-  # the first loop.
-  full_norm_list = []
-  grads = tape.gradient(summed_loss, var_list)
-  for i in range(len(var_list)):
-    full_norm = combine_pre_and_post_sqr_norms(
-        pre_norm_list[i], grads[i], layer_hash_list[i]
-    )
-    full_norm_list.append(full_norm)
+  # Unwrap the generator outputs so that the next loop avoids duplicating
+  # backprop ops.
+  filtered_outputs = [t for t in generator_outputs_list if t is not None]
+  vars_list = [a for (a, b) in filtered_outputs]
+  sqr_norm_fns_list = [b for (a, b) in filtered_outputs]
+  # Second loop evaluates the squared L2 norm functions and appends the results.
+  grads_list = tape.gradient(summed_loss, vars_list)
+  sqr_norm_list = []
+  for grads, f in zip(grads_list, sqr_norm_fns_list):
+    sqr_norm_list.append(f(grads))
   del tape
-  # Post-processing for compatibility with non-eager mode (very annoying).
-  full_norm_tsr = tf.stack(full_norm_list, axis=1)
-  return tf.sqrt(tf.reduce_sum(full_norm_tsr, axis=1))
+  sqr_norm_tsr = tf.stack(sqr_norm_list, axis=1)
+  return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
 
 
 def compute_clip_weights(l2_norm_clip, gradient_norms):

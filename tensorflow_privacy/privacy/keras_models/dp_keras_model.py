@@ -96,13 +96,10 @@ def make_dp_model_class(cls):
         noise_multiplier: Ratio of the standard deviation to the clipping norm.
         num_microbatches: Number of microbatches.
         use_xla: If `True`, compiles train_step to XLA.
-        layer_registry: A `dict` of layers that support "fast" gradient norm
-          computations. The key is the class of the layer and the value is a
-          function that returns a `tuple` `(output, sqr_grad_norms, vars)`,
-          where `output` is the pre-activator tensor, `sqr_grad_norms` is
-          related to the squared norms of a layer's pre-activation tensor, and
-          `vars` are relevant trainable weights (see
-          `layer_registry_factories.py` for examples).
+        layer_registry: A `LayerRegistry` instance containing functions that
+          help compute gradient norms quickly. See
+          `tensorflow_privacy.privacy.fast_gradient_clipping.layer_registry` for
+          more details.
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
