@@ -839,6 +839,12 @@ class AttackResultsTest(absltest.TestCase):
     })
     pd.testing.assert_frame_equal(df, df_expected)
 
+  def test_get_max_empty_results(self):
+    results = AttackResults([])
+    self.assertIsNone(results.get_result_with_max_attacker_advantage())
+    self.assertIsNone(results.get_result_with_max_auc())
+    self.assertIsNone(results.get_result_with_max_ppv())
+
 
 if __name__ == '__main__':
   absltest.main()
