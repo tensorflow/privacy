@@ -1,0 +1,13 @@
+#!/bin/bash
+privacy_budget_vals=(0.5 1.0 1.5 2.0)  # the total privacy budget
+dataset_name="synthetic_data"   # "covertype_dataset" "kddcup_dataset" "a5a_dataset"  "a6a_dataset" "a9a_dataset" "synthetic_data" "mnist_binary" "a1a_dataset" "adult_dataset" 
+num_iters=15 # number of iteration
+tuning=0 # Tuning-->1 (True) or Tuning-->0 (False)
+privacy_type='dp'
+rm -r results
+mkdir results
+for privacy_budget in ${privacy_budget_vals[@]}; do
+	python3 run_experiment.py $dataset_name $privacy_budget $num_iters $tuning $privacy_type 
+done
+
+python3 plot_utility.py

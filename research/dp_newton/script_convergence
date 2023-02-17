@@ -1,0 +1,11 @@
+#!/bin/bash
+
+dataset_name="synthetic_data"   # "covertype_dataset" "kddcup_dataset" "a5a_dataset"  "a6a_dataset" "a9a_dataset" "synthetic_data" "mnist_binary" "a1a_dataset" "adult_dataset" 
+privacy_budget=1.0 # the total privacy budget
+num_iters=5 # number of iteration
+tuning=0 # Tuning-->1 (True) or Tuning-->0 (False)
+privacy_type='dp'
+rm -r results
+mkdir results
+python3 run_experiment.py $dataset_name $privacy_budget $num_iters $tuning $privacy_type 
+python3 plot_convergence.py
