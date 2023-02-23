@@ -40,7 +40,21 @@ where `l2_row_norm(y)` computes the L2 norm for each row of an input `y`.
 Details of this decomposition can be found in https://arxiv.org/abs/1510.01799
 """
 
+from typing import Callable, Type, Any, TypeAlias
 import tensorflow as tf
+
+from tensorflow_privacy.privacy.fast_gradient_clipping import einsum_utils
+
+# ==============================================================================
+# Type aliases
+# ==============================================================================
+SquareNormFunction: TypeAlias = Callable[[Any], tf.Tensor]
+
+RegistryFunctionOutput: TypeAlias = tuple[Any, tf.Tensor, SquareNormFunction]
+
+RegistryFunction: TypeAlias = Callable[
+    [Any, tuple[Any], tf.GradientTape], RegistryFunctionOutput
+]
 
 
 # ==============================================================================
@@ -54,15 +68,19 @@ class LayerRegistry:
     self._layer_class_dict = {}
     self._registry = {}
 
-  def is_elem(self, layer_instance):
+  def is_elem(self, layer_instance: tf.keras.layers.Layer) -> bool:
     """Checks if a layer instance's class is in the registry."""
     return hash(layer_instance.__class__) in self._registry
 
-  def lookup(self, layer_instance):
+  def lookup(self, layer_instance: tf.keras.layers.Layer) -> RegistryFunction:
     """Returns the layer registry function for a given layer instance."""
     return self._registry[hash(layer_instance.__class__)]
 
-  def insert(self, layer_class, layer_registry_function):
+  def insert(
+      self,
+      layer_class: Type[tf.keras.layers.Layer],
+      layer_registry_function: RegistryFunction,
+  ):
     """Inserts a layer registry function into the internal dictionaries."""
     layer_key = hash(layer_class)
     self._layer_class_dict[layer_key] = layer_class
@@ -72,7 +90,11 @@ class LayerRegistry:
 # ==============================================================================
 # Supported Keras layers
 # ==============================================================================
-def dense_layer_computation(layer_instance, inputs, tape):
+def dense_layer_computation(
+    layer_instance: tf.keras.layers.Dense,
+    inputs: tuple[tf.Tensor],
+    tape: tf.GradientTape,
+) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Dense`.
 
   The logic for this computation is based on the following paper:
@@ -106,26 +128,70 @@ def dense_layer_computation(layer_instance, inputs, tape):
   tape.watch(base_vars)
   layer_instance.activation = orig_activation
   outputs = orig_activation(base_vars) if orig_activation else base_vars
-  def sqr_norm_fn(base_vars_grads):
-    sqr_inputs = tf.square(*inputs)
-    inputs_reduction_axes = tf.range(1, tf.rank(sqr_inputs))
-    input_sqr_norms = tf.reduce_sum(sqr_inputs, axis=inputs_reduction_axes)
-    if layer_instance.use_bias:
-      # Adding a bias term is equivalent to a layer with no bias term and which
-      # adds an additional variable to the layer input that only takes a
-      # constant value of 1.0. This is thus equivalent to adding 1.0 to the sum
-      # of the squared values of the inputs.
-      input_sqr_norms += tf.cast(1.0, dtype=input_sqr_norms.dtype)
-    reduction_axes = tf.range(1, tf.rank(base_vars_grads))
-    base_vars_sqr_norms = tf.reduce_sum(
-        tf.square(base_vars_grads), axis=reduction_axes
+  def sqr_norm_fn(grads):
+    # `Dense` layers are special instances of `EinsumDense` layers
+    return einsum_utils.compute_fast_einsum_squared_gradient_norm(
+        "...b,bc->...c",
+        inputs[0],
+        grads,
+        "c" if layer_instance.use_bias else None,
     )
-    return input_sqr_norms * base_vars_sqr_norms
 
   return base_vars, outputs, sqr_norm_fn
 
 
-def embedding_layer_computation(layer_instance, inputs, tape):
+def einsum_layer_computation(
+    layer_instance: tf.keras.layers.EinsumDense,
+    inputs: tuple[tf.Tensor],
+    tape: tf.GradientTape,
+):
+  """Registry function for `tf.keras.layers.EinsumDense`.
+
+  For the technical details, see the documentation of
+  `einsum_utils.compute_fast_einsum_gradient_norm()`.
+
+  Args:
+    layer_instance: A `tf.keras.layers.EinsumDense` instance.
+    inputs: A `tf.Tensor` which can be passed into the layer instance, i.e.,
+      `layer_instance(inputs)` returns a valid output.
+    tape: A `tf.GradientTape` instance that will be used to watch the output
+      `base_vars`.
+
+  Returns:
+    A `tuple` `(base_vars, outputs, sqr_norm_fn)`. `base_vars` is the
+    intermediate Tensor used in the chain-rule / "fast" clipping trick,
+    `outputs` is the result of `layer_instance(*inputs)`, and `sqr_norm_fn` is
+    a function that takes one input, a `tf.Tensor` that represents the output
+    of the call `tape.gradient(summed_loss, base_vars)` where `tape` is a
+    `tf.GradientTape` instance that records the dense layer computation and
+    `summed_loss` is the sum of the per-example losses of the underlying model.
+    This function then returns the per-example squared L2 gradient norms of the
+    trainable variables in `layer_instance`. These squared norms should be a 1D
+    `tf.Tensor` of length `batch_size`.
+  """
+  orig_activation = layer_instance.activation
+  layer_instance.activation = None
+  base_vars = layer_instance(*inputs)
+  tape.watch(base_vars)
+  layer_instance.activation = orig_activation
+  outputs = orig_activation(base_vars) if orig_activation else base_vars
+
+  def sqr_norm_fn(grads):
+    return einsum_utils.compute_fast_einsum_squared_gradient_norm(
+        layer_instance.equation,
+        inputs[0],
+        grads,
+        layer_instance.bias_axes,
+    )
+
+  return base_vars, outputs, sqr_norm_fn
+
+
+def embedding_layer_computation(
+    layer_instance: tf.keras.layers.Embedding,
+    inputs: tuple[tf.Tensor],
+    tape: tf.GradientTape,
+) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Embedding`.
 
   The logic of this computation is based on the `tf.keras.layers.Dense`
@@ -225,8 +291,9 @@ def embedding_layer_computation(layer_instance, inputs, tape):
 # ==============================================================================
 # Main factory methods
 # ==============================================================================
-def make_default_layer_registry():
+def make_default_layer_registry() -> LayerRegistry:
   registry = LayerRegistry()
   registry.insert(tf.keras.layers.Dense, dense_layer_computation)
   registry.insert(tf.keras.layers.Embedding, embedding_layer_computation)
+  registry.insert(tf.keras.layers.EinsumDense, einsum_layer_computation)
   return registry

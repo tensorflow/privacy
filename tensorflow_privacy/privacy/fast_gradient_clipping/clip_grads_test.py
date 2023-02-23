@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import itertools
+from typing import Callable, Any, List, TypeAlias
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -21,22 +23,36 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 
 
 # ==============================================================================
+# Type aliases
+# ==============================================================================
+LayerGenerator: TypeAlias = Callable[
+    [List[int], List[int]], tf.keras.layers.Layer
+]
+
+ModelGenerator: TypeAlias = Callable[
+    [LayerGenerator, List[int], List[int]], tf.keras.Model
+]
+
+
+# ==============================================================================
 # Helper functions and classes.
 # ==============================================================================
 class DoubleDense(tf.keras.layers.Layer):
   """Generates two dense layers nested together."""
 
-  def __init__(self, units):
+  def __init__(self, shape: List[int]):
     super().__init__()
-    self.dense1 = tf.keras.layers.Dense(units)
+    self.dense1 = tf.keras.layers.Dense(shape)
     self.dense2 = tf.keras.layers.Dense(1)
 
-  def call(self, inputs):
+  def call(self, inputs: Any):
     x = self.dense1(inputs)
     return self.dense2(x)
 
 
-def double_dense_layer_computation(layer_instance, inputs, tape):
+def double_dense_layer_computation(
+    layer_instance: tf.keras.layers.Layer, inputs: Any, tape: tf.GradientTape
+):
   """Layer registry function for the custom `DoubleDense` layer class."""
   vars1, outputs, sqr_norm_fn1 = layer_registry.dense_layer_computation(
       layer_instance.dense1, inputs, tape
@@ -53,7 +69,9 @@ def double_dense_layer_computation(layer_instance, inputs, tape):
   return [vars1, vars2], outputs, sqr_norm_fn
 
 
-def compute_true_gradient_norms(input_model, x_batch, y_batch):
+def compute_true_gradient_norms(
+    input_model: tf.keras.Model, x_batch: tf.Tensor, y_batch: tf.Tensor
+):
   """Computes the real gradient norms for an input `(model, x, y)`."""
   loss_config = input_model.loss.get_config()
   loss_config['reduction'] = tf.keras.losses.Reduction.NONE
@@ -73,14 +91,14 @@ def compute_true_gradient_norms(input_model, x_batch, y_batch):
 
 
 def get_computed_and_true_norms(
-    model_generator,
-    layer_generator,
-    input_dims,
-    output_dim,
-    is_eager,
-    x_input,
-    rng_seed=777,
-    registry=None,
+    model_generator: ModelGenerator,
+    layer_generator: LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+    is_eager: bool,
+    x_input: tf.Tensor,
+    rng_seed: int = 777,
+    registry: layer_registry.LayerRegistry = None,
 ):
   """Obtains the true and computed gradient norms for a model and batch input.
 
@@ -96,7 +114,7 @@ def get_computed_and_true_norms(
       Returns a `tf.keras.layers.Layer` that accepts input tensors of dimension
       `idim` and returns output tensors of dimension `odim`.
     input_dims: The input dimension(s) of the test `tf.keras.Model` instance.
-    output_dim: The output dimension of the test `tf.keras.Model` instance.
+    output_dims: The output dimension(s) of the test `tf.keras.Model` instance.
     is_eager: A `bool` that is `True` if the model should be run eagerly.
     x_input: `tf.Tensor` inputs to be tested.
     rng_seed: An `int` used to initialize model weights.
@@ -109,7 +127,7 @@ def get_computed_and_true_norms(
     model and layer generators. The second element contains the true clipped
     gradient norms under the aforementioned setting.
   """
-  model = model_generator(layer_generator, input_dims, output_dim)
+  model = model_generator(layer_generator, input_dims, output_dims)
   model.compile(
       optimizer=tf.keras.optimizers.SGD(learning_rate=1.0),
       loss=tf.keras.losses.MeanSquaredError(
@@ -131,61 +149,71 @@ def get_computed_and_true_norms(
 # ==============================================================================
 # Model generators.
 # ==============================================================================
-def make_two_layer_sequential_model(layer_generator, input_dim, output_dim):
+def make_one_layer_sequential_model(layer_generator, input_dims, output_dims):
+  """Creates a 1-layer sequential model."""
+  inputs = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
+  temp1 = layer1(inputs)
+  reduction_axes1 = tf.range(1, len(temp1.shape))
+  outputs = tf.reduce_sum(temp1, axis=reduction_axes1, keepdims=True)
+  return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+
+def make_two_layer_sequential_model(layer_generator, input_dims, output_dims):
   """Creates a 2-layer sequential model."""
   model = tf.keras.Sequential()
-  model.add(tf.keras.Input(shape=(input_dim,)))
-  model.add(layer_generator(input_dim, output_dim))
+  model.add(tf.keras.Input(shape=input_dims))
+  model.add(layer_generator(input_dims, output_dims))
   model.add(tf.keras.layers.Dense(1))
   return model
 
 
-def make_three_layer_sequential_model(layer_generator, input_dim, output_dim):
+def make_three_layer_sequential_model(layer_generator, input_dims, output_dims):
   """Creates a 3-layer sequential model."""
   model = tf.keras.Sequential()
-  model.add(tf.keras.Input(shape=(input_dim,)))
-  layer1 = layer_generator(input_dim, output_dim)
+  model.add(tf.keras.Input(shape=input_dims))
+  layer1 = layer_generator(input_dims, output_dims)
   model.add(layer1)
   if isinstance(layer1, tf.keras.layers.Embedding):
     # Having multiple consecutive embedding layers does not make sense since
     # embedding layers only map integers to real-valued vectors.
-    model.add(tf.keras.layers.Dense(output_dim))
+    model.add(tf.keras.layers.Dense(output_dims))
   else:
-    model.add(layer_generator(output_dim, output_dim))
+    model.add(layer_generator(output_dims, output_dims))
   model.add(tf.keras.layers.Dense(1))
   return model
 
 
-def make_two_layer_functional_model(layer_generator, input_dim, output_dim):
+def make_two_layer_functional_model(layer_generator, input_dims, output_dims):
   """Creates a 2-layer 1-input functional model with a pre-output square op."""
-  inputs = tf.keras.Input(shape=(input_dim,))
-  layer1 = layer_generator(input_dim, output_dim)
+  inputs = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
   temp1 = layer1(inputs)
   temp2 = tf.square(temp1)
   outputs = tf.keras.layers.Dense(1)(temp2)
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-def make_two_tower_model(layer_generator, input_dim, output_dim):
+def make_two_tower_model(layer_generator, input_dims, output_dims):
   """Creates a 2-layer 2-input functional model."""
-  inputs1 = tf.keras.Input(shape=(input_dim,))
-  layer1 = layer_generator(input_dim, output_dim)
+  inputs1 = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
   temp1 = layer1(inputs1)
-  inputs2 = tf.keras.Input(shape=(input_dim,))
-  layer2 = layer_generator(input_dim, output_dim)
+  inputs2 = tf.keras.Input(shape=input_dims)
+  layer2 = layer_generator(input_dims, output_dims)
   temp2 = layer2(inputs2)
   temp3 = tf.add(temp1, temp2)
   outputs = tf.keras.layers.Dense(1)(temp3)
   return tf.keras.Model(inputs=[inputs1, inputs2], outputs=outputs)
 
 
-def make_bow_model(layer_generator, input_dims, output_dim):
+def make_bow_model(layer_generator, input_dims, output_dims):
   del layer_generator
   inputs = tf.keras.Input(shape=input_dims)
   # For the Embedding layer, input_dim is the vocabulary size. This should
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
-  emb_layer = tf.keras.layers.Embedding(input_dim=10, output_dim=output_dim)
+  emb_layer = tf.keras.layers.Embedding(input_dim=10, output_dim=output_dims[0])
   feature_embs = emb_layer(inputs)
   reduction_axes = tf.range(1, len(feature_embs.shape))
   example_embs = tf.expand_dims(
@@ -194,7 +222,7 @@ def make_bow_model(layer_generator, input_dims, output_dim):
   return tf.keras.Model(inputs=inputs, outputs=example_embs)
 
 
-def make_dense_bow_model(layer_generator, input_dims, output_dim):
+def make_dense_bow_model(layer_generator, input_dims, output_dims):
   del layer_generator
   inputs = tf.keras.Input(shape=input_dims)
   # For the Embedding layer, input_dim is the vocabulary size. This should
@@ -202,7 +230,7 @@ def make_dense_bow_model(layer_generator, input_dims, output_dim):
   # in eache example.
   cardinality = 10
   emb_layer = tf.keras.layers.Embedding(
-      input_dim=cardinality, output_dim=output_dim
+      input_dim=cardinality, output_dim=output_dims[0]
   )
   feature_embs = emb_layer(inputs)
   reduction_axes = tf.range(1, len(feature_embs.shape))
@@ -213,7 +241,7 @@ def make_dense_bow_model(layer_generator, input_dims, output_dim):
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-def make_weighted_bow_model(layer_generator, input_dims, output_dim):
+def make_weighted_bow_model(layer_generator, input_dims, output_dims):
   # NOTE: This model only accepts dense input tensors.
   del layer_generator
   inputs = tf.keras.Input(shape=input_dims)
@@ -222,7 +250,7 @@ def make_weighted_bow_model(layer_generator, input_dims, output_dim):
   # in eache example.
   cardinality = 10
   emb_layer = tf.keras.layers.Embedding(
-      input_dim=cardinality, output_dim=output_dim
+      input_dim=cardinality, output_dim=output_dims[0]
   )
   feature_embs = emb_layer(inputs)
   feature_weights = tf.random.uniform(tf.shape(feature_embs))
@@ -238,7 +266,7 @@ def make_weighted_bow_model(layer_generator, input_dims, output_dim):
 # ==============================================================================
 # Factory functions.
 # ==============================================================================
-def get_nd_test_tensors(n):
+def get_nd_test_tensors(n: int):
   """Returns a list of candidate tests for a given dimension n."""
   return [
       tf.zeros((n,), dtype=tf.float64),
@@ -246,7 +274,7 @@ def get_nd_test_tensors(n):
   ]
 
 
-def get_nd_test_batches(n):
+def get_nd_test_batches(n: int):
   """Returns a list of candidate input batches of dimension n."""
   result = []
   tensors = get_nd_test_tensors(n)
@@ -263,17 +291,17 @@ def get_dense_layer_generators():
     return tf.keras.layers.Dense(b, activation='sigmoid')
 
   return {
-      'pure_dense': lambda a, b: tf.keras.layers.Dense(b),
-      'sigmoid_dense': lambda a, b: sigmoid_dense_layer(b),
+      'pure_dense': lambda a, b: tf.keras.layers.Dense(b[0]),
+      'sigmoid_dense': lambda a, b: sigmoid_dense_layer(b[0]),
   }
 
 
 def get_dense_model_generators():
   return {
-      'seq1': make_two_layer_sequential_model,
-      'seq2': make_three_layer_sequential_model,
-      'func1': make_two_layer_functional_model,
-      'tower1': make_two_tower_model,
+      'seq2': make_two_layer_sequential_model,
+      'seq3': make_three_layer_sequential_model,
+      'func2': make_two_layer_functional_model,
+      'tower2': make_two_tower_model,
   }
 
 
@@ -283,6 +311,64 @@ def get_embedding_model_generators():
       'bow2': make_dense_bow_model,
       'weighted_bow1': make_weighted_bow_model,
   }
+
+
+def get_einsum_layer_generators():
+  def pure_einsum_layer(equation, output_dims, bias_axes):
+    return tf.keras.layers.EinsumDense(
+        equation, output_dims, bias_axes=bias_axes
+    )
+
+  def sigmoid_einsum_layer(equation, output_dims, bias_axes):
+    return tf.keras.layers.EinsumDense(
+        equation, output_dims, bias_axes=bias_axes, activation='sigmoid'
+    )
+
+  return {
+      'pure_einsum': pure_einsum_layer,
+      'sigmoid_einsum': sigmoid_einsum_layer,
+  }
+
+
+def get_einsum_model_generators():
+  return {
+      'seq1': make_one_layer_sequential_model,
+  }
+
+
+def get_einsum_parameter_tuples():
+  """Consists of (equation, input_dims, output_dims, bias_axes)."""
+  return [
+      # Case (C1).
+      ('ab,bc->ac', [2], [3], None),
+      ('ab,bc->ac', [2], [3], 'c'),
+      ('abc,cd->abd', [2, 3], [2, 4], None),
+      ('abc,cd->abd', [2, 3], [2, 4], 'b'),
+      ('abc,cd->abd', [2, 3], [2, 4], 'd'),
+      ('abc,cd->abd', [2, 3], [2, 4], 'bd'),
+      ('abc,cef->abef', [2, 3], [2, 4, 5], None),
+      ('abc,cef->abef', [2, 3], [2, 4, 5], 'bf'),
+      # Case (C2).
+      ('...b,bc->...c', [2, 3], [4], None),
+      ('...b,bc->...c', [2, 3], [4], 'c'),
+      ('...ab,bc->...ac', [2, 3], [2, 4], None),
+      ('...ab,bc->...ac', [2, 4], [2, 4], 'c'),
+      ('...abc,cd->...abd', [2, 3, 4], [2, 3, 5], None),
+      ('...abc,cd->...abd', [2, 3, 4], [2, 3, 5], 'b'),
+      ('...abc,cd->...abd', [2, 3, 4], [2, 3, 5], 'd'),
+      ('...abc,cd->...abd', [2, 3, 4], [2, 3, 5], 'bd'),
+      ('...abc,cef->...abef', [2, 3, 4], [2, 3, 5, 6], None),
+      ('...abc,cef->...abef', [2, 3, 4], [2, 3, 5, 6], 'bf'),
+      # Case (C3).
+      ('ab...,bc->ac...', [2, 3], [4, 3], None),
+      ('ab...,bc->ac...', [2, 3], [4, 3], 'c'),
+      ('abc...,cd->abd...', [2, 3, 4], [2, 5, 4], None),
+      ('abc...,cd->abd...', [2, 3, 4], [2, 5, 4], 'b'),
+      ('abc...,cd->abd...', [2, 3, 4], [2, 5, 4], 'd'),
+      ('abc...,cd->abd...', [2, 3, 4], [2, 5, 4], 'bd'),
+      ('abc...,cef->abef...', [2, 3, 4], [2, 5, 6, 4], None),
+      ('abc...,cef->abef...', [2, 3, 4], [2, 5, 6, 4], 'bf'),
+  ]
 
 
 # ==============================================================================
@@ -301,7 +387,7 @@ class ClipGradsDirectTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllLessEqual(t * weights, clip_value + tol)
 
 
-class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
+class ClipGradsOneDimDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.product(
       model_name=list(get_dense_model_generators().keys()),
@@ -318,20 +404,48 @@ class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
     x_batches = get_nd_test_batches(input_dim)
     default_registry = layer_registry.make_default_layer_registry()
     for x_batch in x_batches:
-      if model_name == 'tower1':
+      if model_name == 'tower2':
         x_input = [x_batch, x_batch]
       else:
         x_input = x_batch
       (computed_norms, true_norms) = get_computed_and_true_norms(
           model_generator,
           layer_generator,
-          input_dim,
-          output_dim,
+          [input_dim],
+          [output_dim],
           is_eager,
           x_input,
           registry=default_registry,
       )
       self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
+
+
+class ClipGradsTwoDimDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.product(
+      layer_name=list(get_dense_layer_generators().keys()),
+      is_eager=[True, False],
+  )
+  def test_gradient_norms_on_various_models(self, layer_name, is_eager):
+    batch_size = 2
+    input_dims = [3, 4]
+    output_dims = [5]
+    model_generator = make_one_layer_sequential_model
+    layer_generator = get_dense_layer_generators()[layer_name]
+    example_size = tf.reduce_prod(input_dims)
+    example_values = tf.range(batch_size * example_size, dtype=tf.float32)
+    x_batch = tf.reshape(example_values, [batch_size] + input_dims)
+    default_registry = layer_registry.make_default_layer_registry()
+    (computed_norms, true_norms) = get_computed_and_true_norms(
+        model_generator,
+        layer_generator,
+        input_dims,
+        output_dims,
+        is_eager,
+        x_batch,
+        registry=default_registry,
+    )
+    self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
 
 class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
@@ -374,7 +488,7 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
           model_generator=model_generator,
           layer_generator=None,
           input_dims=x_batch.shape[1:],
-          output_dim=output_dim,
+          output_dims=[output_dim],
           is_eager=is_eager,
           x_input=x_batch,
           registry=default_registry,
@@ -398,14 +512,50 @@ class ClipGradsCustomLayerTest(tf.test.TestCase, parameterized.TestCase):
     for x_batch in x_batches:
       (computed_norms, true_norms) = get_computed_and_true_norms(
           model_generator=make_two_layer_sequential_model,
-          layer_generator=lambda a, b: DoubleDense(b),
-          input_dims=input_dim,
-          output_dim=output_dim,
+          layer_generator=lambda a, b: DoubleDense(b[0]),
+          input_dims=[input_dim],
+          output_dims=[output_dim],
           is_eager=is_eager,
           x_input=x_batch,
           registry=registry,
       )
       self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
+
+
+class ClipGradsEinsumDenseTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.product(
+      model_name=list(get_einsum_model_generators().keys()),
+      layer_name=list(get_einsum_layer_generators().keys()),
+      param_tuple=get_einsum_parameter_tuples(),
+      is_eager=[False, True],
+  )
+  def test_gradient_norms_on_various_models(
+      self, model_name, layer_name, param_tuple, is_eager
+  ):
+    equation, input_dims, output_dims, bias_axes = param_tuple
+    model_generator = get_einsum_model_generators()[model_name]
+    einsum_generator = get_einsum_layer_generators()[layer_name]
+    registry = layer_registry.make_default_layer_registry()
+
+    def curried_generator(a, b):  # pylint: disable=unused-argument
+      return einsum_generator(equation, output_dims, bias_axes)
+
+    # Each batched input is a reshape of a `tf.range()` call.
+    batch_size = 2
+    example_size = tf.reduce_prod(input_dims)
+    example_values = tf.range(batch_size * example_size, dtype=tf.float32)
+    x_batch = tf.reshape(example_values, [batch_size] + input_dims)
+    (computed_norms, true_norms) = get_computed_and_true_norms(
+        model_generator=model_generator,
+        layer_generator=curried_generator,
+        input_dims=input_dims,
+        output_dims=output_dims,
+        is_eager=is_eager,
+        x_input=x_batch,
+        registry=registry,
+    )
+    self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
 
 if __name__ == '__main__':

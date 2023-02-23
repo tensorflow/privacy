@@ -6,12 +6,20 @@ py_library(
     name = "gradient_clipping_utils",
     srcs = ["gradient_clipping_utils.py"],
     srcs_version = "PY3",
+    deps = [":layer_registry"],
+)
+
+py_library(
+    name = "einsum_utils",
+    srcs = ["einsum_utils.py"],
+    srcs_version = "PY3",
 )
 
 py_library(
     name = "layer_registry",
     srcs = ["layer_registry.py"],
     srcs_version = "PY3",
+    deps = [":einsum_utils"],
 )
 
 py_library(
