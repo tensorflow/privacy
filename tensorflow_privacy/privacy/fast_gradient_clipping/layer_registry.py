@@ -72,7 +72,7 @@ class LayerRegistry:
 # ==============================================================================
 # Supported Keras layers
 # ==============================================================================
-def dense_layer_computation(layer_instance, inputs):
+def dense_layer_computation(layer_instance, inputs, tape):
   """Registry function for `tf.keras.layers.Dense`.
 
   The logic for this computation is based on the following paper:
@@ -85,23 +85,27 @@ def dense_layer_computation(layer_instance, inputs):
     layer_instance: A `tf.keras.layers.Dense` instance.
     inputs: A `tf.Tensor` which can be passed into the layer instance, i.e.,
       `layer_instance(inputs)` returns a valid output.
+    tape: A `tf.GradientTape` instance that will be used to watch the output
+      `base_vars`.
 
   Returns:
-    A `tuple` `(base_vars, transform, sqr_norm_fn)`. `base_vars` is the
+    A `tuple` `(base_vars, outputs, sqr_norm_fn)`. `base_vars` is the
     intermediate Tensor used in the chain-rule / "fast" clipping trick,
-    `transform` is a function that maps `base_vars` to the layer outputs, and
-    `sqr_norm_fn` is a function that takes one input, a `tf.Tensor` that
-    represents the output of the call `tape.gradient(summed_loss, base_vars)`
-    where `tape` is a `tf.GradientTape` instance that records the dense
-    layer computation and `summed_loss` is the sum of the per-example losses
-    of the underlying model. This function then returns the per-example squared
-    L2 gradient norms of the trainable variables in `layer_instance`. These
-    squared norms should be a 1D `tf.Tensor` of length `batch_size`.
+    `outputs` is the result of `layer_instance(*inputs)`, and `sqr_norm_fn` is
+    a function that takes one input, a `tf.Tensor` that represents the output
+    of the call `tape.gradient(summed_loss, base_vars)` where `tape` is a
+    `tf.GradientTape` instance that records the dense layer computation and
+    `summed_loss` is the sum of the per-example losses of the underlying model.
+    This function then returns the per-example squared L2 gradient norms of the
+    trainable variables in `layer_instance`. These squared norms should be a 1D
+    `tf.Tensor` of length `batch_size`.
   """
   orig_activation = layer_instance.activation
   layer_instance.activation = None
   base_vars = layer_instance(*inputs)
+  tape.watch(base_vars)
   layer_instance.activation = orig_activation
+  outputs = orig_activation(base_vars) if orig_activation else base_vars
   def sqr_norm_fn(base_vars_grads):
     sqr_inputs = tf.square(*inputs)
     inputs_reduction_axes = tf.range(1, tf.rank(sqr_inputs))
@@ -118,10 +122,10 @@ def dense_layer_computation(layer_instance, inputs):
     )
     return input_sqr_norms * base_vars_sqr_norms
 
-  return base_vars, layer_instance.activation, sqr_norm_fn
+  return base_vars, outputs, sqr_norm_fn
 
 
-def embedding_layer_computation(layer_instance, inputs):
+def embedding_layer_computation(layer_instance, inputs, tape):
   """Registry function for `tf.keras.layers.Embedding`.
 
   The logic of this computation is based on the `tf.keras.layers.Dense`
@@ -134,17 +138,20 @@ def embedding_layer_computation(layer_instance, inputs):
     layer_instance: A `tf.keras.layers.Embedding` instance.
     inputs: A `tf.Tensor` which can be passed into the layer instance, i.e.,
       `layer_instance(inputs)` returns a valid output.
+    tape: A `tf.GradientTape` instance that will be used to watch the output
+      `base_vars`.
 
   Returns:
-    A `tuple` `(base_vars, transform, sqr_norm_fn)`, `base_vars` is the
+    A `tuple` `(base_vars, outputs, sqr_norm_fn)`. `base_vars` is the
     intermediate Tensor used in the chain-rule / "fast" clipping trick,
-    `sqr_norm_fn` is a function that takes one input, a `tf.Tensor` that
-    represents the output of the call `tape.gradient(summed_loss, base_vars)`
-    where `tape` is a `tf.GradientTape` instance that records the dense
-    layer computation and `summed_loss` is the sum of the per-example losses
-    of the underlying model. This function then returns the per-example squared
-    L2 gradient norms of the trainable variables in `layer_instance`. These
-    squared norms should be a 1D `tf.Tensor` of length `batch_size`.
+    `outputs` is the result of `layer_instance(*inputs)`, and `sqr_norm_fn` is
+    a function that takes one input, a `tf.Tensor` that represents the output
+    of the call `tape.gradient(summed_loss, base_vars)` where `tape` is a
+    `tf.GradientTape` instance that records the dense layer computation and
+    `summed_loss` is the sum of the per-example losses of the underlying model.
+    This function then returns the per-example squared L2 gradient norms of the
+    trainable variables in `layer_instance`. These squared norms should be a 1D
+    `tf.Tensor` of length `batch_size`.
   """
   if hasattr(layer_instance, "sparse"):  # for backwards compatibility
     if layer_instance.sparse:
@@ -161,9 +168,8 @@ def embedding_layer_computation(layer_instance, inputs):
       )
   input_ids = tf.cast(*inputs, tf.int32)
   base_vars = layer_instance.trainable_variables[0]
-
-  def lookup_inputs(embeddings):
-    return tf.nn.embedding_lookup(embeddings, input_ids)
+  tape.watch(base_vars)
+  outputs = tf.nn.embedding_lookup(base_vars, input_ids)
 
   def sqr_norm_fn(base_vars_grads):
     # Get a 1D tensor of the row indices.
@@ -213,7 +219,7 @@ def embedding_layer_computation(layer_instance, inputs):
         num_segments=nrows,
     )  # fill in empty inputs
 
-  return base_vars, lookup_inputs, sqr_norm_fn
+  return base_vars, outputs, sqr_norm_fn
 
 
 # ==============================================================================

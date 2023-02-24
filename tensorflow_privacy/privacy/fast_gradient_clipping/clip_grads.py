@@ -42,12 +42,9 @@ def get_registry_generator_fn(tape, layer_registry):
               % layer_instance.__class__.__name__
           )
         registry_fn = layer_registry.lookup(layer_instance)
-        (layer_vars, transform, layer_sqr_norm_fn) = registry_fn(
-            layer_instance, args
+        (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
+            layer_instance, args, tape
         )
-        if tape is not None:
-          tape.watch(layer_vars)
-        layer_outputs = transform(layer_vars) if transform else layer_vars
         return layer_outputs, (layer_vars, layer_sqr_norm_fn)
       else:
         # Non-trainable layer.

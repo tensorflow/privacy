@@ -21,8 +21,38 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 
 
 # ==============================================================================
-# Helper functions.
+# Helper functions and classes.
 # ==============================================================================
+class DoubleDense(tf.keras.layers.Layer):
+  """Generates two dense layers nested together."""
+
+  def __init__(self, units):
+    super().__init__()
+    self.dense1 = tf.keras.layers.Dense(units)
+    self.dense2 = tf.keras.layers.Dense(1)
+
+  def call(self, inputs):
+    x = self.dense1(inputs)
+    return self.dense2(x)
+
+
+def double_dense_layer_computation(layer_instance, inputs, tape):
+  """Layer registry function for the custom `DoubleDense` layer class."""
+  vars1, outputs, sqr_norm_fn1 = layer_registry.dense_layer_computation(
+      layer_instance.dense1, inputs, tape
+  )
+  vars2, outputs, sqr_norm_fn2 = layer_registry.dense_layer_computation(
+      layer_instance.dense2, (outputs,), tape
+  )
+
+  def sqr_norm_fn(base_vars):
+    norms1 = sqr_norm_fn1(base_vars[0])
+    norms2 = sqr_norm_fn2(base_vars[1])
+    return norms1 + norms2
+
+  return [vars1, vars2], outputs, sqr_norm_fn
+
+
 def compute_true_gradient_norms(input_model, x_batch, y_batch):
   """Computes the real gradient norms for an input `(model, x, y)`."""
   loss_config = input_model.loss.get_config()
@@ -50,6 +80,7 @@ def get_computed_and_true_norms(
     is_eager,
     x_input,
     rng_seed=777,
+    registry=None,
 ):
   """Obtains the true and computed gradient norms for a model and batch input.
 
@@ -69,6 +100,7 @@ def get_computed_and_true_norms(
     is_eager: A `bool` that is `True` if the model should be run eagerly.
     x_input: `tf.Tensor` inputs to be tested.
     rng_seed: An `int` used to initialize model weights.
+    registry: A `layer_registry.LayerRegistry` instance.
 
   Returns:
     A `tuple` `(computed_norm, true_norms)`. The first element contains the
@@ -87,7 +119,6 @@ def get_computed_and_true_norms(
   )
   y_pred = model(x_input)
   y_batch = tf.ones_like(y_pred)
-  registry = layer_registry.make_default_layer_registry()
   tf.keras.utils.set_random_seed(rng_seed)
   computed_norms = clip_grads.compute_gradient_norms(
       model, x_input, y_batch, layer_registry=registry
@@ -285,6 +316,7 @@ class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
     model_generator = get_dense_model_generators()[model_name]
     layer_generator = get_dense_layer_generators()[layer_name]
     x_batches = get_nd_test_batches(input_dim)
+    default_registry = layer_registry.make_default_layer_registry()
     for x_batch in x_batches:
       if model_name == 'tower1':
         x_input = [x_batch, x_batch]
@@ -297,6 +329,7 @@ class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
           output_dim,
           is_eager,
           x_input,
+          registry=default_registry,
       )
       self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
@@ -335,6 +368,7 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
         and model_name == 'weighted_bow1'
     ) or (model_name != 'weighted_bow1')
     if valid_test_input:
+      default_registry = layer_registry.make_default_layer_registry()
       model_generator = get_embedding_model_generators()[model_name]
       (computed_norms, true_norms) = get_computed_and_true_norms(
           model_generator=model_generator,
@@ -343,6 +377,33 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
           output_dim=output_dim,
           is_eager=is_eager,
           x_input=x_batch,
+          registry=default_registry,
+      )
+      self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
+
+
+class ClipGradsCustomLayerTest(tf.test.TestCase, parameterized.TestCase):
+
+  @parameterized.product(
+      input_dim=[1, 2],
+      output_dim=[1, 2],
+      is_eager=[True, False],
+  )
+  def test_gradient_norms_on_various_models(
+      self, input_dim, output_dim, is_eager
+  ):
+    registry = layer_registry.make_default_layer_registry()
+    registry.insert(DoubleDense, double_dense_layer_computation)
+    x_batches = get_nd_test_batches(input_dim)
+    for x_batch in x_batches:
+      (computed_norms, true_norms) = get_computed_and_true_norms(
+          model_generator=make_two_layer_sequential_model,
+          layer_generator=lambda a, b: DoubleDense(b),
+          input_dims=input_dim,
+          output_dim=output_dim,
+          is_eager=is_eager,
+          x_input=x_batch,
+          registry=registry,
       )
       self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
