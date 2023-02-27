@@ -113,7 +113,9 @@ def main(unused_argv):
     model = DPSequential(
         l2_norm_clip=FLAGS.l2_norm_clip,
         noise_multiplier=FLAGS.noise_multiplier,
-        layers=layers)
+        num_microbatches=FLAGS.microbatches,
+        layers=layers,
+    )
   else:
     model = tf.keras.Sequential(layers=layers)
 
