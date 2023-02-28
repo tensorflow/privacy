@@ -11,13 +11,14 @@ issues currently open.
 
 ## Latest Updates
 
-2020-12-21: A new
-[vectorized version of the TF 2 optimizer](https://github.com/tensorflow/privacy/blob/master/tensorflow_privacy/privacy/optimizers/dp_optimizer_keras_vectorized.py)
-is available, which can deliver much faster performance. We recommend trying it
-first, and to fall back to using the original non-vectorized version only if
-this fails. We are thankful to the
-[authors of this paper](https://arxiv.org/abs/2010.09063) for spurring this
-change.
+2023-02-21: A new implementation of efficient per-example gradient clipping is
+now available for
+[DP keras models](https://github.com/tensorflow/privacy/tree/master/tensorflow_privacy/privacy/keras_models)
+consisting only of Dense and Embedding layers. The models use the fast gradient
+calculation results of [this paper](https://arxiv.org/abs/1510.01799). The
+implementation should allow for doing DP training without any meaningful memory
+or runtime overhead. It also removes the need for tuning the number of
+microbatches as it clips the gradient with respect to each example.
 
 ## Setting up TensorFlow Privacy
 
@@ -32,11 +33,11 @@ installation documentation).
 
 In addition to TensorFlow and its dependencies, other prerequisites are:
 
-  * `scipy` >= 0.17
+*   `scipy` >= 0.17
 
-  * `mpmath` (for testing)
+*   `mpmath` (for testing)
 
-  * `tensorflow_datasets` (for the RNN tutorial `lm_dpsgd_tutorial.py` only)
+*   `tensorflow_datasets` (for the RNN tutorial `lm_dpsgd_tutorial.py` only)
 
 ### Installing TensorFlow Privacy
 
@@ -84,18 +85,16 @@ GitHub pull requests. To speed the code review process, we ask that:
 ## Tutorials directory
 
 To help you get started with the functionalities provided by this library, we
-provide a detailed walkthrough [here](tutorials/walkthrough/README.md) that
-will teach you how to wrap existing optimizers
-(e.g., SGD, Adam, ...) into their differentially private counterparts using
-TensorFlow (TF) Privacy. You will also learn how to tune the parameters
-introduced by differentially private optimization and how to
-measure the privacy guarantees provided using analysis tools included in TF
-Privacy.
+provide a detailed walkthrough [here](tutorials/walkthrough/README.md) that will
+teach you how to wrap existing optimizers (e.g., SGD, Adam, ...) into their
+differentially private counterparts using TensorFlow (TF) Privacy. You will also
+learn how to tune the parameters introduced by differentially private
+optimization and how to measure the privacy guarantees provided using analysis
+tools included in TF Privacy.
 
-In addition, the
-`tutorials/` folder comes with scripts demonstrating how to use the library
-features. The list of tutorials is described in the README included in the
-tutorials directory.
+In addition, the `tutorials/` folder comes with scripts demonstrating how to use
+the library features. The list of tutorials is described in the README included
+in the tutorials directory.
 
 NOTE: the tutorials are maintained carefully. However, they are not considered
 part of the API and they can change at any time without warning. You should not
@@ -110,8 +109,8 @@ directory, but rather intended as a convenient archive.
 
 ## TensorFlow 2.x
 
-TensorFlow Privacy now works with TensorFlow 2! You can use the new
-Keras-based estimators found in
+TensorFlow Privacy now works with TensorFlow 2! You can use the new Keras-based
+estimators found in
 `privacy/tensorflow_privacy/privacy/optimizers/dp_optimizer_keras.py`.
 
 For this to work with `tf.keras.Model` and `tf.estimator.Estimator`, however,
@@ -120,16 +119,17 @@ you need to install TensorFlow 2.4 or later.
 ## Remarks
 
 The content of this repository supersedes the following existing folder in the
-tensorflow/models [repository](https://github.com/tensorflow/models/tree/master/research/differential_privacy)
+tensorflow/models
+[repository](https://github.com/tensorflow/models/tree/master/research/differential_privacy)
 
 ## Contacts
 
 If you have any questions that cannot be addressed by raising an issue, feel
 free to contact:
 
-* Galen Andrew (@galenmandrew)
-* Steve Chien (@schien1729)
-* Nicolas Papernot (@npapernot)
+*   Galen Andrew (@galenmandrew)
+*   Steve Chien (@schien1729)
+*   Nicolas Papernot (@npapernot)
 
 ## Copyright
 
