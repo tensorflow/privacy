@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import itertools
-from typing import Callable, Any, List, Union
+from typing import Any, Callable, List, Optional, Union
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -49,14 +49,17 @@ class DoubleDense(tf.keras.layers.Layer):
 
 
 def double_dense_layer_computation(
-    layer_instance: tf.keras.layers.Layer, inputs: Any, tape: tf.GradientTape
+    layer_instance: tf.keras.layers.Layer,
+    inputs: Any,
+    tape: tf.GradientTape,
+    num_microbatches: Optional[int],
 ):
   """Layer registry function for the custom `DoubleDense` layer class."""
   vars1, outputs, sqr_norm_fn1 = layer_registry.dense_layer_computation(
-      layer_instance.dense1, inputs, tape
+      layer_instance.dense1, inputs, tape, num_microbatches
   )
   vars2, outputs, sqr_norm_fn2 = layer_registry.dense_layer_computation(
-      layer_instance.dense2, (outputs,), tape
+      layer_instance.dense2, (outputs,), tape, num_microbatches
   )
 
   def sqr_norm_fn(base_vars):
@@ -68,7 +71,10 @@ def double_dense_layer_computation(
 
 
 def compute_true_gradient_norms(
-    input_model: tf.keras.Model, x_batch: tf.Tensor, y_batch: tf.Tensor
+    input_model: tf.keras.Model,
+    x_batch: tf.Tensor,
+    y_batch: tf.Tensor,
+    num_microbatches: Optional[int],
 ):
   """Computes the real gradient norms for an input `(model, x, y)`."""
   loss_config = input_model.loss.get_config()
@@ -77,13 +83,22 @@ def compute_true_gradient_norms(
   with tf.GradientTape(persistent=True) as tape:
     y_pred = input_model(x_batch)
     loss = per_example_loss_fn(y_batch, y_pred)
+    if num_microbatches is not None:
+      loss = tf.reduce_mean(
+          tf.reshape(
+              loss,
+              tf.concat([[num_microbatches, -1], tf.shape(loss)[1:]], axis=0),
+          ),
+          axis=1,
+      )
     if isinstance(loss, tf.RaggedTensor):
       loss = loss.to_tensor()
   sqr_norms = []
   for var in input_model.trainable_variables:
     jacobian = tape.jacobian(loss, var, experimental_use_pfor=False)
     reduction_axes = tf.range(1, len(jacobian.shape))
-    sqr_norms.append(tf.reduce_sum(tf.square(jacobian), axis=reduction_axes))
+    sqr_norm = tf.reduce_sum(tf.square(jacobian), axis=reduction_axes)
+    sqr_norms.append(sqr_norm)
   sqr_norm_tsr = tf.stack(sqr_norms, axis=1)
   return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
 
@@ -93,6 +108,7 @@ def get_computed_and_true_norms(
     layer_generator: LayerGenerator,
     input_dims: Union[int, List[int]],
     output_dim: int,
+    num_microbatches: Optional[int],
     is_eager: bool,
     x_input: tf.Tensor,
     rng_seed: int = 777,
@@ -113,6 +129,7 @@ def get_computed_and_true_norms(
       `idim` and returns output tensors of dimension `odim`.
     input_dims: The input dimension(s) of the test `tf.keras.Model` instance.
     output_dim: The output dimension of the test `tf.keras.Model` instance.
+    num_microbatches: The number of microbatches. None or an integer.
     is_eager: A `bool` that is `True` if the model should be run eagerly.
     x_input: `tf.Tensor` inputs to be tested.
     rng_seed: An `int` used to initialize model weights.
@@ -137,10 +154,16 @@ def get_computed_and_true_norms(
   y_batch = tf.ones_like(y_pred)
   tf.keras.utils.set_random_seed(rng_seed)
   computed_norms = clip_grads.compute_gradient_norms(
-      model, x_input, y_batch, layer_registry=registry
+      model,
+      x_input,
+      y_batch,
+      layer_registry=registry,
+      num_microbatches=num_microbatches,
   )
   tf.keras.utils.set_random_seed(rng_seed)
-  true_norms = compute_true_gradient_norms(model, x_input, y_batch)
+  true_norms = compute_true_gradient_norms(
+      model, x_input, y_batch, num_microbatches
+  )
   return (computed_norms, true_norms)
 
 
@@ -322,18 +345,30 @@ class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.product(
       model_name=list(get_dense_model_generators().keys()),
       layer_name=list(get_dense_layer_generators().keys()),
-      input_dim=[1, 2],
+      input_dim=[4],
       output_dim=[1, 2],
+      num_microbatches=[None, 1, 2],
       is_eager=[True, False],
   )
   def test_gradient_norms_on_various_models(
-      self, model_name, layer_name, input_dim, output_dim, is_eager
+      self,
+      model_name,
+      layer_name,
+      input_dim,
+      output_dim,
+      num_microbatches,
+      is_eager,
   ):
     model_generator = get_dense_model_generators()[model_name]
     layer_generator = get_dense_layer_generators()[layer_name]
     x_batches = get_nd_test_batches(input_dim)
     default_registry = layer_registry.make_default_layer_registry()
     for x_batch in x_batches:
+      if (
+          num_microbatches is not None
+          and x_batch.shape[0] % num_microbatches != 0
+      ):
+        continue
       if model_name == 'tower1':
         x_input = [x_batch, x_batch]
       else:
@@ -343,6 +378,7 @@ class ClipGradsDenseLayerTest(tf.test.TestCase, parameterized.TestCase):
           layer_generator,
           input_dim,
           output_dim,
+          num_microbatches,
           is_eager,
           x_input,
           registry=default_registry,
@@ -362,6 +398,10 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
           tf.ragged.constant(
               [[0], [1], [], [0, 0], [0, 1], [1, 0], [1, 1]], dtype=tf.int32
           ),
+          tf.ragged.constant(
+              [[0], [1], [], [0, 0], [0, 1], [1, 0], [1, 1], [0, 1]],
+              dtype=tf.int32,
+          ),
           # 3D inputs.
           tf.convert_to_tensor([[[0, 1]]], dtype_hint=tf.int32),
           tf.convert_to_tensor(
@@ -371,14 +411,24 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
               [[[0]], [[1]], [], [[0, 0]], [[0, 1]], [[1, 0]], [[1, 1]]],
               dtype=tf.int32,
           ),
+          tf.ragged.constant(
+              [[[0]], [[1]], [], [[0, 0]], [[0, 1]], [[1, 0]], [[1, 1]], [[0]]],
+              dtype=tf.int32,
+          ),
       ],
       model_name=list(get_embedding_model_generators().keys()),
-      output_dim=[1, 2],
-      is_eager=[True, False],
+      output_dim=[2],
+      num_microbatches=[None, 1, 2],
+      is_eager=[True],
   )
   def test_gradient_norms_on_various_models(
-      self, x_batch, model_name, output_dim, is_eager
+      self, x_batch, model_name, output_dim, num_microbatches, is_eager
   ):
+    if (
+        num_microbatches is not None
+        and x_batch.shape[0] % num_microbatches != 0
+    ):
+      return
     valid_test_input = (
         not isinstance(x_batch, tf.RaggedTensor)
         and model_name == 'weighted_bow1'
@@ -391,6 +441,7 @@ class ClipGradsEmbeddingLayerTest(tf.test.TestCase, parameterized.TestCase):
           layer_generator=None,
           input_dims=x_batch.shape[1:],
           output_dim=output_dim,
+          num_microbatches=num_microbatches,
           is_eager=is_eager,
           x_input=x_batch,
           registry=default_registry,
@@ -403,20 +454,27 @@ class ClipGradsCustomLayerTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.product(
       input_dim=[1, 2],
       output_dim=[1, 2],
+      num_microbatches=[None, 1, 2],
       is_eager=[True, False],
   )
   def test_gradient_norms_on_various_models(
-      self, input_dim, output_dim, is_eager
+      self, input_dim, output_dim, num_microbatches, is_eager
   ):
     registry = layer_registry.make_default_layer_registry()
     registry.insert(DoubleDense, double_dense_layer_computation)
     x_batches = get_nd_test_batches(input_dim)
     for x_batch in x_batches:
+      if (
+          num_microbatches is not None
+          and x_batch.shape[0] % num_microbatches != 0
+      ):
+        continue
       (computed_norms, true_norms) = get_computed_and_true_norms(
           model_generator=make_two_layer_sequential_model,
           layer_generator=lambda a, b: DoubleDense(b),
           input_dims=input_dim,
           output_dim=output_dim,
+          num_microbatches=num_microbatches,
           is_eager=is_eager,
           x_input=x_batch,
           registry=registry,

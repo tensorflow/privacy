@@ -139,9 +139,7 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
     train_labels = np.array([[1.0], [3.0], [-2.0], [-4.0]])
     learning_rate = 1.0
 
-    for test_reg, test_nm in zip(
-        get_layer_registries(), [num_microbatches, None]
-    ):
+    for test_reg in get_layer_registries():
       optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
       loss = tf.keras.losses.MeanSquaredError()
 
@@ -149,7 +147,7 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
       model = dp_keras_model.DPSequential(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=0.0,
-          num_microbatches=test_nm,
+          num_microbatches=num_microbatches,
           layer_registry=test_reg,
           layers=[
               tf.keras.layers.InputLayer(input_shape=(2,)),
@@ -173,10 +171,11 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
           train_data, train_labels, w, l2_norm_clip, effective_num_microbatches
       )
       expected_weights = np.squeeze(-learning_rate * expected_grads)
-
       self.assertAllClose(model_weights, expected_weights)
 
   @parameterized.named_parameters(
+      ('noise_multiplier 3 2 None', 3.0, 2.0, None),
+      ('noise_multiplier 5 4 None', 5.0, 4.0, None),
       ('noise_multiplier 3 2 1', 3.0, 2.0, 1),
       ('noise_multiplier 5 4 1', 5.0, 4.0, 1),
       ('noise_multiplier 3 2 2', 3.0, 2.0, 2),
@@ -198,9 +197,7 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
 
     learning_rate = 1.0
 
-    for test_reg, test_nm in zip(
-        get_layer_registries(), [num_microbatches, None]
-    ):
+    for test_reg in get_layer_registries():
       optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
       loss = tf.keras.losses.MeanSquaredError()
 
@@ -208,7 +205,7 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
       model = dp_keras_model.DPSequential(
           l2_norm_clip=l2_norm_clip,
           noise_multiplier=noise_multiplier,
-          num_microbatches=test_nm,
+          num_microbatches=num_microbatches,
           layer_registry=test_reg,
           layers=[
               tf.keras.layers.InputLayer(input_shape=(1000,)),
@@ -220,11 +217,7 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
       model.compile(optimizer=optimizer, loss=loss)
       model.fit(train_data, train_labels, epochs=1, batch_size=4)
 
-      effective_num_microbatches = (
-          train_data.shape[0]
-          if model._num_microbatches is None
-          else num_microbatches
-      )
+      effective_num_microbatches = num_microbatches or train_data.shape[0]
 
       model_weights = model.get_weights()
       measured_std = np.std(model_weights[0])
@@ -248,16 +241,14 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
     train_labels = np.array([[0], [1], [1], [0]])
     learning_rate = 1.0
 
-    for test_reg, test_nm in zip(
-        get_layer_registries(), [num_microbatches, None]
-    ):
+    for test_reg in get_layer_registries():
       optimizer = tf.keras.optimizers.SGD(learning_rate=learning_rate)
       loss_fn = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)
 
       model = dp_keras_model.DPSequential(
           l2_norm_clip=1.0e9,
           noise_multiplier=0.0,
-          num_microbatches=test_nm,
+          num_microbatches=num_microbatches,
           layer_registry=test_reg,
           layers=[
               tf.keras.layers.InputLayer(input_shape=(2,)),

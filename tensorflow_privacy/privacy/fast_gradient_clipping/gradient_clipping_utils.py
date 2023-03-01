@@ -157,8 +157,8 @@ def all_trainable_layers_are_registered(
 
 def add_aggregate_noise(
     input_model: tf.keras.Model,
-    x_batch: InputTensor,
-    clipped_grads: List[tf.Tensor],
+    clipped_grads: list[tf.Tensor],
+    batch_size: tf.Tensor,
     l2_norm_clip: float,
     noise_multiplier: float,
 ) -> List[tf.Tensor]:
@@ -169,8 +169,9 @@ def add_aggregate_noise(
 
   Args:
     input_model: The `tf.keras.Model` to obtain the layers from.
-    x_batch: An `InputTensor` to be fed into the input layer of the model.
     clipped_grads: A list of `tf.Tensor`s representing the clipped gradients.
+    batch_size: The batch size, used for normalizing the noise, when the loss
+      reduction is AUTO or SUM_OVER_BATCH_SIZE.
     l2_norm_clip: Clipping norm (max L2 norm of each gradient).
     noise_multiplier: Ratio of the standard deviation to the clipping norm.
 
@@ -186,17 +187,7 @@ def add_aggregate_noise(
   ]:
     if input_model.loss.reduction == tf.keras.losses.Reduction.AUTO:
       logging.info('Assuming that the loss reduction is `SUM_OVER_BATCH_SIZE`.')
-    if isinstance(x_batch, tf.Tensor):
-      scale /= tf.cast(tf.shape(x_batch)[0], tf.float32)
-    elif isinstance(x_batch, dict):
-      batch_sizes = [
-          tf.cast(tf.shape(v)[0], tf.float32) for v in x_batch.values()
-      ]
-      scale /= tf.math.reduce_min(batch_sizes)
-    else:
-      raise NotImplementedError(
-          'Unknown container/class %s for input' % x_batch.__class__.__name__
-      )
+    scale /= tf.cast(batch_size, tf.float32)
 
   def add_noise(g):
     return g + tf.random.normal(
