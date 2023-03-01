@@ -13,6 +13,8 @@
 # limitations under the License.
 
 import itertools
+from typing import Callable, Any, List, Union
+
 from absl.testing import parameterized
 import tensorflow as tf
 
@@ -21,22 +23,34 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 
 
 # ==============================================================================
+# Type aliases
+# ==============================================================================
+LayerGenerator = Callable[[int, int], tf.keras.layers.Layer]
+
+ModelGenerator = Callable[
+    [LayerGenerator, Union[int, List[int]], int], tf.keras.Model
+]
+
+
+# ==============================================================================
 # Helper functions and classes.
 # ==============================================================================
 class DoubleDense(tf.keras.layers.Layer):
   """Generates two dense layers nested together."""
 
-  def __init__(self, units):
+  def __init__(self, units: int):
     super().__init__()
     self.dense1 = tf.keras.layers.Dense(units)
     self.dense2 = tf.keras.layers.Dense(1)
 
-  def call(self, inputs):
+  def call(self, inputs: Any):
     x = self.dense1(inputs)
     return self.dense2(x)
 
 
-def double_dense_layer_computation(layer_instance, inputs, tape):
+def double_dense_layer_computation(
+    layer_instance: tf.keras.layers.Layer, inputs: Any, tape: tf.GradientTape
+):
   """Layer registry function for the custom `DoubleDense` layer class."""
   vars1, outputs, sqr_norm_fn1 = layer_registry.dense_layer_computation(
       layer_instance.dense1, inputs, tape
@@ -53,7 +67,9 @@ def double_dense_layer_computation(layer_instance, inputs, tape):
   return [vars1, vars2], outputs, sqr_norm_fn
 
 
-def compute_true_gradient_norms(input_model, x_batch, y_batch):
+def compute_true_gradient_norms(
+    input_model: tf.keras.Model, x_batch: tf.Tensor, y_batch: tf.Tensor
+):
   """Computes the real gradient norms for an input `(model, x, y)`."""
   loss_config = input_model.loss.get_config()
   loss_config['reduction'] = tf.keras.losses.Reduction.NONE
@@ -73,14 +89,14 @@ def compute_true_gradient_norms(input_model, x_batch, y_batch):
 
 
 def get_computed_and_true_norms(
-    model_generator,
-    layer_generator,
-    input_dims,
-    output_dim,
-    is_eager,
-    x_input,
-    rng_seed=777,
-    registry=None,
+    model_generator: ModelGenerator,
+    layer_generator: LayerGenerator,
+    input_dims: Union[int, List[int]],
+    output_dim: int,
+    is_eager: bool,
+    x_input: tf.Tensor,
+    rng_seed: int = 777,
+    registry: layer_registry.LayerRegistry = None,
 ):
   """Obtains the true and computed gradient norms for a model and batch input.
 
@@ -238,7 +254,7 @@ def make_weighted_bow_model(layer_generator, input_dims, output_dim):
 # ==============================================================================
 # Factory functions.
 # ==============================================================================
-def get_nd_test_tensors(n):
+def get_nd_test_tensors(n: int):
   """Returns a list of candidate tests for a given dimension n."""
   return [
       tf.zeros((n,), dtype=tf.float64),
@@ -246,7 +262,7 @@ def get_nd_test_tensors(n):
   ]
 
 
-def get_nd_test_batches(n):
+def get_nd_test_batches(n: int):
   """Returns a list of candidate input batches of dimension n."""
   result = []
   tensors = get_nd_test_tensors(n)

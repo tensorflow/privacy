@@ -40,7 +40,22 @@ where `l2_row_norm(y)` computes the L2 norm for each row of an input `y`.
 Details of this decomposition can be found in https://arxiv.org/abs/1510.01799
 """
 
+from typing import Callable, Type, Any, Union, Iterable, Text
 import tensorflow as tf
+
+
+# ==============================================================================
+# Type aliases
+# ==============================================================================
+SquareNormFunction = Callable[[Any], tf.Tensor]
+
+RegistryFunctionOutput = tuple[Any, tf.Tensor, SquareNormFunction]
+
+RegistryFunction = Callable[
+    [Any, tuple[Any], tf.GradientTape], RegistryFunctionOutput
+]
+
+InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], dict[Text, tf.Tensor]]
 
 
 # ==============================================================================
@@ -54,15 +69,19 @@ class LayerRegistry:
     self._layer_class_dict = {}
     self._registry = {}
 
-  def is_elem(self, layer_instance):
+  def is_elem(self, layer_instance: tf.keras.layers.Layer) -> bool:
     """Checks if a layer instance's class is in the registry."""
     return hash(layer_instance.__class__) in self._registry
 
-  def lookup(self, layer_instance):
+  def lookup(self, layer_instance: tf.keras.layers.Layer) -> RegistryFunction:
     """Returns the layer registry function for a given layer instance."""
     return self._registry[hash(layer_instance.__class__)]
 
-  def insert(self, layer_class, layer_registry_function):
+  def insert(
+      self,
+      layer_class: Type[tf.keras.layers.Layer],
+      layer_registry_function: RegistryFunction,
+  ):
     """Inserts a layer registry function into the internal dictionaries."""
     layer_key = hash(layer_class)
     self._layer_class_dict[layer_key] = layer_class
@@ -72,7 +91,11 @@ class LayerRegistry:
 # ==============================================================================
 # Supported Keras layers
 # ==============================================================================
-def dense_layer_computation(layer_instance, inputs, tape):
+def dense_layer_computation(
+    layer_instance: tf.keras.layers.Dense,
+    inputs: tuple[InputTensor],
+    tape: tf.GradientTape,
+) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Dense`.
 
   The logic for this computation is based on the following paper:
@@ -83,8 +106,9 @@ def dense_layer_computation(layer_instance, inputs, tape):
 
   Args:
     layer_instance: A `tf.keras.layers.Dense` instance.
-    inputs: A `tf.Tensor` which can be passed into the layer instance, i.e.,
-      `layer_instance(inputs)` returns a valid output.
+    inputs: A tuple containing a single `InputTensor` which can be passed into
+      the layer instance, i.e., `layer_instance(*inputs)` returns a valid
+      output.
     tape: A `tf.GradientTape` instance that will be used to watch the output
       `base_vars`.
 
@@ -100,6 +124,8 @@ def dense_layer_computation(layer_instance, inputs, tape):
     trainable variables in `layer_instance`. These squared norms should be a 1D
     `tf.Tensor` of length `batch_size`.
   """
+  if len(inputs) != 1:
+    raise ValueError("Only layer inputs of length 1 are permitted.")
   orig_activation = layer_instance.activation
   layer_instance.activation = None
   base_vars = layer_instance(*inputs)
@@ -125,7 +151,11 @@ def dense_layer_computation(layer_instance, inputs, tape):
   return base_vars, outputs, sqr_norm_fn
 
 
-def embedding_layer_computation(layer_instance, inputs, tape):
+def embedding_layer_computation(
+    layer_instance: tf.keras.layers.Embedding,
+    inputs: tuple[InputTensor],
+    tape: tf.GradientTape,
+) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Embedding`.
 
   The logic of this computation is based on the `tf.keras.layers.Dense`
@@ -136,8 +166,9 @@ def embedding_layer_computation(layer_instance, inputs, tape):
 
   Args:
     layer_instance: A `tf.keras.layers.Embedding` instance.
-    inputs: A `tf.Tensor` which can be passed into the layer instance, i.e.,
-      `layer_instance(inputs)` returns a valid output.
+    inputs: A tuple containing a single `InputTensor` which can be passed into
+      the layer instance, i.e., `layer_instance(*inputs)` returns a valid
+      output.
     tape: A `tf.GradientTape` instance that will be used to watch the output
       `base_vars`.
 
@@ -153,10 +184,12 @@ def embedding_layer_computation(layer_instance, inputs, tape):
     trainable variables in `layer_instance`. These squared norms should be a 1D
     `tf.Tensor` of length `batch_size`.
   """
+  if len(inputs) != 1:
+    raise ValueError("Only layer inputs of length 1 are permitted.")
   if hasattr(layer_instance, "sparse"):  # for backwards compatibility
     if layer_instance.sparse:
       raise NotImplementedError("Sparse output tensors are not supported.")
-  if isinstance(inputs, tf.SparseTensor):
+  if isinstance(inputs[0], tf.SparseTensor):
     raise NotImplementedError("Sparse input tensors are not supported.")
 
   # Disable experimental features.
@@ -225,7 +258,7 @@ def embedding_layer_computation(layer_instance, inputs, tape):
 # ==============================================================================
 # Main factory methods
 # ==============================================================================
-def make_default_layer_registry():
+def make_default_layer_registry() -> LayerRegistry:
   registry = LayerRegistry()
   registry.insert(tf.keras.layers.Dense, dense_layer_computation)
   registry.insert(tf.keras.layers.Embedding, embedding_layer_computation)

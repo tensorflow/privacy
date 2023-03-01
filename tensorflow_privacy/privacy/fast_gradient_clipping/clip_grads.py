@@ -21,11 +21,18 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
+from typing import Union, Iterable, Text
+
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
+from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
+
+InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], dict[Text, tf.Tensor]]
 
 
-def get_registry_generator_fn(tape, layer_registry):
+def get_registry_generator_fn(
+    tape: tf.GradientTape, layer_registry: lr.LayerRegistry
+):
   """Creates the generator function for `compute_gradient_norms()`."""
   if layer_registry is None:
     # Needed for backwards compatibility.
@@ -53,7 +60,12 @@ def get_registry_generator_fn(tape, layer_registry):
     return registry_generator_fn
 
 
-def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
+def compute_gradient_norms(
+    input_model: tf.keras.Model,
+    x_batch: InputTensor,
+    y_batch: tf.Tensor,
+    layer_registry: lr.LayerRegistry,
+):
   """Computes the per-example loss gradient norms for given data.
 
   Applies a variant of the approach given in
@@ -62,7 +74,7 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
   Args:
     input_model: The `tf.keras.Model` from which to obtain the layers from. The
       loss of the model *must* be a scalar loss.
-    x_batch: A `tf.Tensor` representing a batch of inputs to the model. The
+    x_batch: An `InputTensor` representing a batch of inputs to the model. The
       first axis must be the batch dimension.
     y_batch: A `tf.Tensor` representing a batch of output labels. The first axis
       must be the batch dimension. The number of examples should match the
@@ -106,7 +118,7 @@ def compute_gradient_norms(input_model, x_batch, y_batch, layer_registry):
   return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
 
 
-def compute_clip_weights(l2_norm_clip, gradient_norms):
+def compute_clip_weights(l2_norm_clip: float, gradient_norms: tf.Tensor):
   """Computes the per-example loss/clip weights for clipping.
 
   When the sum of the per-example losses is replaced a weighted sum, where
@@ -132,7 +144,11 @@ def compute_clip_weights(l2_norm_clip, gradient_norms):
 
 
 def compute_pred_and_clipped_gradients(
-    input_model, x_batch, y_batch, l2_norm_clip, layer_registry
+    input_model: tf.keras.Model,
+    x_batch: InputTensor,
+    y_batch: tf.Tensor,
+    l2_norm_clip: float,
+    layer_registry: lr.LayerRegistry,
 ):
   """Computes the per-example predictions and per-example clipped loss gradient.
 
@@ -147,7 +163,7 @@ def compute_pred_and_clipped_gradients(
 
   Args:
     input_model: The `tf.keras.Model` from which to obtain the layers from.
-    x_batch: A `tf.Tensor` representing a batch of inputs to the model. The
+    x_batch: An `InputTensor` representing a batch of inputs to the model. The
       first axis must be the batch dimension.
     y_batch: A `tf.Tensor` representing a batch of output labels. The first axis
       must be the batch dimension. The number of examples should match the

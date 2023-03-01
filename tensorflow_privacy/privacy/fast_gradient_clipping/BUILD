@@ -6,6 +6,7 @@ py_library(
     name = "gradient_clipping_utils",
     srcs = ["gradient_clipping_utils.py"],
     srcs_version = "PY3",
+    deps = [":layer_registry"],
 )
 
 py_library(
