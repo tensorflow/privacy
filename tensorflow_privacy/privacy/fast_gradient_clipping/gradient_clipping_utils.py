@@ -13,16 +13,16 @@
 # limitations under the License.
 """Utility functions that help in the computation of per-example gradient norms."""
 
-from typing import Any, Union, Iterable, Text, Callable, Tuple, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
 
 from absl import logging
 import tensorflow as tf
 
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 
-InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], dict[Text, tf.Tensor]]
+InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
 
-GeneratorFunction = Optional[Callable[[Any, Tuple, dict], Tuple[Any, Any]]]
+GeneratorFunction = Optional[Callable[[Any, Tuple, Dict], Tuple[Any, Any]]]
 
 
 def has_internal_compute_graph(input_object: Any):
@@ -38,7 +38,7 @@ def has_internal_compute_graph(input_object: Any):
 
 def _get_internal_layers(
     input_layer: tf.keras.layers.Layer,
-) -> list[tf.keras.layers.Layer]:
+) -> List[tf.keras.layers.Layer]:
   """Returns a list of layers that are nested within a given layer."""
   internal_layers = []
   if isinstance(input_layer, tf.keras.Model) and hasattr(input_layer, 'layers'):
@@ -53,7 +53,7 @@ def model_forward_pass(
     input_model: tf.keras.Model,
     inputs: InputTensor,
     generator_fn: GeneratorFunction = None,
-) -> Tuple[tf.Tensor, list[Any]]:
+) -> Tuple[tf.Tensor, List[Any]]:
   """Does a forward pass of a model and returns useful intermediates.
 
   NOTE: the graph traversal algorithm is an adaptation of the logic in the
@@ -158,10 +158,10 @@ def all_trainable_layers_are_registered(
 def add_aggregate_noise(
     input_model: tf.keras.Model,
     x_batch: InputTensor,
-    clipped_grads: list[tf.Tensor],
+    clipped_grads: List[tf.Tensor],
     l2_norm_clip: float,
     noise_multiplier: float,
-) -> list[tf.Tensor]:
+) -> List[tf.Tensor]:
   """Adds noise to a collection of clipped gradients.
 
   The magnitude of the noise depends on the aggregation strategy of the

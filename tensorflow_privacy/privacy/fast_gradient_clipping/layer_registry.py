@@ -40,7 +40,7 @@ where `l2_row_norm(y)` computes the L2 norm for each row of an input `y`.
 Details of this decomposition can be found in https://arxiv.org/abs/1510.01799
 """
 
-from typing import Callable, Type, Any, Union, Iterable, Text
+from typing import Any, Callable, Dict, Iterable, Text, Tuple, Type, Union
 import tensorflow as tf
 
 
@@ -49,13 +49,13 @@ import tensorflow as tf
 # ==============================================================================
 SquareNormFunction = Callable[[Any], tf.Tensor]
 
-RegistryFunctionOutput = tuple[Any, tf.Tensor, SquareNormFunction]
+RegistryFunctionOutput = Tuple[Any, tf.Tensor, SquareNormFunction]
 
 RegistryFunction = Callable[
-    [Any, tuple[Any], tf.GradientTape], RegistryFunctionOutput
+    [Any, Tuple[Any], tf.GradientTape], RegistryFunctionOutput
 ]
 
-InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], dict[Text, tf.Tensor]]
+InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
 
 
 # ==============================================================================
@@ -93,7 +93,7 @@ class LayerRegistry:
 # ==============================================================================
 def dense_layer_computation(
     layer_instance: tf.keras.layers.Dense,
-    inputs: tuple[InputTensor],
+    inputs: Tuple[InputTensor],
     tape: tf.GradientTape,
 ) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Dense`.
@@ -153,7 +153,7 @@ def dense_layer_computation(
 
 def embedding_layer_computation(
     layer_instance: tf.keras.layers.Embedding,
-    inputs: tuple[InputTensor],
+    inputs: Tuple[InputTensor],
     tape: tf.GradientTape,
 ) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Embedding`.

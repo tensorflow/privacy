@@ -21,13 +21,13 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
-from typing import Union, Iterable, Text
+from typing import Dict, Iterable, Text, Union
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 
-InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], dict[Text, tf.Tensor]]
+InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
 
 
 def get_registry_generator_fn(
