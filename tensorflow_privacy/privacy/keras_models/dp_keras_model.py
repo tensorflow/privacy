@@ -26,53 +26,64 @@ def make_dp_model_class(cls):
     __doc__ = (
         """DP subclass of `{base_model}`.
 
-       This can be used as a differentially private replacement for
-       {base_model}. This class implements DP-SGD using the standard
-       Gaussian mechanism.
+        This can be used as a differentially private replacement for
+        {base_model}. This class implements DP-SGD using the standard
+        Gaussian mechanism.
 
-       This class also utilizes a faster gradient clipping algorithm if the
-       following two conditions hold:
+        This class also utilizes a faster gradient clipping algorithm if the
+        following two conditions hold:
         (i)  the trainable layers of the model are keys in the `dict` input
              `layer_registry`,
         (ii) the loss `tf.Tensor` for a given batch of examples is either a
              scalar or a 2D `tf.Tensor` that has only one column
              `(i.e., tf.shape(loss)[1] == 1)` and whose i-th row corresponds to
              the loss of the i-th example.
-       This clipping algorithm specifically computes clipped gradients at the
-       per-example level using the layer registry functions in `layer_registry`
-       (see clip_grads.py for more information about the algorithm). In this
-       setting, microbatching is not used (it is equivalent to
-       `num_microbatches == batch_size`), and the input `num_microbatches`
-       is ignored.
+        This clipping algorithm specifically computes clipped gradients at the
+        per-example or per microbatch (when `num_microbatches` is not None)
+        level using the layer registry functions in `layer_registry` (see
+        clip_grads.py for more information about the algorithm).
 
-       When instantiating this class, you need to supply several
-       DP-related arguments followed by the standard arguments for
-       `{short_base_model}`.
+        WARNING: with faster gradient clipping, and when num_microbatches is not
+        None, the per microbatch loss is assumed to be computed as the mean
+        of the loss over the microbatch, or effectively, by reshaping the loss
+        from the shape [batch_size, ...] to the shape
+        [num_microbatches, batch_size/num_microbatches, ...] and computing the
+        mean of the loss over the microbatches. This would require that the loss
+        function behaves accordingly. This is true for multiple common
+        predefined keras loss functions (e.g. mean_squared_loss,
+        binary_crossentropy) but may not hold for custom losses (and how such
+        aggregation is done is not exposed by the loss function, unfortunately).
+        It is the caller's responsibility to make sure that the loss function
+        does behave this way.
 
-       Examples:
+        When instantiating this class, you need to supply several
+        DP-related arguments followed by the standard arguments for
+        `{short_base_model}`.
 
-       ```python
-       # Create Model instance.
-       model = {dp_model_class}(l2_norm_clip=1.0, noise_multiplier=0.5, use_xla=True,
-                <standard arguments>)
-       ```
+          Examples:
 
-       You should use your {dp_model_class} instance with a standard instance
-       of `tf.keras.Optimizer` as the optimizer, and a standard reduced loss.
-       You do not need to use a differentially private optimizer.
+        ```python
+        # Create Model instance.
+        model = {dp_model_class}(l2_norm_clip=1.0, noise_multiplier=0.5, use_xla=True,
+                 <standard arguments>)
+        ```
 
-       ```python
-       # Use a standard (non-DP) optimizer.
-       optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+        You should use your {dp_model_class} instance with a standard instance
+        of `tf.keras.Optimizer` as the optimizer, and a standard reduced loss.
+        You do not need to use a differentially private optimizer.
 
-       # Use a standard reduced loss.
-       loss = tf.keras.losses.MeanSquaredError()
+        ```python
+        # Use a standard (non-DP) optimizer.
+        optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
-       model.compile(optimizer=optimizer, loss=loss)
-       model.fit(train_data, train_labels, epochs=1, batch_size=32)
-       ```
+        # Use a standard reduced loss.
+        loss = tf.keras.losses.MeanSquaredError()
 
-       """
+        model.compile(optimizer=optimizer, loss=loss)
+        model.fit(train_data, train_labels, epochs=1, batch_size=32)
+        ```
+
+        """
     ).format(
         base_model='tf.keras.' + cls.__name__,
         short_base_model=cls.__name__,
@@ -115,6 +126,7 @@ def make_dp_model_class(cls):
       if isinstance(num_microbatches, bool):
         raise ValueError('Boolean value supplied for `num_microbatches`. '
                          'Did you intend it for `use_xla`?')
+      self._num_microbatches = num_microbatches
 
       # If all the trainable layers are in the input layer registry, we
       # don't need to use microbatching and can instead use the "fast"
@@ -126,16 +138,8 @@ def make_dp_model_class(cls):
           )
           and gradient_clipping_utils.has_internal_compute_graph(self)
       ):
-        if num_microbatches is not None:
-          raise ValueError(
-              'Cannot initialize a model where num_microbatches '
-              'is not `None` and all trainable layers are '
-              'registered in layer_registry.'
-          )
-        self._num_microbatches = None
         self._enable_fast_peg_computation = True
       else:
-        self._num_microbatches = num_microbatches
         self._enable_fast_peg_computation = False
 
       if use_xla:
@@ -198,10 +202,20 @@ def make_dp_model_class(cls):
         # trick, and uses these norms to clip the per-example gradients.
         x, y, _ = tf.keras.utils.unpack_x_y_sample_weight(data)
         y_pred, clipped_grads = clip_grads.compute_pred_and_clipped_gradients(
-            self, x, y, self._l2_norm_clip, self._layer_registry
+            self,
+            x,
+            y,
+            self._l2_norm_clip,
+            self._layer_registry,
+            self._num_microbatches,
         )
+        batch_size = self._num_microbatches or tf.shape(y)[0]
         grads = gradient_clipping_utils.add_aggregate_noise(
-            self, x, clipped_grads, self._l2_norm_clip, self._noise_multiplier
+            self,
+            clipped_grads,
+            batch_size,
+            self._l2_norm_clip,
+            self._noise_multiplier,
         )
       else:
         logging.info('Computing gradients using microbatching.')

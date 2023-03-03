@@ -38,9 +38,18 @@ whose i-th entry is the L2 norm of the i-th input vector, then
 
 where `l2_row_norm(y)` computes the L2 norm for each row of an input `y`.
 Details of this decomposition can be found in https://arxiv.org/abs/1510.01799
-"""
 
-from typing import Any, Callable, Dict, Iterable, Text, Tuple, Type, Union
+We also extend fast gradient norm computation to the case when the losses
+are microbatched, i.e. each per example loss is the mean of a set of losses.
+This could be useful for achieving user-level privacy and for improving the
+quality of DP models, through better estimation of the gradients due to
+aggregation at the microbatch level.
+"""
+# copybara.strip_begin
+# The detailed algorithm can be found in go/fast-dpsgd-mb.
+# copybara.strip_end
+
+from typing import Any, Callable, Dict, Iterable, Optional, Text, Tuple, Type, Union
 import tensorflow as tf
 
 
@@ -56,6 +65,7 @@ RegistryFunction = Callable[
 ]
 
 InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
+BatchSize = Union[int, tf.Tensor]
 
 
 # ==============================================================================
@@ -89,12 +99,44 @@ class LayerRegistry:
 
 
 # ==============================================================================
+# Utilities
+# ==============================================================================
+def add_microbatch_axis(
+    x: tf.Tensor,
+    num_microbatches: Optional[BatchSize],
+) -> tf.Tensor:
+  """Adds the microbatch axis.
+
+  Reshape the input tensor to replace the first(batch) dimension with the
+  shape [num_microbatches, batch_size / num_microbatches]. The batch size
+  must be a multiple of num_microbatches (unless it is None, meaning
+  num_microbatches is the same as the batch size).
+
+  Args:
+    x: the input tensor.
+    num_microbatches: None or a numeric value or a scalar `tf.Tensor`.
+
+  Returns:
+    The reshaped input tensor.
+  """
+  if num_microbatches is None:
+    return tf.expand_dims(x, 1)
+  with tf.control_dependencies(
+      [tf.assert_equal(tf.math.floormod(tf.shape(x)[0], num_microbatches), 0)]
+  ):
+    return tf.reshape(
+        x, tf.concat([[num_microbatches, -1], tf.shape(x)[1:]], axis=0)
+    )
+
+
+# ==============================================================================
 # Supported Keras layers
 # ==============================================================================
 def dense_layer_computation(
     layer_instance: tf.keras.layers.Dense,
     inputs: Tuple[InputTensor],
     tape: tf.GradientTape,
+    num_microbatches: Optional[tf.Tensor] = None,
 ) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Dense`.
 
@@ -111,6 +153,9 @@ def dense_layer_computation(
       output.
     tape: A `tf.GradientTape` instance that will be used to watch the output
       `base_vars`.
+    num_microbatches: An optional numeric value or scalar `tf.Tensor` for
+      indicating whether and how the losses are grouped into microbatches. If
+      not None, num_microbatches must divide the batch size.
 
   Returns:
     A `tuple` `(base_vars, outputs, sqr_norm_fn)`. `base_vars` is the
@@ -132,21 +177,29 @@ def dense_layer_computation(
   tape.watch(base_vars)
   layer_instance.activation = orig_activation
   outputs = orig_activation(base_vars) if orig_activation else base_vars
+
   def sqr_norm_fn(base_vars_grads):
-    sqr_inputs = tf.square(*inputs)
-    inputs_reduction_axes = tf.range(1, tf.rank(sqr_inputs))
-    input_sqr_norms = tf.reduce_sum(sqr_inputs, axis=inputs_reduction_axes)
+
+    def _compute_gramian(x):
+      if num_microbatches is not None:
+        x_microbatched = add_microbatch_axis(x, num_microbatches)
+        return tf.matmul(x_microbatched, x_microbatched, transpose_b=True)
+      else:
+        # Special handling for better efficiency
+        return tf.reduce_sum(tf.square(x), axis=tf.range(1, tf.rank(x)))
+
+    inputs_gram = _compute_gramian(*inputs)
+    base_vars_grads_gram = _compute_gramian(base_vars_grads)
     if layer_instance.use_bias:
       # Adding a bias term is equivalent to a layer with no bias term and which
       # adds an additional variable to the layer input that only takes a
       # constant value of 1.0. This is thus equivalent to adding 1.0 to the sum
       # of the squared values of the inputs.
-      input_sqr_norms += tf.cast(1.0, dtype=input_sqr_norms.dtype)
-    reduction_axes = tf.range(1, tf.rank(base_vars_grads))
-    base_vars_sqr_norms = tf.reduce_sum(
-        tf.square(base_vars_grads), axis=reduction_axes
+      inputs_gram += 1.0
+    return tf.reduce_sum(
+        inputs_gram * base_vars_grads_gram,
+        axis=tf.range(1, tf.rank(inputs_gram)),
     )
-    return input_sqr_norms * base_vars_sqr_norms
 
   return base_vars, outputs, sqr_norm_fn
 
@@ -155,6 +208,7 @@ def embedding_layer_computation(
     layer_instance: tf.keras.layers.Embedding,
     inputs: Tuple[InputTensor],
     tape: tf.GradientTape,
+    num_microbatches: Optional[tf.Tensor] = None,
 ) -> RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Embedding`.
 
@@ -171,6 +225,9 @@ def embedding_layer_computation(
       output.
     tape: A `tf.GradientTape` instance that will be used to watch the output
       `base_vars`.
+    num_microbatches: An optional numeric value or scalar `tf.Tensor` for
+      indicating whether and how the losses are grouped into microbatches. If
+      not None, num_microbatches must divide the batch size.
 
   Returns:
     A `tuple` `(base_vars, outputs, sqr_norm_fn)`. `base_vars` is the
@@ -218,6 +275,13 @@ def embedding_layer_computation(
     else:
       raise NotImplementedError(
           "Cannot parse input_ids of type %s" % input_ids.__class__.__name__
+      )
+    row_indices = tf.cast(row_indices, tf.int32)
+    if num_microbatches is not None:
+      microbatch_size = tf.cast(nrows / num_microbatches, tf.int32)
+      nrows = num_microbatches
+      row_indices = tf.cast(
+          tf.math.floordiv(row_indices, microbatch_size), tf.int32
       )
     # Sum-reduce the `IndexSlices` that is the result of a `tape.gradient()`
     # call. The sum is reduced by the repeated embedding indices and batch
