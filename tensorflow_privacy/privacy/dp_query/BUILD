@@ -323,3 +323,30 @@ py_library(
     srcs_version = "PY3",
     deps = [":dp_query"],
 )
+
+py_library(
+    name = "quantile_adaptive_clip_tree_query",
+    srcs = ["quantile_adaptive_clip_tree_query.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":dp_query",
+        ":quantile_estimator_query",
+        ":tree_aggregation_query",
+        "//third_party/py/tensorflow:tensorflow_no_contrib",
+        "@com_google_differential_py//dp_accounting:accounting",
+    ],
+)
+
+py_test(
+    name = "quantile_adaptive_clip_tree_query_test",
+    timeout = "long",
+    srcs = ["quantile_adaptive_clip_tree_query_test.py"],
+    python_version = "PY3",
+    shard_count = 5,
+    srcs_version = "PY3",
+    deps = [
+        ":quantile_adaptive_clip_tree_query",
+        ":test_utils",
+        "//third_party/py/tensorflow:tensorflow_no_contrib",
+    ],
+)

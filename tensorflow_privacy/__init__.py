@@ -45,6 +45,7 @@ else:
   from tensorflow_privacy.privacy.dp_query.quantile_estimator_query import QuantileEstimatorQuery
   from tensorflow_privacy.privacy.dp_query.quantile_estimator_query import NoPrivacyQuantileEstimatorQuery
   from tensorflow_privacy.privacy.dp_query.quantile_adaptive_clip_sum_query import QuantileAdaptiveClipSumQuery
+  from tensorflow_privacy.privacy.dp_query.quantile_adaptive_clip_tree_query import QAdaClipTreeResSumQuery
   from tensorflow_privacy.privacy.dp_query import restart_query
   from tensorflow_privacy.privacy.dp_query import tree_aggregation
   from tensorflow_privacy.privacy.dp_query.restart_query import RestartQuery

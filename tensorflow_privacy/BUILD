@@ -26,6 +26,7 @@ py_library(
         "//tensorflow_privacy/privacy/dp_query:no_privacy_query",
         "//tensorflow_privacy/privacy/dp_query:normalized_query",
         "//tensorflow_privacy/privacy/dp_query:quantile_adaptive_clip_sum_query",
+        "//tensorflow_privacy/privacy/dp_query:quantile_adaptive_clip_tree_query",
         "//tensorflow_privacy/privacy/dp_query:quantile_estimator_query",
         "//tensorflow_privacy/privacy/dp_query:restart_query",
         "//tensorflow_privacy/privacy/dp_query:tree_aggregation",
