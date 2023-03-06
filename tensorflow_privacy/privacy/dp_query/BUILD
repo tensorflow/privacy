@@ -332,7 +332,6 @@ py_library(
         ":dp_query",
         ":quantile_estimator_query",
         ":tree_aggregation_query",
-        "//third_party/py/tensorflow:tensorflow_no_contrib",
         "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
@@ -347,6 +346,5 @@ py_test(
     deps = [
         ":quantile_adaptive_clip_tree_query",
         ":test_utils",
-        "//third_party/py/tensorflow:tensorflow_no_contrib",
     ],
 )
