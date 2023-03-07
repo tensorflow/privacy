@@ -120,7 +120,11 @@ def model_forward_pass(
               layer, args, kwargs
           )
           generator_outputs_list.append(layer_generator_outputs)
-          args = (node_layer_outputs,)
+          args = (
+              node_layer_outputs
+              if isinstance(node_layer_outputs, tuple)
+              else (node_layer_outputs,)
+          )
           kwargs = {}
 
       # Update the current dictionary of inputs for the next node.

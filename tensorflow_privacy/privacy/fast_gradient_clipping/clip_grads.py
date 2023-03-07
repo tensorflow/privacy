@@ -52,7 +52,7 @@ def get_registry_generator_fn(
           )
         registry_fn = layer_registry.lookup(layer_instance)
         (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
-            layer_instance, args, tape, num_microbatches
+            layer_instance, args, kwargs, tape, num_microbatches
         )
         return layer_outputs, (layer_vars, layer_sqr_norm_fn)
       else:

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import itertools
-from typing import Any, Callable, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Text, Tuple, Union
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -50,16 +50,17 @@ class DoubleDense(tf.keras.layers.Layer):
 
 def double_dense_layer_computation(
     layer_instance: tf.keras.layers.Layer,
-    inputs: Any,
+    input_args: Tuple[Any, ...],
+    input_kwargs: Dict[Text, Any],
     tape: tf.GradientTape,
     num_microbatches: Optional[int],
-):
+) -> layer_registry.RegistryFunctionOutput:
   """Layer registry function for the custom `DoubleDense` layer class."""
   vars1, outputs, sqr_norm_fn1 = layer_registry.dense_layer_computation(
-      layer_instance.dense1, inputs, tape, num_microbatches
+      layer_instance.dense1, input_args, input_kwargs, tape, num_microbatches
   )
   vars2, outputs, sqr_norm_fn2 = layer_registry.dense_layer_computation(
-      layer_instance.dense2, (outputs,), tape, num_microbatches
+      layer_instance.dense2, (outputs,), {}, tape, num_microbatches
   )
 
   def sqr_norm_fn(base_vars):
@@ -75,7 +76,7 @@ def compute_true_gradient_norms(
     x_batch: tf.Tensor,
     y_batch: tf.Tensor,
     num_microbatches: Optional[int],
-):
+) -> layer_registry.OutputTensor:
   """Computes the real gradient norms for an input `(model, x, y)`."""
   loss_config = input_model.loss.get_config()
   loss_config['reduction'] = tf.keras.losses.Reduction.NONE
@@ -113,7 +114,7 @@ def get_computed_and_true_norms(
     x_input: tf.Tensor,
     rng_seed: int = 777,
     registry: layer_registry.LayerRegistry = None,
-):
+) -> Tuple[tf.Tensor, tf.Tensor]:
   """Obtains the true and computed gradient norms for a model and batch input.
 
   Helpful testing wrapper function used to avoid code duplication.
