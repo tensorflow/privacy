@@ -213,11 +213,15 @@ def _compute_dp_sgd_example_privacy(
   else:
     count = int(math.ceil(num_epochs))
   event_ = dp_accounting.SelfComposedDpEvent(count=count, event=event_)
-  return (
-      dp_accounting.rdp.RdpAccountant()  # TODO(b/271341062)
-      .compose(event_)
-      .get_epsilon(example_delta)
+
+  rdp_orders = (
+      [1 + x / 10.0 for x in range(1, 100)]
+      + list(range(11, 64))
+      + [128, 256, 512, 1024]
   )
+  accountant = dp_accounting.rdp.RdpAccountant(rdp_orders)  # TODO(b/271341062)
+  accountant.compose(event_)
+  return accountant.get_epsilon(example_delta)
 
 
 def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
@@ -269,4 +273,5 @@ def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
       steps,
   )
 
-  return accountant.compose(event).get_epsilon_and_optimal_order(delta)
+  accountant.compose(event)
+  return accountant.get_epsilon_and_optimal_order(delta)
