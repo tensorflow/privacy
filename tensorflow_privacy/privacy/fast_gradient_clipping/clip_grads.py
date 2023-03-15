@@ -21,7 +21,7 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
-from typing import Dict, Iterable, Optional, Text, Union
+from typing import Any, Callable, Dict, Iterable, Optional, Text, Union
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
@@ -67,6 +67,7 @@ def compute_gradient_norms(
     x_batch: InputTensor,
     y_batch: tf.Tensor,
     layer_registry: lr.LayerRegistry,
+    per_example_loss_fn: Optional[Callable[[tf.Tensor, Any], tf.Tensor]] = None,
     num_microbatches: Optional[lr.BatchSize] = None,
 ):
   """Computes the per-example loss gradient norms for given data.
@@ -86,6 +87,9 @@ def compute_gradient_norms(
       compute gradient norms quickly. See
       `tensorflow_privacy.privacy.fast_gradient_clipping.layer_registry` for
       more details.
+    per_example_loss_fn: If not None, used as the function to compute the
+      vectorized per example loss. Otherwise, we derive it from `input_model`'s
+      loss function.
     num_microbatches: An optional number or scalar `tf.Tensor` for the number of
       microbatches. If not None, indicates that the loss is grouped into
       num_microbatches (in this case, the batch dimension needs to be a multiple
@@ -109,9 +113,10 @@ def compute_gradient_norms(
         )
     )
     # Ignore the original loss function's reduction to get per-example loss.
-    loss_config = input_model.loss.get_config()
-    loss_config['reduction'] = tf.keras.losses.Reduction.NONE
-    per_example_loss_fn = input_model.loss.from_config(loss_config)
+    if per_example_loss_fn is None:
+      loss_config = input_model.loss.get_config()
+      loss_config['reduction'] = tf.keras.losses.Reduction.NONE
+      per_example_loss_fn = input_model.loss.from_config(loss_config)
     losses = per_example_loss_fn(y_batch, model_outputs)
     if num_microbatches is not None:
       losses = tf.reduce_mean(
@@ -204,7 +209,11 @@ def compute_pred_and_clipped_gradients(
     gradient of the loss function.
   """
   gradient_norms = compute_gradient_norms(
-      input_model, x_batch, y_batch, layer_registry, num_microbatches
+      input_model,
+      x_batch,
+      y_batch,
+      layer_registry,
+      num_microbatches=num_microbatches,
   )
   loss_weights = compute_clip_weights(l2_norm_clip, gradient_norms)
   with tf.GradientTape() as tape:
