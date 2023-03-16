@@ -9,6 +9,14 @@ py_library(
     deps = [":layer_registry"],
 )
 
+py_test(
+    name = "gradient_clipping_utils_test",
+    srcs = ["gradient_clipping_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":gradient_clipping_utils"],
+)
+
 py_library(
     name = "layer_registry",
     srcs = ["layer_registry.py"],
