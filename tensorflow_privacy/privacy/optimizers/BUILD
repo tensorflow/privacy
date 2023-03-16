@@ -110,6 +110,15 @@ py_test(
 )
 
 py_test(
+    name = "dp_optimizer_keras_sparse_distributed_test",
+    timeout = "long",
+    srcs = ["dp_optimizer_keras_sparse_distributed_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":dp_optimizer_keras_sparse"],
+)
+
+py_test(
     name = "dp_optimizer_vectorized_test",
     timeout = "long",
     srcs = ["dp_optimizer_vectorized_test.py"],

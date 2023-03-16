@@ -185,6 +185,7 @@ def make_sparse_keras_optimizer_class(cls):
       self._num_microbatches = num_microbatches
       self._was_dp_gradients_called = False
       self._noise_stddev = None
+      self._acc_iterations = None
       if self._num_microbatches is not None:
         # The loss/gradients is the mean over the microbatches so we
         # divide the noise by num_microbatches too to obtain the correct
@@ -202,15 +203,29 @@ def make_sparse_keras_optimizer_class(cls):
     def _create_slots(self, var_list):
       super()._create_slots(var_list)  # pytype: disable=attribute-error
       if self.gradient_accumulation_steps > 1:
+        # Slots for accumulating gradients.
         for var in var_list:
           self.add_slot(var, 'grad_acc')
+        if self._acc_iterations is None:
+          # Variable for the iterations, used for bookkeeping when to accumulate
+          # and when to update.
+          self._acc_iterations = self.add_weight(
+              'acc_iterations',
+              shape=[],
+              trainable=False,
+              dtype=tf.int64,
+              aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA,
+          )
 
     def _prepare_local(self, var_device, var_dtype, apply_state):
       super()._prepare_local(var_device, var_dtype, apply_state)  # pytype: disable=attribute-error
       if self.gradient_accumulation_steps > 1:
         apply_update = tf.math.equal(
-            tf.math.floormod(self.iterations + 1,
-                             self.gradient_accumulation_steps), 0)
+            tf.math.floormod(
+                self._acc_iterations + 1, self.gradient_accumulation_steps
+            ),
+            0,
+        )
         grad_scaler = tf.cast(1. / self.gradient_accumulation_steps, var_dtype)
         apply_state[(var_device, var_dtype)].update({
             'apply_update': apply_update,
@@ -218,7 +233,7 @@ def make_sparse_keras_optimizer_class(cls):
         })
 
     def _resource_apply(self, accum_op, grad, var, apply_state=None):
-      """Help method for _resource_apply_dense and _resource_apply_sparse."""
+      """Helper method for _resource_apply_dense and _resource_apply_sparse."""
       if self.gradient_accumulation_steps > 1:
         var_device, var_dtype = var.device, var.dtype.base_dtype
         coefficients = ((apply_state or {}).get((var_device, var_dtype)) or
@@ -235,9 +250,8 @@ def make_sparse_keras_optimizer_class(cls):
                 tf.zeros_like(grad_acc),
                 use_locking=self._use_locking,
                 read_value=False)
-        accum_op(grad_acc, grad, use_locking=self._use_locking)
-        return tf.cond(
-            coefficients['apply_update'], _update_grad, lambda: tf.no_op())  # pylint: disable=unnecessary-lambda
+        with tf.control_dependencies([accum_op(grad_acc, grad)]):
+          return tf.cond(coefficients['apply_update'], _update_grad, tf.no_op)
       else:
         grad = tf.convert_to_tensor(grad)
         grad = grad + self._generate_noise(grad)
@@ -246,9 +260,11 @@ def make_sparse_keras_optimizer_class(cls):
 
     def _resource_apply_dense(self, grad, var, apply_state=None):
       """Handles dense gradients."""
-      def _accum_op(grad_acc, grad, use_locking):
+      def _accum_op(grad_acc, grad):
         return grad_acc.assign_add(
-            grad, use_locking=use_locking, read_value=False)
+            grad, use_locking=self._use_locking, read_value=False
+        )
+
       return self._resource_apply(_accum_op, grad, var, apply_state)
 
     # This method is implemented the same as that in optimizer_v2.py. We
@@ -271,12 +287,48 @@ def make_sparse_keras_optimizer_class(cls):
 
     def _resource_apply_sparse(self, grad, var, indices, apply_state=None):
       """Handles deduped sparse gradients."""
-      def _accum_op(grad_acc, sparse_delta, use_locking):
+      def _accum_op(grad_acc, sparse_delta):
         return grad_acc.scatter_add(
-            sparse_delta=sparse_delta, use_locking=use_locking)
+            sparse_delta=sparse_delta, use_locking=self._use_locking
+        )
+
       sparse_delta = tf.IndexedSlices(
           values=grad, indices=indices, dense_shape=var.shape)
       return self._resource_apply(_accum_op, sparse_delta, var, apply_state)
+
+    def _distributed_apply(
+        self, distribution, grads_and_vars, apply_state, name
+    ):
+      apply_op = super()._distributed_apply(
+          distribution, grads_and_vars, apply_state, name
+      )
+      if self.gradient_accumulation_steps > 1:
+        # The original _distributed_apply increments self.iterations after each
+        # call. But we want to increment it only after each logical batch is
+        # processed, so optimizers that explicitly use self.iterations in their
+        # updates (such as Adam) can use the correct value.
+        def increment_acc_iterations():
+          # Always use locking when updating the steps, so we don't under-count
+          # the steps (which could invalidate privacy accounting).
+          return self._acc_iterations.assign_add(
+              1, use_locking=True, read_value=False
+          )
+
+        def assign_iterations():
+          return self.iterations.assign(
+              tf.math.floordiv(
+                  self._acc_iterations, self.gradient_accumulation_steps
+              ),
+              use_locking=True,
+              read_value=False,
+          )
+
+        with tf.control_dependencies([apply_op]):
+          with tf.control_dependencies([increment_acc_iterations()]):
+            return assign_iterations()
+      else:
+        # No accumulation.
+        return apply_op
 
     def _compute_gradients(self, loss, var_list, grad_loss=None, tape=None):
       """DP-SGD version of base class method."""

@@ -338,21 +338,25 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     # After first call to optimizer values didn't change
     self.assertAllCloseAccordingToType([[1.0, 2.0]], var0)
     self.assertAllCloseAccordingToType([3.0], var1)
+    self.assertEqual(opt.iterations, 0)
 
     opt.minimize(loss2, [var0, var1])
     # After second call to optimizer updates were applied
     self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
     self.assertAllCloseAccordingToType([2.0], var1)
+    self.assertEqual(opt.iterations, 1)
 
     opt.minimize(loss2, [var0, var1])
     # After third call to optimizer values didn't change
     self.assertAllCloseAccordingToType([[-1.0, 1.0]], var0)
     self.assertAllCloseAccordingToType([2.0], var1)
+    self.assertEqual(opt.iterations, 1)
 
     opt.minimize(loss2, [var0, var1])
     # After fourth call to optimizer updates were applied again
     self.assertAllCloseAccordingToType([[-4.0, -0.5]], var0)
     self.assertAllCloseAccordingToType([1.0], var1)
+    self.assertEqual(opt.iterations, 2)
 
   @parameterized.named_parameters(
       ('DPSparseKerasSGDOptimizer 1',
@@ -388,6 +392,7 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     self.assertNotAllClose([[1.0, 2.0]], var0)
     self.assertNotAllClose([3.0], var1)
+    self.assertEqual(opt.iterations, 1)
 
   def testKerasModelBaselineSaving(self):
     """Tests that DP optimizers work with tf.keras.Model."""
@@ -455,10 +460,15 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
 
     model.fit(train_data, train_labels, batch_size=8, epochs=1, shuffle=False)
 
-  @parameterized.named_parameters(('1', 1), ('None', None))
-  def testKerasModelBaselineNoNoise(self, num_microbatches):
+  @parameterized.named_parameters(
+      ('no_microbatch_no_accumulation', False, False),
+      ('no_microbatch_accumulation', False, True),
+      ('microbatch_no_accumulation', True, False),
+      ('microbatch_accumulation', True, True),
+  )
+  def testKerasModelBaselineNoNoise(self, microbatch, accumulate):
     """Tests that DP optimizers work with tf.keras.Model."""
-
+    acc_steps = 2 if accumulate else 1
     model = tf.keras.models.Sequential(layers=[
         tf.keras.layers.Dense(
             1,
@@ -471,22 +481,25 @@ class DPOptimizerTest(tf.test.TestCase, parameterized.TestCase):
     optimizer = dp_optimizer.DPSparseKerasSGDOptimizer(
         l2_norm_clip=100.0,
         noise_multiplier=0.0,
-        num_microbatches=num_microbatches,
-        learning_rate=0.05)
+        num_microbatches=None if microbatch else 1,
+        learning_rate=0.05,
+        gradient_accumulation_steps=acc_steps,
+    )
     loss = tf.keras.losses.MeanSquaredError(reduction='none')
     model.compile(optimizer, loss)
 
     true_weights = np.array([[-5], [4], [3], [2]]).astype(np.float32)
     true_bias = np.array([6.0]).astype(np.float32)
-    train_data = np.random.normal(scale=3.0, size=(1000, 4)).astype(np.float32)
-    train_labels = np.matmul(train_data,
-                             true_weights) + true_bias + np.random.normal(
-                                 scale=0.0, size=(1000, 1)).astype(np.float32)
+    train_data = np.random.normal(scale=3.0, size=(2000, 4)).astype(np.float32)
+    train_labels = np.matmul(train_data, true_weights) + true_bias
 
-    model.fit(train_data, train_labels, batch_size=8, epochs=1, shuffle=False)
+    model.fit(train_data, train_labels, batch_size=10, epochs=1, shuffle=False)
 
     self.assertAllClose(model.get_weights()[0], true_weights, atol=0.05)
     self.assertAllClose(model.get_weights()[1], true_bias, atol=0.05)
+    # Check that the optimizer's iterations equal the number of logical batches.
+    total_batches = 200
+    self.assertEqual(optimizer.iterations.numpy(), total_batches / acc_steps)
 
 
 if __name__ == '__main__':
