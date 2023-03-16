@@ -282,5 +282,93 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
           ],
       )
 
+  # Simple test to check that regularizer gradients are contributing to the
+  # final gradient.
+  @parameterized.named_parameters(
+      ('no_registry', None),
+      ('default_registry', layer_registry.make_default_layer_registry()),
+  )
+  def testRegularizationGradient(self, registry):
+    input_dim = 10
+    batch_size = 2
+    regularizer_multiplier = 0.025
+    inputs = tf.keras.layers.Input((input_dim,))
+    dense_lyr = tf.keras.layers.Dense(
+        1,
+        kernel_initializer='ones',
+        use_bias=False,
+        kernel_regularizer=tf.keras.regularizers.L2(regularizer_multiplier),
+    )
+    # Zero-out outputs to avoid contributions from the main loss function.
+    outputs = tf.multiply(dense_lyr(inputs), 0.0)
+    model = dp_keras_model.DPModel(
+        inputs=inputs,
+        outputs=outputs,
+        l2_norm_clip=1e9,
+        noise_multiplier=0.0,
+        layer_registry=registry,
+    )
+    model.compile(
+        loss=tf.keras.losses.MeanSquaredError(),
+        optimizer=tf.keras.optimizers.SGD(1.0),
+        run_eagerly=True,
+    )
+    x_batch = tf.reshape(
+        tf.range(input_dim * batch_size, dtype=tf.float32),
+        [batch_size, input_dim],
+    )
+    y_batch = tf.zeros([batch_size, 1])
+    model.fit(x=x_batch, y=y_batch)
+
+    self.assertAllClose(
+        model.trainable_variables,
+        tf.multiply(
+            tf.ones_like(model.trainable_variables),
+            1.0 - 2.0 * regularizer_multiplier,
+        ),
+    )
+
+  # Simple test to check that custom input regularization does NOT contribute
+  # to the gradient.
+  @parameterized.named_parameters(
+      ('no_registry', None),
+      ('default_registry', layer_registry.make_default_layer_registry()),
+  )
+  def testCustomRegularizationZeroGradient(self, registry):
+    input_dim = 10
+    batch_size = 2
+    inputs = tf.keras.layers.Input((input_dim,))
+    dense_lyr = tf.keras.layers.Dense(
+        1,
+        kernel_initializer='ones',
+        use_bias=False,
+    )
+    # Zero-out outputs to avoid contributions from the main loss function.
+    outputs = tf.multiply(dense_lyr(inputs), 0.0)
+    model = dp_keras_model.DPModel(
+        inputs=inputs,
+        outputs=outputs,
+        l2_norm_clip=1e9,
+        noise_multiplier=0.0,
+        layer_registry=registry,
+    )
+    model.add_loss(tf.reduce_sum(inputs))
+    model.compile(
+        loss=tf.keras.losses.MeanSquaredError(),
+        optimizer=tf.keras.optimizers.SGD(1.0),
+        run_eagerly=True,
+    )
+    x_batch = tf.reshape(
+        tf.range(input_dim * batch_size, dtype=tf.float32),
+        [batch_size, input_dim],
+    )
+    y_batch = tf.zeros([batch_size, 1])
+    model.fit(x=x_batch, y=y_batch)
+
+    self.assertAllClose(
+        model.trainable_variables, tf.ones_like(model.trainable_variables)
+    )
+
+
 if __name__ == '__main__':
   tf.test.main()
