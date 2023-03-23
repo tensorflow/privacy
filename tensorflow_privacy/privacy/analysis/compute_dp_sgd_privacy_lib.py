@@ -15,6 +15,7 @@
 """Library for computing privacy values for DP-SGD."""
 
 import math
+import textwrap
 from typing import Optional
 
 from absl import app
@@ -224,6 +225,166 @@ def _compute_dp_sgd_example_privacy(
   return accountant.get_epsilon(example_delta)
 
 
+def compute_dp_sgd_privacy_statement(
+    number_of_examples: int,
+    batch_size: int,
+    num_epochs: float,
+    noise_multiplier: float,
+    delta: float,
+    used_microbatching: bool = True,
+    max_examples_per_user: Optional[int] = None,
+) -> str:
+  """Produces a privacy report summarizing the DP guarantee.
+
+  Args:
+    number_of_examples: Total number of examples in the dataset. For DP-SGD, an
+      "example" corresponds to one row in a minibatch. E.g., for sequence models
+      this would be a sequence of maximum length.
+    batch_size: The number of examples in a batch. This should be the number of
+      examples in a batch, *regardless of whether/how they are grouped into
+      microbatches*.
+    num_epochs: The number of epochs of training. May be fractional.
+    noise_multiplier: The ratio of the Gaussian noise to the clip norm at each
+      round. It is assumed that the noise_multiplier is constant although the
+      clip norm may be variable if, for example, adaptive clipping is used.
+    delta: The target delta.
+    used_microbatching: Whether microbatching was used (with microbatch size
+      greater than one). Microbatching inflates sensitivity by a factor of two
+      in add-or-remove-one adjacency DP. (See "How to DP-fy ML: A Practical
+      Guide to Machine Learning with Differential Privacy",
+      https://arxiv.org/abs/2303.00654, Sec 5.6.)
+    max_examples_per_user: If the data set is constructed to cap the maximum
+      number of examples each user contributes, provide this argument to also
+      print a user-level DP guarantee.
+
+  Returns:
+    A str precisely articulating the privacy guarantee.
+  """
+
+  paragraph = f"""\
+DP-SGD performed over {number_of_examples} examples with {batch_size} \
+examples per iteration, noise multiplier {noise_multiplier} for {num_epochs} \
+epochs {'with' if used_microbatching else 'without'} microbatching"""
+
+  if max_examples_per_user is None:
+    paragraph += ', and no bound on number of examples per user.'
+  else:
+    paragraph += f', and at most {max_examples_per_user} examples per user.'
+
+  paragraphs = [textwrap.fill(paragraph, width=80)]
+
+  paragraphs.append(
+      textwrap.fill(
+          """\
+This privacy guarantee protects the release of all model checkpoints in \
+addition to the final model.""",
+          width=80,
+      )
+  )
+
+  paragraph = textwrap.fill(
+      f"""\
+Example-level DP with add-or-remove-one adjacency at delta = {delta} computed \
+with RDP accounting:""",
+      width=80,
+  )
+
+  example_eps_no_subsampling = _compute_dp_sgd_example_privacy(
+      num_epochs, noise_multiplier, delta, used_microbatching
+  )
+  example_eps_subsampling = _compute_dp_sgd_example_privacy(
+      num_epochs,
+      noise_multiplier,
+      delta,
+      used_microbatching,
+      poisson_subsampling_probability=batch_size / number_of_examples,
+  )
+
+  paragraph += f"""
+    Epsilon with each example occurring once per epoch:  \
+{example_eps_no_subsampling:12.3f}
+    Epsilon assuming Poisson sampling (*):               \
+{example_eps_subsampling:12.3f}"""
+
+  paragraphs.append(paragraph)
+
+  inf_user_eps = False
+  if max_examples_per_user is not None:
+    user_eps_no_subsampling = _compute_dp_sgd_user_privacy(
+        num_epochs,
+        noise_multiplier,
+        delta,
+        max_examples_per_user,
+        used_microbatching,
+    )
+    user_eps_subsampling = _compute_dp_sgd_user_privacy(
+        num_epochs,
+        noise_multiplier,
+        delta,
+        max_examples_per_user,
+        used_microbatching,
+        poisson_subsampling_probability=batch_size / number_of_examples,
+    )
+    if math.isinf(user_eps_no_subsampling):
+      user_eps_no_subsampling_str = '    inf (**)'
+      inf_user_eps = True
+    else:
+      user_eps_no_subsampling_str = f'{user_eps_no_subsampling:12.3f}'
+    if math.isinf(user_eps_subsampling):
+      user_eps_subsampling_str = '    inf (**)'
+      inf_user_eps = True
+    else:
+      user_eps_subsampling_str = f'{user_eps_subsampling:12.3f}'
+
+    paragraph = textwrap.fill(
+        f"""\
+User-level DP with add-or-remove-one adjacency at delta = {delta} computed \
+using RDP accounting and group privacy:""",
+        width=80,
+    )
+    paragraph += f"""
+    Epsilon with each example occurring once per epoch:  \
+{user_eps_no_subsampling_str}
+    Epsilon assuming Poisson sampling (*):               \
+{user_eps_subsampling_str}"""
+
+    paragraphs.append(paragraph)
+  else:
+    paragraphs.append(
+        textwrap.fill(
+            """\
+No user-level privacy guarantee is possible witout a bound on the number of \
+examples per user.""",
+            width=80,
+        )
+    )
+
+  paragraphs.append(
+      textwrap.fill(
+          """\
+(*) Poisson sampling is not usually done in training pipelines, but assuming \
+that the data was randomly shuffled, it is believed the actual epsilon should \
+be closer to this value than the conservative assumption of an arbitrary data \
+order.""",
+          width=80,
+      )
+  )
+
+  if inf_user_eps:
+    paragraphs.append(
+        textwrap.fill(
+            """\
+(**) A finite example-level epsilon implies a finite user-level epsilon at any \
+`max_examples_per_user`, but because conversion from example-level to user-\
+level DP is not exact, it is possible for the upper bound on the user-level \
+epsilon to still be infinite.""",
+            width=80,
+        )
+    )
+
+  return '\n\n'.join(paragraphs) + '\n'
+
+
 def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
   """Compute epsilon based on the given hyperparameters.
 
@@ -231,12 +392,11 @@ def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
   with microbatching, and assumes Poisson subsampling, which is rarely used in
   practice. (See "How to DP-fy ML: A Practical Guide to Machine Learning with
   Differential Privacy", https://arxiv.org/abs/2303.00654, Sec 5.6.) Most users
-  should call `compute_dp_sgd_privacy_statement` (which will be added shortly),
-  which provides appropriate context for the guarantee (see the reporting
-  recommendations in "How to DP-fy ML", Sec 5.3). If you need a numeric epsilon
-  value under specific assumptions, it is recommended to use the `dp_accounting`
-  libraries directly to compute epsilon, with the precise and correct
-  assumptions of your application.
+  should call `compute_dp_sgd_privacy_statement`, which provides appropriate
+  context for the guarantee (see the reporting recommendations in "How to DP-fy
+  ML", Sec 5.3). If you need a numeric epsilon value under specific assumptions,
+  it is recommended to use the `dp_accounting` libraries directly to compute
+  epsilon, with the precise and correct assumptions of your application.
 
   Args:
     n: Number of examples in the training data.
@@ -248,20 +408,22 @@ def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
   Returns:
     A 2-tuple containing the value of epsilon and the optimal RDP order.
   """
-  # TODO(b/265168958): Update this text for `compute_dp_sgd_privacy_statement`.
-  logging.warn(
-      '`compute_dp_sgd_privacy` is deprecated. It does not account '
-      'for doubling of sensitivity with microbatching, and assumes Poisson '
-      'subsampling, which is rarely used in practice. Please use the '
-      '`dp_accounting` libraries directly to compute epsilon, using the '
-      'precise and correct assumptions of your application.'
-  )
+  logging.warn("""\
+`compute_dp_sgd_privacy` is deprecated. It does not account for doubling of \
+sensitivity with microbatching, and assumes Poisson subsampling, which is \
+rarely used in practice. Please use `compute_dp_sgd_privacy_statement`, which \
+provides appropriate context for the guarantee. To compute epsilon under \
+different assumptions than those in `compute_dp_sgd_privacy_statement`, call \
+the `dp_accounting` libraries directly.""")
 
   q = batch_size / n  # q - the sampling ratio.
   if q > 1:
     raise app.UsageError('n must be larger than the batch size.')
-  orders = ([1.25, 1.5, 1.75, 2., 2.25, 2.5, 3., 3.5, 4., 4.5] +
-            list(range(5, 64)) + [128, 256, 512])
+  orders = (
+      [1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 3.0, 3.5, 4.0, 4.5]
+      + list(range(5, 64))
+      + [128, 256, 512]
+  )
   steps = int(math.ceil(epochs * n / batch_size))
   accountant = dp_accounting.rdp.RdpAccountant(orders)
 

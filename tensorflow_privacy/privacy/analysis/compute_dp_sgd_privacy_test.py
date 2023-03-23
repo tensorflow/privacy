@@ -25,6 +25,15 @@ _example_privacy = compute_dp_sgd_privacy_lib._compute_dp_sgd_example_privacy
 _user_privacy = compute_dp_sgd_privacy_lib._compute_dp_sgd_user_privacy
 
 
+DP_SGD_STATEMENT_KWARGS = dict(
+    number_of_examples=10000,
+    batch_size=64,
+    num_epochs=5.0,
+    noise_multiplier=2.0,
+    delta=1e-6,
+)
+
+
 class ComputeDpSgdPrivacyTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
@@ -144,6 +153,98 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
         poisson_subsampling_probability=q,
     )
     self.assertAlmostEqual(user_eps, example_eps * k)
+
+  def test_dp_sgd_privacy_statement_no_user_dp(self):
+    statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
+        **DP_SGD_STATEMENT_KWARGS,
+    )
+    expected_statement = """\
+DP-SGD performed over 10000 examples with 64 examples per iteration, noise
+multiplier 2.0 for 5.0 epochs with microbatching, and no bound on number of
+examples per user.
+
+This privacy guarantee protects the release of all model checkpoints in addition
+to the final model.
+
+Example-level DP with add-or-remove-one adjacency at delta = 1e-06 computed with
+RDP accounting:
+    Epsilon with each example occurring once per epoch:        13.376
+    Epsilon assuming Poisson sampling (*):                      1.616
+
+No user-level privacy guarantee is possible witout a bound on the number of
+examples per user.
+
+(*) Poisson sampling is not usually done in training pipelines, but assuming
+that the data was randomly shuffled, it is believed the actual epsilon should be
+closer to this value than the conservative assumption of an arbitrary data
+order.
+"""
+    self.assertEqual(statement, expected_statement)
+
+  def test_dp_sgd_privacy_statement_user_dp(self):
+    statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
+        **DP_SGD_STATEMENT_KWARGS,
+        max_examples_per_user=3,
+    )
+    expected_statement = """\
+DP-SGD performed over 10000 examples with 64 examples per iteration, noise
+multiplier 2.0 for 5.0 epochs with microbatching, and at most 3 examples per
+user.
+
+This privacy guarantee protects the release of all model checkpoints in addition
+to the final model.
+
+Example-level DP with add-or-remove-one adjacency at delta = 1e-06 computed with
+RDP accounting:
+    Epsilon with each example occurring once per epoch:        13.376
+    Epsilon assuming Poisson sampling (*):                      1.616
+
+User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
+RDP accounting and group privacy:
+    Epsilon with each example occurring once per epoch:       113.899
+    Epsilon assuming Poisson sampling (*):                      8.129
+
+(*) Poisson sampling is not usually done in training pipelines, but assuming
+that the data was randomly shuffled, it is believed the actual epsilon should be
+closer to this value than the conservative assumption of an arbitrary data
+order.
+"""
+    self.assertEqual(statement, expected_statement)
+
+  def test_dp_sgd_privacy_statement_user_dp_infinite(self):
+    statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
+        **DP_SGD_STATEMENT_KWARGS,
+        max_examples_per_user=9,
+    )
+    expected_statement = """\
+DP-SGD performed over 10000 examples with 64 examples per iteration, noise
+multiplier 2.0 for 5.0 epochs with microbatching, and at most 9 examples per
+user.
+
+This privacy guarantee protects the release of all model checkpoints in addition
+to the final model.
+
+Example-level DP with add-or-remove-one adjacency at delta = 1e-06 computed with
+RDP accounting:
+    Epsilon with each example occurring once per epoch:        13.376
+    Epsilon assuming Poisson sampling (*):                      1.616
+
+User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
+RDP accounting and group privacy:
+    Epsilon with each example occurring once per epoch:      inf (**)
+    Epsilon assuming Poisson sampling (*):                   inf (**)
+
+(*) Poisson sampling is not usually done in training pipelines, but assuming
+that the data was randomly shuffled, it is believed the actual epsilon should be
+closer to this value than the conservative assumption of an arbitrary data
+order.
+
+(**) A finite example-level epsilon implies a finite user-level epsilon at any
+`max_examples_per_user`, but because conversion from example-level to user-level
+DP is not exact, it is possible for the upper bound on the user-level epsilon to
+still be infinite.
+"""
+    self.assertEqual(statement, expected_statement)
 
 
 if __name__ == '__main__':
