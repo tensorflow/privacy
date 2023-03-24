@@ -35,8 +35,10 @@ py_library(
 
 py_test(
     name = "clip_grads_test",
+    size = "large",
     srcs = ["clip_grads_test.py"],
     python_version = "PY3",
+    shard_count = 8,
     srcs_version = "PY3",
     deps = [
         ":clip_grads",

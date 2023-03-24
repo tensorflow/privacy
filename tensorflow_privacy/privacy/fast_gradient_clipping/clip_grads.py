@@ -54,7 +54,11 @@ def get_registry_generator_fn(
         (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
             layer_instance, args, kwargs, tape, num_microbatches
         )
-        return layer_outputs, (layer_vars, layer_sqr_norm_fn)
+        return layer_outputs, (
+            layer_vars,
+            layer_sqr_norm_fn,
+            layer_instance.trainable_weights,
+        )
       else:
         # Non-trainable layer.
         return layer_instance(*args, **kwargs), None
@@ -69,6 +73,7 @@ def compute_gradient_norms(
     layer_registry: lr.LayerRegistry,
     per_example_loss_fn: Optional[Callable[[tf.Tensor, Any], tf.Tensor]] = None,
     num_microbatches: Optional[lr.BatchSize] = None,
+    trainable_vars: Optional[List[tf.Variable]] = None,
 ):
   """Computes the per-example loss gradient norms for given data.
 
@@ -96,6 +101,10 @@ def compute_gradient_norms(
       of num_microbatches). When there is microbatches, we always assume the
       loss is the mean over a microbatch. And the gradient norm is computed for
       each microbatch.
+    trainable_vars: The list of variables included in computing the gradient
+      norm. When a layer has multiple variables, we include all the variables if
+      any of the variables is in the list. If `trainable_vars` is None, all the
+      variables are included.
 
   Returns:
     A 1D `tf.Tensor` whose i-th entry is the norm of the gradient of the i-th
@@ -126,8 +135,19 @@ def compute_gradient_norms(
   # Unwrap the generator outputs so that the next loop avoids duplicating
   # backprop ops.
   filtered_outputs = [t for t in generator_outputs_list if t is not None]
-  vars_list = [a for (a, b) in filtered_outputs]
-  sqr_norm_fns_list = [b for (a, b) in filtered_outputs]
+  vars_list = []
+  sqr_norm_fns_list = []
+  if trainable_vars is not None:
+    # Create a set using `ref()` for fast set membership check. tf.Variable
+    # itself is not hashable.
+    trainable_vars = set([v.ref() for v in trainable_vars])
+  for v, f, weights_list in filtered_outputs:
+    if trainable_vars is None or any(
+        w.ref() in trainable_vars for w in weights_list
+    ):
+      # Include only those variables in trainable_vars.
+      vars_list.append(v)
+      sqr_norm_fns_list.append(f)
   # Second loop evaluates the squared L2 norm functions and appends the results.
   grads_list = tape.gradient(
       summed_loss,
@@ -218,6 +238,7 @@ def compute_clipped_gradients_and_outputs(
       y_batch,
       layer_registry,
       num_microbatches=num_microbatches,
+      trainable_vars=input_model.trainable_variables,
   )
   loss_weights = compute_clip_weights(l2_norm_clip, gradient_norms)
   with tf.GradientTape() as tape:
