@@ -27,6 +27,7 @@ else:
 
   # Analysis
   from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy
+  from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy_statement
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_tree_restart
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_rdp_single_tree
   from tensorflow_privacy.privacy.analysis.tree_aggregation_accountant import compute_zcdp_single_tree
