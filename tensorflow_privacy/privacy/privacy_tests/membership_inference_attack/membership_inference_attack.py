@@ -120,6 +120,9 @@ def _run_trained_attack(
   assert not np.any(np.isnan(scores))
 
   # Generate ROC curves with scores.
+  # Different from the threshold attacker which uses the loss, we do not negate
+  # the scores here, because the attacker returns the probability of the
+  # positive class.
   fpr, tpr, thresholds = metrics.roc_curve(labels, scores)
   # 'test_train_ratio' is the ratio of test data size to train data size. It is
   # used to compute the Positive Predictive Value.
@@ -131,7 +134,7 @@ def _run_trained_attack(
       thresholds=thresholds,
       test_train_ratio=test_train_ratio)
 
-  in_train_indices = (labels == 0)
+  in_train_indices = labels == 1
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
       data_size=prepared_attacker_data.data_size,
@@ -154,8 +157,12 @@ def _run_threshold_attack(attack_input: AttackInputData):
     loss_train = np.sum(loss_train, axis=1)
     loss_test = np.sum(loss_test, axis=1)
   fpr, tpr, thresholds = metrics.roc_curve(
-      np.concatenate((np.zeros(ntrain), np.ones(ntest))),
-      np.concatenate((loss_train, loss_test)))
+      np.concatenate((np.ones(ntrain), np.zeros(ntest))),
+      # roc_curve uses classifier in the form of
+      # "score >= threshold ==> predict positive", while training data has lower
+      # loss, so we negate the loss.
+      -np.concatenate((loss_train, loss_test)),
+  )
   # 'test_train_ratio' is the ratio of test data size to train data size. It is
   # used to compute the Positive Predictive Value.
   test_train_ratio = ntest / ntrain
@@ -163,8 +170,9 @@ def _run_threshold_attack(attack_input: AttackInputData):
   roc_curve = RocCurve(
       tpr=tpr,
       fpr=fpr,
-      thresholds=thresholds,
-      test_train_ratio=test_train_ratio)
+      thresholds=-thresholds,  # negate because we negated the loss
+      test_train_ratio=test_train_ratio,
+  )
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),
@@ -182,9 +190,13 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
                                'multilabel data.'))
   ntrain, ntest = attack_input.get_train_size(), attack_input.get_test_size()
   fpr, tpr, thresholds = metrics.roc_curve(
-      np.concatenate((np.zeros(ntrain), np.ones(ntest))),
-      np.concatenate(
-          (attack_input.get_entropy_train(), attack_input.get_entropy_test())))
+      np.concatenate((np.ones(ntrain), np.zeros(ntest))),
+      # Similar as in loss, we negate the entropy becase training examples are
+      # expected to have lower entropy.
+      -np.concatenate(
+          (attack_input.get_entropy_train(), attack_input.get_entropy_test())
+      ),
+  )
   # 'test_train_ratio' is the ratio of test data size to train data size. It is
   # used to compute the Positive Predictive Value.
   test_train_ratio = ntest / ntrain
@@ -192,8 +204,9 @@ def _run_threshold_entropy_attack(attack_input: AttackInputData):
   roc_curve = RocCurve(
       tpr=tpr,
       fpr=fpr,
-      thresholds=thresholds,
-      test_train_ratio=test_train_ratio)
+      thresholds=-thresholds,  # negate because we negated the loss
+      test_train_ratio=test_train_ratio,
+  )
 
   return SingleAttackResult(
       slice_spec=_get_slice_spec(attack_input),

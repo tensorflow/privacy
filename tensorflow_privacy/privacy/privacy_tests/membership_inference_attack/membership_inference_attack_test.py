@@ -214,9 +214,11 @@ class RunAttacksTest(parameterized.TestCase):
         result.membership_scores_test,
         result.membership_scores_test[0],
         rtol=1e-3)
-    # Training score should be smaller than test score
-    self.assertLess(result.membership_scores_train[0],
-                    result.membership_scores_test[0])
+    # Training score should be larger than test score, as training set is set
+    # to be positive.
+    self.assertGreater(
+        result.membership_scores_train[0], result.membership_scores_test[0]
+    )
 
   def test_run_attack_threshold_calculates_correct_auc(self):
     result = mia._run_attack(
@@ -236,12 +238,39 @@ class RunAttacksTest(parameterized.TestCase):
 
     np.testing.assert_almost_equal(result.roc_curve.get_auc(), 0.83, decimal=2)
 
+  @parameterized.parameters(
+      [AttackType.THRESHOLD_ATTACK],
+      [AttackType.THRESHOLD_ENTROPY_ATTACK],
+  )
+  def test_calculates_correct_tpr_fpr(self, attack_type):
+    rng = np.random.RandomState(27)
+    loss_train = rng.rand(100)
+    loss_test = rng.rand(50) + 0.1
+    result = mia._run_attack(
+        AttackInputData(
+            loss_train=loss_train,
+            loss_test=loss_test,
+            entropy_train=loss_train,
+            entropy_test=loss_test,
+        ),
+        attack_type,
+    )
+    self.assertEqual(attack_type, result.attack_type)
+    for tpr, fpr, threshold in zip(
+        result.roc_curve.tpr, result.roc_curve.fpr, result.roc_curve.thresholds
+    ):
+      self.assertAlmostEqual(tpr, np.mean(loss_train <= threshold))
+      self.assertAlmostEqual(fpr, np.mean(loss_test <= threshold))
+
   @mock.patch('sklearn.metrics.roc_curve')
   def test_run_attack_threshold_entropy_small_tpr_fpr_correct_ppv(
       self, patched_fn):
     # sklearn.metrics.roc_curve returns (fpr, tpr, thresholds).
-    patched_fn.return_value = ([0.2, 0.04, 0.0003], [0.1, 0.0001,
-                                                     0.0002], [0.2, 0.4, 0.6])
+    patched_fn.return_value = (
+        np.array([0.2, 0.04, 0.0003]),
+        np.array([0.1, 0.0001, 0.0002]),
+        np.array([0.2, 0.4, 0.6]),
+    )
     result = mia._run_attack(
         AttackInputData(
             entropy_train=np.array([0.1, 0.2, 1.3, 0.4, 0.5, 0.6]),
@@ -380,8 +409,11 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
   def test_run_multilabel_attack_threshold_small_tpr_fpr_correct_ppv(
       self, patched_fn):
     # sklearn.metrics.roc_curve returns (fpr, tpr, thresholds).
-    patched_fn.return_value = ([0.2, 0.04, 0.0003], [0.1, 0.0001,
-                                                     0.0002], [0.2, 0.4, 0.6])
+    patched_fn.return_value = (
+        np.array([0.2, 0.04, 0.0003]),
+        np.array([0.1, 0.0001, 0.0002]),
+        np.array([0.2, 0.4, 0.6]),
+    )
     result = mia._run_attack(
         AttackInputData(
             loss_train=np.array([[0.1, 0.2], [1.3, 0.4], [0.5, 0.6], [0.9,

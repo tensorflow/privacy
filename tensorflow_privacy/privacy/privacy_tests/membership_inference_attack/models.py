@@ -76,7 +76,7 @@ def create_attacker_data(attack_input_data: data_structures.AttackInputData,
 
   ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
   features_all = np.concatenate((attack_input_train, attack_input_test))
-  labels_all = np.concatenate((np.zeros(ntrain), np.ones(ntest)))
+  labels_all = np.concatenate((np.ones(ntrain), np.zeros(ntest)))
   if attack_input_data.has_nonnull_sample_weights():
     sample_weights_all = np.concatenate((attack_input_data.sample_weight_train,
                                          attack_input_data.sample_weight_test),
@@ -282,13 +282,17 @@ class KNearestNeighborsAttacker(TrainedAttacker):
     self.model = model
 
 
-def create_attacker(attack_type,
-                    backend: Optional[str] = None) -> TrainedAttacker:
+def create_attacker(
+    attack_type: data_structures.AttackType, backend: Optional[str] = None
+) -> TrainedAttacker:
   """Returns the corresponding attacker for the provided attack_type."""
   # Compare by name instead of the variable itself to support module reload.
   if attack_type.name == data_structures.AttackType.LOGISTIC_REGRESSION.name:
     return LogisticRegressionAttacker(backend=backend)
-  if attack_type.name == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON.name:
+  if (
+      attack_type.name
+      == data_structures.AttackType.MULTI_LAYERED_PERCEPTRON.name
+  ):
     return MultilayerPerceptronAttacker(backend=backend)
   if attack_type.name == data_structures.AttackType.RANDOM_FOREST.name:
     return RandomForestAttacker(backend=backend)
