@@ -231,16 +231,19 @@ def make_dp_model_class(cls):
                 self._num_microbatches,
             )
         )
-        grads = gradient_clipping_utils.add_aggregate_noise(
-            self,
-            clipped_grads,
-            eff_num_microbatches,
-            self._l2_norm_clip,
-            self._noise_multiplier,
-        )
+        if self._noise_multiplier > 0:
+          grads = gradient_clipping_utils.add_aggregate_noise(
+              self,
+              clipped_grads,
+              eff_num_microbatches,
+              self._l2_norm_clip,
+              self._noise_multiplier,
+          )
+        else:
+          grads = clipped_grads
         output_metrics[privatized_loss_name] = weighted_loss
       else:
-        logging.info('Computing gradients using microbatching.')
+        logging.info('Computing gradients using original clipping algorithm.')
         # Computes per-example clipped gradients directly. This is called
         # if at least one of the layers cannot use the "fast" gradient clipping
         # algorithm.
