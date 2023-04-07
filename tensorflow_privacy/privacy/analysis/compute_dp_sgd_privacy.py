@@ -34,10 +34,24 @@ from absl import flags
 from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy_statement
 
 
-_NUM_EXAMPLES = flags.DEFINE_integer('N', None, 'Total number of examples.')
-_BATCH_SIZE = flags.DEFINE_integer('batch_size', None, 'Batch size.')
+_NUM_EXAMPLES = flags.DEFINE_integer(
+    'N', None, 'Total number of examples in the training data.'
+)
+_BATCH_SIZE = flags.DEFINE_integer(
+    'batch_size',
+    None,
+    (
+        'Number of examples in a batch *regardless of how/whether they are '
+        'grouped into microbatches*.'
+    ),
+)
 _NOISE_MULTIPLIER = flags.DEFINE_float(
-    'noise_multiplier', None, 'Noise multiplier for DP-SGD.'
+    'noise_multiplier',
+    None,
+    (
+        'Noise multiplier for DP-SGD: ratio of Gaussian noise stddev to the '
+        'l2 clip norm at each round.'
+    ),
 )
 _NUM_EPOCHS = flags.DEFINE_float(
     'epochs', None, 'Number of epochs (may be fractional).'
@@ -52,8 +66,8 @@ _MAX_EXAMPLES_PER_USER = flags.DEFINE_integer(
     'max_examples_per_user',
     None,
     (
-        'Maximum number of examples per user, applicable. Used to compute a'
-        ' user-level DP guarantee.'
+        'Maximum number of examples per user, if applicable. Used to compute a '
+        'user-level DP guarantee.'
     ),
 )
 

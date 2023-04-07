@@ -51,7 +51,7 @@ def _compute_dp_sgd_user_privacy(
 
   Args:
     num_epochs: The number of passes over the data. May be fractional.
-    noise_multiplier: The ratio of the noise to the l2 sensitivity.
+    noise_multiplier: The ratio of the noise stddev to the l2 sensitivity.
     user_delta: The target user-level delta.
     max_examples_per_user: Upper bound on the number of examples per user.
     used_microbatching: If true, increases sensitivity by a factor of two.
@@ -183,7 +183,7 @@ def _compute_dp_sgd_example_privacy(
 
   Args:
     num_epochs: The number of passes over the data.
-    noise_multiplier: The ratio of the noise to the l2 sensitivity.
+    noise_multiplier: The ratio of the noise stddev to the l2 sensitivity.
     example_delta: The target delta.
     used_microbatching: If true, increases sensitivity by a factor of two.
     poisson_subsampling_probability: If not None, gives the probability that
@@ -244,9 +244,10 @@ def compute_dp_sgd_privacy_statement(
       examples in a batch, *regardless of whether/how they are grouped into
       microbatches*.
     num_epochs: The number of epochs of training. May be fractional.
-    noise_multiplier: The ratio of the Gaussian noise to the clip norm at each
-      round. It is assumed that the noise_multiplier is constant although the
-      clip norm may be variable if, for example, adaptive clipping is used.
+    noise_multiplier: The ratio of the Gaussian noise stddev to the l2 clip norm
+      at each round. It is assumed that the noise_multiplier is constant
+      although the clip norm may be variable if, for example, adaptive clipping
+      is used.
     delta: The target delta.
     used_microbatching: Whether microbatching was used (with microbatch size
       greater than one). Microbatching inflates sensitivity by a factor of two
