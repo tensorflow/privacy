@@ -358,10 +358,20 @@ class GetSliceTestForMultilabelData(absltest.TestCase):
     expected.slice_spec = entire_dataset_slice
     self.assertTrue(_are_all_fields_equal(output, self.input_data))
 
-  def test_slice_by_class_fails(self):
+  def test_slice_by_class(self):
     class_index = 1
     class_slice = SingleSliceSpec(SlicingFeature.CLASS, class_index)
-    self.assertRaises(ValueError, get_slice, self.input_data, class_slice)
+    output = get_slice(self.input_data, class_slice)
+    expected_indices_train = np.array([0, 2, 3])
+    expected_indices_test = np.array([1, 2])
+
+    np.testing.assert_array_equal(
+        output.logits_train,
+        self.input_data.logits_train[expected_indices_train],
+    )
+    np.testing.assert_array_equal(
+        output.logits_test, self.input_data.logits_test[expected_indices_test]
+    )
 
   @mock.patch('logging.Logger.info', wraps=logging.Logger)
   def test_slice_by_percentile_logs_multilabel_data(self, mock_logger):

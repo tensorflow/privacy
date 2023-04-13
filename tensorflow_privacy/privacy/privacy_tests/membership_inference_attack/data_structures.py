@@ -84,9 +84,10 @@ class SlicingSpec:
   # When is set to true, one of the slices is the whole dataset.
   entire_dataset: bool = True
 
-  # Used in classification tasks for slicing by classes. It is assumed that
-  # classes are integers 0, 1, ... number of classes. When true one slice per
-  # each class is generated.
+  # Used in classification tasks for slicing by classes. When true one slice per
+  # each class is generated. Classes can either be
+  #  - integers 0, 1, ..., (for single label) or
+  #  - an array of integers (for multi-label).
   by_class: Union[bool, Iterable[int], int] = False
 
   # if true, it generates 10 slices for percentiles of the loss - 0-10%, 10-20%,
@@ -238,8 +239,10 @@ class AttackInputData:
   probs_train: Optional[np.ndarray] = None
   probs_test: Optional[np.ndarray] = None
 
-  # Contains ground-truth classes. Classes are assumed to be integers starting
-  # from 0.
+  # Contains ground-truth classes. For single-label classification, classes are
+  # assumed to be integers starting from 0. For multi-label classification,
+  # label is assumed to be multi-hot, i.e., labels is a binary array of shape
+  # (num_examples, num_classes).
   labels_train: Optional[np.ndarray] = None
   labels_test: Optional[np.ndarray] = None
 
@@ -290,7 +293,9 @@ class AttackInputData:
       raise ValueError(
           'Can\'t identify the number of classes as no labels were provided. '
           'Please set labels_train and labels_test')
-    return int(max(np.max(self.labels_train), np.max(self.labels_test))) + 1
+    if not self.multilabel_data:
+      return int(max(np.max(self.labels_train), np.max(self.labels_test))) + 1
+    return self.labels_train.shape[1]
 
   @property
   def logits_or_probs_train(self):
@@ -586,6 +591,8 @@ class AttackInputData:
       _is_array_two_dimensional(self.entropy_test, 'entropy_test')
       _is_array_two_dimensional(self.labels_train, 'labels_train')
       _is_array_two_dimensional(self.labels_test, 'labels_test')
+      self.is_multihot_labels(self.labels_train, 'labels_train')
+      self.is_multihot_labels(self.labels_test, 'labels_test')
     else:
       _is_array_one_dimensional(self.loss_train, 'loss_train')
       _is_array_one_dimensional(self.loss_test, 'loss_test')

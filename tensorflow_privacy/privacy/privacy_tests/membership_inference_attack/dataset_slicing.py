@@ -72,10 +72,18 @@ def _slice_data_by_indices(data: AttackInputData, idx_train,
 
 
 def _slice_by_class(data: AttackInputData, class_value: int) -> AttackInputData:
-  if data.is_multilabel_data():
-    raise ValueError("Slicing by class not supported for multilabel data.")
-  idx_train = data.labels_train == class_value
-  idx_test = data.labels_test == class_value
+  """Gets the indices (boolean) for examples belonging to the given class."""
+  if not data.is_multilabel_data():
+    idx_train = data.labels_train == class_value
+    idx_test = data.labels_test == class_value
+  else:
+    if class_value >= data.num_classes:
+      raise ValueError(
+          f"class_value ({class_value}) is larger than the number of classes"
+          " (data.num_classes)."
+      )
+    idx_train = data.labels_train[:, class_value].astype(bool)
+    idx_test = data.labels_test[:, class_value].astype(bool)
   return _slice_data_by_indices(data, idx_train, idx_test)
 
 
