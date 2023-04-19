@@ -18,9 +18,8 @@
 
 import distutils
 import math
-from typing import Optional
+from typing import Any, NamedTuple, Optional
 
-import attr
 import dp_accounting
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
@@ -102,8 +101,7 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
   Improves efficiency and reduces noise scale.
   """
 
-  @attr.s(frozen=True)
-  class GlobalState(object):
+  class GlobalState(NamedTuple):
     """Class defining global state for TreeRangeSumQuery.
 
     Attributes:
@@ -111,8 +109,8 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
         internal node has).
       inner_query_state: The global state of the inner query.
     """
-    arity = attr.ib()
-    inner_query_state = attr.ib()
+    arity: Any
+    inner_query_state: Any
 
   def __init__(self,
                inner_query: dp_query.SumAggregationDPQuery,

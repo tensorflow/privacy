@@ -21,11 +21,11 @@ module implements the core logic of tree aggregation in Tensorflow, which serves
 as helper functions for `tree_aggregation_query`. This module and helper
 functions are publicly accessible.
 """
+
 import abc
 import collections
-from typing import Any, Callable, Collection, Optional, Tuple, Union
+from typing import Any, Callable, Collection, NamedTuple, Optional, Tuple, Union
 
-import attr
 import tensorflow as tf
 
 # TODO(b/192464750): find a proper place for the helper functions, privatize
@@ -170,8 +170,7 @@ class StatelessValueGenerator(ValueGenerator):
     return self.value_fn(), state
 
 
-@attr.s(eq=False, frozen=True, slots=True)
-class TreeState(object):
+class TreeState(NamedTuple):
   """Class defining state of the tree.
 
   Attributes:
@@ -183,9 +182,9 @@ class TreeState(object):
       for the most recent leaf node.
    value_generator_state: State of a stateful `ValueGenerator` for tree node.
   """
-  level_buffer = attr.ib(type=tf.Tensor)
-  level_buffer_idx = attr.ib(type=tf.Tensor)
-  value_generator_state = attr.ib(type=Any)
+  level_buffer: tf.Tensor
+  level_buffer_idx: tf.Tensor
+  value_generator_state: Any
 
 
 # TODO(b/192464750): move `get_step_idx` to be a property of `TreeState`.
