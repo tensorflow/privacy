@@ -134,25 +134,35 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
     self.assertEqual(user_eps, example_eps)
 
   @parameterized.parameters((0.9, 2), (1.1, 3), (2.3, 13))
-  def test_user_privacy_epsilon_delta_consistency(self, z, k):
+  def test_user_privacy_epsilon_delta_consistency(
+      self, noise_multiplier, max_examples_per_user
+  ):
     """Tests example/user epsilons consistent with Vadhan (2017) Lemma 2.2."""
     num_epochs = 5
-    user_delta = 1e-6
+    example_delta = 1e-8
     q = 2e-4
-    user_eps = _user_privacy(
-        num_epochs,
-        noise_multiplier=z,
-        user_delta=user_delta,
-        max_examples_per_user=k,
-        poisson_subsampling_probability=q,
-    )
     example_eps = _example_privacy(
         num_epochs,
-        noise_multiplier=z,
-        example_delta=user_delta / (k * math.exp(user_eps)),
+        noise_multiplier=noise_multiplier,
+        example_delta=example_delta,
         poisson_subsampling_probability=q,
     )
-    self.assertAlmostEqual(user_eps, example_eps * k)
+
+    user_delta = math.exp(
+        math.log(example_delta)
+        + compute_dp_sgd_privacy_lib._logexpm1(
+            max_examples_per_user * example_eps
+        )
+        - compute_dp_sgd_privacy_lib._logexpm1(example_eps)
+    )
+    user_eps = _user_privacy(
+        num_epochs,
+        noise_multiplier=noise_multiplier,
+        user_delta=user_delta,
+        max_examples_per_user=max_examples_per_user,
+        poisson_subsampling_probability=q,
+    )
+    self.assertAlmostEqual(user_eps, example_eps * max_examples_per_user)
 
   def test_dp_sgd_privacy_statement_no_user_dp(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
@@ -171,7 +181,7 @@ RDP accounting:
     Epsilon with each example occurring once per epoch:        13.376
     Epsilon assuming Poisson sampling (*):                      1.616
 
-No user-level privacy guarantee is possible witout a bound on the number of
+No user-level privacy guarantee is possible without a bound on the number of
 examples per user.
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
@@ -201,8 +211,8 @@ RDP accounting:
 
 User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
 RDP accounting and group privacy:
-    Epsilon with each example occurring once per epoch:       113.899
-    Epsilon assuming Poisson sampling (*):                      8.129
+    Epsilon with each example occurring once per epoch:        85.940
+    Epsilon assuming Poisson sampling (*):                      6.425
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
 that the data was randomly shuffled, it is believed the actual epsilon should be
@@ -214,11 +224,11 @@ order.
   def test_dp_sgd_privacy_statement_user_dp_infinite(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
         **DP_SGD_STATEMENT_KWARGS,
-        max_examples_per_user=9,
+        max_examples_per_user=10,
     )
     expected_statement = """\
 DP-SGD performed over 10000 examples with 64 examples per iteration, noise
-multiplier 2.0 for 5.0 epochs with microbatching, and at most 9 examples per
+multiplier 2.0 for 5.0 epochs with microbatching, and at most 10 examples per
 user.
 
 This privacy guarantee protects the release of all model checkpoints in addition

@@ -28,6 +28,11 @@ class UserLevelDPComputationError(Exception):
   """Error raised if user-level epsilon computation fails."""
 
 
+def _logexpm1(x: float) -> float:
+  """Returns log(exp(x) - 1)."""
+  return x + math.log(-math.expm1(-x))
+
+
 def _compute_dp_sgd_user_privacy(
     num_epochs: float,
     noise_multiplier: float,
@@ -100,21 +105,32 @@ def _compute_dp_sgd_user_privacy(
   #   log(G(F(example_delta), example_delta)) - log(user_delta) = 0
   # Then we can return user_eps = H(F(example_delta)).
 
-  log_k = math.log(max_examples_per_user)
   target_user_log_delta = math.log(user_delta)
 
-  def user_log_delta_gap(example_log_delta):
-    example_eps = _compute_dp_sgd_example_privacy(
-        num_epochs,
-        noise_multiplier,
-        math.exp(example_log_delta),
-        used_microbatching,
-        poisson_subsampling_probability,
-    )
+  # We store all example_eps computed for any example_delta in the following
+  # method. This is done so that we don't have to recompute values for the same
+  # delta.
+  epsilon_cache = dict()
 
-    # Estimate user_eps, user_log_delta using Vadhan Lemma 2.2.
+  def user_log_delta_gap(example_log_delta):
+    if example_log_delta not in epsilon_cache:
+      epsilon_cache[example_log_delta] = _compute_dp_sgd_example_privacy(
+          num_epochs,
+          noise_multiplier,
+          math.exp(example_log_delta),
+          used_microbatching,
+          poisson_subsampling_probability,
+      )
+    example_eps = epsilon_cache[example_log_delta]
+
+    # Estimate user_eps, user_log_delta using Vadhan Lemma 2.2, using a tighter
+    # bound seen in the penultimate line of the proof, given as
+    # user_delta = (example_delta * (exp(k * example_eps) - 1)
+    #               / (exp(example_eps) - 1))
     user_eps = max_examples_per_user * example_eps
-    user_log_delta = log_k + user_eps + example_log_delta
+    user_log_delta = (
+        example_log_delta + _logexpm1(user_eps) - _logexpm1(example_eps)
+    )
     return user_log_delta - target_user_log_delta
 
   # We need bounds on the example-level delta. The supplied user-level delta
@@ -164,9 +180,16 @@ def _compute_dp_sgd_user_privacy(
     )
 
   # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
-  # user_delta = k * exp(k * example_eps) * example_delta
-  # Given example_delta, we can solve for (k * example_eps) = user_eps.
-  return max(0, target_user_log_delta - log_k - example_log_delta)
+  if example_log_delta not in epsilon_cache:
+    epsilon_cache[example_log_delta] = _compute_dp_sgd_example_privacy(
+        num_epochs,
+        noise_multiplier,
+        math.exp(example_log_delta),
+        used_microbatching,
+        poisson_subsampling_probability,
+    )
+  example_eps = epsilon_cache[example_log_delta]
+  return max_examples_per_user * example_eps
 
 
 def _compute_dp_sgd_example_privacy(
@@ -354,7 +377,7 @@ using RDP accounting and group privacy:""",
     paragraphs.append(
         textwrap.fill(
             """\
-No user-level privacy guarantee is possible witout a bound on the number of \
+No user-level privacy guarantee is possible without a bound on the number of \
 examples per user.""",
             width=80,
         )
