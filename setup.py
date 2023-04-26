@@ -30,7 +30,7 @@ setup(
         'absl-py>=1.0,==1.*',
         'attrs~=21.4',
         'dm-tree==0.1.7',
-        'dp-accounting==0.3.0',
+        'dp-accounting==0.4.1',
         'immutabledict~=2.2',
         'matplotlib~=3.3',
         'numpy~=1.21',
@@ -45,4 +45,5 @@ setup(
         'tensorflow-probability==0.15.0',
         'tensorflow~=2.4',
     ],
-    packages=find_packages())
+    packages=find_packages(),
+)
