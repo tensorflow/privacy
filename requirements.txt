@@ -22,8 +22,8 @@
 
 absl-py>=1.0,==1.*
 attrs~=21.4
-dm-tree==0.1.7
-dp-accounting==0.3.0
+dm-tree==0.1.8
+dp-accounting==0.4.1
 immutabledict~=2.2
 matplotlib~=3.3
 mpmath~=1.2
