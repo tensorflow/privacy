@@ -15,9 +15,12 @@
 
 from absl import logging
 import tensorflow as tf
+
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
+
+_PRIVATIZED_LOSS_NAME = 'privatized_loss'
 
 
 def make_dp_model_class(cls):
@@ -122,6 +125,7 @@ def make_dp_model_class(cls):
       self._l2_norm_clip = l2_norm_clip
       self._noise_multiplier = noise_multiplier
       self._layer_registry = layer_registry
+      self._clipping_loss = None
 
       # Given that `num_microbatches` was added as an argument after the fact,
       # this check helps detect unintended calls to the earlier API.
@@ -176,15 +180,34 @@ def make_dp_model_class(cls):
       )
 
     def _compute_per_example_grads(self, data):
+      if self._clipping_loss is None:
+        self._make_clipping_loss()
       microbatched_x, microbatched_y = data
       with tf.GradientTape() as tape:
         microbatched_y_pred = self(microbatched_x, training=True)
-        # NOTE: Calling `self.loss()` neither logs the total loss nor does it
-        # include any regularization terms.
-        microbatched_loss = self.loss(microbatched_y, microbatched_y_pred)
+        # NOTE: `self._clipping_loss` does not include any regularization terms.
+        microbatched_loss = self._clipping_loss(
+            microbatched_y, microbatched_y_pred
+        )
       grads_list = tape.gradient(microbatched_loss, self.trainable_variables)
       clipped_grads = self._process_per_example_grads(grads_list)
-      return microbatched_loss, clipped_grads
+      return clipped_grads
+
+    def _make_clipping_loss(self):
+      """Creates a LossesContainer to be used for clipping.
+
+      To compute the privatized loss, we wrap the model's compiled_loss inside a
+      new LossesContainer. This lets us avoid calling model.compiled_loss, which
+      appends the loss value to the returned metrics (we want to avoid this as
+      the privatized loss does not reflect the true loss and can be misleading).
+      """
+      losses_container_cls = self.compiled_loss.__class__
+      self._clipping_loss = losses_container_cls(
+          self.compiled_loss._user_losses,  # pylint:disable=protected-access
+          loss_weights=self.compiled_loss._user_loss_weights,  # pylint:disable=protected-access
+          output_names=self.output_names,
+          total_loss_mean=tf.keras.metrics.Mean(name=_PRIVATIZED_LOSS_NAME),
+      )
 
     def train_step(self, data):
       """DP-SGD version of base class method.
@@ -205,11 +228,16 @@ def make_dp_model_class(cls):
       Returns:
         See the base class.
       """
+      if self._clipping_loss is None:
+        self._make_clipping_loss()
       output_metrics = {}
-      x, y, _ = tf.keras.utils.unpack_x_y_sample_weight(data)
+      x, y, weights = tf.keras.utils.unpack_x_y_sample_weight(data)
+      if weights is not None:
+        raise NotImplementedError(
+            'DPModel does not currently support weighted losses.'
+        )
       batch_size = tf.shape(y)[0]
       eff_num_microbatches = self._num_microbatches or batch_size
-      privatized_loss_name = 'privatized_loss'
 
       # Branch based on gradient clipping algorithm.
       if self._enable_fast_peg_computation:
@@ -221,7 +249,7 @@ def make_dp_model_class(cls):
         # trick, and uses these norms to clip the per-example gradients.
         # NOTE: Reshaping of the input according to the effective number of
         # microbatches is done here.
-        clipped_grads, y_pred, weighted_loss = (
+        clipped_grads, y_pred, clipping_loss = (
             clip_grads.compute_clipped_gradients_and_outputs(
                 self,
                 x,
@@ -229,8 +257,10 @@ def make_dp_model_class(cls):
                 self._l2_norm_clip,
                 self._layer_registry,
                 self._num_microbatches,
+                self._clipping_loss,
             )
         )
+        output_metrics[_PRIVATIZED_LOSS_NAME] = clipping_loss
         if self._noise_multiplier > 0:
           grads = gradient_clipping_utils.add_aggregate_noise(
               self,
@@ -241,7 +271,6 @@ def make_dp_model_class(cls):
           )
         else:
           grads = clipped_grads
-        output_metrics[privatized_loss_name] = weighted_loss
       else:
         logging.info('Computing gradients using original clipping algorithm.')
         # Computes per-example clipped gradients directly. This is called
@@ -249,7 +278,7 @@ def make_dp_model_class(cls):
         # algorithm.
         reshape_fn = lambda z: lr.add_microbatch_axis(z, eff_num_microbatches)
         microbatched_data = tf.nest.map_structure(reshape_fn, data)
-        microbatched_losses, clipped_grads = tf.vectorized_map(
+        clipped_grads = tf.vectorized_map(
             self._compute_per_example_grads,
             microbatched_data,
         )
@@ -257,11 +286,6 @@ def make_dp_model_class(cls):
         grads = tf.nest.map_structure(
             self._reduce_per_example_grads, clipped_grads
         )
-        if self.loss.reduction == tf.keras.losses.Reduction.SUM:
-          microbatched_loss = tf.reduce_sum(microbatched_losses)
-        else:
-          microbatched_loss = tf.reduce_mean(microbatched_losses)
-        output_metrics[privatized_loss_name] = microbatched_loss
 
       # Add the values and gradients contributed by regularization losses.
       if self.losses:
@@ -277,9 +301,10 @@ def make_dp_model_class(cls):
             unconnected_gradients=tf.UnconnectedGradients.ZERO,
         )
         grads = [a + b for (a, b) in zip(grads, regularization_grads)]
-        output_metrics[privatized_loss_name] += summed_regularization_loss
+        if self._enable_fast_peg_computation:
+          output_metrics[_PRIVATIZED_LOSS_NAME] += summed_regularization_loss
 
-      # Log the true loss.
+      # Log the true loss, including regularization losses.
       self.compiled_loss(y, y_pred, regularization_losses=self.losses)
 
       # Forward the private gradients to the optimizer and return the results.
