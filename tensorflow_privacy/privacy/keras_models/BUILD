@@ -32,3 +32,12 @@ py_test(
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
     ],
 )
+
+py_test(
+    name = "dp_keras_model_distributed_test",
+    srcs = ["dp_keras_model_distributed_test.py"],
+    deps = [
+        ":dp_keras_model",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+    ],
+)
