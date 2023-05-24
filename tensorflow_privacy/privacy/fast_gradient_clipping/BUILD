@@ -3,6 +3,16 @@ load("@rules_python//python:defs.bzl", "py_library", "py_test")
 package(default_visibility = ["//visibility:public"])
 
 py_library(
+    name = "common_test_utils",
+    srcs = ["common_test_utils.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":clip_grads",
+        ":layer_registry",
+    ],
+)
+
+py_library(
     name = "gradient_clipping_utils",
     srcs = ["gradient_clipping_utils.py"],
     srcs_version = "PY3",
@@ -42,6 +52,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":clip_grads",
+        ":common_test_utils",
         ":layer_registry",
     ],
 )
