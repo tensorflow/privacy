@@ -105,26 +105,23 @@ class LayerRegistry:
 # ==============================================================================
 # Utilities
 # ==============================================================================
-def add_microbatch_axis(
+def maybe_add_microbatch_axis(
     x: tf.Tensor,
     num_microbatches: Optional[BatchSize],
 ) -> tf.Tensor:
   """Adds the microbatch axis.
 
-  Reshape the input tensor to replace the first(batch) dimension with the
-  shape [num_microbatches, batch_size / num_microbatches]. The batch size
-  must be a multiple of num_microbatches (unless it is None, meaning
-  num_microbatches is the same as the batch size).
-
   Args:
     x: the input tensor.
-    num_microbatches: None or a numeric value or a scalar `tf.Tensor`.
+    num_microbatches: If None, x is returned unchanged. Otherwise, must divide
+      the batch size.
 
   Returns:
-    The reshaped input tensor.
+    The input tensor x, reshaped from [batch_size, ...] to
+    [num_microbatches, batch_size / num_microbatches, ...].
   """
   if num_microbatches is None:
-    return tf.expand_dims(x, 1)
+    return x
   with tf.control_dependencies(
       [tf.assert_equal(tf.math.floormod(tf.shape(x)[0], num_microbatches), 0)]
   ):
@@ -193,7 +190,7 @@ def dense_layer_computation(
 
     def _compute_gramian(x):
       if num_microbatches is not None:
-        x_microbatched = add_microbatch_axis(x, num_microbatches)
+        x_microbatched = maybe_add_microbatch_axis(x, num_microbatches)
         return tf.matmul(x_microbatched, x_microbatched, transpose_b=True)
       else:
         # Special handling for better efficiency
