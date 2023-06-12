@@ -84,6 +84,7 @@ py_library(
     name = "tree_aggregation_accountant",
     srcs = ["tree_aggregation_accountant.py"],
     srcs_version = "PY3",
+    deps = ["@com_google_differential_py//dp_accounting:accounting"],
 )
 
 py_test(

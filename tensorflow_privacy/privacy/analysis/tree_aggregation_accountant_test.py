@@ -187,6 +187,19 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
             tree_aggregation_accountant._compute_gaussian_zcdp(
                 sigma, sum_sensitivity_square))
 
+  def test_gaussian_zcdp_to_epsilon(self):
+    # The example below is reported in
+    # https://ai.googleblog.com/2022/02/federated-learning-with-formal.html
+    # Uses updated default RDP order (i.e., orders=None) can achieve better
+    # guarantees. Uses PLD accounting (dp_accounting.pld.PLDAccountant) can
+    # usually be tigher than RDP.
+    zcdp = 0.81
+    orders = [1 + x / 10.0 for x in range(1, 100)] + list(range(12, 64))
+    eps = tree_aggregation_accountant._gaussian_zcdp_to_epsilon(
+        zcdp, accountant=dp_accounting.rdp.RdpAccountant(orders)
+    )
+    self.assertNear(eps, 8.92, err=0.01)
+
 
 if __name__ == '__main__':
   tf.test.main()

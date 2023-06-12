@@ -69,8 +69,9 @@ appearance of a same sample. For `target_delta`, the estimated epsilon is:
 
 import functools
 import math
-from typing import Collection, Union
+from typing import Collection, Optional, Union
 
+import dp_accounting
 import numpy as np
 
 
@@ -376,3 +377,26 @@ def compute_zcdp_single_tree(
   sum_sensitivity_square = _max_tree_sensitivity_square_sum(
       max_participation, min_separation, total_steps)
   return _compute_gaussian_zcdp(noise_multiplier, sum_sensitivity_square)
+
+
+def _gaussian_zcdp_to_epsilon(
+    zcdp: float,
+    target_delta: float = 1e-10,
+    accountant: Optional[dp_accounting.PrivacyAccountant] = None,
+) -> float:
+  """Transforms zCDP of Gaussian Mechanism to (epsilon, delta)-DP.
+
+  Args:
+    zcdp: Input zCDP value.
+    target_delta: Specified target delta for (epsilon, delta)-DP.
+    accountant: Defaults to PLD accounting. Other options including RDP, i.e.,
+      dp_accounting.rdp.RdpAccountant()
+
+  Returns:
+    Epsilon under given delata for (epsilon, delta)-DP.
+  """
+  if accountant is None:
+    accountant = dp_accounting.pld.PLDAccountant()
+  noise_multiplier = 1.0 / (zcdp * 2) ** 0.5
+  accountant.compose(dp_accounting.GaussianDpEvent(noise_multiplier), 1)
+  return accountant.get_epsilon(target_delta)
