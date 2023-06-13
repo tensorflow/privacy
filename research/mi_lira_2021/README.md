@@ -94,15 +94,15 @@ which should give (something like) the following output
 
 ```
 Attack Ours (online)
-   AUC 0.6676, Accuracy 0.6077, TPR@0.1%FPR of 0.0169
+   AUC 0.6675, Accuracy 0.6074, TPR@0.1%FPR of 0.0104
 Attack Ours (online, fixed variance)
-   AUC 0.6856, Accuracy 0.6137, TPR@0.1%FPR of 0.0593
+   AUC 0.6831, Accuracy 0.6140, TPR@0.1%FPR of 0.0541
 Attack Ours (offline)
-   AUC 0.5488, Accuracy 0.5500, TPR@0.1%FPR of 0.0130
+   AUC 0.5465, Accuracy 0.5486, TPR@0.1%FPR of 0.0073
 Attack Ours (offline, fixed variance)
-   AUC 0.5549, Accuracy 0.5537, TPR@0.1%FPR of 0.0299
+   AUC 0.5518, Accuracy 0.5485, TPR@0.1%FPR of 0.0259
 Attack Global threshold
-   AUC 0.5921, Accuracy 0.6044, TPR@0.1%FPR of 0.0009
+   AUC 0.5900, Accuracy 0.6018, TPR@0.1%FPR of 0.0007
 ```
 
 where the global threshold attack is the baseline, and our online,
