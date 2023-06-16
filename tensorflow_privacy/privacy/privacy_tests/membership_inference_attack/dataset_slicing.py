@@ -33,8 +33,12 @@ def _slice_if_not_none(a, idx):
   return None if a is None else a[idx]
 
 
-def _slice_data_by_indices(data: AttackInputData, idx_train,
-                           idx_test) -> AttackInputData:
+def _slice_data_by_indices(
+    data: AttackInputData,
+    idx_train: np.ndarray,
+    idx_test: np.ndarray,
+    return_slice_indices: bool,
+) -> AttackInputData:
   """Slices train fields with idx_train and test fields with idx_test."""
 
   result = AttackInputData()
@@ -68,10 +72,16 @@ def _slice_data_by_indices(data: AttackInputData, idx_train,
   # of the original dataset.
   result.multilabel_data = data.is_multilabel_data()
 
+  if return_slice_indices:
+    result.train_indices = np.where(idx_train)[0]
+    result.test_indices = np.where(idx_test)[0]
+
   return result
 
 
-def _slice_by_class(data: AttackInputData, class_value: int) -> AttackInputData:
+def _slice_by_class(
+    data: AttackInputData, class_value: int, return_slice_indices: bool = False
+) -> AttackInputData:
   """Gets the indices (boolean) for examples belonging to the given class."""
   if not data.is_multilabel_data():
     idx_train = data.labels_train == class_value
@@ -84,11 +94,15 @@ def _slice_by_class(data: AttackInputData, class_value: int) -> AttackInputData:
       )
     idx_train = data.labels_train[:, class_value].astype(bool)
     idx_test = data.labels_test[:, class_value].astype(bool)
-  return _slice_data_by_indices(data, idx_train, idx_test)
+  return _slice_data_by_indices(data, idx_train, idx_test, return_slice_indices)
 
 
-def _slice_by_percentiles(data: AttackInputData, from_percentile: float,
-                          to_percentile: float):
+def _slice_by_percentiles(
+    data: AttackInputData,
+    from_percentile: float,
+    to_percentile: float,
+    return_slice_indices: bool = False,
+) -> AttackInputData:
   """Slices samples by loss percentiles."""
 
   # Find from_percentile and to_percentile percentiles in losses.
@@ -107,22 +121,31 @@ def _slice_by_percentiles(data: AttackInputData, from_percentile: float,
   idx_train = (from_loss <= loss_train) & (loss_train <= to_loss)
   idx_test = (from_loss <= loss_test) & (loss_test <= to_loss)
 
-  return _slice_data_by_indices(data, idx_train, idx_test)
+  return _slice_data_by_indices(data, idx_train, idx_test, return_slice_indices)
 
 
-def _indices_by_classification(logits_or_probs, labels, correctly_classified):
+def _indices_by_classification(
+    logits_or_probs,
+    labels,
+    correctly_classified,
+):
   idx_correct = labels == np.argmax(logits_or_probs, axis=1)
   return idx_correct if correctly_classified else np.invert(idx_correct)
 
 
-def _slice_by_classification_correctness(data: AttackInputData,
-                                         correctly_classified: bool):
+def _slice_by_classification_correctness(
+    data: AttackInputData,
+    correctly_classified: bool,
+    return_slice_indices: bool = False,
+) -> AttackInputData:
   """Slices attack inputs by whether they were classified correctly.
 
   Args:
     data: Data to be used as input to the attack models.
     correctly_classified: Whether to use the indices corresponding to the
       correctly classified samples.
+    return_slice_indices: if true, the returned AttackInputData will include
+      indices of the train and test data samples that were used for this slice.
 
   Returns:
     AttackInputData object containing the sliced data.
@@ -136,13 +159,16 @@ def _slice_by_classification_correctness(data: AttackInputData,
                                          correctly_classified)
   idx_test = _indices_by_classification(data.logits_or_probs_test,
                                         data.labels_test, correctly_classified)
-  return _slice_data_by_indices(data, idx_train, idx_test)
+  return _slice_data_by_indices(data, idx_train, idx_test, return_slice_indices)
 
 
-def _slice_by_custom_indices(data: AttackInputData,
-                             custom_train_indices: np.ndarray,
-                             custom_test_indices: np.ndarray,
-                             group_value: int) -> AttackInputData:
+def _slice_by_custom_indices(
+    data: AttackInputData,
+    custom_train_indices: np.ndarray,
+    custom_test_indices: np.ndarray,
+    group_value: int,
+    return_slice_indices: bool = False,
+) -> AttackInputData:
   """Slices attack inputs by custom indices.
 
   Args:
@@ -150,6 +176,8 @@ def _slice_by_custom_indices(data: AttackInputData,
     custom_train_indices: The group indices of each training example.
     custom_test_indices: The group indices of each test example.
     group_value: The group value to pick.
+    return_slice_indices: if true, the returned AttackInputData will include
+      indices of the train and test data samples that were used for this slice.
 
   Returns:
     AttackInputData object containing the sliced data.
@@ -167,12 +195,12 @@ def _slice_by_custom_indices(data: AttackInputData,
         f"{test_size}")
   idx_train = custom_train_indices == group_value
   idx_test = custom_test_indices == group_value
-  return _slice_data_by_indices(data, idx_train, idx_test)
+  return _slice_data_by_indices(data, idx_train, idx_test, return_slice_indices)
 
 
 def get_single_slice_specs(
-    slicing_spec: SlicingSpec,
-    num_classes: Optional[int] = None) -> List[SingleSliceSpec]:
+    slicing_spec: SlicingSpec, num_classes: Optional[int] = None
+) -> List[SingleSliceSpec]:
   """Returns slices of data according to slicing_spec.
 
   Args:
@@ -242,22 +270,34 @@ def get_single_slice_specs(
   return result
 
 
-def get_slice(data: AttackInputData,
-              slice_spec: SingleSliceSpec) -> AttackInputData:
+def get_slice(
+    data: AttackInputData,
+    slice_spec: SingleSliceSpec,
+    return_slice_indices: bool = False,
+) -> AttackInputData:
   """Returns a single slice of data according to slice_spec."""
   if slice_spec.entire_dataset:
     data_slice = copy.copy(data)
   elif slice_spec.feature == SlicingFeature.CLASS:
-    data_slice = _slice_by_class(data, slice_spec.value)
+    data_slice = _slice_by_class(data, slice_spec.value, return_slice_indices)
   elif slice_spec.feature == SlicingFeature.PERCENTILE:
     from_percentile, to_percentile = slice_spec.value
-    data_slice = _slice_by_percentiles(data, from_percentile, to_percentile)
+    data_slice = _slice_by_percentiles(
+        data, from_percentile, to_percentile, return_slice_indices
+    )
   elif slice_spec.feature == SlicingFeature.CORRECTLY_CLASSIFIED:
-    data_slice = _slice_by_classification_correctness(data, slice_spec.value)
+    data_slice = _slice_by_classification_correctness(
+        data, slice_spec.value, return_slice_indices
+    )
   elif slice_spec.feature == SlicingFeature.CUSTOM:
     custom_train_indices, custom_test_indices, group_value = slice_spec.value
-    data_slice = _slice_by_custom_indices(data, custom_train_indices,
-                                          custom_test_indices, group_value)
+    data_slice = _slice_by_custom_indices(
+        data,
+        custom_train_indices,
+        custom_test_indices,
+        group_value,
+        return_slice_indices,
+    )
   else:
     raise ValueError('Unknown slice spec feature "%s"' % slice_spec.feature)
 

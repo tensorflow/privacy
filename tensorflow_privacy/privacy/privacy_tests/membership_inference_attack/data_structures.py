@@ -766,6 +766,11 @@ class SingleAttackResult:
   # test set samples will have lower scores than the training set samples.
   membership_scores_test: Optional[np.ndarray] = None
 
+  # Indices of train and test examples from the input data that were used in
+  # this attack.
+  train_indices: Optional[np.ndarray] = None
+  test_indices: Optional[np.ndarray] = None
+
   def get_attacker_advantage(self):
     return self.roc_curve.get_attacker_advantage()
 

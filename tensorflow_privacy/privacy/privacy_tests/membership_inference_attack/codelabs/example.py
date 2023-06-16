@@ -148,11 +148,16 @@ def main(unused_argv):
               labels_train=training_labels,
               labels_test=test_labels,
               probs_train=training_pred,
-              probs_test=test_pred),
+              probs_test=test_pred,
+          ),
           data_structures.SlicingSpec(entire_dataset=True, by_class=True),
-          attack_types=(data_structures.AttackType.THRESHOLD_ATTACK,
-                        data_structures.AttackType.LOGISTIC_REGRESSION),
-          privacy_report_metadata=privacy_report_metadata)
+          attack_types=(
+              data_structures.AttackType.THRESHOLD_ATTACK,
+              data_structures.AttackType.LOGISTIC_REGRESSION,
+          ),
+          privacy_report_metadata=privacy_report_metadata,
+          return_slice_indices=True,
+      )
       epoch_results.append(attack_results)
 
   # Generate privacy reports

@@ -267,10 +267,12 @@ class GetSliceTest(parameterized.TestCase):
     self.assertTrue((output.labels_train == [1, 0, 2]).all())
     self.assertTrue((output.labels_test == [1]).all())
 
-  def test_slice_by_correctness(self):
-    percentile_slice = SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED,
-                                       False)
-    output = get_slice(self.input_data, percentile_slice)
+  @parameterized.parameters(False, True)
+  def test_slice_by_correctness(self, return_slice_indices):
+    slice_spec = SingleSliceSpec(SlicingFeature.CORRECTLY_CLASSIFIED, False)
+    output = get_slice(
+        self.input_data, slice_spec, return_slice_indices=return_slice_indices
+    )
 
     # Check logits.
     self.assertLen(output.logits_train, 2)
@@ -283,6 +285,14 @@ class GetSliceTest(parameterized.TestCase):
     self.assertLen(output.labels_test, 3)
     self.assertTrue((output.labels_train == [0, 2]).all())
     self.assertTrue((output.labels_test == [1, 2, 0]).all())
+
+    # Check return indices
+    if return_slice_indices:
+      self.assertTrue((output.train_indices == [1, 3]).all())
+      self.assertTrue((output.test_indices == [0, 1, 2]).all())
+    else:
+      self.assertFalse(hasattr(output, 'train_indices'))
+      self.assertFalse(hasattr(output, 'test_indices'))
 
   def test_slice_by_custom_indices(self):
     custom_train_indices = np.array([2, 2, 100, 4])

@@ -445,6 +445,23 @@ class RunAttacksTestOnMultilabelData(absltest.TestCase):
         AttackType.THRESHOLD_ATTACK.value,
     )
 
+  def test_run_attacks_size_return_indices(self):
+    result = mia.run_attacks(
+        get_test_input(100, 100),
+        SlicingSpec(
+            entire_dataset=False,
+            by_class=True,
+            by_percentiles=True,
+            by_classification_correctness=True,
+        ),
+        (AttackType.LOGISTIC_REGRESSION,),
+        return_slice_indices=True,
+    )
+
+    for attack_result in result.single_attack_results:
+      self.assertIsNotNone(attack_result.train_indices)
+      self.assertIsNotNone(attack_result.test_indices)
+
 
 if __name__ == '__main__':
   absltest.main()

@@ -254,14 +254,16 @@ def _run_attack(attack_input: AttackInputData,
   return _run_threshold_attack(attack_input)
 
 
-def run_attacks(attack_input: AttackInputData,
-                slicing_spec: SlicingSpec = None,
-                attack_types: Iterable[AttackType] = (
-                    AttackType.THRESHOLD_ATTACK,),
-                privacy_report_metadata: PrivacyReportMetadata = None,
-                balance_attacker_training: bool = True,
-                min_num_samples: int = 1,
-                backend: Optional[str] = None) -> AttackResults:
+def run_attacks(
+    attack_input: AttackInputData,
+    slicing_spec: SlicingSpec = None,
+    attack_types: Iterable[AttackType] = (AttackType.THRESHOLD_ATTACK,),
+    privacy_report_metadata: PrivacyReportMetadata = None,
+    balance_attacker_training: bool = True,
+    min_num_samples: int = 1,
+    backend: Optional[str] = None,
+    return_slice_indices=False,
+) -> AttackResults:
   """Runs membership inference attacks on a classification model.
 
   It runs attacks specified by attack_types on each attack_input slice which is
@@ -282,6 +284,9 @@ def run_attacks(attack_input: AttackInputData,
       may not support multiprocessing and in those cases the `threading` backend
       should be used. See https://joblib.readthedocs.io/en/latest/parallel.html
       for more details.
+    return_slice_indices: if true, the result for each slice will include the
+      indices of train and test data examples that were used for this slice and
+      attacks. This does not return indices for the "whole dataset" slice.
 
   Returns:
     the attack result.
@@ -301,7 +306,9 @@ def run_attacks(attack_input: AttackInputData,
   logging.info('Will run %s attacks on each of %s slice specifications.',
                num_attacks, num_slice_specs)
   for single_slice_spec in input_slice_specs:
-    attack_input_slice = get_slice(attack_input, single_slice_spec)
+    attack_input_slice = get_slice(
+        attack_input, single_slice_spec, return_slice_indices
+    )
     for attack_type in attack_types:
       logging.info('Running attack: %s', attack_type.name)
       attack_result = _run_attack(attack_input_slice, attack_type,
@@ -313,6 +320,9 @@ def run_attacks(attack_input: AttackInputData,
             'positive predictive value=%s', attack_type.name,
             attack_result.get_auc(), attack_result.get_attacker_advantage(),
             attack_result.get_ppv())
+        if return_slice_indices and not single_slice_spec.entire_dataset:
+          attack_result.train_indices = attack_input_slice.train_indices
+          attack_result.test_indices = attack_input_slice.test_indices
         attack_results.append(attack_result)
 
   privacy_report_metadata = _compute_missing_privacy_report_metadata(
