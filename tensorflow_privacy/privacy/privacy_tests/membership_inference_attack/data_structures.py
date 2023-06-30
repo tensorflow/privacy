@@ -20,7 +20,7 @@ import glob
 import logging
 import os
 import pickle
-from typing import Any, Iterable, MutableSequence, Optional, Union, Sequence
+from typing import Any, Dict, Iterable, MutableSequence, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
@@ -115,6 +115,12 @@ class SlicingSpec:
   #                to value 1.
   all_custom_train_indices: Optional[Sequence[np.ndarray]] = None
   all_custom_test_indices: Optional[Sequence[np.ndarray]] = None
+
+  # Specifies names for custom slices. The names will be in the output in
+  # SingleAttackResult.slice_spec.value. If provided, the dictionary must
+  # contain names for all custom indices groups from all_custom_train_indices
+  # and all_custom_test_indices.
+  custom_slices_names: Optional[Dict[int, str]] = None
 
   def __post_init__(self):
     if not self.all_custom_train_indices and not self.all_custom_test_indices:
