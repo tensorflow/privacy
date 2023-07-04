@@ -109,8 +109,10 @@ class SingleSliceSpecsTest(parameterized.TestCase):
         all_custom_train_indices=[custom_train_indices],
         all_custom_test_indices=[custom_test_indices])
     expected = [self.ENTIRE_DATASET_SLICE] + [
-        SingleSliceSpec(SlicingFeature.CUSTOM,
-                        (custom_train_indices, custom_test_indices, g))
+        SingleSliceSpec(
+            SlicingFeature.CUSTOM,
+            (custom_train_indices, custom_test_indices, g, None),
+        )
         for g in expected_groups
     ]
     output = get_single_slice_specs(input_data)
@@ -138,11 +140,49 @@ class SingleSliceSpecsTest(parameterized.TestCase):
     for custom_train_indices, custom_test_indices, eg in zip(
         all_custom_train_indices, all_custom_test_indices,
         expected_group_values):
-      expected.extend([
-          SingleSliceSpec(SlicingFeature.CUSTOM,
-                          (custom_train_indices, custom_test_indices, g))
-          for g in eg
-      ])
+      expected.extend(
+          [
+              SingleSliceSpec(
+                  SlicingFeature.CUSTOM,
+                  (custom_train_indices, custom_test_indices, g, None),
+              )
+              for g in eg
+          ]
+      )
+    output = get_single_slice_specs(input_data)
+    self.assertTrue(_are_lists_equal(output, expected))
+
+  def test_slicing_by_custom_indices_slice_name(self):
+    all_custom_train_indices = [
+        np.array([1, 2, 1, 2]),
+    ]
+    all_custom_test_indices = [
+        np.array([2, 2, 1, 2]),
+    ]
+    custom_slices_names = {1: 'slice1', 2: 'slice2'}
+    expected_group_values = [[1, 2]]
+
+    input_data = SlicingSpec(
+        all_custom_train_indices=all_custom_train_indices,
+        all_custom_test_indices=all_custom_test_indices,
+        custom_slices_names=custom_slices_names,
+    )
+    expected = [self.ENTIRE_DATASET_SLICE]
+    for custom_train_indices, custom_test_indices, eg in zip(
+        all_custom_train_indices, all_custom_test_indices, expected_group_values
+    ):
+      for g in eg:
+        expected.append(
+            SingleSliceSpec(
+                SlicingFeature.CUSTOM,
+                (
+                    custom_train_indices,
+                    custom_test_indices,
+                    g,
+                    custom_slices_names[g],
+                ),
+            )
+        )
     output = get_single_slice_specs(input_data)
     self.assertTrue(_are_lists_equal(output, expected))
 
@@ -298,7 +338,9 @@ class GetSliceTest(parameterized.TestCase):
     custom_train_indices = np.array([2, 2, 100, 4])
     custom_test_indices = np.array([100, 2, 2, 2])
     custom_slice = SingleSliceSpec(
-        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+        SlicingFeature.CUSTOM,
+        (custom_train_indices, custom_test_indices, 2, None),
+    )
     output = get_slice(self.input_data, custom_slice)
     np.testing.assert_array_equal(output.logits_train,
                                   np.array([[0, 1, 0], [2, 0, 3]]))
@@ -325,7 +367,9 @@ class GetSliceTest(parameterized.TestCase):
   def test_slice_by_custom_indices_wrong_size(self, custom_train_indices,
                                               custom_test_indices):
     custom_slice = SingleSliceSpec(
-        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+        SlicingFeature.CUSTOM,
+        (custom_train_indices, custom_test_indices, 2, None),
+    )
     self.assertRaises(ValueError, get_slice, self.input_data, custom_slice)
 
 
@@ -420,7 +464,9 @@ class GetSliceTestForMultilabelData(absltest.TestCase):
     custom_train_indices = np.array([2, 2, 100, 4])
     custom_test_indices = np.array([100, 2, 2, 2])
     custom_slice = SingleSliceSpec(
-        SlicingFeature.CUSTOM, (custom_train_indices, custom_test_indices, 2))
+        SlicingFeature.CUSTOM,
+        (custom_train_indices, custom_test_indices, 2, 'slice_name'),
+    )
     output = get_slice(self.input_data, custom_slice)
     # Check logits.
     with self.subTest(msg='Check logits'):

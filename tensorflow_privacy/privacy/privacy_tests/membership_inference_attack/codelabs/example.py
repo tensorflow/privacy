@@ -20,6 +20,7 @@ import os
 import tempfile
 
 from absl import app
+from absl import flags
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -30,6 +31,15 @@ from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import plotting
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import privacy_report
+
+_CUSTOM_SLICES = flags.DEFINE_boolean(
+    "custom_slices",
+    default=False,
+    help="If true, custom slices are used.",
+)
+
+
+TRAIN_SET_SIZE = TEST_SET_SIZE = 1000
 
 
 def generate_random_cluster(center, scale, num_points):
@@ -104,9 +114,11 @@ def main(unused_argv):
   # the generated clusters. More noise makes the classification harder.
   noise_scale = 2
   training_features, training_labels = generate_features_and_labels(
-      samples_per_cluster=250, scale=noise_scale)
+      samples_per_cluster=TRAIN_SET_SIZE // 4, scale=noise_scale
+  )
   test_features, test_labels = generate_features_and_labels(
-      samples_per_cluster=250, scale=noise_scale)
+      samples_per_cluster=TEST_SET_SIZE // 4, scale=noise_scale
+  )
 
   num_clusters = int(round(np.max(training_labels))) + 1
 
@@ -143,6 +155,21 @@ def main(unused_argv):
           epoch_num=num_epochs_per_round * (i + 1),
           model_variant_label=model_name)
 
+      if _CUSTOM_SLICES.value:
+        custom_train_indices = np.array([i % 2 for i in range(TRAIN_SET_SIZE)])
+        custom_test_indices = np.array(
+            [(i + 1) % 2 for i in range(TEST_SET_SIZE)]
+        )
+        slicing_spec = data_structures.SlicingSpec(
+            all_custom_train_indices=[custom_train_indices],
+            all_custom_test_indices=[custom_test_indices],
+            custom_slices_names={0: "name0", 1: "name1"},
+        )
+      else:
+        slicing_spec = data_structures.SlicingSpec(
+            entire_dataset=True, by_class=True
+        )
+
       attack_results = mia.run_attacks(
           data_structures.AttackInputData(
               labels_train=training_labels,
@@ -150,7 +177,7 @@ def main(unused_argv):
               probs_train=training_pred,
               probs_test=test_pred,
           ),
-          data_structures.SlicingSpec(entire_dataset=True, by_class=True),
+          slicing_spec,
           attack_types=(
               data_structures.AttackType.THRESHOLD_ATTACK,
               data_structures.AttackType.LOGISTIC_REGRESSION,

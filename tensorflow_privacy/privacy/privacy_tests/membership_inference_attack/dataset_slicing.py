@@ -264,13 +264,18 @@ def get_single_slice_specs(
             f"Too many groups ({groups.size}) for slicing by custom indices. "
             f"Should be no more than {_MAX_NUM_OF_SLICES}.")
       for g in groups:
+        group_name = None
         if slicing_spec.custom_slices_names is not None:
           if g not in slicing_spec.custom_slices_names:
             raise ValueError(f"Custom slice={g} is not in custom_slices_names")
-          group_id = slicing_spec.custom_slices_names[g]
-        else:
-          group_id = (custom_train_indices, custom_test_indices, g)
-        result.append(SingleSliceSpec(SlicingFeature.CUSTOM, group_id))
+          group_name = slicing_spec.custom_slices_names[g]
+
+        result.append(
+            SingleSliceSpec(
+                SlicingFeature.CUSTOM,
+                (custom_train_indices, custom_test_indices, g, group_name),
+            )
+        )
   return result
 
 
@@ -294,7 +299,8 @@ def get_slice(
         data, slice_spec.value, return_slice_indices
     )
   elif slice_spec.feature == SlicingFeature.CUSTOM:
-    custom_train_indices, custom_test_indices, group_value = slice_spec.value
+    custom_train_indices, custom_test_indices, group_value, _ = slice_spec.value
+
     data_slice = _slice_by_custom_indices(
         data,
         custom_train_indices,

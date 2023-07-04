@@ -44,8 +44,11 @@ class SingleSliceSpecTest(parameterized.TestCase):
       (SlicingFeature.CLASS, 2, 'CLASS=2'),
       (SlicingFeature.PERCENTILE, (10, 20), 'Loss percentiles: 10-20'),
       (SlicingFeature.CORRECTLY_CLASSIFIED, True, 'CORRECTLY_CLASSIFIED=True'),
-      (SlicingFeature.CUSTOM, (np.array([1]), np.array([2, 1]), 1),
-       'Custom indices: train = [1], test = [2 1], group_value = 1'),
+      (
+          SlicingFeature.CUSTOM,
+          (np.array([1]), np.array([2, 1]), 1, None),
+          'Custom indices: train = [1], test = [2 1], group_value = 1',
+      ),
   )
   def testStr(self, feature, value, expected_str):
     self.assertEqual(str(SingleSliceSpec(feature, value)), expected_str)

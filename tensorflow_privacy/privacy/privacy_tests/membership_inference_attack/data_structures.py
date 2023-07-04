@@ -67,9 +67,15 @@ class SingleSliceSpec:
       return 'Loss percentiles: %d-%d' % self.value
 
     if self.feature == SlicingFeature.CUSTOM:
-      custom_train_indices, custom_test_indices, group_value = self.value
-      return (f'Custom indices: train = {custom_train_indices}, '
-              f'test = {custom_test_indices}, group_value = {group_value}')
+      custom_train_indices, custom_test_indices, slice_value, slice_name = (
+          self.value
+      )
+      if slice_name is not None:
+        return f'Custom indices: slice_name = {slice_name}'
+      return (
+          f'Custom indices: train = {custom_train_indices}, '
+          f'test = {custom_test_indices}, group_value = {slice_value}'
+      )
 
     return '%s=%s' % (self.feature.name, self.value)
 
