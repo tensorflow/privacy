@@ -16,8 +16,8 @@
 from absl import logging
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
+from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
-from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 
 _PRIVATIZED_LOSS_NAME = 'privatized_loss'
 
@@ -143,7 +143,8 @@ def make_dp_model_class(cls):
       if (
           layer_registry is not None
           and gradient_clipping_utils.all_trainable_layers_are_registered(
-              self, layer_registry
+              self,
+              layer_registry,
           )
           and gradient_clipping_utils.has_internal_compute_graph(self)
       ):
@@ -273,10 +274,16 @@ def make_dp_model_class(cls):
           grads = clipped_grads
       else:
         logging.info('Computing gradients using original clipping algorithm.')
+
         # Computes per-example clipped gradients directly. This is called
         # if at least one of the layers cannot use the "fast" gradient clipping
         # algorithm.
-        reshape_fn = lambda z: lr.maybe_add_microbatch_axis(z, num_microbatches)
+        def reshape_fn(z):
+          return common_manip_utils.maybe_add_microbatch_axis(
+              z,
+              num_microbatches,
+          )
+
         microbatched_data = tf.nest.map_structure(reshape_fn, data)
         clipped_grads = tf.vectorized_map(
             self._compute_per_example_grads,

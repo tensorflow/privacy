@@ -21,20 +21,19 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
-from typing import Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import List, Optional, Tuple
 
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
-
-InputTensor = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
-LossFn = Callable[..., tf.Tensor]
+from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
 
 def get_registry_generator_fn(
     tape: tf.GradientTape,
     layer_registry: lr.LayerRegistry,
-    num_microbatches: Optional[lr.BatchSize] = None,
+    num_microbatches: Optional[type_aliases.BatchSize] = None,
 ):
   """Creates the generator function for `compute_gradient_norms()`."""
   if layer_registry is None:
@@ -70,11 +69,11 @@ def get_registry_generator_fn(
 def compute_gradient_norms(
     input_model: tf.keras.Model,
     layer_registry: lr.LayerRegistry,
-    x_batch: InputTensor,
+    x_batch: type_aliases.InputTensors,
     y_batch: tf.Tensor,
     weight_batch: Optional[tf.Tensor] = None,
-    per_example_loss_fn: Optional[LossFn] = None,
-    num_microbatches: Optional[lr.BatchSize] = None,
+    per_example_loss_fn: Optional[type_aliases.LossFn] = None,
+    num_microbatches: Optional[type_aliases.BatchSize] = None,
     trainable_vars: Optional[List[tf.Variable]] = None,
 ):
   """Computes the per-example loss gradient norms for given data.
@@ -147,7 +146,10 @@ def compute_gradient_norms(
       )
     if num_microbatches is not None:
       losses = tf.reduce_mean(
-          lr.maybe_add_microbatch_axis(losses, num_microbatches), axis=1
+          common_manip_utils.maybe_add_microbatch_axis(
+              losses, num_microbatches
+          ),
+          axis=1,
       )
     summed_loss = tf.reduce_sum(losses)
   # Unwrap the generator outputs so that the next loop avoids duplicating
@@ -212,11 +214,11 @@ def compute_clipped_gradients_and_outputs(
     input_model: tf.keras.Model,
     l2_norm_clip: float,
     layer_registry: lr.LayerRegistry,
-    x_batch: InputTensor,
+    x_batch: type_aliases.InputTensors,
     y_batch: tf.Tensor,
     weight_batch: Optional[tf.Tensor] = None,
-    num_microbatches: Optional[lr.BatchSize] = None,
-    clipping_loss: Optional[LossFn] = None,
+    num_microbatches: Optional[type_aliases.BatchSize] = None,
+    clipping_loss: Optional[type_aliases.LossFn] = None,
 ) -> Tuple[List[tf.Tensor], tf.Tensor, tf.Tensor]:
   """Computes the per-example clipped loss gradient and other useful outputs.
 
@@ -287,7 +289,9 @@ def compute_clipped_gradients_and_outputs(
     # c is computed based on the gradient of w*l, so that if we scale w*l by c,
     # the result has bounded per-example gradients. So the loss to optimize is
     # c*w*l. Here we compute c*w before passing it to the loss.
-    weight_batch = lr.maybe_add_microbatch_axis(weight_batch, num_microbatches)
+    weight_batch = common_manip_utils.maybe_add_microbatch_axis(
+        weight_batch, num_microbatches
+    )
     if num_microbatches is None:
       clip_weights = clip_weights * weight_batch  # shape [num_microbatches]
     else:
@@ -303,8 +307,12 @@ def compute_clipped_gradients_and_outputs(
     # is not defined in the contract so may not hold, especially for
     # custom losses.
     y_pred = input_model(x_batch, training=True)
-    mb_y_batch = lr.maybe_add_microbatch_axis(y_batch, num_microbatches)
-    mb_y_pred = lr.maybe_add_microbatch_axis(y_pred, num_microbatches)
+    mb_y_batch = common_manip_utils.maybe_add_microbatch_axis(
+        y_batch, num_microbatches
+    )
+    mb_y_pred = common_manip_utils.maybe_add_microbatch_axis(
+        y_pred, num_microbatches
+    )
     clipping_loss_value = clipping_loss(mb_y_batch, mb_y_pred, clip_weights)
   clipped_grads = tape.gradient(
       clipping_loss_value,
