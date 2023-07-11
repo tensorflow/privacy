@@ -1,0 +1,28 @@
+# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# =============================================================================
+
+rm -rf ./src/results
+mkdir -p ./src/results
+rm -rf ./src/datasets_directory
+mkdir -p ./src/datasets_directory
+dataset="protein_dataset" # 'a1a_dataset', 'synthetic_dataset', 'fmnist_dataset'
+privacy_budget="3.0" # epsilon in DP
+num_iteration_GD="100" # number of iterations for DP-GD
+num_iteration_NT="15" # number of iterations for damped newton
+num_iteration_our="15" # number of iterations for double noise (proposed method)
+$HOME/google-code/dpoptVenv/bin/python3 ./src/run.py --alg_type $'dp_gd' --datasetname $dataset --total $privacy_budget --numiter $num_iteration_GD
+$HOME/google-code/dpoptVenv/bin/python3 ./src/run.py --alg_type $'damped_newton' --datasetname $dataset --total $privacy_budget --numiter $num_iteration_NT --grad_frac $"0.7"
+$HOME/google-code/dpoptVenv/bin/python3 ./src/run.py --alg_type $'double_noise' --datasetname $dataset --total $privacy_budget --numiter $num_iteration_our --grad_frac $"0.7" --trace_frac $"0.1" --trace_coeff $"0.5"
+$HOME/google-code/dpoptVenv/bin/python3 ./src/print_results.py
