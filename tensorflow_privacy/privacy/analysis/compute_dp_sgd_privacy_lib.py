@@ -14,6 +14,7 @@
 # ==============================================================================
 """Library for computing privacy values for DP-SGD."""
 
+import functools
 import math
 import textwrap
 from typing import Optional
@@ -107,21 +108,19 @@ def _compute_dp_sgd_user_privacy(
 
   target_user_log_delta = math.log(user_delta)
 
-  # We store all example_eps computed for any example_delta in the following
-  # method. This is done so that we don't have to recompute values for the same
-  # delta.
-  epsilon_cache = dict()
+  # Cache example privacy values, which can be expensive.
+  @functools.cache
+  def get_example_eps(example_log_delta):
+    return _compute_dp_sgd_example_privacy(
+        num_epochs,
+        noise_multiplier,
+        math.exp(example_log_delta),
+        used_microbatching,
+        poisson_subsampling_probability,
+    )
 
   def user_log_delta_gap(example_log_delta):
-    if example_log_delta not in epsilon_cache:
-      epsilon_cache[example_log_delta] = _compute_dp_sgd_example_privacy(
-          num_epochs,
-          noise_multiplier,
-          math.exp(example_log_delta),
-          used_microbatching,
-          poisson_subsampling_probability,
-      )
-    example_eps = epsilon_cache[example_log_delta]
+    example_eps = get_example_eps(example_log_delta)
 
     # Estimate user_eps, user_log_delta using Vadhan Lemma 2.2, using a tighter
     # bound seen in the penultimate line of the proof, given as
@@ -153,7 +152,7 @@ def _compute_dp_sgd_user_privacy(
       # because as example_delta decreases, example_eps increases. So it is
       # possible for user_delta (which increases in both example_delta and
       # example_eps) to diverge to infinity as example_delta goes to zero.
-      logging.warn(
+      logging.warning(
           (
               'No upper bound on user-level DP epsilon can be computed with %s '
               'examples per user.'
@@ -180,16 +179,7 @@ def _compute_dp_sgd_user_privacy(
     )
 
   # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
-  if example_log_delta not in epsilon_cache:
-    epsilon_cache[example_log_delta] = _compute_dp_sgd_example_privacy(
-        num_epochs,
-        noise_multiplier,
-        math.exp(example_log_delta),
-        used_microbatching,
-        poisson_subsampling_probability,
-    )
-  example_eps = epsilon_cache[example_log_delta]
-  return max_examples_per_user * example_eps
+  return max_examples_per_user * get_example_eps(example_log_delta)
 
 
 def _compute_dp_sgd_example_privacy(
@@ -238,14 +228,11 @@ def _compute_dp_sgd_example_privacy(
     count = int(math.ceil(num_epochs))
   event_ = dp_accounting.SelfComposedDpEvent(count=count, event=event_)
 
-  rdp_orders = (
-      [1 + x / 10.0 for x in range(1, 100)]
-      + list(range(11, 64))
-      + [128, 256, 512, 1024]
-  )
-  accountant = dp_accounting.rdp.RdpAccountant(rdp_orders)  # TODO(b/271341062)
-  accountant.compose(event_)
-  return accountant.get_epsilon(example_delta)
+  return (
+      dp_accounting.rdp.RdpAccountant()
+      .compose(event_)
+      .get_epsilon(example_delta)
+  )  # TODO(b/271341062)
 
 
 def compute_dp_sgd_privacy_statement(
@@ -432,7 +419,7 @@ def compute_dp_sgd_privacy(n, batch_size, noise_multiplier, epochs, delta):
   Returns:
     A 2-tuple containing the value of epsilon and the optimal RDP order.
   """
-  logging.warn("""\
+  logging.warning("""\
 `compute_dp_sgd_privacy` is deprecated. It does not account for doubling of \
 sensitivity with microbatching, and assumes Poisson subsampling, which is \
 rarely used in practice. Please use `compute_dp_sgd_privacy_statement`, which \
