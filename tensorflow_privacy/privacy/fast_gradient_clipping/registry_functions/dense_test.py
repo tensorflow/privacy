@@ -16,6 +16,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_test_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
+from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import dense
 
 
 # ==============================================================================
@@ -40,16 +41,30 @@ def get_dense_model_generators():
   }
 
 
+def get_dense_layer_registries():
+  dense_registry = layer_registry.LayerRegistry()
+  dense_registry.insert(tf.keras.layers.Dense, dense.dense_layer_computation)
+  return {
+      'dense_only': dense_registry,
+      'default': layer_registry.make_default_layer_registry(),
+  }
+
+
 # ==============================================================================
 # Main tests.
 # ==============================================================================
 class GradNormTest(tf.test.TestCase, parameterized.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.strategy = tf.distribute.get_strategy()
 
   @parameterized.product(
       model_name=list(get_dense_model_generators().keys()),
       layer_name=list(get_dense_layer_generators().keys()),
       input_dim=[4],
       output_dim=[2],
+      layer_registry_name=list(get_dense_layer_registries().keys()),
       per_example_loss_fn=[None, common_test_utils.test_loss_fn],
       num_microbatches=[None, 1, 2],
       is_eager=[True, False],
@@ -62,38 +77,74 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       layer_name,
       input_dim,
       output_dim,
+      layer_registry_name,
       per_example_loss_fn,
       num_microbatches,
       is_eager,
       partial,
       weighted,
   ):
-    model_generator = get_dense_model_generators()[model_name]
-    layer_generator = get_dense_layer_generators()[layer_name]
+    # Parse inputs to generate test data.
     x_batches, weight_batches = common_test_utils.get_nd_test_batches(input_dim)
-    default_registry = layer_registry.make_default_layer_registry()
+
+    # Load shared assets to all devices.
+    with self.strategy.scope():
+      model = common_test_utils.get_model_from_generator(
+          model_generator=get_dense_model_generators()[model_name],
+          layer_generator=get_dense_layer_generators()[layer_name],
+          input_dims=input_dim,
+          output_dim=output_dim,
+          is_eager=is_eager,
+      )
+
+    # Define the main testing ops. These may be later compiled to a Graph op.
+    def test_op(x_batch, weight_batch):
+      return common_test_utils.get_computed_and_true_norms_from_model(
+          model=model,
+          per_example_loss_fn=per_example_loss_fn,
+          num_microbatches=num_microbatches,
+          x_batch=[x_batch, x_batch] if model_name == 'tower1' else x_batch,
+          weight_batch=weight_batch if weighted else None,
+          registry=get_dense_layer_registries()[layer_registry_name],
+          partial=partial,
+      )
+
+    # TPUs can only run `tf.function`-decorated functions.
+    using_tpu = isinstance(self.strategy, tf.distribute.TPUStrategy)
+    if using_tpu:
+      test_op = tf.function(test_op, jit_compile=True, autograph=False)
+
+    # TPUs use lower precision than CPUs, so we relax our criterion.
+    # E.g., one of the TPU runs generated the following results:
+    #
+    #   computed_norm = 22.530651
+    #   true_norm     = 22.570976
+    #   abs_diff      = 0.04032516
+    #   rel_diff      = 0.00178659
+    #
+    # which is a reasonable level of error for computing gradient norms.
+    # Other trials also give an absolute (resp. relative) error of around
+    # 0.05 (resp. 0.0015).
+    rtol = 1e-2 if using_tpu else 1e-3
+    atol = 1e-1 if using_tpu else 1e-2
+
     for x_batch, weight_batch in zip(x_batches, weight_batches):
       batch_size = x_batch.shape[0]
       if num_microbatches is not None and batch_size % num_microbatches != 0:
         continue
-      computed_norms, true_norms = (
-          common_test_utils.get_computed_and_true_norms(
-              model_generator,
-              layer_generator,
-              input_dim,
-              output_dim,
-              per_example_loss_fn,
-              num_microbatches,
-              is_eager,
-              x_batch=[x_batch, x_batch] if model_name == 'tower1' else x_batch,
-              weight_batch=weight_batch if weighted else None,
-              registry=default_registry,
-              partial=partial,
-          )
+      # Set up the device ops and run the test.
+      computed_norms, true_norms = self.strategy.run(
+          test_op, args=(x_batch, weight_batch)
       )
+      # TPUs return replica contexts, which must be unwrapped.
+      if using_tpu:
+        common_test_utils.assert_replica_values_are_close(self, computed_norms)
+        common_test_utils.assert_replica_values_are_close(self, true_norms)
+        computed_norms = computed_norms.values[0]
+        true_norms = true_norms.values[0]
       expected_size = num_microbatches or batch_size
-      self.assertEqual(computed_norms.shape[0], expected_size)
-      self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
+      self.assertEqual(tf.shape(computed_norms)[0], expected_size)
+      self.assertAllClose(computed_norms, true_norms, rtol=rtol, atol=atol)
 
 
 if __name__ == '__main__':

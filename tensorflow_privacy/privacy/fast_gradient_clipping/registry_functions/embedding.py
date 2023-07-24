@@ -62,12 +62,46 @@ def embedding_layer_computation(
           "'_use_one_hot_matmul' is not supported."
       )
   input_ids = tf.cast(*input_args, tf.int32)
+  if len(layer_instance.trainable_variables) != 1:
+    raise ValueError(
+        "Only layer instances with only one set of trainable variables"
+        "are permitted."
+    )
   base_vars = layer_instance.trainable_variables[0]
   tape.watch(base_vars)
   outputs = tf.nn.embedding_lookup(base_vars, input_ids)
 
   def sqr_norm_fn(base_vars_grads):
-    # Get a 1D tensor of the row indices.
+    """Fast square norm function for Keras embedding layers.
+
+    Args:
+      base_vars_grads: A list of batched embedding gradients.
+
+    Returns:
+      A 1D `tf.Tensor` of squared gradient norms.
+
+    NOTE: to help understand the code, we document in the function body what
+    the expected intermediate variables are for the below running example:
+
+      input_ids = [[1, 1, 2], [0], [2, 0]]
+      base_vars_grads.indices = [1, 1, 2, 0, 2, 0]
+      base_vars_grads.values = [[0.2], [0.2], [0.3], [0.1], [0.3], [0.1]]
+
+    For ease of reference, we also list these variables below:
+
+      row_indices = [[0], [0], [0], [1], [2], [2]]
+      slice_indices = [[1], [1], [2], [0], [2], [0]]
+      paired_indices = [[0, 1], [0, 1], [0, 2], [1, 0], [2, 2], [2, 0]]
+      unique_paired_indices = [[0, 1], [0, 2], [1, 0], [2, 2], [2, 0]]
+      new_index_positions = [0, 0, 1, 2, 3, 4]
+      num_unique_paired_indices = 5
+      unique_batch_ids = [0, 0, 1, 2, 2]
+      summed_gradients
+        = [0.2 + 0.2, 0.3, 0.1, 0.3, 0.1]
+        = [[0.4], [0.3], [0.1], [0.3], [0.1]]
+      sqr_gradient_sum = [0.16, 0.09, 0.01, 0.09, 0.01]
+    """
+    # We first get a 1D tensor of the row indices.
     nrows = tf.shape(input_ids)[0]
     if isinstance(input_ids, tf.RaggedTensor):
       row_indices = tf.expand_dims(
@@ -81,16 +115,19 @@ def embedding_layer_computation(
       raise NotImplementedError(
           "Cannot parse input_ids of type %s" % input_ids.__class__.__name__
       )
-    row_indices = tf.cast(row_indices, tf.int32)
+    row_indices = tf.cast(row_indices, tf.int64)
     if num_microbatches is not None:
-      microbatch_size = tf.cast(nrows / num_microbatches, tf.int32)
+      microbatch_size = tf.cast(nrows / num_microbatches, tf.int64)
       nrows = num_microbatches
       row_indices = tf.cast(
-          tf.math.floordiv(row_indices, microbatch_size), tf.int32
+          tf.math.floordiv(row_indices, microbatch_size), tf.int64
       )
-    # Sum-reduce the `IndexSlices` that is the result of a `tape.gradient()`
-    # call. The sum is reduced by the repeated embedding indices and batch
-    # index. It is adapted from the logic in:
+    # NOTE: expected values for the running example above are
+    #   row_indices = [[0], [0], [0], [1], [2], [2]]
+
+    # Now, sum-reduce the `IndexedSlices` that is the result of a
+    # `tape.gradient()` call. The sum is reduced by the repeated embedding
+    # indices and batch index. It is adapted from the logic in:
     #   tf.keras.optimizers.legacy.optimizer_v2._deduplicate_indexed_slices
     if not isinstance(base_vars_grads, tf.IndexedSlices):
       raise NotImplementedError(
@@ -105,20 +142,39 @@ def embedding_layer_computation(
     (unique_paired_indices, new_index_positions) = tf.raw_ops.UniqueV2(
         x=paired_indices, axis=[0]
     )
+    # NOTE: expected values for the running example above are
+    #   slice_indices = [[1], [1], [2], [0], [2], [0]]
+    #   paired_indices = [[0, 1], [0, 1], [0, 2], [1, 0], [2, 2], [2, 0]]
+    #   unique_paired_indices = [[0, 1], [0, 2], [1, 0], [2, 2], [2, 0]]
+    #   new_index_positions = [0, 0, 1, 2, 3, 4]
+
+    # Next, sum according to the new positions and compute the squared
+    # gradient norms. Oddly enough, not sorting
+    # these indices will break tensor shape inference logic on TPUs.
+    num_unique_paired_indices = tf.shape(unique_paired_indices)[0]
     unique_batch_ids = unique_paired_indices[:, 0]
     summed_gradients = tf.math.unsorted_segment_sum(
         base_vars_grads.values,
         new_index_positions,
-        tf.shape(unique_paired_indices)[0],
+        num_unique_paired_indices,
     )
-    # Compute the squared gradient norms at the per-example level.
     sqr_gradient_sum = tf.reduce_sum(tf.square(summed_gradients), axis=1)
-    summed_data_range = tf.range(tf.shape(sqr_gradient_sum)[0])
-    return tf.sparse.segment_sum(
+    # NOTE: expected values for the running example above are
+    #   num_unique_paired_indices = 5
+    #   unique_batch_ids = [0, 0, 1, 2, 2]
+    #   summed_gradients
+    #     = [0.2 + 0.2, 0.3, 0.1, 0.3, 0.1]
+    #     = [[0.4], [0.3], [0.1], [0.3], [0.1]]
+    #   sqr_gradient_sum = [0.16, 0.09, 0.01, 0.09, 0.01]
+
+    # Use a scatter-add strategy to ensure TPU compatibility.
+    result = tf.zeros([nrows])
+    return tf.tensor_scatter_nd_add(
+        result,
+        tf.expand_dims(unique_batch_ids, axis=-1),
         sqr_gradient_sum,
-        summed_data_range,
-        tf.sort(unique_batch_ids),
-        num_segments=nrows,
-    )  # fill in empty inputs
+    )
+    # NOTE: the expected output for the running example is
+    #   [0.16 + 0.09, 0.01, 0.09 + 0.01] = [0.25, 0.01, 0.1]
 
   return base_vars, outputs, sqr_norm_fn

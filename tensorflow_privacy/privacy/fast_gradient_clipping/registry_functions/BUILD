@@ -19,9 +19,10 @@ py_test(
     size = "large",
     srcs = ["dense_test.py"],
     python_version = "PY3",
-    shard_count = 8,
+    shard_count = 12,
     srcs_version = "PY3",
     deps = [
+        ":dense",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
@@ -37,12 +38,13 @@ py_library(
 
 py_test(
     name = "embedding_test",
-    size = "large",
     srcs = ["embedding_test.py"],
     python_version = "PY3",
-    shard_count = 8,
+    shard_count = 12,
     srcs_version = "PY3",
     deps = [
+        ":dense",
+        ":embedding",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",

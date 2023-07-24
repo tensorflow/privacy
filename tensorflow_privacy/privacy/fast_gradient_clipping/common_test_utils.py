@@ -15,7 +15,9 @@
 
 from typing import Callable, List, Optional, Tuple, Union
 
+import numpy as np
 import tensorflow as tf
+import tensorflow.compat.v2 as tf_compat
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
@@ -24,6 +26,23 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 # ==============================================================================
 # Helper functions
 # ==============================================================================
+def create_tpu_strategy():
+  """Initializes a TPU environment."""
+  # Done to avoid transferring data between CPUs and TPUs.
+  tf_compat.config.set_soft_device_placement(False)
+  resolver = tf_compat.distribute.cluster_resolver.TPUClusterResolver(tpu='')
+  tf_compat.config.experimental_connect_to_cluster(resolver)
+  tf_compat.tpu.experimental.initialize_tpu_system(resolver)
+  return tf_compat.distribute.TPUStrategy(resolver)
+
+
+def assert_replica_values_are_close(test_case_obj, replica_context):
+  """Checks if all replica context tensors are near each other."""
+  base_tensor = replica_context.values[0]
+  for t in replica_context.values[1:]:
+    test_case_obj.assertAllClose(base_tensor, t)
+
+
 def get_nd_test_batches(n: int):
   """Returns a list of input batches of dimension n."""
   # The first two batches have a single element, the last batch has 2 elements.
@@ -79,11 +98,74 @@ def compute_true_gradient_norms(
   trainable_vars = trainable_vars or input_model.trainable_variables
   for var in trainable_vars:
     jacobian = tape.jacobian(loss, var, experimental_use_pfor=False)
-    reduction_axes = tf.range(1, len(jacobian.shape))
+    reduction_axes = tf.range(1, tf.rank(jacobian))
     sqr_norm = tf.reduce_sum(tf.square(jacobian), axis=reduction_axes)
     sqr_norms.append(sqr_norm)
   sqr_norm_tsr = tf.stack(sqr_norms, axis=1)
   return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
+
+
+def get_model_from_generator(
+    model_generator: type_aliases.ModelGenerator,
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: Union[int, List[int]],
+    output_dim: int,
+    is_eager: bool,
+) -> tf.keras.Model:
+  """Creates a simple model from input specifications."""
+  model = model_generator(layer_generator, input_dims, output_dim)
+  model.compile(
+      optimizer=tf.keras.optimizers.SGD(learning_rate=1.0),
+      loss=tf.keras.losses.MeanSquaredError(
+          reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+      ),
+      run_eagerly=is_eager,
+  )
+  return model
+
+
+def get_computed_and_true_norms_from_model(
+    model: tf.keras.Model,
+    per_example_loss_fn: Optional[Callable[[tf.Tensor, tf.Tensor], tf.Tensor]],
+    num_microbatches: Optional[int],
+    x_batch: tf.Tensor,
+    weight_batch: Optional[tf.Tensor] = None,
+    rng_seed: int = 777,
+    registry: layer_registry.LayerRegistry = None,
+    partial: bool = False,
+):
+  """Generates relevant norms from an input model and other specs."""
+  trainable_vars = None
+  if partial:
+    # Gets the first layer with variables.
+    for l in model.layers:
+      trainable_vars = l.trainable_variables
+      if trainable_vars:
+        break
+  y_pred = model(x_batch)
+  y_batch = tf.ones_like(y_pred)
+  tf.keras.utils.set_random_seed(rng_seed)
+  computed_norms = clip_grads.compute_gradient_norms(
+      input_model=model,
+      x_batch=x_batch,
+      y_batch=y_batch,
+      weight_batch=weight_batch,
+      layer_registry=registry,
+      per_example_loss_fn=per_example_loss_fn,
+      num_microbatches=num_microbatches,
+      trainable_vars=trainable_vars,
+  )
+  tf.keras.utils.set_random_seed(rng_seed)
+  true_norms = compute_true_gradient_norms(
+      input_model=model,
+      x_batch=x_batch,
+      y_batch=y_batch,
+      weight_batch=weight_batch,
+      per_example_loss_fn=per_example_loss_fn,
+      num_microbatches=num_microbatches,
+      trainable_vars=trainable_vars,
+  )
+  return computed_norms, true_norms
 
 
 def get_computed_and_true_norms(
@@ -133,45 +215,23 @@ def get_computed_and_true_norms(
     model and layer generators. The second element contains the true clipped
     gradient norms under the aforementioned setting.
   """
-  model = model_generator(layer_generator, input_dims, output_dim)
-  model.compile(
-      optimizer=tf.keras.optimizers.SGD(learning_rate=1.0),
-      loss=tf.keras.losses.MeanSquaredError(
-          reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
-      ),
-      run_eagerly=is_eager,
+  model = get_model_from_generator(
+      model_generator=model_generator,
+      layer_generator=layer_generator,
+      input_dims=input_dims,
+      output_dim=output_dim,
+      is_eager=is_eager,
   )
-  trainable_vars = None
-  if partial:
-    # Gets the first layer with variables.
-    for l in model.layers:
-      trainable_vars = l.trainable_variables
-      if trainable_vars:
-        break
-  y_pred = model(x_batch)
-  y_batch = tf.ones_like(y_pred)
-  tf.keras.utils.set_random_seed(rng_seed)
-  computed_norms = clip_grads.compute_gradient_norms(
-      input_model=model,
-      x_batch=x_batch,
-      y_batch=y_batch,
-      weight_batch=weight_batch,
-      layer_registry=registry,
+  return get_computed_and_true_norms_from_model(
+      model=model,
       per_example_loss_fn=per_example_loss_fn,
       num_microbatches=num_microbatches,
-      trainable_vars=trainable_vars,
+      x_batch=x_batch,
+      weight_batch=weight_batch,
+      rng_seed=rng_seed,
+      registry=registry,
+      partial=partial,
   )
-  tf.keras.utils.set_random_seed(rng_seed)
-  true_norms = compute_true_gradient_norms(
-      model,
-      x_batch,
-      y_batch,
-      weight_batch,
-      per_example_loss_fn,
-      num_microbatches,
-      trainable_vars=trainable_vars,
-  )
-  return (computed_norms, true_norms)
 
 
 # ==============================================================================
@@ -234,7 +294,11 @@ def make_bow_model(layer_generator, input_dims, output_dim):
   # in eache example.
   emb_layer = tf.keras.layers.Embedding(input_dim=10, output_dim=output_dim)
   feature_embs = emb_layer(inputs)
-  reduction_axes = tf.range(1, len(feature_embs.shape))
+  # Embeddings add one extra dimension to its inputs, which combined with the
+  # batch dimension at dimension 0, equals two additional dimensions compared
+  # to the number of input dimensions. Here, we want to reduce over the output
+  # space, but exclude the batch dimension.
+  reduction_axes = range(1, len(input_dims) + 2)
   example_embs = tf.expand_dims(
       tf.reduce_sum(feature_embs, axis=reduction_axes), axis=-1
   )
@@ -253,7 +317,11 @@ def make_dense_bow_model(layer_generator, input_dims, output_dim):
       input_dim=cardinality, output_dim=output_dim
   )
   feature_embs = emb_layer(inputs)
-  reduction_axes = tf.range(1, len(feature_embs.shape))
+  # Embeddings add one extra dimension to its inputs, which combined with the
+  # batch dimension at dimension 0, equals two additional dimensions compared
+  # to the number of input dimensions. Here, we want to reduce over the output
+  # space, but exclude the batch dimension.
+  reduction_axes = range(1, len(input_dims) + 2)
   example_embs = tf.expand_dims(
       tf.reduce_sum(feature_embs, axis=reduction_axes), axis=-1
   )
@@ -274,9 +342,21 @@ def make_weighted_bow_model(layer_generator, input_dims, output_dim):
       input_dim=cardinality, output_dim=output_dim
   )
   feature_embs = emb_layer(inputs)
-  feature_weights = tf.random.uniform(tf.shape(feature_embs))
+  # Use deterministic weights to avoid seeding issues on TPUs.
+  feature_shape = input_dims + [output_dim]
+  feature_weights = tf.expand_dims(
+      tf.reshape(
+          tf.range(np.product(feature_shape), dtype=tf.float32),
+          feature_shape,
+      ),
+      axis=0,
+  )
   weighted_embs = feature_embs * feature_weights
-  reduction_axes = tf.range(1, len(weighted_embs.shape))
+  # Embeddings add one extra dimension to its inputs, which combined with the
+  # batch dimension at dimension 0, equals two additional dimensions compared
+  # to the number of input dimensions. Here, we want to reduce over the output
+  # space, but exclude the batch dimension.
+  reduction_axes = range(1, len(input_dims) + 2)
   example_embs = tf.expand_dims(
       tf.reduce_sum(weighted_embs, axis=reduction_axes), axis=-1
   )
