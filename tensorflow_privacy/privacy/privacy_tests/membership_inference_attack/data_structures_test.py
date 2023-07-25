@@ -20,13 +20,16 @@ from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
 import pandas as pd
+from tensorflow_privacy.privacy.privacy_tests import epsilon_lower_bound as elb
 from tensorflow_privacy.privacy.privacy_tests import utils
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import _log_value
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResults
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackResultsCollection
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import EpsilonLowerBoundValue
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import PrivacyReportMetadata
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import RocCurve
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import SingleAttackResult
@@ -578,8 +581,86 @@ class RocCurveTest(parameterized.TestCase):
 
     np.testing.assert_allclose(roc.get_ppv(), 0.5, atol=1e-3)
 
+  def test_string(self):
+    roc = RocCurve(
+        tpr=np.array([0.0, 0.5, 1.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0,
+    )
+    self.assertEqual(
+        str(roc),
+        (
+            'RocCurve(\n'
+            '  AUC: 0.50\n'
+            '  Attacker advantage: 0.00\n'
+            '  Positive predictive value: 0.50\n'
+            ')'
+        ),
+    )
+
+
+class EpsilonLowerBoundValueTest(parameterized.TestCase):
+  """Tests for EpsilonLowerBoundValue class."""
+
+  def test_epsilon_lower_bound_value(self):
+    bounds = {
+        elb.BoundMethod.KATZ_LOG: np.array([2, 2.0]),
+        elb.BoundMethod.BAILEY: np.array([5, 4.0]),
+        elb.BoundMethod.ADJUSTED_LOG: np.array([10]),
+    }
+    elbv = EpsilonLowerBoundValue(bounds=bounds)
+    self.assertDictEqual(elbv.bounds, bounds)
+    np.testing.assert_allclose(elbv.get_max_epsilon_bounds(), [10])
+    self.assertEqual(str(elbv), 'EpsilonLowerBoundValue([10.0000])')
+
+  def test_epsilon_lower_bound_value_empty(self):
+    elbv = EpsilonLowerBoundValue(bounds={})
+    self.assertDictEqual(elbv.bounds, {})
+    self.assertEmpty(elbv.get_max_epsilon_bounds())
+    self.assertEqual(str(elbv), 'EpsilonLowerBoundValue([])')
+
+  def test_epsilon_lower_bound_value_one_array_empty(self):
+    elbv = EpsilonLowerBoundValue(
+        bounds={
+            elb.BoundMethod.KATZ_LOG: np.array([-2, -2.0]),
+            elb.BoundMethod.ADJUSTED_LOG: np.array([]),
+        }
+    )
+    np.testing.assert_allclose(elbv.get_max_epsilon_bounds(), [-2, -2.0])
+    self.assertEqual(str(elbv), 'EpsilonLowerBoundValue([-2.0000, -2.0000])')
+
+  def test_epsilon_lower_bound_value_all_array_empty(self):
+    elbv = EpsilonLowerBoundValue(
+        bounds={
+            elb.BoundMethod.KATZ_LOG: np.array([]),
+            elb.BoundMethod.ADJUSTED_LOG: np.array([]),
+        }
+    )
+    self.assertEmpty(elbv.get_max_epsilon_bounds())
+    self.assertEqual(str(elbv), 'EpsilonLowerBoundValue([])')
+
 
 class SingleAttackResultTest(absltest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    # Some arbitrary roc.
+    self.arbitrary_roc = RocCurve(
+        tpr=np.array([0.0, 0.5, 1.0]),
+        fpr=np.array([0.0, 0.5, 1.0]),
+        thresholds=np.array([0, 1, 2]),
+        test_train_ratio=1.0,
+    )
+
+    # Some arbitrary epsilon lower bound.
+    self.arbitrary_epsilon_lower_bound_value = EpsilonLowerBoundValue(
+        bounds={
+            elb.BoundMethod.KATZ_LOG: np.array([2, 2.0]),
+            elb.BoundMethod.BAILEY: np.array([5, 4.0]),
+            elb.BoundMethod.ADJUSTED_LOG: np.array([10, 1.0]),
+        }
+    )
 
   # Only a basic test, as this method calls RocCurve which is tested separately.
   def test_auc_random_classifier(self):
@@ -591,9 +672,11 @@ class SingleAttackResultTest(absltest.TestCase):
 
     result = SingleAttackResult(
         roc_curve=roc,
+        epsilon_lower_bound_value=self.arbitrary_epsilon_lower_bound_value,
         slice_spec=SingleSliceSpec(None),
         attack_type=AttackType.THRESHOLD_ATTACK,
-        data_size=DataSize(ntrain=1, ntest=1))
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
     self.assertEqual(result.get_auc(), 0.5)
 
@@ -607,9 +690,11 @@ class SingleAttackResultTest(absltest.TestCase):
 
     result = SingleAttackResult(
         roc_curve=roc,
+        epsilon_lower_bound_value=self.arbitrary_epsilon_lower_bound_value,
         slice_spec=SingleSliceSpec(None),
         attack_type=AttackType.THRESHOLD_ATTACK,
-        data_size=DataSize(ntrain=1, ntest=1))
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
     self.assertEqual(result.get_attacker_advantage(), 0.0)
 
@@ -623,11 +708,58 @@ class SingleAttackResultTest(absltest.TestCase):
 
     result = SingleAttackResult(
         roc_curve=roc,
+        epsilon_lower_bound_value=self.arbitrary_epsilon_lower_bound_value,
         slice_spec=SingleSliceSpec(None),
         attack_type=AttackType.THRESHOLD_ATTACK,
-        data_size=DataSize(ntrain=1, ntest=1))
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
     self.assertEqual(result.get_ppv(), 0.5)
+
+  # Only a basic test, as this method calls EpsilonLowerBound which is tested
+  # separately.
+  def test_epsilon_lower_bound(self):
+    epsilon_lower_bound_value = EpsilonLowerBoundValue(
+        bounds={
+            elb.BoundMethod.KATZ_LOG: np.array([2, 2.0]),
+            elb.BoundMethod.BAILEY: np.array([5, 4.0]),
+            elb.BoundMethod.ADJUSTED_LOG: np.array([10, 1.0]),
+        }
+    )
+    expected = [10, 1.0]
+
+    result = SingleAttackResult(
+        roc_curve=self.arbitrary_roc,
+        epsilon_lower_bound_value=epsilon_lower_bound_value,
+        slice_spec=SingleSliceSpec(None),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
+    returned_value = result.get_epsilon_lower_bound()
+    np.testing.assert_allclose(returned_value, expected, atol=1e-7)
+
+  def test_string(self):
+    result = SingleAttackResult(
+        roc_curve=self.arbitrary_roc,
+        epsilon_lower_bound_value=self.arbitrary_epsilon_lower_bound_value,
+        slice_spec=SingleSliceSpec(None),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
+    self.assertEqual(
+        str(result),
+        (
+            'SingleAttackResult(\n'
+            '  SliceSpec: Entire dataset\n'
+            '  DataSize: (ntrain=1, ntest=1)\n'
+            '  AttackType: THRESHOLD_ATTACK\n'
+            '  AUC: 0.50\n'
+            '  Attacker advantage: 0.00\n'
+            '  Positive Predictive Value: 0.50\n'
+            '  Epsilon lower bound: 10.0000, 1.0000\n'
+            ')'
+        ),
+    )
 
 
 class SingleMembershipProbabilityResultTest(absltest.TestCase):
@@ -648,6 +780,40 @@ class SingleMembershipProbabilityResultTest(absltest.TestCase):
         result.attack_with_varied_thresholds(
             threshold_list=np.array([0.8, 0.7]))[2].tolist(), [0.8, 1])
 
+  @mock.patch.object(data_structures, 'EPSILON_K', 4)
+  def test_collect_results(self):
+    result = SingleMembershipProbabilityResult(
+        slice_spec=SingleSliceSpec(None),
+        train_membership_probs=np.array([0.91, 1, 0.92, 0.82, 0.75]),
+        test_membership_probs=np.array([0.81, 0.7, 0.75, 0.25, 0.3]),
+    )
+    summary = result.collect_results(
+        threshold_list=np.array([0.8, 0.7]), return_roc_results=True
+    )
+    self.assertListEqual(
+        summary,
+        [
+            '\nMembership probability analysis over slice: "Entire dataset"',
+            (
+                '  with 0.8000 as the threshold on membership probability, the'
+                ' precision-recall pair is (0.8000, 0.8000)'
+            ),
+            (
+                '  with 0.7000 as the threshold on membership probability, the'
+                ' precision-recall pair is (0.6250, 1.0000)'
+            ),
+            '  thresholding on membership probability achieved an AUC of 0.94',
+            (
+                '  thresholding on membership probability achieved an advantage'
+                ' of 0.80'
+            ),
+            (
+                '  thresholding on membership probability achieved top-4'
+                ' epsilon lower bound of 0.3719, 0.2765, 0.1207, 0.1207'
+            ),
+        ],
+    )
+
 
 class AttackResultsCollectionTest(absltest.TestCase):
 
@@ -661,8 +827,15 @@ class AttackResultsCollectionTest(absltest.TestCase):
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
             thresholds=np.array([0, 1, 2]),
-            test_train_ratio=1.0),
-        data_size=DataSize(ntrain=1, ntest=1))
+            test_train_ratio=1.0,
+        ),
+        epsilon_lower_bound_value=EpsilonLowerBoundValue(
+            bounds={
+                elb.BoundMethod.KATZ_LOG: np.array([2, 2.0]),
+            }
+        ),
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
     self.results_epoch_10 = AttackResults(
         single_attack_results=[self.some_attack_result],
@@ -722,8 +895,20 @@ class AttackResultsTest(absltest.TestCase):
             tpr=np.array([0.0, 1.0, 1.0]),
             fpr=np.array([1.0, 1.0, 0.0]),
             thresholds=np.array([0, 1, 2]),
-            test_train_ratio=1.0),
-        data_size=DataSize(ntrain=1, ntest=1))
+            test_train_ratio=1.0,
+        ),
+        epsilon_lower_bound_value=EpsilonLowerBoundValue(
+            bounds={
+                elb.BoundMethod.INV_SINH: np.array(
+                    [2.65964282, 2.65964282, -0.01648963, -0.01648963]
+                ),
+                elb.BoundMethod.CLOPPER_PEARSON: np.array(
+                    [3.28134635, 3.28134635]
+                ),
+            }
+        ),
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
     # ROC curve of a random classifier
     self.random_classifier_result = SingleAttackResult(
@@ -733,8 +918,18 @@ class AttackResultsTest(absltest.TestCase):
             tpr=np.array([0.0, 0.5, 1.0]),
             fpr=np.array([0.0, 0.5, 1.0]),
             thresholds=np.array([0, 1, 2]),
-            test_train_ratio=1.0),
-        data_size=DataSize(ntrain=1, ntest=1))
+            test_train_ratio=1.0,
+        ),
+        epsilon_lower_bound_value=EpsilonLowerBoundValue(
+            bounds={
+                elb.BoundMethod.KATZ_LOG: np.array([-0.01648981, -0.01648981]),
+                elb.BoundMethod.ADJUSTED_LOG: np.array(
+                    [-0.01640757, -0.01640757]
+                ),
+            }
+        ),
+        data_size=DataSize(ntrain=1, ntest=1),
+    )
 
   def test_get_result_with_max_auc_first(self):
     results = AttackResults(
@@ -772,34 +967,59 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(results.get_result_with_max_ppv(),
                      self.perfect_classifier_result)
 
+  def test_get_result_with_max_epsilon_first(self):
+    results = AttackResults(
+        [self.random_classifier_result, self.perfect_classifier_result]
+    )
+    self.assertEqual(
+        results.get_result_with_max_epsilon(), self.perfect_classifier_result
+    )
+
+  def test_get_result_with_max_epsilon_second(self):
+    results = AttackResults(
+        [self.random_classifier_result, self.perfect_classifier_result]
+    )
+    self.assertEqual(
+        results.get_result_with_max_epsilon(), self.perfect_classifier_result
+    )
+
   def test_summary_by_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
     self.assertSequenceEqual(
         results.summary(by_slices=True),
-        'Best-performing attacks over all slices\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
-        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n' +
-        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        'Best-performing attacks over all slices\n'
+        + '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
+        ' AUC of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
+        + '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
         ' positive predictive value of 1.00 on slice CORRECTLY_CLASSIFIED='
-        'True\n\n'
+        'True\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved'
+        ' top-5 epsilon lower bounds of 3.2813, 3.2813 on slice'
+        ' CORRECTLY_CLASSIFIED=True\n\n'
         'Best-performing attacks over slice: "CORRECTLY_CLASSIFIED=True"\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' AUC of 1.00\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' advantage of 1.00\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
-        ' positive predictive value of 1.00\n\n'
+        ' positive predictive value of 1.00\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved'
+        ' top-5 epsilon lower bounds of 3.2813, 3.2813\n\n'
         'Best-performing attacks over slice: "Entire dataset"\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' AUC of 0.50\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' advantage of 0.00\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
-        ' positive predictive value of 0.50')
+        ' positive predictive value of 0.50\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved'
+        ' top-5 epsilon lower bounds of -0.0164, -0.0164',
+    )
 
+  @mock.patch.object(data_structures, 'EPSILON_K', 4)
   def test_summary_without_slices(self):
     results = AttackResults(
         [self.perfect_classifier_result, self.random_classifier_result])
@@ -811,7 +1031,12 @@ class AttackResultsTest(absltest.TestCase):
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved an'
         ' advantage of 1.00 on slice CORRECTLY_CLASSIFIED=True\n'
         '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved a'
-        ' positive predictive value of 1.00 on slice CORRECTLY_CLASSIFIED=True')
+        ' positive predictive value of 1.00 on slice'
+        ' CORRECTLY_CLASSIFIED=True\n'
+        '  THRESHOLD_ATTACK (with 1 training and 1 test examples) achieved'
+        ' top-4 epsilon lower bounds of 3.2813, 3.2813 on slice'
+        ' CORRECTLY_CLASSIFIED=True',
+    )
 
   def test_save_load(self):
     results = AttackResults(
@@ -824,6 +1049,7 @@ class AttackResultsTest(absltest.TestCase):
 
     self.assertEqual(repr(results), repr(loaded_results))
 
+  @mock.patch.object(data_structures, 'EPSILON_K', 4)
   def test_calculate_pd_dataframe(self):
     single_results = [
         self.perfect_classifier_result, self.random_classifier_result
@@ -838,7 +1064,11 @@ class AttackResultsTest(absltest.TestCase):
         'attack type': ['THRESHOLD_ATTACK', 'THRESHOLD_ATTACK'],
         'Attacker advantage': [1.0, 0.0],
         'Positive predictive value': [1.0, 0.5],
-        'AUC': [1.0, 0.5]
+        'AUC': [1.0, 0.5],
+        'Epsilon lower bound_1': [3.28134635, -0.01640757],
+        'Epsilon lower bound_2': [3.28134635, -0.01640757],
+        'Epsilon lower bound_3': [np.nan, np.nan],
+        'Epsilon lower bound_4': [np.nan, np.nan],
     })
     pd.testing.assert_frame_equal(df, df_expected)
 

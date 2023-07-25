@@ -21,7 +21,10 @@ py_test(
     srcs = ["membership_inference_attack_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
+    ],
 )
 
 py_test(
@@ -32,6 +35,7 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":membership_inference_attack",
+        "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
         "//tensorflow_privacy/privacy/privacy_tests:utils",
     ],
 )
@@ -62,6 +66,7 @@ py_test(
     deps = [
         ":membership_inference_attack",
         ":privacy_report",
+        "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
     ],
 )
 
@@ -83,7 +88,10 @@ py_library(
         "seq2seq_mia.py",
     ],
     srcs_version = "PY3",
-    deps = ["//tensorflow_privacy/privacy/privacy_tests:utils"],
+    deps = [
+        "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
+        "//tensorflow_privacy/privacy/privacy_tests:utils",
+    ],
 )
 
 py_library(

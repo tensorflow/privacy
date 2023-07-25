@@ -20,18 +20,24 @@ import glob
 import logging
 import os
 import pickle
-from typing import Any, Dict, Iterable, MutableSequence, Optional, Sequence, Union
+from typing import Any, Dict, Iterable, Mapping, MutableSequence, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
 from scipy import special
 from sklearn import metrics
+from tensorflow_privacy.privacy.privacy_tests import epsilon_lower_bound as elb
 from tensorflow_privacy.privacy.privacy_tests import utils
 
 # The minimum TPR or FPR below which they are considered equal.
 _ABSOLUTE_TOLERANCE = 1e-3
 
 ENTIRE_DATASET_SLICE_STR = 'Entire dataset'
+
+# Methods for estimation epsilon lower bounds
+EPSILON_METHODS = (elb.BoundMethod.BAILEY,)
+EPSILON_ALPHA = 0.05  # Level of significance for estimating epsilon lower bound
+EPSILON_K = 5  # Will return top-k values for each epsilon lower bound estimate
 
 
 class SlicingFeature(enum.Enum):
@@ -189,6 +195,7 @@ class PrivacyMetric(enum.Enum):
   AUC = 'AUC'
   ATTACKER_ADVANTAGE = 'Attacker advantage'
   PPV = 'Positive predictive value'
+  EPSILON_LOWER_BOUND = 'Epsilon lower bound'
 
   def __str__(self):
     """Returns 'AUC' instead of PrivacyMetric.AUC."""
@@ -738,6 +745,27 @@ class RocCurve:
     ])
 
 
+@dataclasses.dataclass
+class EpsilonLowerBoundValue:
+  """Epsilon lower bounds of a membership inference classifier."""
+
+  # Bounds from different methods
+  bounds: Mapping[elb.BoundMethod, np.ndarray]
+
+  def get_max_epsilon_bounds(self) -> np.ndarray:
+    """Returns the bounds with largest average."""
+    bounds_val = [bound for bound in self.bounds.values() if bound.size]
+    if not bounds_val:
+      return np.array([])
+    best_index = np.argmax([bound.mean() for bound in bounds_val])
+    return bounds_val[best_index]
+
+  def __str__(self) -> str:
+    """Returns string showing bounds with largest average."""
+    bounds_string = utils.format_number_list(self.get_max_epsilon_bounds())
+    return f'EpsilonLowerBoundValue([{bounds_string}])'
+
+
 # (no. of training examples, no. of test examples) for the test.
 DataSize = collections.namedtuple('DataSize', 'ntrain ntest')
 
@@ -760,6 +788,10 @@ class SingleAttackResult:
 
   # ROC curve representing the accuracy of the attacker
   roc_curve: RocCurve
+
+  # Lower bound for DP epsilon, derived from tp and fp. For more details,
+  # see tensorflow_privacy/privacy/privacy_tests/epsilon_lower_bound.py.
+  epsilon_lower_bound_value: EpsilonLowerBoundValue
 
   # Membership score is some measure of confidence of this attacker that
   # a particular sample is a member of the training set.
@@ -794,17 +826,23 @@ class SingleAttackResult:
   def get_auc(self):
     return self.roc_curve.get_auc()
 
+  def get_epsilon_lower_bound(self):
+    return self.epsilon_lower_bound_value.get_max_epsilon_bounds()
+
   def __str__(self):
-    """Returns SliceSpec, AttackType, AUC and advantage metrics."""
+    """Returns SliceSpec, AttackType, and various MIA metrics."""
     return '\n'.join([
         'SingleAttackResult(',
         '  SliceSpec: %s' % str(self.slice_spec),
-        '  DataSize: (ntrain=%d, ntest=%d)' %
-        (self.data_size.ntrain, self.data_size.ntest),
+        '  DataSize: (ntrain=%d, ntest=%d)'
+        % (self.data_size.ntrain, self.data_size.ntest),
         '  AttackType: %s' % str(self.attack_type),
         '  AUC: %.2f' % self.get_auc(),
         '  Attacker advantage: %.2f' % self.get_attacker_advantage(),
-        '  Positive Predictive Value: %.2f' % self.get_ppv(), ')'
+        '  Positive Predictive Value: %.2f' % self.get_ppv(),
+        '  Epsilon lower bound: '
+        + utils.format_number_list(self.get_epsilon_lower_bound()),
+        ')',
     ])
 
 
@@ -906,6 +944,21 @@ class SingleMembershipProbabilityResult:
           '  thresholding on membership probability achieved an advantage of'
           ' %.2f' % (roc_curve.get_attacker_advantage())
       )
+      epsilon_lower_bound_value = EpsilonLowerBoundValue(
+          bounds=elb.EpsilonLowerBound(
+              pos_scores=self.train_membership_probs,
+              neg_scores=self.test_membership_probs,
+              alpha=EPSILON_ALPHA,
+              two_sided_threshold=True,
+          ).compute_epsilon_lower_bounds(methods=EPSILON_METHODS, k=EPSILON_K)
+      )
+      summary.append(
+          f'  thresholding on membership probability achieved top-{EPSILON_K}'
+          + ' epsilon lower bound of '
+          + utils.format_number_list(
+              epsilon_lower_bound_value.get_max_epsilon_bounds()
+          )
+      )
     return summary
 
 
@@ -970,6 +1023,9 @@ class AttackResults:
     advantages = []
     ppvs = []
     aucs = []
+    # Top EPSILON_K epsilon values for each single attack result.
+    # epsilon_lower_bounds[i][j] is the top-i epsilon value for attack j.
+    epsilon_lower_bounds = [[] for _ in range(EPSILON_K)]
 
     for attack_result in self.single_attack_results:
       slice_spec = attack_result.slice_spec
@@ -985,17 +1041,30 @@ class AttackResults:
       advantages.append(float(attack_result.get_attacker_advantage()))
       ppvs.append(float(attack_result.get_ppv()))
       aucs.append(float(attack_result.get_auc()))
+      current_elb = attack_result.get_epsilon_lower_bound()
+      for i in range(EPSILON_K):
+        if i < len(current_elb):
+          epsilon_lower_bounds[i].append(current_elb[i])
+        else:  # If less than EPSILON_K values, use nan.
+          epsilon_lower_bounds[i].append(np.nan)
 
-    df = pd.DataFrame({
-        str(AttackResultsDFColumns.SLICE_FEATURE): slice_features,
-        str(AttackResultsDFColumns.SLICE_VALUE): slice_values,
-        str(AttackResultsDFColumns.DATA_SIZE_TRAIN): data_size_train,
-        str(AttackResultsDFColumns.DATA_SIZE_TEST): data_size_test,
-        str(AttackResultsDFColumns.ATTACK_TYPE): attack_types,
-        str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
-        str(PrivacyMetric.PPV): ppvs,
-        str(PrivacyMetric.AUC): aucs
-    })
+    df = pd.DataFrame(
+        {
+            str(AttackResultsDFColumns.SLICE_FEATURE): slice_features,
+            str(AttackResultsDFColumns.SLICE_VALUE): slice_values,
+            str(AttackResultsDFColumns.DATA_SIZE_TRAIN): data_size_train,
+            str(AttackResultsDFColumns.DATA_SIZE_TEST): data_size_test,
+            str(AttackResultsDFColumns.ATTACK_TYPE): attack_types,
+            str(PrivacyMetric.ATTACKER_ADVANTAGE): advantages,
+            str(PrivacyMetric.PPV): ppvs,
+            str(PrivacyMetric.AUC): aucs,
+        }
+        | {
+            str(PrivacyMetric.EPSILON_LOWER_BOUND)
+            + f'_{i + 1}': epsilon_lower_bounds[i]
+            for i in range(len(epsilon_lower_bounds))
+        }
+    )
     return df
 
   def summary(self, by_slices=False) -> str:
@@ -1047,6 +1116,22 @@ class AttackResults:
          max_ppv_result_all.data_size.ntest, max_ppv_result_all.get_ppv(),
          max_ppv_result_all.slice_spec))
 
+    max_epsilon_lower_bound_all = self.get_result_with_max_epsilon()
+    summary.append(
+        '  %s (with %d training and %d test examples) achieved top-%d epsilon '
+        'lower bounds of %s on slice %s'
+        % (
+            max_epsilon_lower_bound_all.attack_type,
+            max_epsilon_lower_bound_all.data_size.ntrain,
+            max_epsilon_lower_bound_all.data_size.ntest,
+            EPSILON_K,
+            utils.format_number_list(
+                max_epsilon_lower_bound_all.get_epsilon_lower_bound()
+            ),
+            max_epsilon_lower_bound_all.slice_spec,
+        )
+    )
+
     slice_dict = self._group_results_by_slice()
 
     if by_slices and len(slice_dict.keys()) > 1:
@@ -1082,7 +1167,20 @@ class AttackResults:
             'predictive value of %.2f' %
             (max_ppv_result.attack_type, max_ppv_result.data_size.ntrain,
              max_ppv_result.data_size.ntest, max_ppv_result.get_ppv()))
-
+        max_epsilon_lower_bound_all = results.get_result_with_max_epsilon()
+        summary.append(
+            '  %s (with %d training and %d test examples) achieved top-%d '
+            'epsilon lower bounds of %s'
+            % (
+                max_epsilon_lower_bound_all.attack_type,
+                max_epsilon_lower_bound_all.data_size.ntrain,
+                max_epsilon_lower_bound_all.data_size.ntest,
+                EPSILON_K,
+                utils.format_number_list(
+                    max_epsilon_lower_bound_all.get_epsilon_lower_bound()
+                ),
+            )
+        )
     return '\n'.join(summary)
 
   def _group_results_by_slice(self):
@@ -1123,6 +1221,14 @@ class AttackResults:
       return None
     return self.single_attack_results[np.argmax(
         [result.get_ppv() for result in self.single_attack_results])]
+
+  def get_result_with_max_epsilon(self) -> SingleAttackResult:
+    """Gets the result with max averaged epsilon lower bound."""
+    avg_epsilon_bounds = [
+        result.get_epsilon_lower_bound().mean()
+        for result in self.single_attack_results
+    ]
+    return self.single_attack_results[np.argmax(avg_epsilon_bounds)]
 
   def save(self, filepath):
     """Saves self to a pickle file."""

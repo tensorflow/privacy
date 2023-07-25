@@ -17,7 +17,9 @@ from unittest import mock
 from absl.testing import absltest
 from absl.testing import parameterized
 import numpy as np
+from tensorflow_privacy.privacy.privacy_tests import epsilon_lower_bound as elb
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import membership_inference_attack as mia
+from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import models
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackInputData
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import AttackType
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack.data_structures import DataSize
@@ -101,6 +103,21 @@ def get_test_input_logits_only_with_sample_weights(n_train, n_test):
       logits_test=rng.randn(n_test, 5) + 0.2,
       sample_weight_train=rng.randn(n_train, 1),
       sample_weight_test=rng.randn(n_test, 1))
+
+
+class MockTrainedAttacker(object):
+  """Mock for TrainedAttacker."""
+
+  def __init__(self, backend):
+    del backend
+    return
+
+  def train_model(self, input_features, is_training_labels, sample_weight=None):
+    del input_features, is_training_labels, sample_weight
+    return
+
+  def predict(self, input_features):
+    return input_features[:, 0]
 
 
 class RunAttacksTest(parameterized.TestCase):
@@ -284,6 +301,117 @@ class RunAttacksTest(parameterized.TestCase):
     # and 1/ (1+ (6/6)) = 0.5. So PPV is the max of these three values,
     # namely 0.5.
     np.testing.assert_almost_equal(result.roc_curve.get_ppv(), 0.5, decimal=2)
+
+  @parameterized.parameters(
+      (AttackType.THRESHOLD_ATTACK, 'loss_train', 'loss_test'),
+      (AttackType.THRESHOLD_ENTROPY_ATTACK, 'entropy_train', 'entropy_test'),
+  )
+  @mock.patch.object(mia, 'EPSILON_K', 4)
+  def test_run_attack_threshold_calculates_correct_epsilon(
+      self, attack_type, train_metric_name, test_metric_name
+  ):
+    result = mia._run_attack(
+        AttackInputData(
+            **{
+                train_metric_name: np.array([0.1, 0.2, 1.3, 0.4, 0.5, 0.6]),
+                test_metric_name: np.array([1.1, 1.2, 1.3, 0.4, 1.5, 1.6]),
+            }
+        ),
+        attack_type,
+    )
+    np.testing.assert_almost_equal(
+        result.epsilon_lower_bound_value.get_max_epsilon_bounds(),
+        np.array([0.34695111, 0.34695111, 0.05616349, 0.05616349]),
+    )
+
+  @parameterized.product(
+      (
+          dict(
+              epsilon_methods=tuple(elb.BoundMethod),
+              expected_max_method=elb.BoundMethod.CLOPPER_PEARSON,
+          ),
+          dict(
+              epsilon_methods=(
+                  elb.BoundMethod.KATZ_LOG,
+                  elb.BoundMethod.CLOPPER_PEARSON,
+              ),
+              expected_max_method=elb.BoundMethod.CLOPPER_PEARSON,
+          ),
+          dict(
+              epsilon_methods=(elb.BoundMethod.BAILEY,),
+              expected_max_method=elb.BoundMethod.BAILEY,
+          ),
+      ),
+      attack_type=[
+          AttackType.LOGISTIC_REGRESSION,
+          AttackType.MULTI_LAYERED_PERCEPTRON,
+          AttackType.RANDOM_FOREST,
+          AttackType.K_NEAREST_NEIGHBORS,
+      ],
+  )
+  @mock.patch.object(models, 'TrainedAttacker', MockTrainedAttacker)
+  @mock.patch.object(models, 'LogisticRegressionAttacker', MockTrainedAttacker)
+  @mock.patch.object(
+      models, 'MultilayerPerceptronAttacker', MockTrainedAttacker
+  )
+  @mock.patch.object(models, 'RandomForestAttacker', MockTrainedAttacker)
+  @mock.patch.object(models, 'KNearestNeighborsAttacker', MockTrainedAttacker)
+  def test_run_attack_trained_calculates_correct_epsilon(
+      self,
+      epsilon_methods,
+      expected_max_method,
+      attack_type,
+  ):
+    logits_train = np.ones((1000, 5))
+    logits_test = np.zeros((100, 5))
+    # The prediction would be all 1 for training and all 0 for test.
+    expected_bounds = {
+        elb.BoundMethod.KATZ_LOG: [
+            5.27530977,
+            2.97796578,
+            -0.00720554,
+            -0.01623037,
+        ],
+        elb.BoundMethod.ADJUSTED_LOG: [
+            5.27580935,
+            2.98292432,
+            -0.00717236,
+            -0.01614769,
+            -7.62368550,
+        ],
+        elb.BoundMethod.BAILEY: [
+            5.87410287,
+            3.57903543,
+            -0.00718316,
+            -0.01625286,
+        ],
+        elb.BoundMethod.INV_SINH: [
+            4.95123977,
+            2.65964282,
+            -0.00720547,
+            -0.01623030,
+        ],
+        elb.BoundMethod.CLOPPER_PEARSON: [
+            5.56738762,
+            3.31454626,
+        ],
+    }
+    with mock.patch.object(mia, 'EPSILON_METHODS', epsilon_methods):
+      result = mia._run_attack(
+          AttackInputData(logits_train, logits_test),
+          attack_type,
+      )
+      self.assertCountEqual(
+          result.epsilon_lower_bound_value.bounds.keys(), epsilon_methods
+      )
+      for key in epsilon_methods:
+        np.testing.assert_almost_equal(
+            result.epsilon_lower_bound_value.bounds[key], expected_bounds[key]
+        )
+      np.testing.assert_almost_equal(
+          result.epsilon_lower_bound_value.get_max_epsilon_bounds(),
+          expected_bounds[expected_max_method],
+      )
 
   def test_run_attack_by_slice(self):
     result = mia.run_attacks(
