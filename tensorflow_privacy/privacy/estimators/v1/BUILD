@@ -26,6 +26,15 @@ py_library(
     deps = [":head"],
 )
 
+py_library(
+    name = "linear",
+    srcs = [
+        "linear.py",
+    ],
+    srcs_version = "PY3",
+    deps = [":head"],
+)
+
 py_test(
     name = "head_test",
     timeout = "long",
@@ -47,6 +56,19 @@ py_test(
     srcs_version = "PY3",
     deps = [
         ":dnn",
+        "//tensorflow_privacy/privacy/estimators:test_utils",
+        "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
+    ],
+)
+
+py_test(
+    name = "linear_test",
+    timeout = "long",
+    srcs = ["linear_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [
+        ":linear",
         "//tensorflow_privacy/privacy/estimators:test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
     ],
