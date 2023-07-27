@@ -44,7 +44,6 @@ py_library(
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -67,7 +66,6 @@ py_library(
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -90,7 +88,6 @@ py_library(
     deps = [
         ":dp_query",
         ":normalized_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -109,10 +106,7 @@ py_library(
     name = "gaussian_query",
     srcs = ["gaussian_query.py"],
     srcs_version = "PY3",
-    deps = [
-        ":dp_query",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = [":dp_query"],
 )
 
 py_test(
@@ -131,10 +125,7 @@ py_library(
     name = "no_privacy_query",
     srcs = ["no_privacy_query.py"],
     srcs_version = "PY3",
-    deps = [
-        ":dp_query",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = [":dp_query"],
 )
 
 py_test(
@@ -173,10 +164,7 @@ py_library(
     name = "nested_query",
     srcs = ["nested_query.py"],
     srcs_version = "PY3",
-    deps = [
-        ":dp_query",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = [":dp_query"],
 )
 
 py_test(
@@ -202,7 +190,6 @@ py_library(
         ":dp_query",
         ":gaussian_query",
         ":quantile_estimator_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -282,7 +269,6 @@ py_library(
     deps = [
         ":dp_query",
         ":tree_aggregation",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -294,7 +280,6 @@ py_library(
         ":distributed_discrete_gaussian_query",
         ":dp_query",
         ":gaussian_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 
@@ -332,7 +317,6 @@ py_library(
         ":dp_query",
         ":quantile_estimator_query",
         ":tree_aggregation_query",
-        "@com_google_differential_py//dp_accounting:accounting",
     ],
 )
 

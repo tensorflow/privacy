@@ -25,10 +25,7 @@ py_binary(
     srcs = ["mnist_dpsgd_tutorial_eager.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/optimizers:dp_optimizer"],
 )
 
 py_binary(
@@ -36,10 +33,7 @@ py_binary(
     srcs = ["mnist_dpsgd_tutorial_keras.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras"],
 )
 
 py_binary(
@@ -47,10 +41,7 @@ py_binary(
     srcs = ["mnist_dpsgd_tutorial_keras_model.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/keras_models:dp_keras_model"],
 )
 
 py_binary(
@@ -58,10 +49,7 @@ py_binary(
     srcs = ["mnist_dpsgd_tutorial_vectorized.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer_vectorized",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/optimizers:dp_optimizer_vectorized"],
 )
 
 py_binary(
@@ -81,10 +69,7 @@ py_binary(
     srcs = ["mnist_lr_tutorial.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/optimizers:dp_optimizer"],
 )
 
 py_binary(
@@ -92,10 +77,7 @@ py_binary(
     srcs = ["lm_dpsgd_tutorial.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [
-        "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
-        "@com_google_differential_py//dp_accounting:accounting",
-    ],
+    deps = ["//tensorflow_privacy/privacy/optimizers:dp_optimizer"],
 )
 
 py_binary(
