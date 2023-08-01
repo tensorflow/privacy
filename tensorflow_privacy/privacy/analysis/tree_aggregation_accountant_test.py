@@ -89,7 +89,7 @@ class TreeAggregationTest(tf.test.TestCase, parameterized.TestCase):
     accountant = dp_accounting.rdp.RdpAccountant(orders)
     accountant.compose(
         dp_accounting.GaussianDpEvent(noise_multiplier), total_steps)
-    rdp = accountant._rdp  # pylint: disable=protected-access
+    rdp = accountant.rdp
     self.assertAllClose(tree_rdp, rdp, rtol=1e-12)
 
   @parameterized.named_parameters(
