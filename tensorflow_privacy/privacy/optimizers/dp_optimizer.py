@@ -41,7 +41,7 @@ def make_optimizer_class(cls):
         'make_optimizer_class() does not interfere with overridden version.',
         cls.__name__)
 
-  class DPOptimizerClass(cls):  # pylint: disable=empty-docstring
+  class DPOptimizerClass(cls):  # pylint: disable=missing-class-docstring
     __doc__ = ("""Differentially private subclass of `{base_class}`.
 
        You can use this as a differentially private replacement for
@@ -278,7 +278,7 @@ def make_gaussian_optimizer_class(cls):
     A subclass of `cls` using DP-SGD with Gaussian averaging.
   """
 
-  class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=empty-docstring
+  class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=missing-class-docstring
     __doc__ = ("""DP subclass of `{}`.
 
        You can use this as a differentially private replacement for
@@ -372,16 +372,19 @@ def make_gaussian_optimizer_class(cls):
 
 AdagradOptimizer = tf.compat.v1.train.AdagradOptimizer
 AdamOptimizer = tf.compat.v1.train.AdamOptimizer
+FtrlOptimizer = tf.compat.v1.train.FtrlOptimizer
 GradientDescentOptimizer = tf.compat.v1.train.GradientDescentOptimizer
 RMSPropOptimizer = tf.compat.v1.train.RMSPropOptimizer
 
 DPAdagradOptimizer = make_optimizer_class(AdagradOptimizer)
 DPAdamOptimizer = make_optimizer_class(AdamOptimizer)
+DPFtrlOptimizer = make_optimizer_class(FtrlOptimizer)
 DPGradientDescentOptimizer = make_optimizer_class(GradientDescentOptimizer)
 DPRMSPropOptimizer = make_optimizer_class(RMSPropOptimizer)
 
 DPAdagradGaussianOptimizer = make_gaussian_optimizer_class(AdagradOptimizer)
 DPAdamGaussianOptimizer = make_gaussian_optimizer_class(AdamOptimizer)
+DPFtrlGaussianOptimizer = make_gaussian_optimizer_class(FtrlOptimizer)
 DPGradientDescentGaussianOptimizer = make_gaussian_optimizer_class(
     GradientDescentOptimizer)
 DPRMSPropGaussianOptimizer = make_gaussian_optimizer_class(RMSPropOptimizer)
