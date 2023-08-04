@@ -69,7 +69,7 @@ def main(argv):
                 for dy in range(0, 2*shift+1, stride):
                     this_x = aug_pad[:, dx:dx+32, dy:dy+32, :].transpose((0,3,1,2))
 
-                    logits = model.model(this_x, training=True)
+                    logits = model.model(this_x, training=False)
                     outs.append(logits)
 
         print(np.array(outs).shape)

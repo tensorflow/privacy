@@ -88,13 +88,13 @@ which should give (something like) the following output
 
 ```
 Attack No poison (LiRA)
-   AUC 0.7025, Accuracy 0.6258, TPR@0.1%FPR of 0.0544
+   AUC 0.6992, Accuracy 0.6240, TPR@0.1%FPR of 0.0529
 Attack No poison (Global threshold)
-   AUC 0.6191, Accuracy 0.6173, TPR@0.1%FPR of 0.0012
+   AUC 0.6200, Accuracy 0.6167, TPR@0.1%FPR of 0.0011
 Attack With poison (LiRA)
-   AUC 0.9943, Accuracy 0.9653, TPR@0.1%FPR of 0.4945
+   AUC 0.9904, Accuracy 0.9617, TPR@0.1%FPR of 0.3730
 Attack With poison (Global threshold)
-   AUC 0.9922, Accuracy 0.9603, TPR@0.1%FPR of 0.3930
+   AUC 0.9911, Accuracy 0.9580, TPR@0.1%FPR of 0.2130
 ```
 
 where the baselines are LiRA and a simple global threshold on the membership
