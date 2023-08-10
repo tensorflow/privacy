@@ -185,19 +185,19 @@ class TrainedAttacker(object):
     raise NotImplementedError()
 
   def predict(self, input_features):
-    """Predicts whether input_features belongs to train or test.
+    """Predicts the probability that input_features belongs to train.
 
     Args:
       input_features : A vector of features with the same semantics as x_train
         passed to train_model.
 
     Returns:
-      An array of probabilities denoting whether the example belongs to test.
+      An array of probabilities that the examples belongs to train.
     """
     if self.model is None:
       raise AssertionError(
           'Model not trained yet. Please call train_model first.')
-    return self.model.predict_proba(input_features)[:, 1]
+    return self.model.predict_proba(input_features)[:, 1]  # Train has label 1
 
 
 class LogisticRegressionAttacker(TrainedAttacker):

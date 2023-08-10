@@ -109,8 +109,7 @@ def _run_trained_attack(
           labels[train_indices],
           sample_weight=sample_weights_train,
       )
-      predictions = attacker.predict(features[test_indices])
-      scores[test_indices] = predictions
+      scores[test_indices] = attacker.predict(features[test_indices])
   except ValueError as ve:
     if 'cannot be greater than the number of members in each class.' in str(ve):
       logging.warning('kf.split in _run_trained_attack fails with: %s', str(ve))
@@ -200,8 +199,9 @@ def _run_threshold_attack(attack_input: AttackInputData):
       slice_spec=_get_slice_spec(attack_input),
       data_size=DataSize(ntrain=ntrain, ntest=ntest),
       attack_type=AttackType.THRESHOLD_ATTACK,
-      membership_scores_train=attack_input.get_loss_train(),
-      membership_scores_test=attack_input.get_loss_test(),
+      # Negate loss because training examples are expected to have lower loss.
+      membership_scores_train=-attack_input.get_loss_train(),
+      membership_scores_test=-attack_input.get_loss_test(),
       roc_curve=roc_curve,
       epsilon_lower_bound_value=epsilon_lower_bound_value,
   )
