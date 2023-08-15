@@ -13,12 +13,12 @@
 # limitations under the License.
 """A collection of type aliases used throughout the clipping library."""
 
-from typing import Any, Callable, Dict, Iterable, List, Optional, Text, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, Union
 import tensorflow as tf
 
 
 # Tensorflow aliases.
-PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Dict[Text, tf.Tensor]]
+PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Dict[str, tf.Tensor]]
 
 InputTensors = PackedTensors
 
@@ -34,7 +34,13 @@ SquareNormFunction = Callable[[OutputTensors], tf.Tensor]
 RegistryFunctionOutput = Tuple[Any, OutputTensors, SquareNormFunction]
 
 RegistryFunction = Callable[
-    [Any, Tuple[Any, ...], Dict[Text, Any], tf.GradientTape],
+    [
+        Any,
+        Tuple[Any, ...],
+        Mapping[str, Any],
+        tf.GradientTape,
+        Union[tf.Tensor, None],
+    ],
     RegistryFunctionOutput,
 ]
 
