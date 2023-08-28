@@ -21,6 +21,8 @@ from tensorflow_privacy.privacy.estimators import test_utils
 from tensorflow_privacy.privacy.estimators.v1 import linear
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
+# pylint: disable=g-deprecated-tf-checker
+
 
 class DPLinearClassifierClassifierTest(
     tf.test.TestCase, parameterized.TestCase
@@ -28,11 +30,13 @@ class DPLinearClassifierClassifierTest(
   """Tests for DP-enabled LinearClassifier."""
 
   @parameterized.named_parameters(
-      ('BinaryClassLinear', 2),
-      ('MultiClassLinear 3', 3),
-      ('MultiClassLinear 4', 4),
+      ('BinaryClassLinear 1', 2, 1),
+      ('BinaryClassLinear 4', 2, 4),
+      ('MultiClassLinear 3', 3, 1),
+      ('MultiClassLinear 4', 4, 1),
+      ('MultiClassLinear 4 1', 4, 2),
   )
-  def testLinearClassifier(self, n_classes):
+  def testRunsWithoutErrors(self, n_classes, num_microbatches):
     train_features, train_labels = test_utils.make_input_data(256, n_classes)
     feature_columns = []
     for key in train_features:
@@ -43,7 +47,7 @@ class DPLinearClassifierClassifierTest(
         learning_rate=0.5,
         l2_norm_clip=1.0,
         noise_multiplier=0.0,
-        num_microbatches=1,
+        num_microbatches=num_microbatches,
     )
 
     classifier = linear.LinearClassifier(

@@ -20,16 +20,20 @@ from tensorflow_privacy.privacy.estimators import test_utils
 from tensorflow_privacy.privacy.estimators.v1 import dnn
 from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPGradientDescentGaussianOptimizer
 
+# pylint: disable=g-deprecated-tf-checker
+
 
 class DPDNNClassifierTest(tf.test.TestCase, parameterized.TestCase):
   """Tests for DP-enabled DNNClassifier."""
 
   @parameterized.named_parameters(
-      ('BinaryClassDNN', 2),
-      ('MultiClassDNN 3', 3),
-      ('MultiClassDNN 4', 4),
+      ('BinaryClassDNN', 2, 1),
+      ('BinaryClassDNN 4', 2, 4),
+      ('MultiClassDNN 3', 3, 1),
+      ('MultiClassDNN 4', 4, 1),
+      ('MultiClassDNN 4 4', 4, 4),
   )
-  def testDNN(self, n_classes):
+  def testDNN(self, n_classes, num_microbatches):
     train_features, train_labels = test_utils.make_input_data(256, n_classes)
     feature_columns = []
     for key in train_features:
@@ -40,7 +44,8 @@ class DPDNNClassifierTest(tf.test.TestCase, parameterized.TestCase):
         learning_rate=0.5,
         l2_norm_clip=1.0,
         noise_multiplier=0.0,
-        num_microbatches=1)
+        num_microbatches=num_microbatches,
+    )
 
     classifier = dnn.DNNClassifier(
         hidden_units=[10],

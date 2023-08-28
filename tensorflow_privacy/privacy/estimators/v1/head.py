@@ -16,12 +16,14 @@
 import tensorflow as tf
 
 from tensorflow.python.ops import lookup_ops  # pylint: disable=g-direct-tensorflow-import
+# pylint: disable=g-deprecated-tf-checker
 from tensorflow_estimator.python.estimator import model_fn
 from tensorflow_estimator.python.estimator.canned import head as head_lib
 from tensorflow_estimator.python.estimator.canned import metric_keys
 from tensorflow_estimator.python.estimator.canned import prediction_keys
 from tensorflow_estimator.python.estimator.export import export_output
 from tensorflow_estimator.python.estimator.mode_keys import ModeKeys
+
 
 # Collect together all protected access items needed from base head.
 # pylint: disable=protected-access
@@ -39,8 +41,12 @@ _create_eval_metrics_tuple = head_lib._create_eval_metrics_tuple
 _summary_key = head_lib._summary_key
 _validate_loss_fn_args = head_lib._validate_loss_fn_args
 
-_BaseBinaryLogisticHeadWithSigmoidCrossEntropyLoss = head_lib._BinaryLogisticHeadWithSigmoidCrossEntropyLoss
-_BaseMultiClassHeadWithSoftmaxCrossEntropyLoss = head_lib._MultiClassHeadWithSoftmaxCrossEntropyLoss
+_BaseBinaryLogisticHeadWithSigmoidCrossEntropyLoss = (
+    head_lib._BinaryLogisticHeadWithSigmoidCrossEntropyLoss
+)
+_BaseMultiClassHeadWithSoftmaxCrossEntropyLoss = (
+    head_lib._MultiClassHeadWithSoftmaxCrossEntropyLoss
+)
 # pylint: enable=protected-access
 
 
@@ -146,25 +152,33 @@ class _MultiClassHeadWithSoftmaxCrossEntropyLoss(
         classifier_output = _classification_output(
             scores=probabilities,
             n_classes=self._n_classes,
-            label_vocabulary=self._label_vocabulary)
+            label_vocabulary=self._label_vocabulary,
+        )
         return model_fn._TPUEstimatorSpec(  # pylint: disable=protected-access
             mode=ModeKeys.PREDICT,
             predictions=predictions,
             export_outputs={
                 _DEFAULT_SERVING_KEY: classifier_output,
                 _CLASSIFY_SERVING_KEY: classifier_output,
-                _PREDICT_SERVING_KEY: export_output.PredictOutput(predictions)
-            })
+                _PREDICT_SERVING_KEY: export_output.PredictOutput(predictions),
+            },
+        )
 
       training_loss, unreduced_loss, weights, label_ids = self.create_loss(
-          features=features, mode=mode, logits=logits, labels=labels)
+          features=features, mode=mode, logits=logits, labels=labels
+      )
       if regularization_losses:
         regularization_loss = tf.math.add_n(regularization_losses)
         regularized_training_loss = tf.math.add_n(
-            [training_loss, regularization_loss])
+            [training_loss, regularization_loss]
+        )
+        unreduced_regularized_training_loss = tf.math.add(
+            unreduced_loss, regularization_loss
+        )
       else:
         regularization_loss = None
         regularized_training_loss = training_loss
+        unreduced_regularized_training_loss = unreduced_loss
 
       if self._loss_reduction == tf.compat.v1.losses.Reduction.NONE:
         scalar_loss = tf.reduce_mean(regularized_training_loss)
@@ -191,8 +205,10 @@ class _MultiClassHeadWithSoftmaxCrossEntropyLoss(
         if train_op_fn is not None:
           raise ValueError('train_op_fn and optimizer cannot both be set.')
         train_op = optimizer.minimize(
-            regularized_training_loss,
-            global_step=tf.compat.v1.train.get_global_step())
+            # regularized_training_loss,
+            unreduced_regularized_training_loss,
+            global_step=tf.compat.v1.train.get_global_step(),
+        )
       elif train_op_fn is not None:
         train_op = train_op_fn(regularized_training_loss)
       else:
@@ -352,9 +368,13 @@ class _BinaryLogisticHeadWithSigmoidCrossEntropyLoss(
         regularization_loss = tf.math.add_n(regularization_losses)
         regularized_training_loss = tf.math.add_n(
             [training_loss, regularization_loss])
+        unreduced_regularized_training_loss = tf.math.add(
+            unreduced_loss, regularization_loss
+        )
       else:
         regularization_loss = None
         regularized_training_loss = training_loss
+        unreduced_regularized_training_loss = unreduced_loss
 
       if self._loss_reduction == tf.compat.v1.losses.Reduction.NONE:
         scalar_loss = tf.reduce_mean(regularized_training_loss)
@@ -382,8 +402,9 @@ class _BinaryLogisticHeadWithSigmoidCrossEntropyLoss(
         if train_op_fn is not None:
           raise ValueError('train_op_fn and optimizer cannot both be set.')
         train_op = optimizer.minimize(
-            regularized_training_loss,
-            global_step=tf.compat.v1.train.get_global_step())
+            unreduced_regularized_training_loss,
+            global_step=tf.compat.v1.train.get_global_step(),
+        )
       elif train_op_fn is not None:
         train_op = train_op_fn(regularized_training_loss)
       else:
