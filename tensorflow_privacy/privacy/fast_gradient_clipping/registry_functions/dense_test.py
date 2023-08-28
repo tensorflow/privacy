@@ -23,21 +23,21 @@ from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import
 # Helper functions.
 # ==============================================================================
 def get_dense_layer_generators():
-  def sigmoid_dense_layer(b):
-    return tf.keras.layers.Dense(b, activation='sigmoid')
+
+  def sigmoid_dense_layer(units):
+    return tf.keras.layers.Dense(units, activation='sigmoid')
 
   return {
-      'pure_dense': lambda a, b: tf.keras.layers.Dense(b),
-      'sigmoid_dense': lambda a, b: sigmoid_dense_layer(b),
+      'pure_dense': lambda a, b: tf.keras.layers.Dense(b[0]),
+      'sigmoid_dense': lambda a, b: sigmoid_dense_layer(b[0]),
   }
 
 
 def get_dense_model_generators():
   return {
-      'seq1': common_test_utils.make_two_layer_sequential_model,
-      'seq2': common_test_utils.make_three_layer_sequential_model,
-      'func1': common_test_utils.make_two_layer_functional_model,
-      'tower1': common_test_utils.make_two_tower_model,
+      'func1': common_test_utils.make_one_layer_functional_model,
+      'func2': common_test_utils.make_two_layer_functional_model,
+      'tower2': common_test_utils.make_two_tower_model,
   }
 
 
@@ -62,7 +62,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.product(
       model_name=list(get_dense_model_generators().keys()),
       layer_name=list(get_dense_layer_generators().keys()),
-      input_dim=[4],
+      input_dims=[[4]],
       output_dim=[2],
       layer_registry_name=list(get_dense_layer_registries().keys()),
       per_example_loss_fn=[None, common_test_utils.test_loss_fn],
@@ -75,7 +75,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       self,
       model_name,
       layer_name,
-      input_dim,
+      input_dims,
       output_dim,
       layer_registry_name,
       per_example_loss_fn,
@@ -85,15 +85,17 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       weighted,
   ):
     # Parse inputs to generate test data.
-    x_batches, weight_batches = common_test_utils.get_nd_test_batches(input_dim)
+    x_batches, weight_batches = common_test_utils.get_nd_test_batches(
+        input_dims[0]
+    )
 
     # Load shared assets to all devices.
     with self.strategy.scope():
       model = common_test_utils.get_model_from_generator(
           model_generator=get_dense_model_generators()[model_name],
           layer_generator=get_dense_layer_generators()[layer_name],
-          input_dims=input_dim,
-          output_dim=output_dim,
+          input_dims=input_dims,
+          output_dims=[output_dim],
           is_eager=is_eager,
       )
 
@@ -103,7 +105,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
           model=model,
           per_example_loss_fn=per_example_loss_fn,
           num_microbatches=num_microbatches,
-          x_batch=[x_batch, x_batch] if model_name == 'tower1' else x_batch,
+          x_batch=[x_batch, x_batch] if model_name == 'tower2' else x_batch,
           weight_batch=weight_batch if weighted else None,
           registry=get_dense_layer_registries()[layer_registry_name],
           partial=partial,

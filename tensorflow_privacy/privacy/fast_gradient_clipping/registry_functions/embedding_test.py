@@ -119,7 +119,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
           model_generator=get_embedding_model_generators()[model_name],
           layer_generator=None,
           input_dims=embed_indices.shape[1:],
-          output_dim=output_dim,
+          output_dims=[output_dim],
           is_eager=is_eager,
       )
 

@@ -13,7 +13,7 @@
 # limitations under the License.
 """A collection of common utility functions for unit testing."""
 
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import tensorflow as tf
@@ -108,12 +108,12 @@ def compute_true_gradient_norms(
 def get_model_from_generator(
     model_generator: type_aliases.ModelGenerator,
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: Union[int, List[int]],
-    output_dim: int,
+    input_dims: List[int],
+    output_dims: List[int],
     is_eager: bool,
 ) -> tf.keras.Model:
   """Creates a simple model from input specifications."""
-  model = model_generator(layer_generator, input_dims, output_dim)
+  model = model_generator(layer_generator, input_dims, output_dims)
   model.compile(
       optimizer=tf.keras.optimizers.SGD(learning_rate=1.0),
       loss=tf.keras.losses.MeanSquaredError(
@@ -171,8 +171,8 @@ def get_computed_and_true_norms_from_model(
 def get_computed_and_true_norms(
     model_generator: type_aliases.ModelGenerator,
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: Union[int, List[int]],
-    output_dim: int,
+    input_dims: List[int],
+    output_dims: List[int],
     per_example_loss_fn: Optional[Callable[[tf.Tensor, tf.Tensor], tf.Tensor]],
     num_microbatches: Optional[int],
     is_eager: bool,
@@ -196,7 +196,7 @@ def get_computed_and_true_norms(
       Returns a `tf.keras.layers.Layer` that accepts input tensors of dimension
       `idim` and returns output tensors of dimension `odim`.
     input_dims: The input dimension(s) of the test `tf.keras.Model` instance.
-    output_dim: The output dimension of the test `tf.keras.Model` instance.
+    output_dims: The output dimension(s) of the test `tf.keras.Model` instance.
     per_example_loss_fn: If not None, used as vectorized per example loss
       function.
     num_microbatches: The number of microbatches. None or an integer.
@@ -219,7 +219,7 @@ def get_computed_and_true_norms(
       model_generator=model_generator,
       layer_generator=layer_generator,
       input_dims=input_dims,
-      output_dim=output_dim,
+      output_dims=output_dims,
       is_eager=is_eager,
   )
   return get_computed_and_true_norms_from_model(
@@ -234,64 +234,74 @@ def get_computed_and_true_norms(
   )
 
 
+def reshape_and_sum(tensor: tf.Tensor) -> tf.Tensor:
+  """Reshapes and sums along non-batch dims to get the shape [None, 1]."""
+  reshaped_2d = tf.reshape(tensor, [tf.shape(tensor)[0], -1])
+  return tf.reduce_sum(reshaped_2d, axis=-1, keepdims=True)
+
+
 # ==============================================================================
 # Model generators.
 # ==============================================================================
-def make_two_layer_sequential_model(layer_generator, input_dim, output_dim):
-  """Creates a 2-layer sequential model."""
-  model = tf.keras.Sequential()
-  model.add(tf.keras.Input(shape=(input_dim,)))
-  model.add(layer_generator(input_dim, output_dim))
-  model.add(tf.keras.layers.Dense(1))
-  return model
-
-
-def make_three_layer_sequential_model(layer_generator, input_dim, output_dim):
-  """Creates a 3-layer sequential model."""
-  model = tf.keras.Sequential()
-  model.add(tf.keras.Input(shape=(input_dim,)))
-  layer1 = layer_generator(input_dim, output_dim)
-  model.add(layer1)
-  if isinstance(layer1, tf.keras.layers.Embedding):
-    # Having multiple consecutive embedding layers does not make sense since
-    # embedding layers only map integers to real-valued vectors.
-    model.add(tf.keras.layers.Dense(output_dim))
-  else:
-    model.add(layer_generator(output_dim, output_dim))
-  model.add(tf.keras.layers.Dense(1))
-  return model
-
-
-def make_two_layer_functional_model(layer_generator, input_dim, output_dim):
-  """Creates a 2-layer 1-input functional model with a pre-output square op."""
-  inputs = tf.keras.Input(shape=(input_dim,))
-  layer1 = layer_generator(input_dim, output_dim)
+def make_one_layer_functional_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
+  """Creates a 1-layer sequential model."""
+  inputs = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
   temp1 = layer1(inputs)
-  temp2 = tf.square(temp1)
-  outputs = tf.keras.layers.Dense(1)(temp2)
+  outputs = reshape_and_sum(temp1)
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-def make_two_tower_model(layer_generator, input_dim, output_dim):
+def make_two_layer_functional_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
+  """Creates a 2-layer sequential model."""
+  inputs = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
+  temp1 = layer1(inputs)
+  temp2 = tf.keras.layers.Dense(1)(temp1)
+  outputs = reshape_and_sum(temp2)
+  return tf.keras.Model(inputs=inputs, outputs=outputs)
+
+
+def make_two_tower_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
   """Creates a 2-layer 2-input functional model."""
-  inputs1 = tf.keras.Input(shape=(input_dim,))
-  layer1 = layer_generator(input_dim, output_dim)
+  inputs1 = tf.keras.Input(shape=input_dims)
+  layer1 = layer_generator(input_dims, output_dims)
   temp1 = layer1(inputs1)
-  inputs2 = tf.keras.Input(shape=(input_dim,))
-  layer2 = layer_generator(input_dim, output_dim)
+  inputs2 = tf.keras.Input(shape=input_dims)
+  layer2 = layer_generator(input_dims, output_dims)
   temp2 = layer2(inputs2)
   temp3 = tf.add(temp1, temp2)
-  outputs = tf.keras.layers.Dense(1)(temp3)
+  temp4 = tf.keras.layers.Dense(1)(temp3)
+  outputs = reshape_and_sum(temp4)
   return tf.keras.Model(inputs=[inputs1, inputs2], outputs=outputs)
 
 
-def make_bow_model(layer_generator, input_dims, output_dim):
+def make_bow_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
   """Creates a simple embedding bow model."""
   del layer_generator
   inputs = tf.keras.Input(shape=input_dims)
   # For the Embedding layer, input_dim is the vocabulary size. This should
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
+  if len(output_dims) != 1:
+    raise ValueError('Expected `output_dims` to be of size 1.')
+  output_dim = output_dims[0]
   emb_layer = tf.keras.layers.Embedding(input_dim=10, output_dim=output_dim)
   feature_embs = emb_layer(inputs)
   # Embeddings add one extra dimension to its inputs, which combined with the
@@ -305,7 +315,11 @@ def make_bow_model(layer_generator, input_dims, output_dim):
   return tf.keras.Model(inputs=inputs, outputs=example_embs)
 
 
-def make_dense_bow_model(layer_generator, input_dims, output_dim):
+def make_dense_bow_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
   """Creates an embedding bow model with a `Dense` layer."""
   del layer_generator
   inputs = tf.keras.Input(shape=input_dims)
@@ -313,6 +327,9 @@ def make_dense_bow_model(layer_generator, input_dims, output_dim):
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
   cardinality = 10
+  if len(output_dims) != 1:
+    raise ValueError('Expected `output_dims` to be of size 1.')
+  output_dim = output_dims[0]
   emb_layer = tf.keras.layers.Embedding(
       input_dim=cardinality, output_dim=output_dim
   )
@@ -329,7 +346,11 @@ def make_dense_bow_model(layer_generator, input_dims, output_dim):
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
-def make_weighted_bow_model(layer_generator, input_dims, output_dim):
+def make_weighted_bow_model(
+    layer_generator: type_aliases.LayerGenerator,
+    input_dims: List[int],
+    output_dims: List[int],
+) -> tf.keras.Model:
   """Creates a weighted embedding bow model."""
   # NOTE: This model only accepts dense input tensors.
   del layer_generator
@@ -338,6 +359,9 @@ def make_weighted_bow_model(layer_generator, input_dims, output_dim):
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
   cardinality = 10
+  if len(output_dims) != 1:
+    raise ValueError('Expected `output_dims` to be of size 1.')
+  output_dim = output_dims[0]
   emb_layer = tf.keras.layers.Embedding(
       input_dim=cardinality, output_dim=output_dim
   )

@@ -110,10 +110,10 @@ class CustomLayerTest(tf.test.TestCase, parameterized.TestCase):
         continue
       (computed_norms, true_norms) = (
           common_test_utils.get_computed_and_true_norms(
-              model_generator=common_test_utils.make_two_layer_sequential_model,
-              layer_generator=lambda a, b: DoubleDense(b),
-              input_dims=input_dim,
-              output_dim=output_dim,
+              model_generator=common_test_utils.make_two_layer_functional_model,
+              layer_generator=lambda a, b: DoubleDense(*b),
+              input_dims=[input_dim],
+              output_dims=[output_dim],
               per_example_loss_fn=per_example_loss_fn,
               num_microbatches=num_microbatches,
               is_eager=is_eager,
@@ -136,7 +136,7 @@ class ComputeClippedGradsAndOutputsTest(
     dense_generator = lambda a, b: tf.keras.layers.Dense(b)
     self._input_dim = 2
     self._output_dim = 3
-    self._model = common_test_utils.make_two_layer_sequential_model(
+    self._model = common_test_utils.make_two_layer_functional_model(
         dense_generator, self._input_dim, self._output_dim
     )
 

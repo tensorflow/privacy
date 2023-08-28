@@ -45,5 +45,5 @@ GeneratorFunction = Optional[Callable[[Any, Tuple, Dict], Tuple[Any, Any]]]
 LayerGenerator = Callable[[int, int], tf.keras.layers.Layer]
 
 ModelGenerator = Callable[
-    [LayerGenerator, Union[int, List[int]], int], tf.keras.Model
+    [LayerGenerator, List[int], List[int]], tf.keras.Model
 ]
