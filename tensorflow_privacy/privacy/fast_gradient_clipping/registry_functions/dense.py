@@ -13,7 +13,7 @@
 # limitations under the License.
 """Fast clipping function for `tf.keras.layers.Dense`."""
 
-from typing import Any, Dict, Optional, Text, Tuple
+from typing import Any, Mapping, Tuple, Union
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
@@ -22,9 +22,9 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 def dense_layer_computation(
     layer_instance: tf.keras.layers.Dense,
     input_args: Tuple[Any, ...],
-    input_kwargs: Dict[Text, Any],
+    input_kwargs: Mapping[str, Any],
     tape: tf.GradientTape,
-    num_microbatches: Optional[tf.Tensor] = None,
+    num_microbatches: Union[tf.Tensor, None] = None,
 ) -> type_aliases.RegistryFunctionOutput:
   """Registry function for `tf.keras.layers.Dense`.
 
