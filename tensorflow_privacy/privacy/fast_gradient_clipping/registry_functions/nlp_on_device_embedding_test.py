@@ -14,16 +14,17 @@
 
 from absl.testing import parameterized
 import tensorflow as tf
+import tensorflow_models as tfm
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_test_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import dense
-from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import embedding
+from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import nlp_on_device_embedding
 
 
 # ==============================================================================
 # Helper functions.
 # ==============================================================================
-def get_embedding_model_generators():
+def get_nlp_on_device_embedding_model_generators():
   return {
       'bow1': common_test_utils.make_bow_model,
       'bow2': common_test_utils.make_dense_bow_model,
@@ -31,31 +32,27 @@ def get_embedding_model_generators():
   }
 
 
-def get_embedding_inputs():
-  """Generates test pairs of the form (is_ragged, input_data)."""
+def get_nlp_on_device_embedding_inputs():
+  """Generates input_data."""
   return [
       # 2D inputs.
-      (False, [[0, 1]]),
-      (False, [[0, 1], [1, 1], [0, 0]]),
-      (True, [[0], [1], [], [0, 0], [0, 1], [1, 0], [1, 1]]),
-      (True, [[0], [1], [], [0, 0], [0, 1], [1, 0], [1, 1], [0, 1]]),
+      [[0, 1]],
+      [[0, 1], [1, 1], [0, 0]],
       # 3D inputs.
-      (False, [[[0, 1]]]),
-      (False, [[[0, 1]], [[1, 1]], [[0, 0]]]),
-      (True, [[[0]], [[1]], [], [[0, 0]], [[0, 1]], [[1, 0]], [[1, 1]]]),
-      (True, [[[0]], [[1]], [], [[0, 0]], [[0, 1]], [[1, 0]], [[1, 1]], [[0]]]),
+      [[[0, 1]]],
+      [[[0, 1]], [[1, 1]], [[0, 0]]],
   ]
 
 
-def get_embedding_layer_registries():
+def get_nlp_on_device_embedding_layer_registries():
   dbl_registry = layer_registry.LayerRegistry()
   dbl_registry.insert(tf.keras.layers.Dense, dense.dense_layer_computation)
   dbl_registry.insert(
-      tf.keras.layers.Embedding, embedding.embedding_layer_computation
+      tfm.nlp.layers.OnDeviceEmbedding,
+      nlp_on_device_embedding.nlp_on_device_embedding_layer_computation
   )
   return {
       'embed_and_dense': dbl_registry,
-      'default': layer_registry.make_default_layer_registry(),
   }
 
 
@@ -71,56 +68,53 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
   # TODO(weiweikong): Test sparse input tensors when the GitHub CI environment
   # supports them for embeddings.
   @parameterized.product(
-      x_inputs=get_embedding_inputs(),
-      model_name=list(get_embedding_model_generators().keys()),
+      input_data=get_nlp_on_device_embedding_inputs(),
+      scale_factor=[None, 0.5, 1.0],
+      model_name=list(
+          get_nlp_on_device_embedding_model_generators().keys()
+      ),
       output_dim=[2],
-      layer_registry_name=list(get_embedding_layer_registries().keys()),
-      per_example_loss_fn=[None, common_test_utils.test_loss_fn],
+      layer_registry_name=list(
+          get_nlp_on_device_embedding_layer_registries().keys()
+      ),
       num_microbatches=[None, 2],
       is_eager=[True, False],
       partial=[True, False],
   )
   def test_gradient_norms_on_various_models(
       self,
-      x_inputs,
+      input_data,
+      scale_factor,
       model_name,
       output_dim,
       layer_registry_name,
-      per_example_loss_fn,
       num_microbatches,
       is_eager,
       partial,
   ):
     # Parse inputs to generate test data.
-    is_ragged, input_data = x_inputs
-    embed_indices = (
-        tf.ragged.constant(input_data, dtype=tf.int32)
-        if is_ragged
-        else tf.convert_to_tensor(input_data, dtype_hint=tf.int32)
-    )
+    embed_indices = tf.convert_to_tensor(input_data, dtype_hint=tf.int32)
 
     # The following are invalid test combinations and, hence, are skipped.
     batch_size = embed_indices.shape[0]
     using_tpu = isinstance(self.strategy, tf.distribute.TPUStrategy)
-    if (
-        (num_microbatches is not None and batch_size % num_microbatches != 0)
-        or (model_name == 'weighted_bow1' and is_ragged)
-        or (
-            # Current clipping ops do not have corresponding TPU kernels.
-            using_tpu
-            and is_ragged
-        )
-    ):
+    if num_microbatches is not None and batch_size % num_microbatches != 0:
       return
 
     # Load shared assets to all devices.
     with self.strategy.scope():
 
       def embed_layer_generator(_, output_dims):
-        return tf.keras.layers.Embedding(10, *output_dims)
+        return tfm.nlp.layers.OnDeviceEmbedding(
+            10,
+            *output_dims,
+            scale_factor=scale_factor
+        )
 
       model = common_test_utils.get_model_from_generator(
-          model_generator=get_embedding_model_generators()[model_name],
+          model_generator=(
+              get_nlp_on_device_embedding_model_generators()[model_name]
+          ),
           layer_generator=embed_layer_generator,
           input_dims=embed_indices.shape[1:],
           output_dims=[output_dim],
@@ -131,10 +125,14 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
     def test_op(x_batch):
       return common_test_utils.get_computed_and_true_norms_from_model(
           model=model,
-          per_example_loss_fn=per_example_loss_fn,
+          per_example_loss_fn=None,
           num_microbatches=num_microbatches,
           x_batch=x_batch,
-          registry=get_embedding_layer_registries()[layer_registry_name],
+          registry=(
+              get_nlp_on_device_embedding_layer_registries()[
+                  layer_registry_name
+              ]
+          ),
           partial=partial,
       )
 

@@ -11,31 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Fast clipping function for `tf.keras.layers.Embedding`."""
+"""Fast clipping function for `tfm.nlp.layers.OnDeviceEmbedding`."""
 
-from typing import Any, Mapping, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import registry_function_utils
 
 
-def embedding_layer_computation(
-    layer_instance: tf.keras.layers.Embedding,
+def nlp_on_device_embedding_layer_computation(
+    layer_instance: tf.keras.layers.Layer,
     input_args: Tuple[Any, ...],
-    input_kwargs: Mapping[str, Any],
+    input_kwargs: Dict[str, Any],
     tape: tf.GradientTape,
-    num_microbatches: Union[tf.Tensor, None] = None,
+    num_microbatches: Optional[tf.Tensor] = None,
 ) -> type_aliases.RegistryFunctionOutput:
-  """Registry function for `tf.keras.layers.Embedding`.
-
-  The logic of this computation is based on the `tf.keras.layers.Dense`
-  computation and the fact that an embedding layer is just a dense layer
-  with no activation function and an output vector of the form X*W for input
-  X, where the i-th row of W is the i-th embedding vector and the j-th row of
-  X is a one-hot vector representing the input of example j.
+  """Registry function for `tfm.nlp.layers.OnDeviceEmbedding`.
 
   Args:
-    layer_instance: A `tf.keras.layers.Embedding` instance.
+    layer_instance: A `tfm.nlp.layers.OnDeviceEmbedding` instance.
     input_args: See `dense_layer_computation()` in `dense.py`.
     input_kwargs: See `dense_layer_computation()` in `dense.py`.
     tape: See `dense_layer_computation()` in `dense.py`.
@@ -46,22 +40,16 @@ def embedding_layer_computation(
   """
   if input_kwargs:
     raise ValueError("Embedding layer calls should not receive kwargs.")
-  del input_kwargs  # Unused in embedding layer calls.
+  del input_kwargs
   if len(input_args) != 1:
     raise ValueError("Only layer inputs of length 1 are permitted.")
-  if hasattr(layer_instance, "sparse"):  # for backwards compatibility
-    if layer_instance.sparse:
-      raise NotImplementedError("Sparse output tensors are not supported.")
-  if isinstance(input_args[0], tf.SparseTensor):
-    raise NotImplementedError("Sparse input tensors are not supported.")
-
-  # Disable experimental features.
-  if hasattr(layer_instance, "_use_one_hot_matmul"):
-    if layer_instance._use_one_hot_matmul:  # pylint: disable=protected-access
+  if hasattr(layer_instance, "_use_one_hot"):
+    if layer_instance._use_one_hot:  # pylint: disable=protected-access
       raise NotImplementedError(
-          "The experimental embedding feature"
-          "'_use_one_hot_matmul' is not supported."
+          "The embedding feature '_use_one_hot' is not supported."
       )
+  # NOTE: Since the implementation of `tfm.nlp.layers.OnDeviceEmbedding` uses
+  # `.set_shape()`, we can assume that inputs are not ragged.
   input_ids = tf.cast(*input_args, tf.int32)
   if len(layer_instance.trainable_variables) != 1:
     raise ValueError(
@@ -70,7 +58,7 @@ def embedding_layer_computation(
     )
   base_vars = layer_instance.trainable_variables[0]
   tape.watch(base_vars)
-  outputs = tf.nn.embedding_lookup(base_vars, input_ids)
+  outputs = layer_instance(input_ids)
 
   def sqr_norm_fn(base_vars_grads: tf.IndexedSlices):
     return registry_function_utils.embedding_sqr_norm_fn(

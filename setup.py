@@ -44,6 +44,7 @@ setup(
         'tensorflow-estimator~=2.4',
         'tensorflow-probability~=0.20.0',
         'tensorflow~=2.4',
+        'tf-models-official~=2.13',
     ],
     packages=find_packages(),
 )

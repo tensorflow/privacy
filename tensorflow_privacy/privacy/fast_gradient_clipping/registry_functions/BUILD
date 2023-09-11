@@ -3,6 +3,13 @@ package(
 )
 
 py_library(
+    name = "registry_function_utils",
+    srcs = ["registry_function_utils.py"],
+    srcs_version = "PY3",
+    deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases"],
+)
+
+py_library(
     name = "einsum_utils",
     srcs = ["einsum_utils.py"],
     srcs_version = "PY3",
@@ -45,7 +52,10 @@ py_library(
     name = "embedding",
     srcs = ["embedding.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases"],
+    deps = [
+        ":registry_function_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
 )
 
 py_test(
@@ -57,6 +67,31 @@ py_test(
     deps = [
         ":dense",
         ":embedding",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+    ],
+)
+
+py_library(
+    name = "nlp_on_device_embedding",
+    srcs = ["nlp_on_device_embedding.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":registry_function_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
+)
+
+py_test(
+    name = "nlp_on_device_embedding_test",
+    srcs = ["nlp_on_device_embedding_test.py"],
+    python_version = "PY3",
+    shard_count = 6,
+    srcs_version = "PY3",
+    deps = [
+        ":dense",
+        ":nlp_on_device_embedding",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",

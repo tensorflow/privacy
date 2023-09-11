@@ -294,15 +294,13 @@ def make_bow_model(
     output_dims: List[int],
 ) -> tf.keras.Model:
   """Creates a simple embedding bow model."""
-  del layer_generator
-  inputs = tf.keras.Input(shape=input_dims)
+  inputs = tf.keras.Input(shape=input_dims, dtype=tf.int32)
   # For the Embedding layer, input_dim is the vocabulary size. This should
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
   if len(output_dims) != 1:
     raise ValueError('Expected `output_dims` to be of size 1.')
-  output_dim = output_dims[0]
-  emb_layer = tf.keras.layers.Embedding(input_dim=10, output_dim=output_dim)
+  emb_layer = layer_generator(input_dims, output_dims)
   feature_embs = emb_layer(inputs)
   # Embeddings add one extra dimension to its inputs, which combined with the
   # batch dimension at dimension 0, equals two additional dimensions compared
@@ -321,18 +319,13 @@ def make_dense_bow_model(
     output_dims: List[int],
 ) -> tf.keras.Model:
   """Creates an embedding bow model with a `Dense` layer."""
-  del layer_generator
-  inputs = tf.keras.Input(shape=input_dims)
+  inputs = tf.keras.Input(shape=input_dims, dtype=tf.int32)
   # For the Embedding layer, input_dim is the vocabulary size. This should
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
-  cardinality = 10
+  emb_layer = layer_generator(input_dims, output_dims)
   if len(output_dims) != 1:
     raise ValueError('Expected `output_dims` to be of size 1.')
-  output_dim = output_dims[0]
-  emb_layer = tf.keras.layers.Embedding(
-      input_dim=cardinality, output_dim=output_dim
-  )
   feature_embs = emb_layer(inputs)
   # Embeddings add one extra dimension to its inputs, which combined with the
   # batch dimension at dimension 0, equals two additional dimensions compared
@@ -353,18 +346,14 @@ def make_weighted_bow_model(
 ) -> tf.keras.Model:
   """Creates a weighted embedding bow model."""
   # NOTE: This model only accepts dense input tensors.
-  del layer_generator
-  inputs = tf.keras.Input(shape=input_dims)
+  inputs = tf.keras.Input(shape=input_dims, dtype=tf.int32)
   # For the Embedding layer, input_dim is the vocabulary size. This should
   # be distinguished from the input_dim argument, which is the number of ids
   # in eache example.
-  cardinality = 10
+  emb_layer = layer_generator(input_dims, output_dims)
   if len(output_dims) != 1:
     raise ValueError('Expected `output_dims` to be of size 1.')
   output_dim = output_dims[0]
-  emb_layer = tf.keras.layers.Embedding(
-      input_dim=cardinality, output_dim=output_dim
-  )
   feature_embs = emb_layer(inputs)
   # Use deterministic weights to avoid seeding issues on TPUs.
   feature_shape = input_dims + [output_dim]
