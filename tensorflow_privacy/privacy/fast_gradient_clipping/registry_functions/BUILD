@@ -3,6 +3,20 @@ package(
 )
 
 py_library(
+    name = "einsum_utils",
+    srcs = ["einsum_utils.py"],
+    srcs_version = "PY3",
+)
+
+py_test(
+    name = "einsum_utils_test",
+    srcs = ["einsum_utils_test.py"],
+    python_version = "PY3",
+    srcs_version = "PY3",
+    deps = [":einsum_utils"],
+)
+
+py_library(
     name = "dense",
     srcs = ["dense.py"],
     srcs_version = "PY3",
