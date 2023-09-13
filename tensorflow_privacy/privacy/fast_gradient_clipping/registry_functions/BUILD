@@ -102,7 +102,10 @@ py_library(
     name = "layer_normalization",
     srcs = ["layer_normalization.py"],
     srcs_version = "PY3",
-    deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases"],
+    deps = [
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
 )
 
 py_test(

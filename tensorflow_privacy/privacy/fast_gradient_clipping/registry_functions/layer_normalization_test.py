@@ -87,6 +87,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       layer_name=list(get_layer_norm_layer_generators().keys()),
       parameter_tuple=get_layer_norm_parameter_tuples(),
       layer_registry_name=list(get_layer_norm_registries().keys()),
+      num_microbatches=[None, 2],
       is_eager=[True, False],
   )
   def test_gradient_norms_on_various_models(
@@ -95,6 +96,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       layer_name,
       parameter_tuple,
       layer_registry_name,
+      num_microbatches,
       is_eager,
   ):
     # Parse inputs to generate test data.
@@ -121,7 +123,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       return common_test_utils.get_computed_and_true_norms_from_model(
           model=model,
           per_example_loss_fn=None,
-          num_microbatches=None,
+          num_microbatches=num_microbatches,
           x_batch=[x_batch, x_batch] if model_name == 'tower2' else x_batch,
           weight_batch=None,
           registry=get_layer_norm_registries()[layer_registry_name],

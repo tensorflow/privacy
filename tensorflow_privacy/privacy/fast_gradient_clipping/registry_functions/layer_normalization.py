@@ -15,18 +15,13 @@
 
 from typing import Any, Mapping, Tuple, Union
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
 
 # ==============================================================================
 # Supported Keras layers
 # ==============================================================================
-def _sqr_norm_fn(grads):
-  stacked_grads = tf.stack(grads, axis=-1)
-  reduction_axes = tf.range(1, tf.rank(stacked_grads))
-  return tf.reduce_sum(tf.square(stacked_grads), axis=reduction_axes)
-
-
 def layer_normalization_computation(
     layer_instance: tf.keras.layers.LayerNormalization,
     input_args: Tuple[Any, ...],
@@ -51,9 +46,6 @@ def layer_normalization_computation(
     See `dense_layer_computation()` in `dense.py`.
   """
   del input_kwargs  # Unused in layer normaliztion calls.
-  if num_microbatches is not None:
-    raise NotImplementedError("Microbatching is not currently supported.")
-
   # To make sure the watched variables (beta, gamma) generate per-example
   # gradients, we need to convert trainable variables from shape [S] to
   # [batch_size, S] via duplication to `tf.shape(inputs)` via broadcasting.
@@ -86,4 +78,14 @@ def layer_normalization_computation(
   layer_instance.gamma = orig_gamma
   layer_instance.beta = orig_beta
 
-  return base_vars, outputs, _sqr_norm_fn
+  def sqr_norm_fn(grads):
+    stacked_grads = tf.stack(grads, axis=-1)
+    if num_microbatches is not None:
+      stacked_grads = common_manip_utils.maybe_add_microbatch_axis(
+          grads, num_microbatches
+      )
+      stacked_grads = tf.reduce_sum(stacked_grads, axis=1)
+    reduction_axes = tf.range(1, tf.rank(stacked_grads))
+    return tf.reduce_sum(tf.square(stacked_grads), axis=reduction_axes)
+
+  return base_vars, outputs, sqr_norm_fn
