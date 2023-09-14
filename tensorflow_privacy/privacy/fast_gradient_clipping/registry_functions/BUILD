@@ -99,6 +99,31 @@ py_test(
 )
 
 py_library(
+    name = "nlp_position_embedding",
+    srcs = ["nlp_position_embedding.py"],
+    srcs_version = "PY3",
+    deps = [
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
+)
+
+py_test(
+    name = "nlp_position_embedding_test",
+    srcs = ["nlp_position_embedding_test.py"],
+    python_version = "PY3",
+    shard_count = 6,
+    srcs_version = "PY3",
+    deps = [
+        ":dense",
+        ":nlp_position_embedding",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+    ],
+)
+
+py_library(
     name = "layer_normalization",
     srcs = ["layer_normalization.py"],
     srcs_version = "PY3",
