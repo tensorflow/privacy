@@ -21,9 +21,6 @@ from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import nlp_on_device_embedding
 
 
-# ==============================================================================
-# Helper functions.
-# ==============================================================================
 def get_nlp_on_device_embedding_model_generators():
   return {
       'bow1': common_test_utils.make_bow_model,
@@ -49,30 +46,26 @@ def get_nlp_on_device_embedding_layer_registries():
   dbl_registry.insert(tf.keras.layers.Dense, dense.dense_layer_computation)
   dbl_registry.insert(
       tfm.nlp.layers.OnDeviceEmbedding,
-      nlp_on_device_embedding.nlp_on_device_embedding_layer_computation
+      nlp_on_device_embedding.nlp_on_device_embedding_layer_computation,
   )
   return {
       'embed_and_dense': dbl_registry,
   }
 
 
-# ==============================================================================
-# Main tests.
-# ==============================================================================
 class GradNormTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.strategy = tf.distribute.get_strategy()
+    self.using_tpu = False
 
   # TODO(weiweikong): Test sparse input tensors when the GitHub CI environment
   # supports them for embeddings.
   @parameterized.product(
       input_data=get_nlp_on_device_embedding_inputs(),
       scale_factor=[None, 0.5, 1.0],
-      model_name=list(
-          get_nlp_on_device_embedding_model_generators().keys()
-      ),
+      model_name=list(get_nlp_on_device_embedding_model_generators().keys()),
       output_dim=[2],
       layer_registry_name=list(
           get_nlp_on_device_embedding_layer_registries().keys()
@@ -97,7 +90,6 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
 
     # The following are invalid test combinations and, hence, are skipped.
     batch_size = embed_indices.shape[0]
-    using_tpu = isinstance(self.strategy, tf.distribute.TPUStrategy)
     if num_microbatches is not None and batch_size % num_microbatches != 0:
       return
 
@@ -106,9 +98,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
 
       def embed_layer_generator(_, output_dims):
         return tfm.nlp.layers.OnDeviceEmbedding(
-            10,
-            *output_dims,
-            scale_factor=scale_factor
+            10, *output_dims, scale_factor=scale_factor
         )
 
       model = common_test_utils.get_model_from_generator(
@@ -137,7 +127,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       )
 
     # TPUs can only run `tf.function`-decorated functions.
-    if using_tpu:
+    if self.using_tpu:
       test_op = tf.function(test_op, autograph=False)
 
     # Set up the device ops and run the test.
@@ -145,7 +135,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
         test_op, args=(embed_indices,)
     )
     # TPUs return replica contexts, which must be unwrapped.
-    if using_tpu:
+    if self.using_tpu:
       common_test_utils.assert_replica_values_are_close(self, computed_norms)
       common_test_utils.assert_replica_values_are_close(self, true_norms)
       computed_norms = computed_norms.values[0]

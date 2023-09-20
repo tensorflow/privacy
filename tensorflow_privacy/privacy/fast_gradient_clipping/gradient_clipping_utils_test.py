@@ -16,7 +16,6 @@ from typing import Any
 
 from absl.testing import parameterized
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 
 
@@ -90,7 +89,7 @@ class ModelForwardPassTest(tf.test.TestCase, parameterized.TestCase):
     num_dims = 3
     num_inputs = 1 if input_packing_type is None else 2
     num_outputs = 1 if output_packing_type is None else 2
-    sample_inputs = [tf.keras.Input((num_dims,)) for i in range(num_inputs)]
+    sample_inputs = [tf.keras.Input((num_dims,)) for _ in range(num_inputs)]
     temp_sum = tf.stack(sample_inputs, axis=0)
     sample_outputs = [
         tf.multiply(temp_sum, float(i + 1.0)) for i in range(num_outputs)

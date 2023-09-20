@@ -13,7 +13,8 @@
 # limitations under the License.
 """Fast clipping function for `tfm.nlp.layers.OnDeviceEmbedding`."""
 
-from typing import Any, Dict, Optional, Tuple
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import registry_function_utils
@@ -21,8 +22,8 @@ from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import
 
 def nlp_on_device_embedding_layer_computation(
     layer_instance: tf.keras.layers.Layer,
-    input_args: Tuple[Any, ...],
-    input_kwargs: Dict[str, Any],
+    input_args: Sequence[Any],
+    input_kwargs: Mapping[str, Any],
     tape: tf.GradientTape,
     num_microbatches: Optional[tf.Tensor] = None,
 ) -> type_aliases.RegistryFunctionOutput:

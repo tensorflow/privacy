@@ -20,9 +20,10 @@ from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import
 class GradNormTpuTest(embedding_test.GradNormTest):
 
   def setUp(self):
-    super().setUp()
+    super(embedding_test.GradNormTest, self).setUp()
     self.strategy = common_test_utils.create_tpu_strategy()
     self.assertIn('TPU', self.strategy.extended.worker_devices[0])
+    self.using_tpu = True
 
 
 if __name__ == '__main__':

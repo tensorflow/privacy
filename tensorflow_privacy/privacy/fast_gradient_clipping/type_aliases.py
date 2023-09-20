@@ -13,12 +13,13 @@
 # limitations under the License.
 """A collection of type aliases used throughout the clipping library."""
 
-from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Tuple, Union
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from typing import Any, Optional, Union
 import tensorflow as tf
 
 
 # Tensorflow aliases.
-PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Dict[str, tf.Tensor]]
+PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Mapping[str, tf.Tensor]]
 
 InputTensors = PackedTensors
 
@@ -31,12 +32,12 @@ LossFn = Callable[..., tf.Tensor]
 # Layer Registry aliases.
 SquareNormFunction = Callable[[OutputTensors], tf.Tensor]
 
-RegistryFunctionOutput = Tuple[Any, OutputTensors, SquareNormFunction]
+RegistryFunctionOutput = tuple[Any, OutputTensors, SquareNormFunction]
 
 RegistryFunction = Callable[
     [
         Any,
-        Tuple[Any, ...],
+        tuple[Any, ...],
         Mapping[str, Any],
         tf.GradientTape,
         Union[tf.Tensor, None],
@@ -45,11 +46,11 @@ RegistryFunction = Callable[
 ]
 
 # Clipping aliases.
-GeneratorFunction = Optional[Callable[[Any, Tuple, Dict], Tuple[Any, Any]]]
+GeneratorFunction = Optional[Callable[[Any, tuple, Mapping], tuple[Any, Any]]]
 
 # Testing aliases.
 LayerGenerator = Callable[[int, int], tf.keras.layers.Layer]
 
 ModelGenerator = Callable[
-    [LayerGenerator, List[int], List[int]], tf.keras.Model
+    [LayerGenerator, Sequence[int], Sequence[int]], tf.keras.Model
 ]

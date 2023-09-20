@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, Optional, Text, Tuple
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional
 
 from absl.testing import parameterized
 import tensorflow as tf
@@ -22,9 +23,6 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
 
-# ==============================================================================
-# Helper functions and classes.
-# ==============================================================================
 class DoubleDense(tf.keras.layers.Layer):
   """Generates two dense layers nested together."""
 
@@ -40,8 +38,8 @@ class DoubleDense(tf.keras.layers.Layer):
 
 def double_dense_layer_computation(
     layer_instance: tf.keras.layers.Layer,
-    input_args: Tuple[Any, ...],
-    input_kwargs: Dict[Text, Any],
+    input_args: Sequence[Any],
+    input_kwargs: Mapping[str, Any],
     tape: tf.GradientTape,
     num_microbatches: Optional[int],
 ) -> type_aliases.RegistryFunctionOutput:
@@ -61,9 +59,6 @@ def double_dense_layer_computation(
   return [vars1, vars2], outputs, sqr_norm_fn
 
 
-# ==============================================================================
-# Main tests.
-# ==============================================================================
 class DirectWeightsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.product(

@@ -21,9 +21,6 @@ from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import layer_normalization
 
 
-# ==============================================================================
-# Helper functions.
-# ==============================================================================
 def get_layer_norm_layer_generators():
   return {
       'defaults': lambda x: tf.keras.layers.LayerNormalization(axis=x),
@@ -73,14 +70,12 @@ def get_layer_norm_registries():
   }
 
 
-# ==============================================================================
-# Main tests.
-# ==============================================================================
 class GradNormTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.strategy = tf.distribute.get_strategy()
+    self.using_tpu = False
 
   @parameterized.product(
       model_name=list(get_layer_norm_model_generators().keys()),
@@ -130,14 +125,13 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       )
 
     # TPUs can only run `tf.function`-decorated functions.
-    using_tpu = isinstance(self.strategy, tf.distribute.TPUStrategy)
-    if using_tpu:
+    if self.using_tpu:
       test_op = tf.function(test_op, jit_compile=True, autograph=False)
 
     # TPUs use lower precision than CPUs, so we relax our criterion (see
     # `dense_test.py` for additional discussions).
-    rtol = 1e-2 if using_tpu else 1e-3
-    atol = 1e-1 if using_tpu else 1e-2
+    rtol = 1e-2 if self.using_tpu else 1e-3
+    atol = 1e-1 if self.using_tpu else 1e-2
 
     # Each batched input is a reshape of a `tf.range()` call.
     batch_size = 2
@@ -148,7 +142,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
     # Set up the device ops and run the test.
     computed_norms, true_norms = self.strategy.run(test_op, args=(x_batch,))
     # TPUs return replica contexts, which must be unwrapped.
-    if using_tpu:
+    if self.using_tpu:
       common_test_utils.assert_replica_values_are_close(self, computed_norms)
       common_test_utils.assert_replica_values_are_close(self, true_norms)
       computed_norms = computed_norms.values[0]

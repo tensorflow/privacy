@@ -19,11 +19,7 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import dense
 
 
-# ==============================================================================
-# Helper functions.
-# ==============================================================================
 def get_dense_layer_generators():
-
   def sigmoid_dense_layer(units):
     return tf.keras.layers.Dense(units, activation='sigmoid')
 
@@ -50,14 +46,12 @@ def get_dense_layer_registries():
   }
 
 
-# ==============================================================================
-# Main tests.
-# ==============================================================================
 class GradNormTest(tf.test.TestCase, parameterized.TestCase):
 
   def setUp(self):
     super().setUp()
     self.strategy = tf.distribute.get_strategy()
+    self.using_tpu = False
 
   @parameterized.product(
       model_name=list(get_dense_model_generators().keys()),
@@ -112,8 +106,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       )
 
     # TPUs can only run `tf.function`-decorated functions.
-    using_tpu = isinstance(self.strategy, tf.distribute.TPUStrategy)
-    if using_tpu:
+    if self.using_tpu:
       test_op = tf.function(test_op, jit_compile=True, autograph=False)
 
     # TPUs use lower precision than CPUs, so we relax our criterion.
@@ -127,8 +120,8 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
     # which is a reasonable level of error for computing gradient norms.
     # Other trials also give an absolute (resp. relative) error of around
     # 0.05 (resp. 0.0015).
-    rtol = 1e-2 if using_tpu else 1e-3
-    atol = 1e-1 if using_tpu else 1e-2
+    rtol = 1e-2 if self.using_tpu else 1e-3
+    atol = 1e-1 if self.using_tpu else 1e-2
 
     for x_batch, weight_batch in zip(x_batches, weight_batches):
       batch_size = x_batch.shape[0]
@@ -139,7 +132,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
           test_op, args=(x_batch, weight_batch)
       )
       # TPUs return replica contexts, which must be unwrapped.
-      if using_tpu:
+      if self.using_tpu:
         common_test_utils.assert_replica_values_are_close(self, computed_norms)
         common_test_utils.assert_replica_values_are_close(self, true_norms)
         computed_norms = computed_norms.values[0]

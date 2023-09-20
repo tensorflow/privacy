@@ -13,7 +13,8 @@
 # limitations under the License.
 """A collection of common utility functions for unit testing."""
 
-from typing import Callable, List, Optional, Tuple
+from collections.abc import Callable, MutableSequence, Sequence
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
@@ -108,8 +109,8 @@ def compute_true_gradient_norms(
 def get_model_from_generator(
     model_generator: type_aliases.ModelGenerator,
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
     is_eager: bool,
 ) -> tf.keras.Model:
   """Creates a simple model from input specifications."""
@@ -171,8 +172,8 @@ def get_computed_and_true_norms_from_model(
 def get_computed_and_true_norms(
     model_generator: type_aliases.ModelGenerator,
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
     per_example_loss_fn: Optional[Callable[[tf.Tensor, tf.Tensor], tf.Tensor]],
     num_microbatches: Optional[int],
     is_eager: bool,
@@ -181,7 +182,7 @@ def get_computed_and_true_norms(
     rng_seed: int = 777,
     registry: layer_registry.LayerRegistry = None,
     partial: bool = False,
-) -> Tuple[tf.Tensor, tf.Tensor]:
+) -> tuple[tf.Tensor, tf.Tensor]:
   """Obtains the true and computed gradient norms for a model and batch input.
 
   Helpful testing wrapper function used to avoid code duplication.
@@ -245,8 +246,8 @@ def reshape_and_sum(tensor: tf.Tensor) -> tf.Tensor:
 # ==============================================================================
 def make_one_layer_functional_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
 ) -> tf.keras.Model:
   """Creates a 1-layer sequential model."""
   inputs = tf.keras.Input(shape=input_dims)
@@ -258,8 +259,8 @@ def make_one_layer_functional_model(
 
 def make_two_layer_functional_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
 ) -> tf.keras.Model:
   """Creates a 2-layer sequential model."""
   inputs = tf.keras.Input(shape=input_dims)
@@ -272,8 +273,8 @@ def make_two_layer_functional_model(
 
 def make_two_tower_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
 ) -> tf.keras.Model:
   """Creates a 2-layer 2-input functional model."""
   inputs1 = tf.keras.Input(shape=input_dims)
@@ -290,8 +291,8 @@ def make_two_tower_model(
 
 def make_bow_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
 ) -> tf.keras.Model:
   """Creates a simple embedding bow model."""
   inputs = tf.keras.Input(shape=input_dims, dtype=tf.int32)
@@ -315,8 +316,8 @@ def make_bow_model(
 
 def make_dense_bow_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: Sequence[int],
+    output_dims: Sequence[int],
 ) -> tf.keras.Model:
   """Creates an embedding bow model with a `Dense` layer."""
   inputs = tf.keras.Input(shape=input_dims, dtype=tf.int32)
@@ -341,8 +342,8 @@ def make_dense_bow_model(
 
 def make_weighted_bow_model(
     layer_generator: type_aliases.LayerGenerator,
-    input_dims: List[int],
-    output_dims: List[int],
+    input_dims: MutableSequence[int],
+    output_dims: MutableSequence[int],
 ) -> tf.keras.Model:
   """Creates a weighted embedding bow model."""
   # NOTE: This model only accepts dense input tensors.
@@ -353,10 +354,9 @@ def make_weighted_bow_model(
   emb_layer = layer_generator(input_dims, output_dims)
   if len(output_dims) != 1:
     raise ValueError('Expected `output_dims` to be of size 1.')
-  output_dim = output_dims[0]
   feature_embs = emb_layer(inputs)
   # Use deterministic weights to avoid seeding issues on TPUs.
-  feature_shape = input_dims + [output_dim]
+  feature_shape = input_dims + output_dims
   feature_weights = tf.expand_dims(
       tf.reshape(
           tf.range(np.product(feature_shape), dtype=tf.float32),

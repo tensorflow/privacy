@@ -21,7 +21,8 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
-from typing import List, Optional, Tuple
+from collections.abc import Sequence
+from typing import Optional
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
@@ -74,7 +75,7 @@ def compute_gradient_norms(
     weight_batch: Optional[tf.Tensor] = None,
     per_example_loss_fn: Optional[type_aliases.LossFn] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
-    trainable_vars: Optional[List[tf.Variable]] = None,
+    trainable_vars: Optional[Sequence[tf.Variable]] = None,
 ):
   """Computes the per-example loss gradient norms for given data.
 
@@ -219,7 +220,7 @@ def compute_clipped_gradients_and_outputs(
     weight_batch: Optional[tf.Tensor] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
     clipping_loss: Optional[type_aliases.LossFn] = None,
-) -> Tuple[List[tf.Tensor], tf.Tensor, tf.Tensor]:
+) -> tuple[Sequence[tf.Tensor], tf.Tensor, tf.Tensor]:
   """Computes the per-example clipped loss gradient and other useful outputs.
 
   Given a batch of observations `(x_batch, y_batch, weight_batch)`, the main

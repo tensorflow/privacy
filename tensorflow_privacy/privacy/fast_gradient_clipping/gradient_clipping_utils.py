@@ -13,7 +13,8 @@
 # limitations under the License.
 """Utility functions that help in the computation of per-example gradient norms."""
 
-from typing import Any, List, Optional, Set, Tuple
+from collections.abc import Sequence, Set
+from typing import Any, Optional
 
 from absl import logging
 import tensorflow as tf
@@ -36,7 +37,7 @@ def model_forward_pass(
     input_model: tf.keras.Model,
     inputs: type_aliases.PackedTensors,
     generator_fn: type_aliases.GeneratorFunction = None,
-) -> Tuple[type_aliases.PackedTensors, List[Any]]:
+) -> tuple[type_aliases.PackedTensors, Sequence[Any]]:
   """Does a forward pass of a model and returns useful intermediates.
 
   NOTE: the graph traversal algorithm is an adaptation of the logic in the
@@ -149,7 +150,7 @@ def add_aggregate_noise(
     batch_size: tf.Tensor,
     l2_norm_clip: float,
     noise_multiplier: float,
-) -> List[tf.Tensor]:
+) -> Sequence[tf.Tensor]:
   """Adds noise to a collection of clipped gradients.
 
   The magnitude of the noise depends on the aggregation strategy of the
