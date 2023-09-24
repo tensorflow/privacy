@@ -47,6 +47,21 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
 
   @parameterized.product(
       experiment_params=[
+          (('ab', 'bc', 'ac'), True),
+          (('ab', 'a', 'b'), False),
+          (('ab', 'ca', 'bc'), False),
+          (('b', 'bc', 'c'), True),
+          (('ab', 'bc', 'bc'), False),
+          (('abc', 'cde', 'abde'), True),
+      ]
+  )
+  def test_is_valid_einsum_equation(self, experiment_params):
+    inputs, true_result = experiment_params
+    computed_result = einsum_utils._is_valid_einsum_equation(*inputs)
+    self.assertEqual(computed_result, true_result)
+
+  @parameterized.product(
+      experiment_params=[
           (
               'ab,bc->ac',
               einsum_utils.EquationType.NO_ELLIPSES,
@@ -66,7 +81,7 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
   )
   def test_parse_einsum_equation(self, experiment_params):
     equation, true_eqn_type, true_groups = experiment_params
-    (computed_eqn_type, computed_groups) = einsum_utils._parse_einsum_equation(
+    computed_eqn_type, computed_groups = einsum_utils._parse_einsum_equation(
         equation
     )
     self.assertEqual(computed_eqn_type, true_eqn_type)
@@ -98,7 +113,7 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ]
   )
   def test_reshape_einsum_inputs(self, experiment_params):
-    (equation, input_shape, true_permutations, true_parsed_shape) = (
+    equation, input_shape, true_permutations, true_parsed_shape = (
         experiment_params
     )
     num_entries = int(np.prod(input_shape))
@@ -141,7 +156,7 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
       ]
   )
   def test_reshape_einsum_outputs(self, experiment_params):
-    (equation, output_shape, true_permutations, true_parsed_shape) = (
+    equation, output_shape, true_permutations, true_parsed_shape = (
         experiment_params
     )
     num_entries = int(np.prod(output_shape))
@@ -157,6 +172,77 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
       )
     true_parsed_tensor = tf.reshape(true_parsed_tensor, true_parsed_shape)
     self.assertAllEqual(computed_parsed_tensor, true_parsed_tensor)
+
+  @parameterized.product(
+      experiment_params=[
+          # einsum_utils.EquationType.NO_ELLIPSES
+          ('ab,bc->ac', 'c', 2, []),
+          ('ab,bce->ace', 'ce', 3, []),
+          ('ab,bce->ace', 'ec', 3, []),
+          ('ab,bce->ace', 'c', 3, [2]),
+          ('ab,bce->ace', 'e', 3, [1]),
+          ('ab,bced->aced', 'ced', 4, []),
+          ('ab,bced->aced', 'edc', 4, []),
+          ('ab,bced->aced', 'ce', 4, [3]),
+          ('ab,bced->aced', 'ec', 4, [3]),
+          ('ab,bced->aced', 'cd', 4, [2]),
+          ('ab,bced->aced', 'ed', 4, [1]),
+          ('ab,bced->aced', 'c', 4, [2, 3]),
+          ('ab,bced->aced', 'e', 4, [1, 3]),
+          ('ab,bced->aced', 'd', 4, [1, 2]),
+          # einsum_utils.EquationType.LEFT_ELLIPSES
+          ('...b,bc->...c', 'c', 2, []),
+          ('...b,bce->...ce', 'c', 3, [2]),
+          ('...b,bce->...ce', 'e', 3, [1]),
+          ('...ab,bc->...ac', 'c', 3, [1]),
+          ('...ab,bce->...ace', 'ac', 4, [3]),
+          ('...ab,bce->...ace', 'ae', 4, [2]),
+          ('...ab,bce->...ace', 'ce', 4, [1]),
+          ('...ab,bce->...ace', 'ec', 4, [1]),
+          ('...ab,bce->...ace', 'a', 4, [2, 3]),
+          ('...ab,bce->...ace', 'c', 4, [1, 3]),
+          ('...ab,bce->...ace', 'e', 4, [1, 2]),
+          ('...ab,bce->...ace', 'c', 5, [1, 2, 4]),
+          ('...ab,bce->...ace', 'c', 10, [1, 2, 3, 4, 5, 6, 7, 9]),
+          # einsum_utils.EquationType.RIGHT_ELLIPSES
+          ('ab...,bc->ac...', 'c', 3, [2]),
+          ('ab...,bce->ace...', 'ce', 4, [3]),
+          ('ab...,bce->ace...', 'ec', 4, [3]),
+          ('ab...,bce->ace...', 'c', 4, [2, 3]),
+          ('ab...,bce->ace...', 'e', 4, [1, 3]),
+      ]
+  )
+  def test_get_einsum_bias_adjoint_reduction_axes(self, experiment_params):
+    equation, bias_axes, einsum_rank, true_reduction_axes = experiment_params
+    computed_reduction_axes = (
+        einsum_utils._get_einsum_bias_adjoint_reduction_axes(
+            equation, bias_axes, einsum_rank
+        )
+    )
+    computed_reduction_axes.sort()
+    true_reduction_axes.sort()
+    self.assertAllEqual(computed_reduction_axes, true_reduction_axes)
+
+  @parameterized.product(
+      experiment_params=[
+          # einsum_utils.EquationType.NO_ELLIPSES
+          ('ab,bc->ac', 'a', 2),
+          # einsum_utils.EquationType.RIGHT_ELLIPSES
+          ('ab...,bc->ac...', 'a', 3),
+          ('ab...,bc->ac...', 'a', 4),
+          ('ab...,bcde->acde...', 'acd', 4),
+      ]
+  )
+  def test_bias_axis_eq_batch_axis_throws_error(self, experiment_params):
+    equation, bias_axes, einsum_rank = experiment_params
+    with self.assertRaises(ValueError) as context:
+      einsum_utils._get_einsum_bias_adjoint_reduction_axes(
+          equation, bias_axes, einsum_rank
+      )
+    self.assertEqual(
+        f"Bias axis '{bias_axes}' cannot also be the batch axis.",
+        str(context.exception),
+    )
 
 
 if __name__ == '__main__':

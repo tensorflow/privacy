@@ -19,6 +19,7 @@ py_test(
     name = "einsum_utils_test",
     srcs = ["einsum_utils_test.py"],
     python_version = "PY3",
+    shard_count = 4,
     srcs_version = "PY3",
     deps = [":einsum_utils"],
 )
