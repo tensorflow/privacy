@@ -31,14 +31,6 @@ better performance, it is also recommended to install TensorFlow with GPU
 support (detailed instructions on how to do this are available in the TensorFlow
 installation documentation).
 
-In addition to TensorFlow and its dependencies, other prerequisites are:
-
-*   `scipy` >= 0.17
-
-*   `mpmath` (for testing)
-
-*   `tensorflow_datasets` (for the RNN tutorial `lm_dpsgd_tutorial.py` only)
-
 ### Installing TensorFlow Privacy
 
 If you only want to use TensorFlow Privacy as a library, you can simply execute
