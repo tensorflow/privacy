@@ -28,7 +28,7 @@ main() {
   pip install --upgrade pip
   pip --version
 
-  # Publish the pip package.
+  # Test the pip package.
   package="$(ls "dist/"*".whl" | head -n1)"
   pip install --upgrade "${package}"
   pip freeze
