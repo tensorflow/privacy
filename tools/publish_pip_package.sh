@@ -13,38 +13,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Tool to build the TensorFlow Privacy pip package.
-#
-# Usage:
-#   bazel run //tensorflow_privacy:build_pip_package -- \
-#       "/tmp/tensorflow_privacy"
-#
-# Arguments:
-#   output_dir: An output directory.
+# Tool to publish the TensorFlow Privacy pip package.
 set -e
 
-die() {
-  echo >&2 "$@"
-  exit 1
-}
-
 main() {
-  local output_dir="$1"
-
-  if [[ ! -d "${output_dir}" ]]; then
-    die "The output directory '${output_dir}' does not exist."
-  fi
+  # Create a working directory.
+  local temp_dir="$(mktemp -d)"
+  trap "rm -rf ${temp_dir}" EXIT
 
   # Create a virtual environment
-  python3 -m venv "venv"
-  source "venv/bin/activate"
+  python3 -m venv "${temp_dir}/venv"
+  source "${temp_dir}/venv/bin/activate"
+  python --version
   pip install --upgrade pip
+  pip --version
 
-  # Build pip package
-  pip install --upgrade setuptools wheel
-  python "setup.py" sdist bdist_wheel
+  # Publish the pip package.
+  package="$(ls "dist/"*".whl" | head -n1)"
+  pip install --upgrade twine
+  twine check "${package}"
+  twine upload "${package}"
 
-  cp "dist/"* "${output_dir}"
+  # Cleanup.
+  deactivate
 }
 
 main "$@"
