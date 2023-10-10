@@ -13,15 +13,14 @@
 # limitations under the License.
 """TensorFlow Privacy library setup file for pip."""
 
-from setuptools import find_packages
-from setuptools import setup
+import setuptools
 
 with open('tensorflow_privacy/version.py') as file:
   globals_dict = {}
   exec(file.read(), globals_dict)  # pylint: disable=exec-used
   VERSION = globals_dict['__version__']
 
-setup(
+setuptools.setup(
     name='tensorflow_privacy',
     version=VERSION,
     url='https://github.com/tensorflow/privacy',
@@ -36,15 +35,13 @@ setup(
         'numpy~=1.21',
         'packaging~=22.0',
         'pandas~=1.4',
-        'parameterized~=0.8',
         'scikit-learn>=1.0,==1.*',
         'scipy~=1.9',
         'statsmodels~=0.13',
-        'tensorflow-datasets~=4.5',
         'tensorflow-estimator~=2.4',
         'tensorflow-probability~=0.22.0',
         'tensorflow~=2.4',
         'tf-models-official~=2.13',
     ],
-    packages=find_packages(),
+    packages=setuptools.find_packages(),
 )
