@@ -22,7 +22,7 @@ main() {
   trap "rm -rf ${temp_dir}" EXIT
 
   # Create a virtual environment
-  python3 -m venv "${temp_dir}/venv"
+  python3.10 -m venv "${temp_dir}/venv"
   source "${temp_dir}/venv/bin/activate"
   python --version
   pip install --upgrade pip
