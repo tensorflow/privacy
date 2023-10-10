@@ -44,4 +44,5 @@ setuptools.setup(
         'tf-models-official~=2.13',
     ],
     packages=setuptools.find_packages(),
+    python_requires='>=3.9.0,<3.12',
 )
