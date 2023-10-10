@@ -20,11 +20,20 @@ with open('tensorflow_privacy/version.py') as file:
   exec(file.read(), globals_dict)  # pylint: disable=exec-used
   VERSION = globals_dict['__version__']
 
+README = (
+    'A Python library that includes implementations of TensorFlow optimizers '
+    'for training machine learning models with differential privacy.'
+)
+
 setuptools.setup(
     name='tensorflow_privacy',
     version=VERSION,
+    description='A privacy-focused machine learning framework',
+    long_description=README,
+    long_description_content_type='text/plain',
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
+    packages=setuptools.find_packages(),
     install_requires=[
         'absl-py>=1.0,==1.*',
         'attrs>=21.4',
@@ -43,6 +52,5 @@ setuptools.setup(
         'tensorflow~=2.4',
         'tf-models-official~=2.13',
     ],
-    packages=setuptools.find_packages(),
     python_requires='>=3.9.0,<3.12',
 )
