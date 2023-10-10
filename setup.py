@@ -42,7 +42,7 @@ setup(
         'statsmodels~=0.13',
         'tensorflow-datasets~=4.5',
         'tensorflow-estimator~=2.4',
-        'tensorflow-probability~=0.20.0',
+        'tensorflow-probability~=0.22.0',
         'tensorflow~=2.4',
         'tf-models-official~=2.13',
     ],
