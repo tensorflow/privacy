@@ -13,6 +13,7 @@ py_library(
     name = "einsum_utils",
     srcs = ["einsum_utils.py"],
     srcs_version = "PY3",
+    deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils"],
 )
 
 py_test(
@@ -22,6 +23,33 @@ py_test(
     shard_count = 4,
     srcs_version = "PY3",
     deps = [":einsum_utils"],
+)
+
+py_library(
+    name = "einsum_dense",
+    srcs = ["einsum_dense.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":einsum_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
+)
+
+py_test(
+    name = "einsum_dense_test",
+    size = "large",
+    srcs = ["einsum_dense_test.py"],
+    python_version = "PY3",
+    shard_count = 12,
+    srcs_version = "PY3",
+    deps = [
+        ":dense",
+        ":einsum_dense",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+    ],
 )
 
 py_library(

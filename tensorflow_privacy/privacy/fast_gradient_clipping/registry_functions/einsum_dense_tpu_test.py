@@ -14,13 +14,13 @@
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_test_utils
-from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import layer_normalization_test
+from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import einsum_dense_test
 
 
-class GradNormTpuTest(layer_normalization_test.GradNormTest):
+class GradNormTpuTest(einsum_dense_test.GradNormTest):
 
   def setUp(self):
-    super(layer_normalization_test.GradNormTest, self).setUp()
+    super(einsum_dense_test.GradNormTest, self).setUp()
     self.strategy = common_test_utils.create_tpu_strategy()
     self.assertIn('TPU', self.strategy.extended.worker_devices[0])
     self.using_tpu = True

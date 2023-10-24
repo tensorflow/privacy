@@ -17,9 +17,11 @@ import enum
 import itertools
 import os
 import re
+from typing import Optional
 
 import numpy as np
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 
 EquationType = enum.Enum(
     "EquationType",
@@ -139,9 +141,7 @@ def _reshape_einsum_inputs(
     (num_batches, num_rows, num_columns)
     ```
     When `input_tensor` is a rank-2 `tf.Tensor`, the number of output rows is 1
-    and the number of output columns is the second dimension of the input. The
-    product of the non-trivial dimensions of the output should be equal to
-    the product of the dimensions of `input_tensor`.
+    and the number of output columns is the second dimension of the input.
 
   Raises:
     ValueError: If `equation` is not a valid einsum equation in the context of
@@ -345,3 +345,141 @@ def _get_einsum_bias_adjoint_reduction_axes(
       else:
         reduction_axes.append(idx)
   return reduction_axes
+
+
+def compute_fast_einsum_squared_gradient_norm(
+    equation: str,
+    input_tensor: tf.Tensor,
+    grad_tensor: tf.Tensor,
+    bias_axes: Optional[str],
+    num_microbatches: Optional[int] = None,
+) -> tf.Tensor:
+  """Computes the batch gradient norms of an Einsum gradient decompostion.
+
+  This logic generalizes the one for `tf.keras.layers.Dense` and assumes that
+  the `equation` parameter is one of the following forms:
+
+    C1. ab,bc->ac,
+    C2. ...ab,bc->...ac
+    C3. ab...,bc->ac...
+
+  where `a`, `b`, and `c` are non-empty substrings.
+
+  For reference, we describe part of the mathematical analysis below. It can be
+  safely skipped upon the first reading of this docstring.
+
+  -----------------------------------------------------------------------------
+  BEGIN ANALYSIS
+  -----------------------------------------------------------------------------
+  For ease of exposition, all analysis is done for a single example, i.e.,
+  batch dimension is excluded from our consideration.
+
+  Recall that the einsum dense computation, excluding activation functions is of
+  the form
+  ```
+  output = tf.einsum(equation, input, kernel) + bias,
+  ```
+  where `bias` is broadcasted and summed with the output of the `tf.einsum()`
+  call, and equation is of the forms in C1, C2, and C3.
+
+  Mathematically, the above computation is equivalent to:
+  ```
+  output = tf.matmul(X, W) + Q(bias)
+  ```
+  where `X` (resp. `W`) is a 2D tensor reshaped from `input` (resp. `kernel`)
+  and `Q` is a linear operator that transforms `bias` to comport with the
+  tensor output by the `tf.matmul()` call. When generalizing to a batch of
+  examples, `X` is a 3D tensor whose first dimension is the batch dimension.
+
+  Following the same trick as for `tf.keras.layers.Dense` layers, suppose that
+  we have:
+  ```
+  loss = f(output)
+  G = tape.gradient(loss, output)
+  ```
+  Then, using the chain rule and denoting `A'` to be the adjoint of a matrix
+  `A`, one can show that the gradient of `loss` with respect to `W` is given by
+  the block matrix `K := [X'G; Q'G]`. Hence, the square norm of `K`, i.e., what
+  is returned by `sqr_norm_fn` is given by
+  ```
+  sqr_norm = <XX', GG'> + ||Q'G||_F^2
+  ```
+  where `||.||_F` is the Frobenius norm and `<.,.>` is the Euclidean inner
+  product for matrices.
+  -----------------------------------------------------------------------------
+  END ANALYSIS
+  -----------------------------------------------------------------------------
+
+  Args:
+    equation: A `string` representing the einsum equation.
+    input_tensor: A `tf.Tensor` reprenting the einsum input.
+    grad_tensor: A `tf.Tensor` that is the gradient of the scalar loss with
+      respect to the pre-activation tensor.
+    bias_axes: An optional `string` that specifies the einsum biases in
+      `equation`.
+    num_microbatches: An optional `int` that specifies the number of
+      microbatches used in a batch.
+
+  Returns:
+    A 1D `tf.Tensor` whose i-th entry is the squared gradient corresponding
+    to the i-th example in `input_tensor`.
+  """
+  # Compute the matrix `X X'` and `G G'` for each example or microbatch.
+  # `x.shape = (batch_size, num_rows, num_columns)`
+  x = _reshape_einsum_inputs(input_tensor, equation)
+  g = _reshape_einsum_outputs(grad_tensor, equation)
+  # Adding microbatches is equivalent to splitting the first `(batch_size)`
+  # axis into `(num_microbatches, microbatch_size)` axes and merging the
+  # `microbatch_size` axis with the `num_rows` axis via a reshape.
+  if num_microbatches is not None:
+    # `x.shape = (num_microbatches, microbatch_size, num_rows, num_columns)`
+    x = common_manip_utils.maybe_add_microbatch_axis(x, num_microbatches)
+    g = common_manip_utils.maybe_add_microbatch_axis(g, num_microbatches)
+    sx = tf.shape(x)
+    sg = tf.shape(g)
+    # `x.shape = (num_microbatches, microbatch_size * num_rows, num_columns)`
+    x = tf.reshape(x, shape=[sx[0], sx[1] * sx[2], sx[3]])
+    g = tf.reshape(g, shape=[sg[0], sg[1] * sg[2], sg[3]])
+  # NOTE: When the input/gradient tensors are 1D, it is MUCH faster to do
+  # a `tf.square()` + `tf.reduce_sum()` than a single `tf.matmul()`.
+  if (
+      _is_batch_of_vectors(input_tensor)
+      and _is_batch_of_vectors(grad_tensor)
+      and num_microbatches is None
+  ):
+    x_matrix = tf.reshape(x, [tf.shape(x)[0], -1])
+    g_matrix = tf.reshape(g, [tf.shape(g)[0], -1])
+    batch_xxt = tf.reduce_sum(tf.square(x_matrix), axis=1)
+    batch_ggt = tf.reduce_sum(tf.square(g_matrix), axis=1)
+  else:
+    batch_xxt = tf.matmul(x, x, transpose_b=True)
+    batch_ggt = tf.matmul(g, g, transpose_b=True)
+  # Compute the (micro)batch inner product; adjust for biases if necessary.
+  batch_xxt_ggt = tf.multiply(batch_xxt, batch_ggt)
+  reduction_axes = tf.range(1, tf.rank(batch_xxt_ggt))
+  sqr_norms = tf.reduce_sum(batch_xxt_ggt, axis=reduction_axes)
+  if bias_axes is not None:
+    # The adjoint operator `Q` on `G` is a reduce sum on the axes in `G` that
+    # are not broadcasted from `bias`.
+    grad_rank = len(grad_tensor.shape)
+    adjoint_reduction_axes = _get_einsum_bias_adjoint_reduction_axes(
+        equation,
+        bias_axes,
+        grad_rank,
+    )
+    # Adding microbatches with non-trival bias axes is equivalent to splitting
+    # the first `(batch_size)` axis into `(num_microbatches, microbatch_size)`
+    # axes, and adding the `microbatch_size` axis (=1) to the reduction axes
+    # needed to compute the bias broadcast adjoint operator.
+    if num_microbatches is not None:
+      grad_tensor = common_manip_utils.maybe_add_microbatch_axis(
+          grad_tensor, num_microbatches
+      )
+      adjoint_reduction_axes = [i + 1 for i in adjoint_reduction_axes]
+      adjoint_reduction_axes = [1] + adjoint_reduction_axes
+    qg = tf.reduce_sum(grad_tensor, axis=adjoint_reduction_axes)
+    qg_reduction_axes = tf.range(1, tf.rank(qg))
+    bias_sqr_norms = tf.reduce_sum(tf.square(qg), axis=qg_reduction_axes)
+    sqr_norms += bias_sqr_norms
+
+  return sqr_norms
