@@ -18,7 +18,10 @@ py_test(
     srcs = ["dp_query_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":no_privacy_query"],
+    deps = [
+        ":no_privacy_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -32,7 +35,10 @@ py_test(
     srcs = ["discrete_gaussian_utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":discrete_gaussian_utils"],
+    deps = [
+        ":discrete_gaussian_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -54,6 +60,7 @@ py_test(
         ":discrete_gaussian_query",
         ":discrete_gaussian_utils",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -76,6 +83,7 @@ py_test(
         ":discrete_gaussian_utils",
         ":distributed_discrete_gaussian_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -97,6 +105,7 @@ py_test(
     deps = [
         ":distributed_skellam_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -116,6 +125,7 @@ py_test(
     deps = [
         ":gaussian_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -135,6 +145,7 @@ py_test(
     deps = [
         ":no_privacy_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -155,6 +166,7 @@ py_test(
         ":gaussian_query",
         ":normalized_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -177,6 +189,7 @@ py_test(
         ":nested_query",
         ":normalized_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -199,6 +212,7 @@ py_test(
     deps = [
         ":quantile_adaptive_clip_sum_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -223,6 +237,7 @@ py_test(
     deps = [
         ":quantile_estimator_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -244,7 +259,10 @@ py_test(
     python_version = "PY3",
     shard_count = 10,
     srcs_version = "PY3",
-    deps = [":tree_aggregation"],
+    deps = [
+        ":tree_aggregation",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -257,6 +275,7 @@ py_test(
         ":test_utils",
         ":tree_aggregation",
         ":tree_aggregation_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -286,7 +305,10 @@ py_test(
     srcs = ["tree_range_query_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tree_range_query"],
+    deps = [
+        ":tree_range_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -297,6 +319,7 @@ py_test(
     deps = [
         ":restart_query",
         ":tree_aggregation_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -328,5 +351,6 @@ py_test(
     deps = [
         ":quantile_adaptive_clip_tree_query",
         ":test_utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

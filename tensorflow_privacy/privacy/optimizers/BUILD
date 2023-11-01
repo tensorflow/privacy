@@ -83,7 +83,10 @@ py_test(
     srcs = ["clip_and_aggregate_gradients_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":clip_and_aggregate_gradients"],
+    deps = [
+        ":clip_and_aggregate_gradients",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -95,6 +98,7 @@ py_test(
     deps = [
         ":dp_optimizer",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -104,7 +108,10 @@ py_test(
     srcs = ["dp_optimizer_keras_sparse_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dp_optimizer_keras_sparse"],
+    deps = [
+        ":dp_optimizer_keras_sparse",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -113,7 +120,10 @@ py_test(
     srcs = ["dp_optimizer_keras_sparse_distributed_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dp_optimizer_keras_sparse"],
+    deps = [
+        ":dp_optimizer_keras_sparse",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -122,7 +132,10 @@ py_test(
     srcs = ["dp_optimizer_vectorized_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":dp_optimizer_vectorized"],
+    deps = [
+        ":dp_optimizer_vectorized",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -134,6 +147,7 @@ py_test(
     deps = [
         ":dp_optimizer",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -146,5 +160,6 @@ py_test(
     deps = [
         ":dp_optimizer_keras",
         ":dp_optimizer_keras_vectorized",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
