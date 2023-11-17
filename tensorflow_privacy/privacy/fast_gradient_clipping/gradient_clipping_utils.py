@@ -14,7 +14,7 @@
 """Utility functions that help in the computation of per-example gradient norms."""
 
 from collections.abc import Sequence, Set
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from absl import logging
 import tensorflow as tf
@@ -145,11 +145,12 @@ def all_trainable_layers_are_registered(
 
 
 def add_aggregate_noise(
-    input_model: tf.keras.Model,
     clipped_grads: list[tf.Tensor],
     batch_size: tf.Tensor,
     l2_norm_clip: float,
     noise_multiplier: float,
+    loss_reduction: Optional[Literal['mean', 'sum']] = None,
+    loss_model: Optional[tf.keras.Model] = None,
 ) -> Sequence[tf.Tensor]:
   """Adds noise to a collection of clipped gradients.
 
@@ -157,25 +158,53 @@ def add_aggregate_noise(
   input model's loss function.
 
   Args:
-    input_model: The `tf.keras.Model` to obtain the layers from.
     clipped_grads: A list of `tf.Tensor`s representing the clipped gradients.
-    batch_size: The batch size, used for normalizing the noise, when the loss
-      reduction is AUTO or SUM_OVER_BATCH_SIZE.
+    batch_size: The batch size. Used for normalizing the noise when
+      `loss_reduction` is 'sum'.
     l2_norm_clip: Clipping norm (max L2 norm of each gradient).
     noise_multiplier: Ratio of the standard deviation to the clipping norm.
+    loss_reduction: An string description of how the loss is reduced over
+      examples. Currently supports 'mean' and 'sum'. If `None`, then the
+      aggregation type must be inferred from `input_model.loss`.
+    loss_model: An optional `tf.keras.Model` used to infer the loss reduction
+      strategy from if `loss_reduction` is `None`.
 
   Returns:
     A list of tensors containing the clipped gradients, but with the right
     amount of Gaussian noise added to them (depending on the reduction
     strategy of the loss function).
+
+  Raises:
+    ValueError: If both `loss_model` and `loss_reduction` are `None` or if
+      they are both not `None`.
   """
+  if loss_reduction is None and loss_model is None:
+    raise ValueError(
+        'Exactly one of `loss_reduction` and `loss_model` must be populated.'
+        ' Instead, both arguments were `None`.'
+    )
+  if loss_reduction is not None and loss_model is not None:
+    raise ValueError(
+        'Exactly one of `loss_reduction` and `loss_model` must be populated.'
+        ' Instead, both arguments were not `None`.'
+    )
+
+  if loss_reduction is None and loss_model is not None:
+    implicit_mean_reductions = [
+        tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
+        tf.keras.losses.Reduction.AUTO,
+    ]
+    model_reduction = loss_model.loss.reduction
+    loss_reduction = (
+        'mean' if model_reduction in implicit_mean_reductions else 'sum'
+    )
+    if model_reduction == tf.keras.losses.Reduction.AUTO:
+      logging.info(
+          'Assuming that the model loss reduction is `SUM_OVER_BATCH_SIZE`.'
+      )
+
   scale = l2_norm_clip
-  if input_model.loss.reduction in [
-      tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
-      tf.keras.losses.Reduction.AUTO,
-  ]:
-    if input_model.loss.reduction == tf.keras.losses.Reduction.AUTO:
-      logging.info('Assuming that the loss reduction is `SUM_OVER_BATCH_SIZE`.')
+  if loss_reduction == 'mean':
     scale /= tf.cast(batch_size, tf.float32)
 
   def add_noise(g):

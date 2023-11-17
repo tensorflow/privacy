@@ -25,6 +25,7 @@ py_test(
     name = "dp_keras_model_test",
     srcs = ["dp_keras_model_test.py"],
     python_version = "PY3",
+    shard_count = 16,
     srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",

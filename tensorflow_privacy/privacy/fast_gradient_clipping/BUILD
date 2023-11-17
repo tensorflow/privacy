@@ -38,6 +38,7 @@ py_test(
     name = "gradient_clipping_utils_test",
     srcs = ["gradient_clipping_utils_test.py"],
     python_version = "PY3",
+    shard_count = 8,
     srcs_version = "PY3",
     deps = [
         ":gradient_clipping_utils",
