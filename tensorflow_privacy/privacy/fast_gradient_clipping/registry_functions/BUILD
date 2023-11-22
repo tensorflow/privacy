@@ -176,3 +176,29 @@ py_test(
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
     ],
 )
+
+py_library(
+    name = "multi_head_attention",
+    srcs = ["multi_head_attention.py"],
+    srcs_version = "PY3",
+    deps = [
+        ":einsum_dense",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
+    ],
+)
+
+py_test(
+    name = "multi_head_attention_test",
+    srcs = ["multi_head_attention_test.py"],
+    python_version = "PY3",
+    shard_count = 8,
+    srcs_version = "PY3",
+    deps = [
+        ":dense",
+        ":multi_head_attention",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+    ],
+)
