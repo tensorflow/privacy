@@ -19,7 +19,6 @@ import os
 import re
 from typing import Optional
 
-import numpy as np
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 
@@ -198,10 +197,10 @@ def _reshape_einsum_inputs(
     pivot_idx = b_idx
   # The output tensor is a batched set of matrices, split at the pivot index
   # of the previously prepped tensor.
-  base_tensor_shape = input_tensor.shape
-  batch_size = base_tensor_shape[0]
-  num_rows = int(np.prod(base_tensor_shape[1:pivot_idx]))
-  num_columns = int(np.prod(base_tensor_shape[pivot_idx:]))
+  input_shape = tf.shape(input_tensor)
+  batch_size = input_shape[0]
+  num_rows = tf.reduce_prod(input_shape[1:pivot_idx])
+  num_columns = tf.reduce_prod(input_shape[pivot_idx:])
   return tf.reshape(input_tensor, shape=[batch_size, num_rows, num_columns])
 
 

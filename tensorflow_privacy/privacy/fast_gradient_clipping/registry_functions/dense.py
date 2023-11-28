@@ -16,8 +16,8 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional
 import tensorflow as tf
-from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
+from tensorflow_privacy.privacy.fast_gradient_clipping.registry_functions import einsum_utils
 
 
 def dense_layer_computation(
@@ -74,28 +74,12 @@ def dense_layer_computation(
   outputs = orig_activation(base_vars) if orig_activation else base_vars
 
   def sqr_norm_fn(base_vars_grads):
-    def _compute_gramian(x):
-      if num_microbatches is not None:
-        x_microbatched = common_manip_utils.maybe_add_microbatch_axis(
-            x,
-            num_microbatches,
-        )
-        return tf.matmul(x_microbatched, x_microbatched, transpose_b=True)
-      else:
-        # Special handling for better efficiency
-        return tf.reduce_sum(tf.square(x), axis=tf.range(1, tf.rank(x)))
-
-    inputs_gram = _compute_gramian(*input_args)
-    base_vars_grads_gram = _compute_gramian(base_vars_grads)
-    if layer_instance.use_bias:
-      # Adding a bias term is equivalent to a layer with no bias term and which
-      # adds an additional variable to the layer input that only takes a
-      # constant value of 1.0. This is thus equivalent to adding 1.0 to the sum
-      # of the squared values of the inputs.
-      inputs_gram += 1.0
-    return tf.reduce_sum(
-        inputs_gram * base_vars_grads_gram,
-        axis=tf.range(1, tf.rank(inputs_gram)),
+    return einsum_utils.compute_fast_einsum_squared_gradient_norm(
+        "...b,bc->...c",
+        input_args[0],
+        base_vars_grads,
+        "c" if layer_instance.use_bias else None,
+        num_microbatches,
     )
 
   return base_vars, outputs, sqr_norm_fn

@@ -57,6 +57,7 @@ py_library(
     srcs = ["dense.py"],
     srcs_version = "PY3",
     deps = [
+        ":einsum_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
     ],
