@@ -14,6 +14,7 @@
 # ==============================================================================
 """Library for computing privacy values for DP-SGD."""
 
+import enum
 import functools
 import math
 import textwrap
@@ -34,6 +35,20 @@ def _logexpm1(x: float) -> float:
   return x + math.log(-math.expm1(-x))
 
 
+class AccountantType(enum.Enum):
+  """Accountant to use for privacy accounting."""
+
+  RDP = 'RDP'
+  PLD = 'PLD'
+
+  def get_accountant(self) -> dp_accounting.PrivacyAccountant:
+    if self == AccountantType.RDP:
+      return dp_accounting.rdp.RdpAccountant()
+    if self == AccountantType.PLD:
+      return dp_accounting.pld.PLDAccountant()
+    raise ValueError(f'Unsupported Accountant type {self.value}')
+
+
 def _compute_dp_sgd_user_privacy(
     num_epochs: float,
     noise_multiplier: float,
@@ -41,6 +56,7 @@ def _compute_dp_sgd_user_privacy(
     max_examples_per_user: int,
     used_microbatching: bool = True,
     poisson_subsampling_probability: Optional[float] = None,
+    accountant_type: AccountantType = AccountantType.RDP,
 ) -> float:
   """Computes add-or-remove-one-user DP epsilon using group privacy.
 
@@ -63,6 +79,10 @@ def _compute_dp_sgd_user_privacy(
     used_microbatching: If true, increases sensitivity by a factor of two.
     poisson_subsampling_probability: If not None, gives the probability that
       each record is chosen in a batch. If None, assumes no subsampling.
+    accountant_type: The privacy accountant for computing epsilon. While this
+      method supports both PLD and RDP accountants, the behavior for PLD
+      accountant can sometimes be overly pessimistic. This remains to be
+      investigated and fixed (b/271341062).
 
   Returns:
     The add-or-remove-one-user DP epsilon value using group privacy.
@@ -92,6 +112,7 @@ def _compute_dp_sgd_user_privacy(
         user_delta,
         used_microbatching,
         poisson_subsampling_probability,
+        accountant_type,
     )
 
   # The computation below to estimate user_eps works as follows.
@@ -188,6 +209,7 @@ def _compute_dp_sgd_example_privacy(
     example_delta: float,
     used_microbatching: bool = True,
     poisson_subsampling_probability: Optional[float] = None,
+    accountant_type: AccountantType = AccountantType.RDP,
 ) -> float:
   """Computes add-or-remove-one-example DP epsilon.
 
@@ -201,6 +223,7 @@ def _compute_dp_sgd_example_privacy(
     used_microbatching: If true, increases sensitivity by a factor of two.
     poisson_subsampling_probability: If not None, gives the probability that
       each record is chosen in a batch. If None, assumes no subsampling.
+    accountant_type: The privacy accountant for computing epsilon.
 
   Returns:
     The epsilon value.
@@ -229,10 +252,10 @@ def _compute_dp_sgd_example_privacy(
   event_ = dp_accounting.SelfComposedDpEvent(count=count, event=event_)
 
   return (
-      dp_accounting.rdp.RdpAccountant()
+      accountant_type.get_accountant()
       .compose(event_)
       .get_epsilon(example_delta)
-  )  # TODO(b/271341062)
+  )
 
 
 def compute_dp_sgd_privacy_statement(
@@ -243,6 +266,7 @@ def compute_dp_sgd_privacy_statement(
     delta: float,
     used_microbatching: bool = True,
     max_examples_per_user: Optional[int] = None,
+    accountant_type: AccountantType = AccountantType.RDP,
 ) -> str:
   """Produces a privacy report summarizing the DP guarantee.
 
@@ -267,6 +291,11 @@ def compute_dp_sgd_privacy_statement(
     max_examples_per_user: If the data set is constructed to cap the maximum
       number of examples each user contributes, provide this argument to also
       print a user-level DP guarantee.
+    accountant_type: The privacy accountant for computing epsilon. Since the
+      current approach for computing user-level privacy when using PLD
+      accountant can sometimes be overly pessimistic, this method does not
+      provide user-level privacy guarantee for PLD accountant_type. This remains
+      to be investigated and fixed (b/271341062).
 
   Returns:
     A str precisely articulating the privacy guarantee.
@@ -296,12 +325,16 @@ addition to the final model.""",
   paragraph = textwrap.fill(
       f"""\
 Example-level DP with add-or-remove-one adjacency at delta = {delta} computed \
-with RDP accounting:""",
+with {accountant_type.value} accounting:""",
       width=80,
   )
 
   example_eps_no_subsampling = _compute_dp_sgd_example_privacy(
-      num_epochs, noise_multiplier, delta, used_microbatching
+      num_epochs,
+      noise_multiplier,
+      delta,
+      used_microbatching,
+      accountant_type=accountant_type,
   )
   example_eps_subsampling = _compute_dp_sgd_example_privacy(
       num_epochs,
@@ -309,6 +342,7 @@ with RDP accounting:""",
       delta,
       used_microbatching,
       poisson_subsampling_probability=batch_size / number_of_examples,
+      accountant_type=accountant_type,
   )
 
   paragraph += f"""
@@ -320,13 +354,33 @@ with RDP accounting:""",
   paragraphs.append(paragraph)
 
   inf_user_eps = False
-  if max_examples_per_user is not None:
+  if max_examples_per_user is None:
+    paragraphs.append(
+        textwrap.fill(
+            """\
+No user-level privacy guarantee is possible without a bound on the number of \
+examples per user.""",
+            width=80,
+        )
+    )
+  elif accountant_type == AccountantType.PLD:
+    # TODO(b/271341062): Add User level DP support for PLD.
+    paragraphs.append(
+        textwrap.fill(
+            """\
+User-level DP epsilon computation is not supported for PLD accounting at this \
+time. Use RDP accounting to obtain user-level DP guarantees.""",
+            width=80,
+        )
+    )
+  else:  # Case: max_examples_per_user is not None and accountant_type is RDP
     user_eps_no_subsampling = _compute_dp_sgd_user_privacy(
         num_epochs,
         noise_multiplier,
         delta,
         max_examples_per_user,
         used_microbatching,
+        accountant_type=accountant_type,
     )
     user_eps_subsampling = _compute_dp_sgd_user_privacy(
         num_epochs,
@@ -335,6 +389,7 @@ with RDP accounting:""",
         max_examples_per_user,
         used_microbatching,
         poisson_subsampling_probability=batch_size / number_of_examples,
+        accountant_type=accountant_type,
     )
     if math.isinf(user_eps_no_subsampling):
       user_eps_no_subsampling_str = '    inf (**)'
@@ -350,7 +405,7 @@ with RDP accounting:""",
     paragraph = textwrap.fill(
         f"""\
 User-level DP with add-or-remove-one adjacency at delta = {delta} computed \
-using RDP accounting and group privacy:""",
+using {accountant_type.value} accounting and group privacy:""",
         width=80,
     )
     paragraph += f"""
@@ -360,23 +415,14 @@ using RDP accounting and group privacy:""",
 {user_eps_subsampling_str}"""
 
     paragraphs.append(paragraph)
-  else:
-    paragraphs.append(
-        textwrap.fill(
-            """\
-No user-level privacy guarantee is possible without a bound on the number of \
-examples per user.""",
-            width=80,
-        )
-    )
 
   paragraphs.append(
       textwrap.fill(
           """\
 (*) Poisson sampling is not usually done in training pipelines, but assuming \
-that the data was randomly shuffled, it is believed the actual epsilon should \
-be closer to this value than the conservative assumption of an arbitrary data \
-order.""",
+that the data was randomly shuffled, it is believed that the actual epsilon \
+should be closer to this value than the conservative assumption of an \
+arbitrary data order.""",
           width=80,
       )
   )

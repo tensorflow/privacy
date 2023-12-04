@@ -23,6 +23,8 @@ from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 
 _example_privacy = compute_dp_sgd_privacy_lib._compute_dp_sgd_example_privacy
 _user_privacy = compute_dp_sgd_privacy_lib._compute_dp_sgd_user_privacy
+_RDP = compute_dp_sgd_privacy_lib.AccountantType.RDP
+_PLD = compute_dp_sgd_privacy_lib.AccountantType.PLD
 
 
 DP_SGD_STATEMENT_KWARGS = dict(
@@ -81,13 +83,21 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
       _example_privacy(**args)
 
   @parameterized.named_parameters(
-      ('no_microbatching_no_subsampling', False, None, 10.8602036),
-      ('microbatching_no_subsampling', True, None, 26.2880374),
-      ('no_microbatching_with_subsampling', False, 1e-2, 3.2391922),
-      ('microbatching_with_subsampling', True, 1e-2, 22.5970358),
+      ('no_microbatching_no_subsampling_rdp', False, None, _RDP, 10.8602036),
+      ('microbatching_no_subsampling_rdp', True, None, _RDP, 26.2880374),
+      ('no_microbatching_with_subsampling_rdp', False, 1e-2, _RDP, 3.2391922),
+      ('microbatching_with_subsampling_rdp', True, 1e-2, _RDP, 22.5970358),
+      ('no_microbatching_no_subsampling_pld', False, None, _PLD, 10.1224946),
+      ('microbatching_no_subsampling_pld', True, None, _PLD, 24.7160779),
+      ('no_microbatching_with_subsampling_pld', False, 1e-2, _PLD, 2.4612381),
+      ('microbatching_with_subsampling_pld', True, 1e-2, _PLD, 18.6977407),
   )
   def test_compute_dp_sgd_example_privacy(
-      self, used_microbatching, poisson_subsampling_probability, expected_eps
+      self,
+      used_microbatching,
+      poisson_subsampling_probability,
+      accountant_type,
+      expected_eps,
   ):
     num_epochs = 1.2
     noise_multiplier = 0.7
@@ -98,6 +108,7 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
         example_delta,
         used_microbatching,
         poisson_subsampling_probability,
+        accountant_type,
     )
     self.assertAlmostEqual(eps, expected_eps)
 
@@ -119,17 +130,21 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
     with self.assertRaises(ValueError):
       _user_privacy(**args)
 
-  def test_user_privacy_one_example_per_user(self):
+  @parameterized.named_parameters(('RDP', _RDP), ('PLD', _PLD))
+  def test_user_privacy_one_example_per_user(self, accountant_type):
     num_epochs = 1.2
     noise_multiplier = 0.7
     delta = 1e-5
 
-    example_eps = _example_privacy(num_epochs, noise_multiplier, delta)
+    example_eps = _example_privacy(
+        num_epochs, noise_multiplier, delta, accountant_type=accountant_type
+    )
     user_eps = _user_privacy(
         num_epochs,
         noise_multiplier,
         delta,
         max_examples_per_user=1,
+        accountant_type=accountant_type,
     )
     self.assertEqual(user_eps, example_eps)
 
@@ -146,6 +161,7 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
         noise_multiplier=noise_multiplier,
         example_delta=example_delta,
         poisson_subsampling_probability=q,
+        accountant_type=_RDP,
     )
 
     user_delta = math.exp(
@@ -161,12 +177,14 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
         user_delta=user_delta,
         max_examples_per_user=max_examples_per_user,
         poisson_subsampling_probability=q,
+        accountant_type=_RDP,
     )
     self.assertAlmostEqual(user_eps, example_eps * max_examples_per_user)
 
-  def test_dp_sgd_privacy_statement_no_user_dp(self):
+  def test_dp_sgd_privacy_statement_no_user_dp_with_rdp(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
         **DP_SGD_STATEMENT_KWARGS,
+        accountant_type=_RDP,
     )
     expected_statement = """\
 DP-SGD performed over 10000 examples with 64 examples per iteration, noise
@@ -185,16 +203,17 @@ No user-level privacy guarantee is possible without a bound on the number of
 examples per user.
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
-that the data was randomly shuffled, it is believed the actual epsilon should be
-closer to this value than the conservative assumption of an arbitrary data
-order.
+that the data was randomly shuffled, it is believed that the actual epsilon
+should be closer to this value than the conservative assumption of an arbitrary
+data order.
 """
     self.assertEqual(statement, expected_statement)
 
-  def test_dp_sgd_privacy_statement_user_dp(self):
+  def test_dp_sgd_privacy_statement_user_dp_with_rdp(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
         **DP_SGD_STATEMENT_KWARGS,
         max_examples_per_user=3,
+        accountant_type=_RDP,
     )
     expected_statement = """\
 DP-SGD performed over 10000 examples with 64 examples per iteration, noise
@@ -215,16 +234,17 @@ RDP accounting and group privacy:
     Epsilon assuming Poisson sampling (*):                      6.425
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
-that the data was randomly shuffled, it is believed the actual epsilon should be
-closer to this value than the conservative assumption of an arbitrary data
-order.
+that the data was randomly shuffled, it is believed that the actual epsilon
+should be closer to this value than the conservative assumption of an arbitrary
+data order.
 """
     self.assertEqual(statement, expected_statement)
 
-  def test_dp_sgd_privacy_statement_user_dp_infinite(self):
+  def test_dp_sgd_privacy_statement_user_dp_infinite_with_rdp(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
         **DP_SGD_STATEMENT_KWARGS,
         max_examples_per_user=10,
+        accountant_type=_RDP,
     )
     expected_statement = """\
 DP-SGD performed over 10000 examples with 64 examples per iteration, noise
@@ -245,14 +265,71 @@ RDP accounting and group privacy:
     Epsilon assuming Poisson sampling (*):                   inf (**)
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
-that the data was randomly shuffled, it is believed the actual epsilon should be
-closer to this value than the conservative assumption of an arbitrary data
-order.
+that the data was randomly shuffled, it is believed that the actual epsilon
+should be closer to this value than the conservative assumption of an arbitrary
+data order.
 
 (**) A finite example-level epsilon implies a finite user-level epsilon at any
 `max_examples_per_user`, but because conversion from example-level to user-level
 DP is not exact, it is possible for the upper bound on the user-level epsilon to
 still be infinite.
+"""
+    self.assertEqual(statement, expected_statement)
+
+  def test_dp_sgd_privacy_statement_no_user_dp_with_pld(self):
+    statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
+        **DP_SGD_STATEMENT_KWARGS,
+        accountant_type=_PLD,
+    )
+    expected_statement = """\
+DP-SGD performed over 10000 examples with 64 examples per iteration, noise
+multiplier 2.0 for 5.0 epochs with microbatching, and no bound on number of
+examples per user.
+
+This privacy guarantee protects the release of all model checkpoints in addition
+to the final model.
+
+Example-level DP with add-or-remove-one adjacency at delta = 1e-06 computed with
+PLD accounting:
+    Epsilon with each example occurring once per epoch:        12.595
+    Epsilon assuming Poisson sampling (*):                      1.199
+
+No user-level privacy guarantee is possible without a bound on the number of
+examples per user.
+
+(*) Poisson sampling is not usually done in training pipelines, but assuming
+that the data was randomly shuffled, it is believed that the actual epsilon
+should be closer to this value than the conservative assumption of an arbitrary
+data order.
+"""
+    self.assertEqual(statement, expected_statement)
+
+  def test_dp_sgd_privacy_statement_user_dp_with_pld(self):
+    statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
+        **DP_SGD_STATEMENT_KWARGS,
+        max_examples_per_user=3,
+        accountant_type=_PLD,
+    )
+    expected_statement = """\
+DP-SGD performed over 10000 examples with 64 examples per iteration, noise
+multiplier 2.0 for 5.0 epochs with microbatching, and at most 3 examples per
+user.
+
+This privacy guarantee protects the release of all model checkpoints in addition
+to the final model.
+
+Example-level DP with add-or-remove-one adjacency at delta = 1e-06 computed with
+PLD accounting:
+    Epsilon with each example occurring once per epoch:        12.595
+    Epsilon assuming Poisson sampling (*):                      1.199
+
+User-level DP epsilon computation is not supported for PLD accounting at this
+time. Use RDP accounting to obtain user-level DP guarantees.
+
+(*) Poisson sampling is not usually done in training pipelines, but assuming
+that the data was randomly shuffled, it is believed that the actual epsilon
+should be closer to this value than the conservative assumption of an arbitrary
+data order.
 """
     self.assertEqual(statement, expected_statement)
 

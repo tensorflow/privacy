@@ -18,20 +18,20 @@ The script applies the RDP accountant to estimate privacy budget of an iterated
 Sampled Gaussian Mechanism. The mechanism's parameters are controlled by flags.
 
 Example:
-  compute_dp_sgd_privacy
+  compute_dp_sgd_privacy \
     --N=60000 \
     --batch_size=256 \
     --noise_multiplier=1.12 \
     --epochs=60 \
-    --delta=1e-5
+    --delta=1e-5 \
+    --accountant_type=RDP
 
-The output states that DP-SGD with these parameters satisfies (2.92, 1e-5)-DP.
+Prints out the privacy statement corresponding to the above parameters.
 """
 
 from absl import app
 from absl import flags
-
-from tensorflow_privacy.privacy.analysis.compute_dp_sgd_privacy_lib import compute_dp_sgd_privacy_statement
+from tensorflow_privacy.privacy.analysis import compute_dp_sgd_privacy_lib
 
 
 _NUM_EXAMPLES = flags.DEFINE_integer(
@@ -70,6 +70,9 @@ _MAX_EXAMPLES_PER_USER = flags.DEFINE_integer(
         'user-level DP guarantee.'
     ),
 )
+_ACCOUNTANT_TYPE = flags.DEFINE_enum(
+    'accountant_type', 'RDP', ['RDP', 'PLD'], 'DP accountant to use.'
+)
 
 flags.mark_flags_as_required(['N', 'batch_size', 'noise_multiplier', 'epochs'])
 
@@ -77,7 +80,7 @@ flags.mark_flags_as_required(['N', 'batch_size', 'noise_multiplier', 'epochs'])
 def main(argv):
   del argv  # argv is not used.
 
-  statement = compute_dp_sgd_privacy_statement(
+  statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
       _NUM_EXAMPLES.value,
       _BATCH_SIZE.value,
       _NUM_EPOCHS.value,
@@ -85,6 +88,7 @@ def main(argv):
       _DELTA.value,
       _USED_MICROBATCHING.value,
       _MAX_EXAMPLES_PER_USER.value,
+      compute_dp_sgd_privacy_lib.AccountantType(_ACCOUNTANT_TYPE.value),
   )
   print(statement)
 
