@@ -7,6 +7,20 @@ py_library(
 )
 
 py_library(
+    name = "bert_encoder_utils",
+    srcs = ["bert_encoder_utils.py"],
+    srcs_version = "PY3",
+    deps = [":gradient_clipping_utils"],
+)
+
+py_test(
+    name = "bert_encoder_utils_test",
+    srcs = ["bert_encoder_utils_test.py"],
+    srcs_version = "PY3",
+    deps = [":bert_encoder_utils"],
+)
+
+py_library(
     name = "common_manip_utils",
     srcs = ["common_manip_utils.py"],
     srcs_version = "PY3",
