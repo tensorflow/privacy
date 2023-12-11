@@ -18,7 +18,10 @@ py_test(
     srcs = ["exposures_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":exposures"],
+    deps = [
+        ":exposures",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -30,5 +33,8 @@ py_library(
 py_test(
     name = "generate_secrets_test",
     srcs = ["generate_secrets_test.py"],
-    deps = [":generate_secrets"],
+    deps = [
+        ":generate_secrets",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )

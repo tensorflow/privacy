@@ -29,6 +29,7 @@ py_test(
         ":datasets",
         ":multinomial_logistic",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -45,7 +46,10 @@ py_test(
     python_version = "PY3",
     srcs_version = "PY3",
     tags = ["requires-net:external"],
-    deps = [":datasets"],
+    deps = [
+        ":datasets",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -64,5 +68,6 @@ py_test(
     deps = [
         ":datasets",
         ":single_layer_softmax",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

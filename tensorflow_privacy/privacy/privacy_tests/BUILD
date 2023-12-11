@@ -13,13 +13,19 @@ py_test(
     srcs = ["utils_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":utils"],
+    deps = [
+        ":utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
     name = "epsilon_lower_bound_test",
     srcs = ["epsilon_lower_bound_test.py"],
-    deps = [":epsilon_lower_bound"],
+    deps = [
+        ":epsilon_lower_bound",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(

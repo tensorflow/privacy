@@ -30,6 +30,7 @@ py_test(
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -39,5 +40,6 @@ py_test(
     deps = [
         ":dp_keras_model",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

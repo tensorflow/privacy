@@ -72,6 +72,7 @@ py_test(
         ":binary_class_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -85,6 +86,7 @@ py_test(
         ":multi_class_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -98,6 +100,7 @@ py_test(
         ":multi_label_head",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -111,5 +114,6 @@ py_test(
         ":dnn",
         ":test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer_keras",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

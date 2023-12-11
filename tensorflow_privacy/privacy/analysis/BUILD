@@ -27,7 +27,10 @@ py_test(
     srcs = ["compute_dp_sgd_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":compute_dp_sgd_privacy_lib"],
+    deps = [
+        ":compute_dp_sgd_privacy_lib",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_binary(
@@ -44,7 +47,10 @@ py_library(
 py_test(
     name = "compute_noise_from_budget_test",
     srcs = ["compute_noise_from_budget_test.py"],
-    deps = [":compute_noise_from_budget_lib"],
+    deps = [
+        ":compute_noise_from_budget_lib",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -64,7 +70,10 @@ py_test(
     srcs = ["tensor_buffer_eager_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensor_buffer"],
+    deps = [
+        ":tensor_buffer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -73,7 +82,10 @@ py_test(
     srcs = ["tensor_buffer_graph_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tensor_buffer"],
+    deps = [
+        ":tensor_buffer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_library(
@@ -87,5 +99,8 @@ py_test(
     srcs = ["tree_aggregation_accountant_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":tree_aggregation_accountant"],
+    deps = [
+        ":tree_aggregation_accountant",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )

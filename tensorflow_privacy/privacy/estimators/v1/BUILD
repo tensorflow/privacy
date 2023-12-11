@@ -43,6 +43,7 @@ py_test(
         ":head",
         "//tensorflow_privacy/privacy/estimators:test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -56,6 +57,7 @@ py_test(
         ":dnn",
         "//tensorflow_privacy/privacy/estimators:test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -69,5 +71,6 @@ py_test(
         ":linear",
         "//tensorflow_privacy/privacy/estimators:test_utils",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

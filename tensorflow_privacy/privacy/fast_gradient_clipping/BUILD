@@ -57,6 +57,7 @@ py_test(
     deps = [
         ":gradient_clipping_utils",
         ":type_aliases",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -93,5 +94,6 @@ py_test(
         ":common_test_utils",
         ":layer_registry",
         ":type_aliases",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )

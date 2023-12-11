@@ -22,6 +22,7 @@ py_test(
     deps = [
         ":membership_inference_attack",
         "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -35,6 +36,7 @@ py_test(
         ":membership_inference_attack",
         "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
         "//tensorflow_privacy/privacy/privacy_tests:utils",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -43,7 +45,10 @@ py_test(
     srcs = ["dataset_slicing_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -52,7 +57,10 @@ py_test(
     srcs = ["models_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_test(
@@ -65,6 +73,7 @@ py_test(
         ":membership_inference_attack",
         ":privacy_report",
         "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -107,6 +116,7 @@ py_test(
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -148,7 +158,10 @@ py_test(
     srcs = ["seq2seq_mia_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":membership_inference_attack"],
+    deps = [
+        ":membership_inference_attack",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_binary(
@@ -170,6 +183,7 @@ py_test(
     deps = [
         ":keras_evaluation",
         ":membership_inference_attack",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
     ],
 )
 
@@ -188,7 +202,10 @@ py_test(
     srcs = ["advanced_mia_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
-    deps = [":advanced_mia"],
+    deps = [
+        ":advanced_mia",
+        "//third_party/py/google/protobuf:use_fast_cpp_protos",  # google-only
+    ],
 )
 
 py_binary(
