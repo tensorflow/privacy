@@ -46,7 +46,7 @@ setuptools.setup(
         'pandas~=1.4',
         'scikit-learn>=1.0,==1.*',
         'scipy~=1.9',
-        'statsmodels~=0.13',
+        'statsmodels==0.14.0',
         'tensorflow-estimator~=2.4',
         'tensorflow-probability~=0.22.0',
         'tensorflow~=2.4',
