@@ -15,7 +15,7 @@
 
 import collections
 import dp_accounting
-import packaging
+import packaging.version
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import dp_query
 
