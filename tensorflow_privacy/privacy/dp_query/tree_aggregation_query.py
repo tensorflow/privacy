@@ -33,11 +33,10 @@ corresponding epsilon for a `target_delta` and `noise_multiplier` to achieve
   eps = rdp_accountant.get_privacy_spent(orders, rdp, target_delta)[0]
 """
 
+import collections
 from typing import Any, NamedTuple
-
 import dp_accounting
 import tensorflow as tf
-
 from tensorflow_privacy.privacy.dp_query import dp_query
 from tensorflow_privacy.privacy.dp_query import tree_aggregation
 
@@ -475,6 +474,10 @@ class TreeResidualSumQuery(dp_query.SumAggregationDPQuery):
         clip_value=clip_norm,
         previous_tree_noise=global_state.previous_tree_noise,
     )
+
+  def derive_metrics(self, global_state):
+    """Returns the clip norm as a metric."""
+    return collections.OrderedDict(tree_agg_dpftrl_clip=global_state.clip_value)
 
   @classmethod
   def build_l2_gaussian_query(cls,

@@ -431,6 +431,18 @@ class TreeResidualQueryTest(tf.test.TestCase, parameterized.TestCase):
     )
     self.assertIsInstance(query._tree_aggregator, tree_class)
 
+  def test_derive_metrics(self):
+    specs = tf.TensorSpec([])
+    l2_clip = 2
+    query = tree_aggregation_query.TreeResidualSumQuery(
+        clip_fn=_get_l2_clip_fn(),
+        clip_value=l2_clip,
+        noise_generator=_get_noise_fn(specs, 1.0),
+        record_specs=specs,
+    )
+    metrics = query.derive_metrics(query.initial_global_state())
+    self.assertEqual(metrics['tree_agg_dpftrl_clip'], l2_clip)
+
   @parameterized.named_parameters(
       ('s0t1f1', 0., 1., 1),
       ('s0t1f2', 0., 1., 2),
