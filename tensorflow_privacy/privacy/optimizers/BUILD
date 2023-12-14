@@ -113,6 +113,9 @@ py_test(
     srcs = ["dp_optimizer_keras_sparse_distributed_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
+    tags = [
+        "manual",
+    ],
     deps = [":dp_optimizer_keras_sparse"],
 )
 

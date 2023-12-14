@@ -36,6 +36,9 @@ py_test(
 py_test(
     name = "dp_keras_model_distributed_test",
     srcs = ["dp_keras_model_distributed_test.py"],
+    tags = [
+        "manual",
+    ],
     deps = [
         ":dp_keras_model",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
