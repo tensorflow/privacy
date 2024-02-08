@@ -26,7 +26,6 @@
 # `~=x.0`.
 
 absl-py>=1.0,==1.*
-attrs>=21.4
 dm-tree==0.1.8
 dp-accounting==0.4.3
 immutabledict~=2.2

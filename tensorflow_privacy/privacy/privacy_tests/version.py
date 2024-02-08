@@ -1,4 +1,4 @@
-# Copyright 2022, The TensorFlow Privacy Authors.
+# Copyright 2024, The TensorFlow Privacy Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,6 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""TensorFlow Empirical Privacy."""
+"""TensorFlow Privacy/Privacy Tests version."""
 
-from tensorflow_privacy.privacy.privacy_tests.version import __version__  # pylint: disable=g-bad-import-order
+__version__ = '0.1.0'

@@ -5,6 +5,9 @@ licenses(["notice"])
 py_library(
     name = "privacy_tests",
     srcs = ["__init__.py"],
+    deps = [
+        ":version",
+    ],
 )
 
 py_test(
@@ -31,4 +34,10 @@ py_library(
 py_library(
     name = "epsilon_lower_bound",
     srcs = ["epsilon_lower_bound.py"],
+)
+
+py_library(
+    name = "version",
+    srcs = ["version.py"],
+    srcs_version = "PY3",
 )
