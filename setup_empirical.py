@@ -33,9 +33,7 @@ setuptools.setup(
     long_description_content_type='text/plain',
     url='https://github.com/tensorflow/privacy',
     license='Apache-2.0',
-    packages=setuptools.find_packages(
-        where='privacy', include=['privacy_tests*']
-    ),
+    packages=setuptools.find_packages(include=['*privacy.privacy_tests*']),
     install_requires=[
         'absl-py>=1.0,==1.*',
         'immutabledict~=2.2',
