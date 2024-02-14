@@ -44,7 +44,7 @@ setuptools.setup(
         'scipy~=1.9',
         'statsmodels==0.14.0',
         'tensorflow~=2.4',
-        'tensorflow-privacy>=0.8.12',
+        'tensorflow-privacy>=0.9.0',
         'tf-models-official~=2.13',
     ],
     python_requires='>=3.9.0,<3.12',
