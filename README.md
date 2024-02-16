@@ -11,6 +11,12 @@ issues currently open.
 
 ## Latest Updates
 
+2024-02-14: As of version 0.9.0, the TensorFlow Privacy github repository will
+be published as two separate PyPI packages. The first will inherit the name
+tensorflow-privacy and contain the parts related to training of DP models. The
+second, tensorflow-empirical-privacy, will contain the parts related to testing
+for empirical privacy.
+
 2023-02-21: A new implementation of efficient per-example gradient clipping is
 now available for
 [DP keras models](https://github.com/tensorflow/privacy/tree/master/tensorflow_privacy/privacy/keras_models)
