@@ -43,7 +43,7 @@ setuptools.setup(
         'scikit-learn>=1.0,==1.*',
         'scipy~=1.9',
         'statsmodels==0.14.0',
-        'tensorflow~=2.4',
+        'tensorflow>=2.4.0,<=2.15.0',
         'tensorflow-privacy>=0.9.0',
         'tf-models-official~=2.13',
     ],

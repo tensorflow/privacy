@@ -39,5 +39,5 @@ statsmodels==0.14.0
 tensorflow-datasets~=4.5
 tensorflow-estimator~=2.4
 tensorflow-probability~=0.22.0
-tensorflow~=2.4
+tensorflow>=2.4.0,<=2.15.0
 tf-models-official~=2.13
