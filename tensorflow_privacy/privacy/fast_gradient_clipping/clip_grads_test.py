@@ -197,5 +197,108 @@ class ComputeClippedGradsAndOutputsTest(
       self.assertAlmostEqual(computed_norm, true_norm)
 
 
+class SharedLayerTest(tf.test.TestCase, parameterized.TestCase):
+
+  def _make_shared_model(self, num_inputs, input_dim):
+    base_model = tf.keras.Sequential([tf.keras.layers.Dense(1, use_bias=False)])
+    inputs = []
+    outputs = []
+    for _ in range(num_inputs):
+      input_tensor = tf.keras.Input(shape=[input_dim])
+      inputs.append(input_tensor)
+      output_tensor = base_model(input_tensor)
+      outputs.append(output_tensor)
+    return tf.keras.Model(inputs=inputs, outputs=tf.add_n(outputs))
+
+  def _get_computed_and_true_norms(self, model, x_batch, y_batch, is_eager):
+    model.compile(
+        loss=tf.keras.losses.MeanSquaredError(reduction='none'),
+        run_eagerly=is_eager,
+    )
+    computed_norms = clip_grads.compute_gradient_norms(
+        model, layer_registry.make_default_layer_registry(), x_batch, y_batch
+    )
+    with tf.GradientTape() as tape:
+      y_pred = model(x_batch)
+      loss_value = model.loss(y_pred, y_batch)
+    true_grads = tape.jacobian(loss_value, model.trainable_variables)
+    true_norms = tf.sqrt(
+        tf.add_n([tf.reduce_sum(tf.square(g), axis=[1, 2]) for g in true_grads])
+    )
+    return computed_norms, true_norms
+
+  @parameterized.product(
+      num_inputs=[1, 2, 10],
+      batch_size=[1, 2],
+      input_dim=[1, 3],
+      is_eager=[True, False],
+  )
+  def test_gradient_norms_on_multiple_inputs_are_upper_bounded(
+      self, num_inputs, batch_size, input_dim, is_eager
+  ):
+    model = self._make_shared_model(num_inputs, input_dim)
+    model.compile(
+        loss=tf.keras.losses.MeanSquaredError(reduction='none'),
+        run_eagerly=is_eager,
+    )
+    x_batch = [
+        float(k + 1) * tf.ones([batch_size, input_dim], dtype=tf.float64)
+        for k in range(num_inputs)
+    ]
+    y_batch = tf.reshape(
+        1.0 + tf.range(batch_size, dtype=tf.float32), [batch_size, -1]
+    )
+    computed_norms, true_norms = self._get_computed_and_true_norms(
+        model, x_batch, y_batch, is_eager
+    )
+    self.assertAllLessEqual(true_norms - computed_norms, 1e-3)
+
+  @parameterized.product(
+      num_repeats=[1, 2, 10],
+      batch_size=[1, 2],
+      input_dim=[1, 3],
+      is_eager=[True, False],
+  )
+  def test_gradient_norms_on_single_repeated_input_are_upper_bounded(
+      self, num_repeats, batch_size, input_dim, is_eager
+  ):
+    base_model = tf.keras.Sequential([tf.keras.layers.Dense(1, use_bias=False)])
+    inputs = tf.keras.layers.Input([input_dim])
+    outputs = tf.add_n([base_model(inputs) for _ in range(num_repeats)])
+    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    x_batch = tf.ones([batch_size, input_dim], dtype=tf.float64)
+    y_batch = tf.reshape(
+        1.0 + tf.range(batch_size, dtype=tf.float32), [batch_size, -1]
+    )
+    computed_norms, true_norms = self._get_computed_and_true_norms(
+        model, x_batch, y_batch, is_eager
+    )
+    self.assertAllLessEqual(true_norms - computed_norms, 1e-3)
+
+  @parameterized.product(
+      batch_size=[1, 2],
+      input_dim=[1, 3],
+      is_eager=[True, False],
+  )
+  def test_gradient_norms_on_input_slices_are_upper_bounded(
+      self, batch_size, input_dim, is_eager
+  ):
+    base_model = tf.keras.Sequential([tf.keras.layers.Dense(1, use_bias=False)])
+    inputs = tf.keras.layers.Input([input_dim, 2])
+    outputs = base_model(inputs[:, :, 0]) + base_model(inputs[:, :, 1])
+    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    x_batch = tf.reshape(
+        tf.range(batch_size * input_dim * 2, dtype=tf.float64),
+        [batch_size, input_dim, -1],
+    )
+    y_batch = tf.reshape(
+        1.0 + tf.range(batch_size, dtype=tf.float32), [batch_size, -1]
+    )
+    computed_norms, true_norms = self._get_computed_and_true_norms(
+        model, x_batch, y_batch, is_eager
+    )
+    self.assertAllLessEqual(true_norms - computed_norms, 1e-3)
+
+
 if __name__ == '__main__':
   tf.test.main()

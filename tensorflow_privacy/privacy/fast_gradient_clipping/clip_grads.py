@@ -21,6 +21,7 @@ of the approach given in https://arxiv.org/pdf/2009.03106.pdf (see the
 `compute_gradient_norms()` function).
 """
 
+import collections
 from collections.abc import Sequence
 from typing import Optional
 
@@ -56,6 +57,7 @@ def get_registry_generator_fn(
             layer_instance, args, kwargs, tape, num_microbatches
         )
         return layer_outputs, (
+            str(id(layer_instance)),
             layer_vars,
             layer_sqr_norm_fn,
             layer_instance.trainable_weights,
@@ -156,32 +158,47 @@ def compute_gradient_norms(
   # Unwrap the generator outputs so that the next loop avoids duplicating
   # backprop ops.
   filtered_outputs = [t for t in generator_outputs_list if t is not None]
-  vars_list = []
-  sqr_norm_fns_list = []
   if trainable_vars is not None:
     # Create a set using `ref()` for fast set membership check. tf.Variable
     # itself is not hashable.
     trainable_vars = set([v.ref() for v in trainable_vars])
-  for v, f, weights_list in filtered_outputs:
+  layer_vars = collections.defaultdict(list)
+  layer_sqr_norm_fns = collections.defaultdict(list)
+  # The case of shared weights:
+  #   If a layer is called k times, it will appear k times in filtered_outputs,
+  #   with the same id, but potentially with different v and f. The code below
+  #   groups filtered_outputs by layer_id, so we can correctly compute gradient
+  #   norms. The gradient norm of a layer that occurs k times is computed as
+  #   $sqrt(k * \sum_i c_i^2)$ where $c_i$ is the norm estimate of its i-th
+  #   occurrence. This is an over-estimate of the actual norm. For more details,
+  #   see the explanation in go/dp-sgd-shared-weights.
+  for layer_id, v, f, weights_list in filtered_outputs:
     if trainable_vars is None or any(
         w.ref() in trainable_vars for w in weights_list
     ):
-      # Include only those variables in trainable_vars.
-      vars_list.append(v)
-      sqr_norm_fns_list.append(f)
+      layer_vars[layer_id].append(v)
+      layer_sqr_norm_fns[layer_id].append(f)
   # Second loop evaluates the squared L2 norm functions and appends the results.
-  grads_list = tape.gradient(
+  layer_grad_vars = tape.gradient(
       summed_loss,
-      vars_list,
+      layer_vars,
       unconnected_gradients=tf.UnconnectedGradients.ZERO,
   )
-  if not grads_list:
+  if not layer_grad_vars:
     raise ValueError('The gradient list cannot be empty.')
-  if len(grads_list) != len(sqr_norm_fns_list):
-    raise ValueError('There must be as many norms as gradients.')
   sqr_norm_list = []
-  for grads, f in zip(grads_list, sqr_norm_fns_list):
-    sqr_norm_list.append(f(grads))
+  for layer_id in layer_sqr_norm_fns.keys():
+    fns = layer_sqr_norm_fns[layer_id]
+    grads = layer_grad_vars[layer_id]
+    # Number of duplicates for this layer in `filtered_outputs`.
+    num_passes = len(fns)
+    if len(fns) != len(grads):
+      raise ValueError(
+          'There must be as many gradients as squared norm functions.'
+      )
+    # See go/dp-sgd-shared-weights for more details.
+    for fn, grad in zip(fns, grads):
+      sqr_norm_list.append(num_passes * fn(grad))
   sqr_norm_tsr = tf.stack(sqr_norm_list, axis=1)
   return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
 
