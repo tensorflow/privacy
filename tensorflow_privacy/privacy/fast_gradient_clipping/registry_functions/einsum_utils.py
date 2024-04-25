@@ -28,11 +28,11 @@ EquationType = enum.Enum(
 )
 
 
-def _is_batch_of_vectors(t: tf.Tensor) -> bool:
+def is_batch_of_vectors(t: tf.Tensor) -> bool:
   """Checks if an input is a batch of (effectively) 1D vectors."""
   num_nontrivial_indices = 0
   for s in t.shape[1:]:
-    if s > 1:
+    if s is None or s > 1:
       num_nontrivial_indices += 1
     if num_nontrivial_indices > 1:
       return False
@@ -442,8 +442,8 @@ def compute_fast_einsum_squared_gradient_norm(
   # NOTE: When the input/gradient tensors are 1D, it is MUCH faster to do
   # a `tf.square()` + `tf.reduce_sum()` than a single `tf.matmul()`.
   if (
-      _is_batch_of_vectors(input_tensor)
-      and _is_batch_of_vectors(grad_tensor)
+      is_batch_of_vectors(input_tensor)
+      and is_batch_of_vectors(grad_tensor)
       and num_microbatches is None
   ):
     x_matrix = tf.reshape(x, [tf.shape(x)[0], -1])

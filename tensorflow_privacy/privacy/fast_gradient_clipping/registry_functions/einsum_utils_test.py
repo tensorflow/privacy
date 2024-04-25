@@ -29,20 +29,58 @@ class EinsumUtilsTest(tf.test.TestCase, parameterized.TestCase):
           ([1, 2], True),
           ([2, 1], True),
           ([2, 2], True),
-          # 3D tensors
+          # 3D tensors (batch of vectors)
           ([2, 1, 1], True),
           ([1, 2, 1], True),
           ([1, 1, 2], True),
           ([2, 2, 1], True),
           ([2, 1, 2], True),
+          # 3D tensors (batch of matrices)
           ([1, 2, 2], False),
           ([2, 2, 2], False),
       ]
   )
-  def test_is_batch_of_vectors(self, experiment_params):
+  def test_is_batch_of_vectors_on_static_shapes(self, experiment_params):
     shape, true_result = experiment_params
     t = tf.zeros(shape)
-    computed_result = einsum_utils._is_batch_of_vectors(t)
+    computed_result = einsum_utils.is_batch_of_vectors(t)
+    self.assertEqual(computed_result, true_result)
+
+  @parameterized.product(
+      experiment_params=[
+          # 1D tensors
+          ([None], True),
+          # 2D tensors
+          ([1, None], True),
+          ([None, 1], True),
+          ([None, None], True),
+          ([2, None], True),
+          ([None, 2], True),
+          # 3D tensors (batch of vectors)
+          ([None, 1, 1], True),
+          ([1, None, 1], True),
+          ([1, 1, None], True),
+          ([None, None, 1], True),
+          ([None, 2, 1], True),
+          ([2, None, 1], True),
+          ([None, 1, None], True),
+          ([None, 1, 2], True),
+          ([2, 1, None], True),
+          ([1, None, None], False),
+          # 3D tensors (batch of matrices)
+          ([1, 2, None], False),
+          ([1, None, 2], False),
+          ([None, None, None], False),
+          ([None, 2, None], False),
+          ([None, None, 2], False),
+          ([2, None, 2], False),
+          ([2, 2, None], False),
+      ]
+  )
+  def test_is_batch_of_vectors_on_dynamic_shapes(self, experiment_params):
+    shape, true_result = experiment_params
+    t = tf.keras.Input(shape=shape[1:], batch_size=shape[0])
+    computed_result = einsum_utils.is_batch_of_vectors(t)
     self.assertEqual(computed_result, true_result)
 
   @parameterized.product(
