@@ -425,6 +425,67 @@ class DPKerasModelTest(tf.test.TestCase, parameterized.TestCase):
         model.trainable_variables, tf.ones_like(model.trainable_variables)
     )
 
+  # Checks single optimizer update and consistency with non-DP model.
+  @parameterized.product(
+      fast_clipping=[True, False],
+      num_microbatches=[None, 2],
+  )
+  def testWeightedLoss(self, fast_clipping, num_microbatches):
+    k1 = 'foo'
+    k2 = 'bar'
+    input_dim = 10
+    default_layer_registry = (
+        layer_registry.make_default_layer_registry() if fast_clipping else None
+    )
+
+    def _make_base_model(use_dp: bool):
+      inputs = {
+          k1: tf.keras.layers.Input((input_dim,)),
+          k2: tf.keras.layers.Input((input_dim,)),
+      }
+      dense1 = tf.keras.layers.Dense(1, kernel_initializer='ones')
+      dense2 = tf.keras.layers.Dense(1, kernel_initializer='ones')
+      outputs = {k1: dense1(inputs[k1]), k2: dense2(inputs[k2])}
+      if use_dp:
+        base_model = dp_keras_model.DPModel(
+            inputs=inputs,
+            outputs=outputs,
+            l2_norm_clip=1e9,
+            noise_multiplier=0.0,
+            num_microbatches=num_microbatches,
+            layer_registry=default_layer_registry,
+        )
+      else:
+        base_model = tf.keras.Model(inputs=inputs, outputs=outputs)
+      losses = {
+          k1: tf.keras.losses.MeanSquaredError(),
+          k2: tf.keras.losses.MeanAbsoluteError(),
+      }
+      loss_weights = {k1: 0.4, k2: 0.6}
+      sgd = tf.keras.optimizers.SGD(1.0)
+      base_model.compile(loss=losses, loss_weights=loss_weights, optimizer=sgd)
+      return base_model
+
+    dp_model = _make_base_model(use_dp=True)
+    model = _make_base_model(use_dp=False)
+    batch_size = 4
+    x_batch = {
+        k1: tf.reshape(
+            tf.range(input_dim * batch_size, dtype=tf.float32),
+            [batch_size, input_dim],
+        ),
+        k2: 2.0 * tf.reshape(
+            tf.range(input_dim * batch_size, dtype=tf.float32),
+            [batch_size, input_dim],
+        ),
+    }
+    y_batch = {k1: tf.zeros([batch_size, 1]), k2: tf.ones([batch_size, 1])}
+
+    # Checks that gradients align.
+    model.fit(x=x_batch, y=y_batch, epochs=1, batch_size=4, shuffle=False)
+    dp_model.fit(x=x_batch, y=y_batch, epochs=1, batch_size=4, shuffle=False)
+    self.assertAllClose(dp_model.trainable_variables, model.trainable_variables)
+
 
 if __name__ == '__main__':
   tf.test.main()

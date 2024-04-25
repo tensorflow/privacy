@@ -144,6 +144,30 @@ def all_trainable_layers_are_registered(
   return True
 
 
+def _infer_loss_reduction_type(model: tf.keras.Model):
+  """Infers what type of loss reduction is being performed."""
+  model_loss = model.loss
+  if isinstance(model_loss, tf.keras.losses.Loss):
+    return model_loss.reduction
+  elif isinstance(model.loss, dict):
+    reductions = set()
+    compiled_loss = model.compiled_loss
+    if compiled_loss is None:
+      raise ValueError('Model must be compiled for adding noise')
+    new_config_list = compiled_loss.get_config()['losses']
+    for loss_config in new_config_list:
+      reductions.add(loss_config['config']['reduction'])
+    if len(reductions) > 1:
+      raise ValueError(
+          'Reductions in models with multiple losses must all be the same'
+      )
+    return reductions.pop()
+  else:
+    raise ValueError(
+        'Unsupported type for adding noise: {}'.format(type(model_loss))
+    )
+
+
 def add_aggregate_noise(
     clipped_grads: list[tf.Tensor],
     batch_size: tf.Tensor,
@@ -194,7 +218,7 @@ def add_aggregate_noise(
         tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE,
         tf.keras.losses.Reduction.AUTO,
     ]
-    model_reduction = loss_model.loss.reduction
+    model_reduction = _infer_loss_reduction_type(loss_model)
     loss_reduction = (
         'mean' if model_reduction in implicit_mean_reductions else 'sum'
     )

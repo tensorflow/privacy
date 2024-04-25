@@ -20,13 +20,13 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
 
 def maybe_add_microbatch_axis(
-    x: tf.Tensor,
+    x: type_aliases.PackedTensors,
     num_microbatches: Optional[type_aliases.BatchSize],
-) -> tf.Tensor:
-  """Adds the microbatch axis.
+) -> type_aliases.PackedTensors:
+  """Adds the microbatch axis to a collection of tensors.
 
   Args:
-    x: the input tensor.
+    x: Model output or input tensors.
     num_microbatches: If None, x is returned unchanged. Otherwise, must divide
       the batch size.
 
@@ -36,9 +36,13 @@ def maybe_add_microbatch_axis(
   """
   if num_microbatches is None:
     return x
-  with tf.control_dependencies(
-      [tf.assert_equal(tf.math.floormod(tf.shape(x)[0], num_microbatches), 0)]
-  ):
-    return tf.reshape(
-        x, tf.concat([[num_microbatches, -1], tf.shape(x)[1:]], axis=0)
-    )
+
+  def _expand(t):
+    with tf.control_dependencies(
+        [tf.assert_equal(tf.math.floormod(tf.shape(t)[0], num_microbatches), 0)]
+    ):
+      return tf.reshape(
+          t, tf.concat([[num_microbatches, -1], tf.shape(t)[1:]], axis=0)
+      )
+
+  return tf.nest.map_structure(_expand, x)

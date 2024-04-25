@@ -69,11 +69,80 @@ def get_registry_generator_fn(
   return registry_generator_fn
 
 
+def _infer_per_example_loss_fn(model: tf.keras.Model):
+  """Infer the per-example loss from model config."""
+
+  def _convert(loss_fn):
+    loss_config = loss_fn.get_config()
+    loss_config['reduction'] = tf.keras.losses.Reduction.NONE
+    return loss_fn.from_config(loss_config)
+
+  model_loss = model.loss
+  if isinstance(model_loss, tf.keras.losses.Loss):
+    return _convert(model_loss)
+  elif isinstance(model_loss, dict):
+    # Note that we cannot call the public method `.get_compile_config()` because
+    # it calls a numpy function, which is not supported inside a `tf.function`
+    # wrapped function.
+    compile_config = model._compile_config.config  # pylint: disable=protected-access
+    if compile_config is None:
+      raise ValueError('Model must be compiled for loss function conversion')
+    # Does a weighted mean of the configured losses. Note that we cannot build
+    # from the config of the compiled loss because (i) it builds a
+    # `keras.metrics.Mean` class, which generates non-unique `tf.Variable`s
+    # during its construction, (ii) non-unique `tf.Variables` cannot be used
+    # inside a `tf.function`, which is usually where this function is used.
+    if 'loss_weights' not in compile_config:
+      raise ValueError(
+          'Models with multiple loss must have corresponding loss weights for'
+          ' loss function conversion'
+      )
+    weights = compile_config['loss_weights']
+    per_example_losses = {k: _convert(v) for k, v in model_loss.items()}
+    num_losses = len(weights)
+
+    def _per_example_loss_fn(y_true, y_pred, sample_weight=None):
+      loss_values = []
+      if model_loss.keys() - y_pred.keys():
+        raise ValueError(
+            'y_pred must contain the same keys and the model losses, but '
+            'got %s and %s' % (y_pred.keys(), model_loss.keys())
+        )
+      if model_loss.keys() - y_true.keys():
+        raise ValueError(
+            'y_true must contain the same keys and the model losses, but '
+            'got %s and %s' % (y_true.keys(), model_loss.keys())
+        )
+      if sample_weight is not None:
+        if model_loss.keys() - sample_weight.keys():
+          raise ValueError(
+              'sample_weight must contain the same keys and the model losses,'
+              ' but got %s and %s' % (y_true.keys(), model_loss.keys())
+          )
+      for k in y_true.keys():
+        sgl_sample_weight = None if sample_weight is None else sample_weight[k]
+        sgl_value = (
+            weights[k]
+            * per_example_losses[k](y_true[k], y_pred[k], sgl_sample_weight)
+            / num_losses
+        )
+        loss_values.append(tf.reshape(sgl_value, shape=[-1]))
+      return tf.math.add_n(loss_values)
+
+    return _per_example_loss_fn
+  else:
+    raise ValueError(
+        'Unsupported type for loss function conversion: {}'.format(
+            type(model_loss)
+        )
+    )
+
+
 def compute_gradient_norms(
     input_model: tf.keras.Model,
     layer_registry: lr.LayerRegistry,
     x_batch: type_aliases.InputTensors,
-    y_batch: tf.Tensor,
+    y_batch: type_aliases.OutputTensors,
     weight_batch: Optional[tf.Tensor] = None,
     per_example_loss_fn: Optional[type_aliases.LossFn] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
@@ -94,9 +163,9 @@ def compute_gradient_norms(
       more details.
     x_batch: An `InputTensor` representing a batch of inputs to the model. The
       first axis must be the batch dimension.
-    y_batch: A `tf.Tensor` representing a batch of output labels. The first axis
-      must be the batch dimension. The number of examples should match the
-      number of examples in `x_batch`.
+    y_batch: An `OutputTensor` representing a batch of output labels. The first
+      axes of the tensors must be the batch dimension. The number of examples
+      should match the number of examples in `x_batch`.
     weight_batch: Optional batch of weights, passed to the loss function.
       Weights apply to the loss prior to clipping.
     per_example_loss_fn: takes as input predictions, labels and weights, and
@@ -131,11 +200,11 @@ def compute_gradient_norms(
             input_model, x_batch, generator_fn=registry_generator_fn
         )
     )
+
     # Ignore the original loss function's reduction to get per-example loss.
     if per_example_loss_fn is None:
-      loss_config = input_model.loss.get_config()
-      loss_config['reduction'] = tf.keras.losses.Reduction.NONE
-      per_example_loss_fn = input_model.loss.from_config(loss_config)
+      per_example_loss_fn = _infer_per_example_loss_fn(input_model)
+
     losses = per_example_loss_fn(y_batch, model_outputs, weight_batch)
     if losses.shape is None:
       raise NotImplementedError(
@@ -233,7 +302,7 @@ def compute_clipped_gradients_and_outputs(
     l2_norm_clip: float,
     layer_registry: lr.LayerRegistry,
     x_batch: type_aliases.InputTensors,
-    y_batch: tf.Tensor,
+    y_batch: type_aliases.OutputTensors,
     weight_batch: Optional[tf.Tensor] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
     clipping_loss: Optional[type_aliases.LossFn] = None,
@@ -260,10 +329,10 @@ def compute_clipped_gradients_and_outputs(
       squared norms of a layer's pre-activation tensor, and `vars` are relevant
       trainable weights (see `layer_registry_factories.py` for examples).
     x_batch: An `InputTensor` representing a batch of inputs to the model. The
-      first axis must be the batch dimension.
-    y_batch: A `tf.Tensor` representing a batch of output labels. The first axis
-      must be the batch dimension. The number of examples should match the
-      number of examples in `x_batch`.
+      first axes of each tensor must be the batch dimension.
+    y_batch: An `OutputTensor` representing a batch of output labels. The first
+      axes of each tensor must be the batch dimension. The number of examples
+      should match the number of examples in `x_batch`.
     weight_batch: Optional vector of weights, passed to the loss function. Must
       be of size [batch_size]. In case of microbatching, this will be reshaped
       to [num_microbatches, batch_size/num_microbatches] before passing it to
@@ -285,11 +354,12 @@ def compute_clipped_gradients_and_outputs(
     clipping_loss_value: the loss value weighted in such a way that its gradient
       is `clipped_grad`.
   """
-  if input_model.loss.reduction == 'none':
-    raise NotImplementedError(
-        'Fast gradient clipping does not support '
-        'models with unreduced loss functions.'
-    )
+  if hasattr(input_model.loss, 'reduction'):
+    if input_model.loss.reduction == 'none':
+      raise NotImplementedError(
+          'Fast gradient clipping does not support '
+          'models with unreduced loss functions.'
+      )
   if clipping_loss is None:
     clipping_loss = input_model.compiled_loss
   gradient_norms = compute_gradient_norms(
@@ -311,11 +381,13 @@ def compute_clipped_gradients_and_outputs(
         weight_batch, num_microbatches
     )
     if num_microbatches is None:
-      clip_weights = clip_weights * weight_batch  # shape [num_microbatches]
+      c = clip_weights  # shape [num_microbatches]
     else:
       # In this case, weight_batch is of shape [batch_size, microbatch_size],
       # we multiply by the clip_weights (which is of shape [num_microbatches])
-      clip_weights = clip_weights[:, tf.newaxis] * weight_batch
+      c = clip_weights[:, tf.newaxis]
+    clip_weights = tf.nest.map_structure(lambda w: c * w, weight_batch)
+
   with tf.GradientTape() as tape:
     # WARNING: When num_microbatches is not None, we need to be sure that
     # `compute_loss` always computes the mean over the microbatches

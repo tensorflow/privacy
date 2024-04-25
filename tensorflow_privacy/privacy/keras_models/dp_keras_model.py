@@ -213,6 +213,22 @@ def make_dp_model_class(cls):
           total_loss_mean=tf.keras.metrics.Mean(name=_PRIVATIZED_LOSS_NAME),
       )
 
+    def _infer_batch_size(self, t):
+      """Infers the batch size from a tensor or a container of tensors."""
+      if t is None:
+        return None
+      elif isinstance(t, tf.Tensor):
+        t0 = t
+      elif isinstance(t, list):
+        t0 = t[0]
+      elif isinstance(t, dict):
+        t0 = list(t.values())[0]
+      else:
+        raise ValueError(
+            'Unsupported type for batch size inference: {}'.format(type(t))
+        )
+      return tf.shape(t0)[0]
+
     def train_step(self, data):
       """DP-SGD version of base class method.
 
@@ -236,7 +252,7 @@ def make_dp_model_class(cls):
         self._make_clipping_loss()
       output_metrics = {}
       x, y, weights = tf.keras.utils.unpack_x_y_sample_weight(data)
-      batch_size = tf.shape(y)[0]
+      batch_size = self._infer_batch_size(y)
       num_microbatches = self._num_microbatches or batch_size
 
       # Branch based on gradient clipping algorithm.

@@ -82,7 +82,6 @@ def layer_normalization_computation(
       stacked_grads = common_manip_utils.maybe_add_microbatch_axis(
           grads, num_microbatches
       )
-      stacked_grads = tf.reduce_sum(stacked_grads, axis=1)
     reduction_axes = tf.range(1, tf.rank(stacked_grads))
     return tf.reduce_sum(tf.square(stacked_grads), axis=reduction_axes)
 
