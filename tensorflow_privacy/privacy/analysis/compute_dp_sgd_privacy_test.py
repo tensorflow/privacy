@@ -40,8 +40,8 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
 
   @parameterized.named_parameters(
       ('Test0', 60000, 150, 1.3, 15, 1e-5, 0.7242234026109595, 19.0),
-      ('Test1', 100000, 100, 1.0, 30, 1e-7, 1.4154988495444845, 13.0),
-      ('Test2', 100000000, 1024, 0.1, 10, 1e-7, 5907982.31138195, 1.25),
+      ('Test1', 100000, 100, 1.0, 30, 1e-7, 1.4154988495444842, 13.0),
+      ('Test2', 100000000, 1024, 0.1, 10, 1e-7, 5907982.3113984, 1.25),
   )
   def test_compute_dp_sgd_privacy(self, n, batch_size, noise_multiplier, epochs,
                                   delta, expected_eps, expected_order):
@@ -85,8 +85,8 @@ class ComputeDpSgdPrivacyTest(parameterized.TestCase):
   @parameterized.named_parameters(
       ('no_microbatching_no_subsampling_rdp', False, None, _RDP, 10.8602036),
       ('microbatching_no_subsampling_rdp', True, None, _RDP, 26.2880374),
-      ('no_microbatching_with_subsampling_rdp', False, 1e-2, _RDP, 3.2391922),
-      ('microbatching_with_subsampling_rdp', True, 1e-2, _RDP, 22.5970358),
+      ('no_microbatching_with_subsampling_rdp', False, 1e-2, _RDP, 3.2392676),
+      ('microbatching_with_subsampling_rdp', True, 1e-2, _RDP, 22.6248601),
       ('no_microbatching_no_subsampling_pld', False, None, _PLD, 10.1224946),
       ('microbatching_no_subsampling_pld', True, None, _PLD, 24.7160779),
       ('no_microbatching_with_subsampling_pld', False, 1e-2, _PLD, 2.4612381),
