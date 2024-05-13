@@ -230,7 +230,7 @@ RDP accounting:
 
 User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
 RDP accounting and group privacy:
-    Epsilon with each example occurring once per epoch:        85.940
+    Epsilon with each example occurring once per epoch:        56.224
     Epsilon assuming Poisson sampling (*):                      6.425
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
@@ -261,7 +261,7 @@ RDP accounting:
 
 User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
 RDP accounting and group privacy:
-    Epsilon with each example occurring once per epoch:      inf (**)
+    Epsilon with each example occurring once per epoch:       366.374
     Epsilon assuming Poisson sampling (*):                   inf (**)
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
@@ -307,12 +307,12 @@ data order.
   def test_dp_sgd_privacy_statement_user_dp_with_pld(self):
     statement = compute_dp_sgd_privacy_lib.compute_dp_sgd_privacy_statement(
         **DP_SGD_STATEMENT_KWARGS,
-        max_examples_per_user=3,
+        max_examples_per_user=2,
         accountant_type=_PLD,
     )
     expected_statement = """\
 DP-SGD performed over 10000 examples with 64 examples per iteration, noise
-multiplier 2.0 for 5.0 epochs with microbatching, and at most 3 examples per
+multiplier 2.0 for 5.0 epochs with microbatching, and at most 2 examples per
 user.
 
 This privacy guarantee protects the release of all model checkpoints in addition
@@ -323,8 +323,10 @@ PLD accounting:
     Epsilon with each example occurring once per epoch:        12.595
     Epsilon assuming Poisson sampling (*):                      1.199
 
-User-level DP epsilon computation is not supported for PLD accounting at this
-time. Use RDP accounting to obtain user-level DP guarantees.
+User-level DP with add-or-remove-one adjacency at delta = 1e-06 computed using
+PLD accounting and group privacy:
+    Epsilon with each example occurring once per epoch:        30.579
+    Epsilon assuming Poisson sampling (*):                      2.532
 
 (*) Poisson sampling is not usually done in training pipelines, but assuming
 that the data was randomly shuffled, it is believed that the actual epsilon

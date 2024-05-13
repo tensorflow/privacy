@@ -24,6 +24,7 @@ from absl import app
 from absl import logging
 import dp_accounting
 from scipy import optimize
+from scipy import stats
 
 
 class UserLevelDPComputationError(Exception):
@@ -60,16 +61,10 @@ def _compute_dp_sgd_user_privacy(
 ) -> float:
   """Computes add-or-remove-one-user DP epsilon using group privacy.
 
-  This privacy guarantee uses add-or-remove-one-user adjacency, and protects
-  release of all model checkpoints in addition to the final model.
-
-  Uses Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
-
-  # TODO(b/271330804): Consider using RDP to compute group privacy.
-
-  We use a line search to identify an example-level delta which, when the lemma
-  is applied, yields the requested user-level delta, then use it to compute the
-  user-level epsilon.
+  Without sampling, the privacy accounting reduces to example-level DP
+  accounting. Otherwise, see the helper methods
+  _compute_dp_sgd_group_privacy_using_rdp and
+  _compute_dp_sgd_group_privacy_using_pld for details of privacy accounting.
 
   Args:
     num_epochs: The number of passes over the data. May be fractional.
@@ -79,10 +74,7 @@ def _compute_dp_sgd_user_privacy(
     used_microbatching: If true, increases sensitivity by a factor of two.
     poisson_subsampling_probability: If not None, gives the probability that
       each record is chosen in a batch. If None, assumes no subsampling.
-    accountant_type: The privacy accountant for computing epsilon. While this
-      method supports both PLD and RDP accountants, the behavior for PLD
-      accountant can sometimes be overly pessimistic. This remains to be
-      investigated and fixed (b/271341062).
+    accountant_type: The privacy accountant for computing epsilon.
 
   Returns:
     The add-or-remove-one-user DP epsilon value using group privacy.
@@ -114,93 +106,40 @@ def _compute_dp_sgd_user_privacy(
         poisson_subsampling_probability,
         accountant_type,
     )
-
-  # The computation below to estimate user_eps works as follows.
-  # We have _compute_dp_sgd_example_privacy which maps
-  #   F(example_delta) -> example_eps
-  # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2 gives us
-  #   G(example_eps, example_delta) -> user_delta
-  #   H(example_eps) -> user_eps.
-  # We first identify an example_delta such that
-  #   G(F(example_delta), example_delta) = user_delta
-  # Specifically, we use a line search in log space to solve for
-  #   log(G(F(example_delta), example_delta)) - log(user_delta) = 0
-  # Then we can return user_eps = H(F(example_delta)).
-
-  target_user_log_delta = math.log(user_delta)
-
-  # Cache example privacy values, which can be expensive.
-  @functools.cache
-  def get_example_eps(example_log_delta):
+  elif poisson_subsampling_probability is None:
+    # Without subsampling, the worst-case is when all max_examples_per_user
+    # examples participate in the same round (and in the microbatching case,
+    # they participate in different microbatches in this round), which
+    # effectively increases the sensitivity, i.e. decreases the
+    # noise_multiplier, by max_examples_per_user.
     return _compute_dp_sgd_example_privacy(
         num_epochs,
+        noise_multiplier / max_examples_per_user,
+        user_delta,
+        used_microbatching,
+        poisson_subsampling_probability,
+        accountant_type,
+    )
+  elif accountant_type == AccountantType.RDP:
+    return _compute_dp_sgd_group_privacy_using_rdp(
+        num_epochs,
         noise_multiplier,
-        math.exp(example_log_delta),
+        user_delta,
+        max_examples_per_user,
         used_microbatching,
         poisson_subsampling_probability,
     )
-
-  def user_log_delta_gap(example_log_delta):
-    example_eps = get_example_eps(example_log_delta)
-
-    # Estimate user_eps, user_log_delta using Vadhan Lemma 2.2, using a tighter
-    # bound seen in the penultimate line of the proof, given as
-    # user_delta = (example_delta * (exp(k * example_eps) - 1)
-    #               / (exp(example_eps) - 1))
-    user_eps = max_examples_per_user * example_eps
-    user_log_delta = (
-        example_log_delta + _logexpm1(user_eps) - _logexpm1(example_eps)
+  elif accountant_type == AccountantType.PLD:
+    return _compute_dp_sgd_group_privacy_using_pld(
+        num_epochs,
+        noise_multiplier,
+        user_delta,
+        max_examples_per_user,
+        poisson_subsampling_probability,
+        used_microbatching,
     )
-    return user_log_delta - target_user_log_delta
-
-  # We need bounds on the example-level delta. The supplied user-level delta
-  # is an upper bound. Search exponentially toward zero for lower bound.
-  example_log_delta_max = target_user_log_delta
-  example_log_delta_min = example_log_delta_max - math.log(10)
-  user_log_delta_gap_min = user_log_delta_gap(example_log_delta_min)
-  while user_log_delta_gap_min > 0:
-    # Assuming that _compute_dp_sgd_example_privacy is decreasing in
-    # example_delta, it is not difficult to show that if user_delta_min
-    # corresponding to example_delta_min is too large, then we must reduce
-    # example_delta by at least a factor of (user_delta / user_delta_min).
-    # In other words, if example_log_delta_min is an upper bound, then so is
-    # example_log_delta_min - user_log_delta_gap_min.
-    example_log_delta_max = example_log_delta_min - user_log_delta_gap_min
-    example_log_delta_min = example_log_delta_max - math.log(10)
-    user_log_delta_gap_min = user_log_delta_gap(example_log_delta_min)
-    if not math.isfinite(user_log_delta_gap_min):
-      # User-level (epsilon, delta) DP is not achievable. This can happen
-      # because as example_delta decreases, example_eps increases. So it is
-      # possible for user_delta (which increases in both example_delta and
-      # example_eps) to diverge to infinity as example_delta goes to zero.
-      logging.warning(
-          (
-              'No upper bound on user-level DP epsilon can be computed with %s '
-              'examples per user.'
-          ),
-          max_examples_per_user,
-      )
-      return math.inf
-
-  # By the same logic, we can improve on the lower bound we just found, before
-  # even starting the line search. We actually could do a custom line search
-  # that makes use of this at each step, but brentq should be fast enough.
-  example_log_delta_min -= user_log_delta_gap_min
-
-  example_log_delta, result = optimize.brentq(
-      user_log_delta_gap,
-      example_log_delta_min,
-      example_log_delta_max,
-      full_output=True,
-  )
-
-  if not result.converged:
-    raise UserLevelDPComputationError(
-        'Optimization failed trying to compute user-level DP epsilon.'
-    )
-
-  # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
-  return max_examples_per_user * get_example_eps(example_log_delta)
+  else:
+    raise ValueError(f'Unsupported accountant type: {accountant_type}')
 
 
 def _compute_dp_sgd_example_privacy(
@@ -256,6 +195,177 @@ def _compute_dp_sgd_example_privacy(
       .compose(event_)
       .get_epsilon(example_delta)
   )
+
+
+def _compute_dp_sgd_group_privacy_using_rdp(
+    num_epochs: float,
+    noise_multiplier: float,
+    user_delta: float,
+    max_examples_per_user: int,
+    used_microbatching: bool = True,
+    poisson_subsampling_probability: Optional[float] = None,
+):
+  """Computes add-or-remove-one-user DP epsilon using group privacy via RDP.
+
+  This privacy guarantee uses add-or-remove-one-user adjacency, and protects
+  release of all model checkpoints in addition to the final model.
+
+  Uses Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
+
+  # TODO(b/271330804): Consider using RDP to compute group privacy.
+
+  We use a line search to identify an example-level delta which, when the lemma
+  is applied, yields the requested user-level delta, then use it to compute the
+  user-level epsilon.
+
+  Args:
+    num_epochs: The number of passes over the data. May be fractional.
+    noise_multiplier: The ratio of the noise stddev to the l2 sensitivity.
+    user_delta: The target user-level delta.
+    max_examples_per_user: Upper bound on the number of examples per user.
+    used_microbatching: If true, increases sensitivity by a factor of two.
+    poisson_subsampling_probability: If not None, gives the probability that
+      each record is chosen in a batch. If None, assumes no subsampling.
+
+  Returns:
+    The add-or-remove-one-user DP epsilon value using group privacy.
+
+  Raises:
+    UserLevelDPComputationError: If line search for example-level delta fails.
+  """
+  # The computation below to estimate user_eps works as follows.
+  # We have _compute_dp_sgd_example_privacy which maps
+  #   F(example_delta) -> example_eps
+  # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2 gives us
+  #   G(example_eps, example_delta) -> user_delta
+  #   H(example_eps) -> user_eps.
+  # We first identify an example_delta such that
+  #   G(F(example_delta), example_delta) = user_delta
+  # Specifically, we use a line search in log space to solve for
+  #   log(G(F(example_delta), example_delta)) - log(user_delta) = 0
+  # Then we can return user_eps = H(F(example_delta)).
+
+  target_user_log_delta = math.log(user_delta)
+
+  # Cache example privacy values, which can be expensive.
+  @functools.cache
+  def get_example_eps(example_log_delta):
+    return _compute_dp_sgd_example_privacy(
+        num_epochs,
+        noise_multiplier,
+        math.exp(example_log_delta),
+        used_microbatching,
+        poisson_subsampling_probability,
+    )
+
+  def user_log_delta_gap(example_log_delta):
+    example_eps = get_example_eps(example_log_delta)
+
+    # Estimate user_eps, user_log_delta using Vadhan Lemma 2.2, using a
+    # tighter bound seen in the penultimate line of the proof, given as
+    # user_delta = (example_delta * (exp(k * example_eps) - 1)
+    #               / (exp(example_eps) - 1))
+    user_eps = max_examples_per_user * example_eps
+    user_log_delta = (
+        example_log_delta + _logexpm1(user_eps) - _logexpm1(example_eps)
+    )
+    return user_log_delta - target_user_log_delta
+
+  # We need bounds on the example-level delta. The supplied user-level delta
+  # is an upper bound. Search exponentially toward zero for lower bound.
+  example_log_delta_max = target_user_log_delta
+  example_log_delta_min = example_log_delta_max - math.log(10)
+  user_log_delta_gap_min = user_log_delta_gap(example_log_delta_min)
+  while user_log_delta_gap_min > 0:
+    # Assuming that _compute_dp_sgd_example_privacy is decreasing in
+    # example_delta, it is not difficult to show that if user_delta_min
+    # corresponding to example_delta_min is too large, then we must reduce
+    # example_delta by at least a factor of (user_delta / user_delta_min).
+    # In other words, if example_log_delta_min is an upper bound, then so is
+    # example_log_delta_min - user_log_delta_gap_min.
+    example_log_delta_max = example_log_delta_min - user_log_delta_gap_min
+    example_log_delta_min = example_log_delta_max - math.log(10)
+    user_log_delta_gap_min = user_log_delta_gap(example_log_delta_min)
+    if not math.isfinite(user_log_delta_gap_min):
+      # User-level (epsilon, delta) DP is not achievable. This can happen
+      # because as example_delta decreases, example_eps increases. So it is
+      # possible for user_delta (which increases in both example_delta and
+      # example_eps) to diverge to infinity as example_delta goes to zero.
+      logging.warning(
+          (
+              'No upper bound on user-level DP epsilon can be computed with'
+              ' %s examples per user.'
+          ),
+          max_examples_per_user,
+      )
+      return math.inf
+
+  # By the same logic, we can improve on the lower bound we just found, before
+  # even starting the line search. We actually could do a custom line search
+  # that makes use of this at each step, but brentq should be fast enough.
+  example_log_delta_min -= user_log_delta_gap_min
+
+  example_log_delta, result = optimize.brentq(
+      user_log_delta_gap,
+      example_log_delta_min,
+      example_log_delta_max,
+      full_output=True,
+  )
+
+  if not result.converged:
+    raise UserLevelDPComputationError(
+        'Optimization failed trying to compute user-level DP epsilon.'
+    )
+
+  # Vadhan (2017) "The complexity of differential privacy" Lemma 2.2.
+  return max_examples_per_user * get_example_eps(example_log_delta)
+
+
+def _compute_dp_sgd_group_privacy_using_pld(
+    num_epochs: float,
+    noise_multiplier: float,
+    user_delta: float,
+    max_examples_per_user: int,
+    poisson_subsampling_probability: float,
+    used_microbatching: bool = True,
+):
+  """Computes add-or-remove-one-user DP epsilon using group privacy via PLDs.
+
+  This privacy guarantee uses add-or-remove-one-user adjacency, and protects
+  release of all model checkpoints in addition to the final model.
+
+  Uses Ganesh (2024) "Tight Group-Level DP Guarantees for DP-SGD with Sampling
+  via Mixture of Gaussians Mechanisms" (https://arxiv.org/abs/2401.10294)
+  Theorem 3.1.
+
+  Args:
+    num_epochs: The number of passes over the data. May be fractional.
+    noise_multiplier: The ratio of the noise stddev to the l2 sensitivity.
+    user_delta: The target user-level delta.
+    max_examples_per_user: Upper bound on the number of examples per user.
+    poisson_subsampling_probability: Gives the probability that each record is
+      chosen in a batch.
+    used_microbatching: If true, increases sensitivity by a factor of two.
+
+  Returns:
+    The add-or-remove-one-user DP epsilon value using group privacy.
+  """
+  # With microbatching, a (loose) pessimistic assumption is that when a user's
+  # examples are sampled, they appear in different microbatches. This reduces
+  # to the non-microbatching analysis, but with the sensitivity doubled.
+  if used_microbatching:
+    noise_multiplier /= 2
+  sensitivities = range(max_examples_per_user + 1)
+  probs = stats.binom.pmf(
+      sensitivities, max_examples_per_user, poisson_subsampling_probability
+  )
+  single_round_event = dp_accounting.dp_event.MixtureOfGaussiansDpEvent(
+      noise_multiplier, sensitivities, probs
+  )
+  accountant = dp_accounting.pld.PLDAccountant()
+  count = int(math.ceil(num_epochs / poisson_subsampling_probability))
+  accountant.compose(single_round_event, count)
+  return accountant.get_epsilon(user_delta)
 
 
 def compute_dp_sgd_privacy_statement(
@@ -360,16 +470,6 @@ with {accountant_type.value} accounting:""",
             """\
 No user-level privacy guarantee is possible without a bound on the number of \
 examples per user.""",
-            width=80,
-        )
-    )
-  elif accountant_type == AccountantType.PLD:
-    # TODO(b/271341062): Add User level DP support for PLD.
-    paragraphs.append(
-        textwrap.fill(
-            """\
-User-level DP epsilon computation is not supported for PLD accounting at this \
-time. Use RDP accounting to obtain user-level DP guarantees.""",
             width=80,
         )
     )

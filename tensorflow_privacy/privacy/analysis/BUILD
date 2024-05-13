@@ -24,6 +24,7 @@ py_binary(
 py_test(
     name = "compute_dp_sgd_privacy_test",
     size = "small",
+    timeout = "moderate",
     srcs = ["compute_dp_sgd_privacy_test.py"],
     python_version = "PY3",
     srcs_version = "PY3",
