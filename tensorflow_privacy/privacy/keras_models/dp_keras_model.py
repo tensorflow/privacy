@@ -157,6 +157,14 @@ def make_dp_model_class(cls):
             self.train_step, experimental_compile=True
         )
 
+    @property
+    def noise_multiplier(self):
+      return self._noise_multiplier
+
+    @property
+    def l2_norm_clip(self):
+      return self._l2_norm_clip
+
     def _process_per_example_grads(self, grads):
       grads_flat = tf.nest.flatten(grads)
       squared_l2_norms = [
