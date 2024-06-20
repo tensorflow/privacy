@@ -31,9 +31,9 @@ FLAGS = tf.flags.FLAGS
 tf.flags.DEFINE_string('dataset', 'svhn', 'The name of the dataset to use')
 tf.flags.DEFINE_integer('nb_labels', 10, 'Number of output classes')
 
-tf.flags.DEFINE_string('data_dir','/tmp','Temporary storage')
-tf.flags.DEFINE_string('train_dir','/tmp/train_dir','Where model chkpt are saved')
-tf.flags.DEFINE_string('teachers_dir','/tmp/train_dir',
+tf.flags.DEFINE_string('data_dir','./saved','Temporary storage')
+tf.flags.DEFINE_string('train_dir','./saved/train_dir','Where model chkpt are saved')
+tf.flags.DEFINE_string('teachers_dir','./saved/train_dir',
                        'Directory where teachers checkpoints are stored.')
 
 tf.flags.DEFINE_integer('teachers_max_steps', 3000,
