@@ -75,7 +75,7 @@ def main():
     """
     This function is the main function in this file. This trains an ensemble
     of n_teach teachers, and then uses that to train a student. The main idea
-    is just that I want to run the code
+    is just that I want to run the code.
     """
     n_teach = 250
     for i in range(n_teach):
