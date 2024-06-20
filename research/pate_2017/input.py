@@ -112,7 +112,7 @@ def image_whitening(data):
 def extract_svhn(local_url):
   """Extract a MATLAB matrix into two numpy arrays with data and labels."""
 
-  with tf.gfile.Open(local_url, mode='r') as file_obj:
+  with tf.gfile.Open(local_url, mode='rb') as file_obj:
     # Load MATLAB matrix using scipy IO
     data_dict = loadmat(file_obj)
 
@@ -162,15 +162,15 @@ def extract_cifar10(local_url, data_dir):
 
   if all_preprocessed:
     # Reload pre-processed training data from numpy dumps
-    with tf.gfile.Open(data_dir + preprocessed_files[0], mode='r') as file_obj:
+    with tf.gfile.Open(data_dir + preprocessed_files[0], mode='rb') as file_obj:
       train_data = np.load(file_obj)
-    with tf.gfile.Open(data_dir + preprocessed_files[1], mode='r') as file_obj:
+    with tf.gfile.Open(data_dir + preprocessed_files[1], mode='rb') as file_obj:
       train_labels = np.load(file_obj)
 
     # Reload pre-processed testing data from numpy dumps
-    with tf.gfile.Open(data_dir + preprocessed_files[2], mode='r') as file_obj:
+    with tf.gfile.Open(data_dir + preprocessed_files[2], mode='rb') as file_obj:
       test_data = np.load(file_obj)
-    with tf.gfile.Open(data_dir + preprocessed_files[3], mode='r') as file_obj:
+    with tf.gfile.Open(data_dir + preprocessed_files[3], mode='rb') as file_obj:
       test_labels = np.load(file_obj)
 
   else:
