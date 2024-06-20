@@ -24,6 +24,8 @@ import numpy as np
 from six.moves import xrange
 import tensorflow.compat.v1 as tf
 
+tf.disable_eager_execution()
+
 FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_string('dataset', 'svhn', 'The name of the dataset to use')

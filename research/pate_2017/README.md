@@ -32,10 +32,10 @@ models and second we train a student using predictions made by this ensemble.
 three flags specifying (1) the number of teachers, (2) the ID of the teacher
 you are training among these teachers, and (3) the dataset on which to train.
 For instance, to train teacher number 10 among an ensemble of 100 teachers for
-MNIST, you use the following command:
+SVHN, you use the following command:
 
 ```
-python train_teachers.py --nb_teachers=100 --teacher_id=10 --dataset=mnist
+python train_teachers.py --nb_teachers=100 --teacher_id=10 --dataset=svhn
 ```
 
 Other flags like `train_dir` and `data_dir` should optionally be set to
