@@ -77,9 +77,14 @@ def main():
     of n_teach teachers, and then uses that to train a student. The main idea
     is just that I want to run the code.
     NOTE: CLEAR OUT THE .mat FILES FROM THE /saved FOLDER
+    In order to run this code on different computers, coördinate who is running
+    which teachers ahead of time, and then change the values in the range()
+    function. IE, if one person is running reachers 0-124, and the other person
+    is running 125-249, then the first person's range would say "range(0,125)"
+    and the second person's range would say "range(125,250)".
     """
     n_teach = 250
-    for i in range(n_teach):
+    for i in range(0, n_teach):
         print(f"running teacher {i} now!")
         train_teacher(dataset='svhn',nb_teachers=n_teach,teacher_id=i)
     print("done with teachers! on to the student!")

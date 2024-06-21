@@ -1,5 +1,2 @@
-model_checkpoint_path: "svhn_2_student.ckpt-2999"
-all_model_checkpoint_paths: "svhn_2_student.ckpt-0"
-all_model_checkpoint_paths: "svhn_2_student.ckpt-1000"
-all_model_checkpoint_paths: "svhn_2_student.ckpt-2000"
-all_model_checkpoint_paths: "svhn_2_student.ckpt-2999"
+model_checkpoint_path: "svhn_250_teachers_78.ckpt-0"
+all_model_checkpoint_paths: "svhn_250_teachers_78.ckpt-0"
