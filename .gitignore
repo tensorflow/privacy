@@ -1,0 +1,13 @@
+
+*.pyc
+*.mat
+research/pate_2017/.DS_Store
+*.ckpt-0.*
+*.ckpt-1000.*
+*.ckpt-2000.*
+research/.DS_Store
+research/pate_2017/saved/.DS_Store
+.DS_Store
+venv/
+research/pate_2017/saved/train_dir/checkpoint
+research/pate_2017/saved/train_dir/checkpoint
