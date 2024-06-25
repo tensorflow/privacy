@@ -1,7 +1,9 @@
-# Supplemental Material: Code Submission
+# Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning
+This folder contains the code for
 
-
-## Paper Title: *Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning*
+**Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning**  
+by Dariush Wahdany, Matthew Jagielski, Adam Dziedzic, Franziska Boenisch  
+https://arxiv.org/abs/2406.08039
 
 Abstract:
 Machine learning (ML) models have been shown to leak private information from their training datasets. Differential Privacy (DP), typically implemented through the differential private stochastic gradient descent algorithm (DP-SGD), has become the standard solution to bound leakage from the models. Despite recent improvments, DP-SGD-based approaches for private learning still usually struggle in the high privacy ($\varepsilon<0.1$) and low data regimes, and when the private training datasets are imbalanced. To overcome these limitations, we propose Differentially Private Prototype Learning (DPPL) as a new paradigm for private transfer learning. DPPL leverages publicly pre-trained encoders to extract features from private data and generates DP prototypes that represent each private class in the embedding space and can be publicly released for inference. Since our DP prototypes can be obtained from only a few private training data points and without iterative noise addition, they offer high-utility predictions and strong privacy guarantees even under the notion of pure DP. We additionally show that privacy-utility trade-offs can be further improved when leveraging the public data beyond pre-training of the encoder: we are able to privately sample our DP prototypes from the publicly available data points used to train the encoder. Our experimental evaluation with four state-of-the-art encoders, four vision datasets, and under different data and unbalancedness regimes demonstrate DPPL's high performance under strong privacy guarantees in challenging private learning setups.
@@ -81,8 +83,3 @@ python dppl_mean.py
 python dppl_public_topk.py
 ```
 
-## Contributing
-We welcome any feedback during the review process.
-
-## License
-Submitted to 38th Conference on Neural Information Processing Systems (NeurIPS 2024). Do not distribute
