@@ -57,6 +57,8 @@ Before running any of the experiments, set the path to your embeddings in `confi
 - Imbalance Ratio
 - Seed
 
+We provide the required embeddings as a [huggingface dataset](https://huggingface.co/datasets/lsc64/DPPL-embeddings).
+
 ### DPPL-Mean
 (Optional): In `config/mean.yaml`, change `pool` to any desired integer value. It configures the optional average pooling before the mean estimation and can improve utility especially at strict privacy budgets.
 
