@@ -1,0 +1,4 @@
+defaults:
+  - common
+  - _self_
+pool: 1
