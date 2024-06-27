@@ -1,8 +1,8 @@
 # Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning
 This folder contains the code for
 
-**Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning**  
-by Dariush Wahdany, Matthew Jagielski, Adam Dziedzic, Franziska Boenisch  
+**Beyond the Mean: Differentially Private Prototypes for Private Transfer Learning**
+by Dariush Wahdany, Matthew Jagielski, Adam Dziedzic, Franziska Boenisch
 https://arxiv.org/abs/2406.08039
 
 Abstract:
