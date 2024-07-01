@@ -20,6 +20,7 @@ from absl import logging
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
+from tensorflow_privacy.privacy.sparsity_preserving_noise import sparse_noise_utils
 
 
 def has_internal_compute_graph(input_object: Any):
@@ -175,6 +176,10 @@ def add_aggregate_noise(
     noise_multiplier: float,
     loss_reduction: Optional[Literal['mean', 'sum']] = None,
     loss_model: Optional[tf.keras.Model] = None,
+    use_sparse_noise: bool = False,
+    sparse_noise_multiplier: float = 0.0,
+    sparse_selection_threshold: int = 0,
+    sparse_contribution_counts: Optional[Sequence[tf.Tensor]] = None,
 ) -> Sequence[tf.Tensor]:
   """Adds noise to a collection of clipped gradients.
 
@@ -192,6 +197,11 @@ def add_aggregate_noise(
       aggregation type must be inferred from `input_model.loss`.
     loss_model: An optional `tf.keras.Model` used to infer the loss reduction
       strategy from if `loss_reduction` is `None`.
+    use_sparse_noise: Whether to use sparse noise.
+    sparse_noise_multiplier: The multiplier for the sparse noise.
+    sparse_selection_threshold: The threshold for the sparse noise.
+    sparse_contribution_counts: A list of `tf.Tensor`s representing the
+      contribution counts for each sparse gradient in clipped_grads.
 
   Returns:
     A list of tensors containing the clipped gradients, but with the right
@@ -227,16 +237,36 @@ def add_aggregate_noise(
           'Assuming that the model loss reduction is `SUM_OVER_BATCH_SIZE`.'
       )
 
+  if sparse_contribution_counts is None:
+    sparse_contribution_counts = tf.nest.map_structure(
+        lambda x: None, clipped_grads
+    )
+
   scale = l2_norm_clip
   if loss_reduction == 'mean':
     scale /= tf.cast(batch_size, tf.float32)
 
-  def add_noise(g):
-    return g + tf.random.normal(
-        tf.shape(g), mean=0.0, stddev=noise_multiplier * scale
+  def add_noise(grad, contribution_counts):
+    if (
+        use_sparse_noise
+        and isinstance(grad, tf.IndexedSlices)
+        and contribution_counts is not None
+    ):
+      return sparse_noise_utils.add_sparse_noise(
+          grad,
+          contribution_counts,
+          noise_multiplier,
+          sparse_noise_multiplier,
+          l2_norm_clip,
+          sparse_selection_threshold,
+      )
+    return grad + tf.random.normal(
+        tf.shape(grad), mean=0.0, stddev=noise_multiplier * scale
     )
 
-  return tf.nest.map_structure(add_noise, clipped_grads)
+  return tf.nest.map_structure(
+      add_noise, clipped_grads, sparse_contribution_counts
+  )
 
 
 def generate_model_outputs_using_core_keras_layers(

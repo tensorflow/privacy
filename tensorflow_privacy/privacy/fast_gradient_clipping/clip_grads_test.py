@@ -169,7 +169,7 @@ class ComputeClippedGradsAndOutputsTest(
       y_pred = self._model(x_batch)
       loss_value = loss_fn(y_pred, y_batch)
     true_grads = tape.gradient(loss_value, self._model.trainable_variables)
-    clipped_grads, _, _ = clip_grads.compute_clipped_gradients_and_outputs(
+    clipped_grads, _, _, _ = clip_grads.compute_clipped_gradients_and_outputs(
         self._model,
         l2_norm_clip,
         layer_registry.make_default_layer_registry(),
