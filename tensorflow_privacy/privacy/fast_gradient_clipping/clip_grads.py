@@ -30,11 +30,15 @@ from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
+from tensorflow_privacy.privacy.sparsity_preserving_noise import layer_registry as snlr
+from tensorflow_privacy.privacy.sparsity_preserving_noise import sparse_noise_utils
+from tensorflow_privacy.privacy.sparsity_preserving_noise import type_aliases as snlr_type_aliases
 
 
 def get_registry_generator_fn(
     tape: tf.GradientTape,
     layer_registry: lr.LayerRegistry,
+    sparse_noise_layer_registry: snlr.LayerRegistry,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
 ):
   """Creates the generator function for `compute_gradient_norms()`."""
@@ -52,6 +56,16 @@ def get_registry_generator_fn(
               'be used for efficient gradient clipping.'
               % layer_instance.__class__.__name__
           )
+        varname_to_count_contribution_fn = None
+        if sparse_noise_layer_registry and sparse_noise_layer_registry.is_elem(
+            layer_instance
+        ):
+          count_contribution_registry_fn = sparse_noise_layer_registry.lookup(
+              layer_instance
+          )
+          varname_to_count_contribution_fn = count_contribution_registry_fn(
+              layer_instance, args, kwargs, num_microbatches
+          )
         registry_fn = layer_registry.lookup(layer_instance)
         (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
             layer_instance, args, kwargs, tape, num_microbatches
@@ -60,6 +74,7 @@ def get_registry_generator_fn(
             str(id(layer_instance)),
             layer_vars,
             layer_sqr_norm_fn,
+            varname_to_count_contribution_fn,
             layer_instance.trainable_weights,
         )
       else:
@@ -147,6 +162,12 @@ def compute_gradient_norms(
     per_example_loss_fn: Optional[type_aliases.LossFn] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
     trainable_vars: Optional[Sequence[tf.Variable]] = None,
+    sparse_noise_layer_registry: snlr.LayerRegistry = None,
+) -> (
+    tf.Tensor
+    | tuple[
+        tf.Tensor, dict[str, snlr_type_aliases.ContributionCountHistogramFn]
+    ]
 ):
   """Computes the per-example loss gradient norms for given data.
 
@@ -181,17 +202,23 @@ def compute_gradient_norms(
       norm. When a layer has multiple variables, we include all the variables if
       any of the variables is in the list. If `trainable_vars` is None, all the
       variables are included.
+    sparse_noise_layer_registry: A `LayerRegistry` instance containing functions
+      that help compute contribution counts for sparse noise. See
+      `tensorflow_privacy.privacy.sparsity_preserving_noise.layer_registry` for
+      more details. If None, it also returns a dict of varname to count
+      contribution functions.
 
   Returns:
     A scalar vector, whose i-th entry is the norm of the gradient of the i-th
     weighted example loss (when num_microbatches is None) or the norm of the
     gradient of the i-th microbatch loss (define as a mean over the microbatch).
     Note that when the loss is weighted (`weight_batch` is not None), weights
-    are applied prior to clipping.
+    are applied prior to clipping. If `sparse_noise_layer_registry` is provided,
+    also returns a dict of varname to count contribution functions.
   """
   tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
   registry_generator_fn = get_registry_generator_fn(
-      tape, layer_registry, num_microbatches
+      tape, layer_registry, sparse_noise_layer_registry, num_microbatches
   )
   # First loop computes the model outputs, summed loss, and generator outputs.
   with tape:
@@ -233,6 +260,7 @@ def compute_gradient_norms(
     trainable_vars = set([v.ref() for v in trainable_vars])
   layer_vars = collections.defaultdict(list)
   layer_sqr_norm_fns = collections.defaultdict(list)
+  varname_to_count_contributions_fns = collections.defaultdict(list)
   # The case of shared weights:
   #   If a layer is called k times, it will appear k times in filtered_outputs,
   #   with the same id, but potentially with different v and f. The code below
@@ -241,12 +269,17 @@ def compute_gradient_norms(
   #   $sqrt(k * \sum_i c_i^2)$ where $c_i$ is the norm estimate of its i-th
   #   occurrence. This is an over-estimate of the actual norm. For more details,
   #   see the explanation in go/dp-sgd-shared-weights.
-  for layer_id, v, f, weights_list in filtered_outputs:
+  for layer_id, v, f, ccf, weights_list in filtered_outputs:
     if trainable_vars is None or any(
         w.ref() in trainable_vars for w in weights_list
     ):
       layer_vars[layer_id].append(v)
       layer_sqr_norm_fns[layer_id].append(f)
+      if ccf:
+        for varname, count_contribution_fn in ccf.items():
+          varname_to_count_contributions_fns[varname].append(
+              count_contribution_fn
+          )
   # Second loop evaluates the squared L2 norm functions and appends the results.
   layer_grad_vars = tape.gradient(
       summed_loss,
@@ -269,7 +302,11 @@ def compute_gradient_norms(
     for fn, grad in zip(fns, grads):
       sqr_norm_list.append(num_passes * fn(grad))
   sqr_norm_tsr = tf.stack(sqr_norm_list, axis=1)
-  return tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
+  gradient_norms = tf.sqrt(tf.reduce_sum(sqr_norm_tsr, axis=1))
+  if sparse_noise_layer_registry is not None:
+    return (gradient_norms, varname_to_count_contributions_fns)
+  else:
+    return gradient_norms
 
 
 def compute_clip_weights(l2_norm_clip: float, gradient_norms: tf.Tensor):
@@ -306,7 +343,10 @@ def compute_clipped_gradients_and_outputs(
     weight_batch: Optional[tf.Tensor] = None,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
     clipping_loss: Optional[type_aliases.LossFn] = None,
-) -> tuple[Sequence[tf.Tensor], tf.Tensor, tf.Tensor]:
+    sparse_noise_layer_registry: Optional[snlr.LayerRegistry] = None,
+) -> tuple[
+    Sequence[tf.Tensor], tf.Tensor, tf.Tensor, Sequence[tf.Tensor | None]
+]:
   """Computes the per-example clipped loss gradient and other useful outputs.
 
   Given a batch of observations `(x_batch, y_batch, weight_batch)`, the main
@@ -346,6 +386,10 @@ def compute_clipped_gradients_and_outputs(
       avoid calling `input_model.compiled_loss`, as this will append the value
       of the clipped loss to the reported metrics, and this can be misleading as
       the value of the clipped loss does not reflect the true loss.
+    sparse_noise_layer_registry: A `LayerRegistry` instance containing functions
+      that help compute contribution counts for sparse noise. See
+      `tensorflow_privacy.privacy.sparsity_preserving_noise.layer_registry` for
+      more details.
 
   Returns:
     clipped_grad: list of the clipped gradients of the loss function (one per
@@ -362,7 +406,7 @@ def compute_clipped_gradients_and_outputs(
       )
   if clipping_loss is None:
     clipping_loss = input_model.compiled_loss
-  gradient_norms = compute_gradient_norms(
+  ret_value = compute_gradient_norms(
       input_model,
       layer_registry,
       x_batch,
@@ -370,7 +414,13 @@ def compute_clipped_gradients_and_outputs(
       weight_batch,
       num_microbatches=num_microbatches,
       trainable_vars=input_model.trainable_variables,
+      sparse_noise_layer_registry=sparse_noise_layer_registry,
   )
+  if sparse_noise_layer_registry is not None:
+    gradient_norms, varname_to_count_contributions_fns = ret_value
+  else:
+    varname_to_count_contributions_fns = collections.defaultdict(list)
+    gradient_norms = ret_value
   clip_weights = compute_clip_weights(l2_norm_clip, gradient_norms)
   if weight_batch is not None:
     # Let w be the `weight_batch`, c be the `clip_weights`, and l be the losses.
@@ -409,4 +459,9 @@ def compute_clipped_gradients_and_outputs(
       input_model.trainable_variables,
       unconnected_gradients=tf.UnconnectedGradients.ZERO,
   )
-  return clipped_grads, y_pred, clipping_loss_value
+  contribution_counts = sparse_noise_utils.get_contribution_counts(
+      input_model.trainable_variables,
+      clipped_grads,
+      varname_to_count_contributions_fns,
+  )
+  return clipped_grads, y_pred, clipping_loss_value, contribution_counts
