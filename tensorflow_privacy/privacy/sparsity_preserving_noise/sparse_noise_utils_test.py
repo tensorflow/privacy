@@ -284,6 +284,158 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertGreater(batch_size, 0)
     self.assertLess(batch_size, max_index + 1)
 
+  def test_sparse_private_partition_selection_without_noise(self):
+    contribution_counts = tf.SparseTensor(
+        indices=[[0], [3], [5]],
+        values=[2.0, 1.0, 1.0],
+        dense_shape=[8],
+    )
+    noise_multiplier = 0.0
+    threshold = 2
+    sampled_indices = (
+        sparse_noise_utils.sparse_private_partition_selection(
+            contribution_counts, noise_multiplier, threshold
+        )
+        .numpy()
+        .tolist()
+    )
+    expected_indices = [0]
+    self.assertEqual(sampled_indices, expected_indices)
+
+  def test_sparse_private_partition_selection_with_noise(self):
+    contribution_counts = tf.SparseTensor(
+        indices=[[0], [3], [5]],
+        values=[50.0, 1.0, 1.0],
+        dense_shape=[1000],
+    )
+    noise_multiplier = 1.0
+    threshold = 1
+    sampled_indices = (
+        sparse_noise_utils.sparse_private_partition_selection(
+            contribution_counts, noise_multiplier, threshold
+        )
+        .numpy()
+        .tolist()
+    )
+    expected_indices = [0]
+    self.assertContainsSubset(expected_indices, sampled_indices)
+    self.assertGreater(len(sampled_indices), 1)
+
+  def test_remap_indices(self):
+    expected_indices = [4, 9, 14]
+    indices = tf.constant([1, 5, 10], tf.int64)
+    skip_indices = tf.constant([0, 1, 2, 5], tf.int64)
+    remapped_indices = sparse_noise_utils._remap_indices(indices, skip_indices)
+    self.assertEqual(remapped_indices.numpy().tolist(), expected_indices)
+
+  def test_remap_indices_no_skip(self):
+    expected_indices = [1, 5, 10]
+    indices = tf.constant([1, 5, 10], tf.int64)
+    skip_indices = tf.constant([], tf.int64)
+    remapped_indices = sparse_noise_utils._remap_indices(indices, skip_indices)
+    self.assertEqual(remapped_indices.numpy().tolist(), expected_indices)
+
+  def test_add_sparse_gradient_noise(self):
+    grad = tf.IndexedSlices(
+        values=tf.ones((1, 2)),
+        indices=tf.constant([0]),
+        dense_shape=tf.constant([2, 2]),
+    )
+    indices = tf.constant([1], dtype=tf.int64)
+    noise_stddev = 1.0
+    noised_grad = sparse_noise_utils.add_sparse_gradient_noise(
+        grad, indices, noise_stddev
+    )
+    self.assertListEqual(
+        noised_grad.indices.numpy().tolist(), indices.numpy().tolist()
+    )
+    one_index_values = noised_grad.values[0].numpy().tolist()
+    self.assertNotEqual(one_index_values, [0.0, 0.0])
+
+  def test_get_contribution_counts(self):
+    trainable_vars = [
+        tf.Variable(tf.ones((1, 2)), name='var1'),
+        tf.Variable(tf.ones((1, 2)), name='var2'),
+        tf.Variable(tf.ones((1, 2)), name='var3'),
+    ]
+    grads = [
+        tf.IndexedSlices(
+            values=tf.ones((1, 2)),
+            indices=tf.constant([0]),
+            dense_shape=tf.constant([2, 2]),
+        ),
+        tf.ones((1, 2)),
+        tf.ones((1, 2)),
+    ]
+    varname_to_contribution_counts_fns = {
+        'var1:0': [lambda grad: 1.0],
+        'var2:0': None,
+    }
+    contribution_counts = sparse_noise_utils.get_contribution_counts(
+        trainable_vars, grads, varname_to_contribution_counts_fns
+    )
+    expected_contribution_counts = [1.0, None, None]
+    self.assertEqual(contribution_counts, expected_contribution_counts)
+
+  def test_add_sparse_noise_without_noise(self):
+    grad = tf.IndexedSlices(
+        values=tf.ones((3, 4)),
+        indices=tf.constant([0, 3, 5]),
+        dense_shape=tf.constant([8, 4]),
+    )
+    contribution_counts = tf.SparseTensor(
+        indices=[[0], [3], [5]],
+        values=[3.0, 1.0, 2.0],
+        dense_shape=[8],
+    )
+    noised_grad = sparse_noise_utils.add_sparse_noise(
+        grad,
+        contribution_counts,
+        noise_multiplier=0.0,
+        noise_multiplier_sparse=0.0,
+        l2_norm_clip=1.0,
+        threshold=1,
+    )
+    self.assertEqual(
+        noised_grad.indices.numpy().tolist(), grad.indices.numpy().tolist()
+    )
+    self.assertEqual(
+        noised_grad.values.numpy().tolist(), grad.values.numpy().tolist()
+    )
+
+  def test_add_sparse_noise_with_noise(self):
+    grad = tf.IndexedSlices(
+        values=tf.ones((3, 4)),
+        indices=tf.constant([0, 3, 5]),
+        dense_shape=tf.constant([8, 4]),
+    )
+    contribution_counts = tf.SparseTensor(
+        indices=[[0], [3], [5]],
+        values=[10.0, 10.0, 20.0],
+        dense_shape=[8],
+    )
+    noised_grad = sparse_noise_utils.add_sparse_noise(
+        grad,
+        contribution_counts,
+        noise_multiplier=1.0,
+        noise_multiplier_sparse=1.0,
+        l2_norm_clip=1.0,
+        threshold=5,
+    )
+    self.assertContainsSubset(
+        grad.indices.numpy().tolist(),
+        noised_grad.indices.numpy().tolist(),
+    )
+    noised_grad_dense = tf.scatter_nd(
+        tf.reshape(noised_grad.indices, (-1, 1)),
+        noised_grad.values,
+        shape=(8, 4),
+    ).numpy()
+    noised_grad_valid_indices = noised_grad_dense[grad.indices.numpy()]
+    self.assertTrue(
+        np.all(np.not_equal(noised_grad_valid_indices, grad.values.numpy()))
+    )
+
 
 if __name__ == '__main__':
   tf.test.main()
