@@ -27,5 +27,5 @@ ContributionCountHistogramFn = Callable[
 NumMicrobatches = int | tf.Tensor
 SparsityPreservingNoiseLayerRegistryFunction = Callable[
     [tf.keras.layers.Layer, InputArgs, InputKwargs, NumMicrobatches | None],
-    ContributionCountHistogramFn,
+    dict[str, ContributionCountHistogramFn],
 ]

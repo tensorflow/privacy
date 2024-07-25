@@ -21,5 +21,8 @@ py_library(
 py_library(
     name = "layer_registry",
     srcs = ["layer_registry.py"],
-    deps = [":type_aliases"],
+    deps = [
+        ":type_aliases",
+        "//tensorflow_privacy/privacy/sparsity_preserving_noise/registry_functions:embedding",
+    ],
 )

@@ -17,6 +17,7 @@ from typing import Type
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.sparsity_preserving_noise import type_aliases
+from tensorflow_privacy.privacy.sparsity_preserving_noise.registry_functions import embedding
 
 
 # ==============================================================================
@@ -49,3 +50,15 @@ class LayerRegistry:
     layer_key = hash(layer_class)
     self._layer_class_dict[layer_key] = layer_class
     self._registry[layer_key] = layer_registry_function
+
+
+# ==============================================================================
+# Main factory methods
+# ==============================================================================
+def make_default_layer_registry() -> LayerRegistry:
+  registry = LayerRegistry()
+  registry.insert(
+      tf.keras.layers.Embedding,
+      embedding.embedding_layer_contribution_histogram,
+  )
+  return registry
