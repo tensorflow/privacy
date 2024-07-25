@@ -359,7 +359,7 @@ def make_weighted_bow_model(
   feature_shape = input_dims + output_dims
   feature_weights = tf.expand_dims(
       tf.reshape(
-          tf.range(np.product(feature_shape), dtype=tf.float32),
+          tf.range(np.prod(feature_shape), dtype=tf.float32),
           feature_shape,
       ),
       axis=0,
