@@ -16,10 +16,12 @@
 For more details on the algorithm, refer to https://arxiv.org/abs/2311.08357.
 """
 
+import collections
 from typing import Mapping, Optional, Sequence
 
 from scipy import stats
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 import tensorflow_probability as tfp
 
 
@@ -286,6 +288,43 @@ def add_sparse_gradient_noise(
       values=filtered_noised_grad_values,
       dense_shape=grad.dense_shape,
   )
+
+
+def extract_varname_to_contribution_counts_fns(
+    registry_fn_outputs_list: list[
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput
+    ],
+    trainable_vars: list[tf.Variable],
+) -> dict[str, list[tf.Tensor | None]]:
+  """Extracts a map of contribution count fns from generator outputs.
+
+  TODO. Move to sparse_noise_utils.py.
+
+  Args:
+    registry_fn_outputs_list: A list of `RegistryGeneratorFunctionOutput`
+      instances returned by
+      `gradient_clipping_utils.model_forward_backward_pass`.
+    trainable_vars: A list of trainable variables.
+
+  Returns:
+    A `dict` from varname to contribution counts functions
+  """
+  if trainable_vars is not None:
+    # Create a set using `ref()` for fast set membership check. tf.Variable
+    # itself is not hashable.
+    trainable_vars = set([v.ref() for v in trainable_vars])
+
+  varname_to_contribution_counts_fns = collections.defaultdict(list)
+  for registry_fn_output in registry_fn_outputs_list:
+    if trainable_vars is None or any(
+        w.ref() in trainable_vars
+        for w in registry_fn_output.layer_trainable_weights
+    ):
+      if registry_fn_output.varname_to_count_contribution_fn is not None:
+        varname_to_contribution_counts_fns.update(
+            registry_fn_output.varname_to_count_contribution_fn
+        )
+  return varname_to_contribution_counts_fns
 
 
 def get_contribution_counts(
