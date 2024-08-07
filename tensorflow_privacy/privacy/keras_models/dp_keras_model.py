@@ -18,6 +18,7 @@ import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
+from tensorflow_privacy.privacy.fast_gradient_clipping import noise_utils
 
 _PRIVATIZED_LOSS_NAME = 'privatized_loss'
 
@@ -287,7 +288,7 @@ def make_dp_model_class(cls):
         )
         output_metrics[_PRIVATIZED_LOSS_NAME] = clipping_loss
         if self._noise_multiplier > 0:
-          grads = gradient_clipping_utils.add_aggregate_noise(
+          grads = noise_utils.add_aggregate_noise(
               clipped_grads,
               num_microbatches,
               self._l2_norm_clip,

@@ -17,7 +17,7 @@ py_library(
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:gradient_clipping_utils",
-        "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:noise_utils",
     ],
 )
 
