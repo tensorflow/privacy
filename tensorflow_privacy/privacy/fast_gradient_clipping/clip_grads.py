@@ -164,6 +164,7 @@ def compute_gradient_norms(
   registry_generator_fn = gradient_clipping_utils.get_registry_generator_fn(
       tape=tape,
       layer_registry=layer_registry,
+      sparse_noise_layer_registry=None,
       num_microbatches=num_microbatches,
   )
   layer_grad_vars, generator_outputs_list = (
