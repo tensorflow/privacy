@@ -13,12 +13,21 @@
 # limitations under the License.
 """Utility functions that help in the computation of per-example gradient norms."""
 
-from collections.abc import Sequence, Set
-from typing import Any, Optional
+from collections.abc import Callable, Sequence, Set
+import dataclasses
+from typing import Any, Optional, Tuple
 
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
+
+
+@dataclasses.dataclass(frozen=True)
+class RegistryGeneratorFunctionOutput:
+  layer_id: str
+  layer_vars: Optional[Sequence[tf.Variable]]
+  layer_sqr_norm_fn: Optional[type_aliases.SquareNormFunction]
+  layer_trainable_weights: Optional[Sequence[tf.Variable]]
 
 
 def has_internal_compute_graph(input_object: Any):
@@ -30,6 +39,63 @@ def has_internal_compute_graph(input_object: Any):
       and hasattr(input_object, '_conform_to_reference_input')
       and hasattr(input_object, '_nodes_by_depth')
   )
+
+
+def get_registry_generator_fn(
+    tape: tf.GradientTape,
+    layer_registry: lr.LayerRegistry,
+    num_microbatches: Optional[type_aliases.BatchSize] = None,
+) -> Optional[Callable[..., Tuple[tf.Tensor, RegistryGeneratorFunctionOutput]]]:
+  """Creates the generator function for `model_forward_backward_pass()`.
+
+  Args:
+    tape: The `tf.GradientTape` to use for the gradient computation.
+    layer_registry: A `dict` of layers that support "fast" gradient norm
+      computations. The key is the class of the layer and the value is a
+      function that returns a `tuple` `(output, sqr_grad_norms, vars)`, where
+      `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
+      squared norms of a layer's pre-activation tensor, and `vars` are relevant
+      trainable
+    num_microbatches: An optional number or scalar `tf.Tensor` for the number of
+      microbatches. If not None, indicates that the loss is grouped into
+      num_microbatches (in this case, the batch dimension needs to be a multiple
+      of num_microbatches).
+
+  Returns:
+    A function that returns a `tuple` `(output, sqr_grad_norms, vars)`, where
+    `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
+    squared norms of a layer's pre-activation tensor, and `vars` are relevant
+    trainable variables.
+  """
+  if layer_registry is None:
+    # Needed for backwards compatibility.
+    registry_generator_fn = None
+  else:
+
+    def registry_generator_fn(layer_instance, args, kwargs):
+      if layer_instance.trainable_variables:
+        # Only trainable variables factor into the gradient.
+        if not layer_registry.is_elem(layer_instance):
+          raise NotImplementedError(
+              'Layer %s is not in the registry of known layers that can '
+              'be used for efficient gradient clipping.'
+              % layer_instance.__class__.__name__
+          )
+        registry_fn = layer_registry.lookup(layer_instance)
+        (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
+            layer_instance, args, kwargs, tape, num_microbatches
+        )
+        return layer_outputs, RegistryGeneratorFunctionOutput(
+            layer_id=str(id(layer_instance)),
+            layer_vars=layer_vars,
+            layer_sqr_norm_fn=layer_sqr_norm_fn,
+            layer_trainable_weights=layer_instance.trainable_weights,
+        )
+      else:
+        # Non-trainable layer.
+        return layer_instance(*args, **kwargs), None
+
+  return registry_generator_fn
 
 
 def model_forward_pass(
