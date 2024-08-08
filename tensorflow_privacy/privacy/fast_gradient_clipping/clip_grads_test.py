@@ -19,6 +19,7 @@ from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_test_utils
+from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
@@ -122,6 +123,29 @@ class CustomLayerTest(tf.test.TestCase, parameterized.TestCase):
       self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
 
+def _run_model_forward_backward_pass(
+    model: tf.keras.Model,
+    x_batch: type_aliases.InputTensors,
+    y_batch: type_aliases.OutputTensors,
+):
+  tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
+  registry_generator_fn = gradient_clipping_utils.get_registry_generator_fn(
+      tape=tape,
+      layer_registry=layer_registry.make_default_layer_registry(),
+      num_microbatches=None,
+  )
+  layer_grad_vars, registry_fn_outputs_list = (
+      gradient_clipping_utils.model_forward_backward_pass(
+          tape=tape,
+          input_model=model,
+          x_batch=x_batch,
+          y_batch=y_batch,
+          registry_generator_fn=registry_generator_fn,
+      )
+  )
+  return layer_grad_vars, registry_fn_outputs_list
+
+
 class ComputeClippedGradsAndOutputsTest(
     tf.test.TestCase, parameterized.TestCase
 ):
@@ -153,13 +177,17 @@ class ComputeClippedGradsAndOutputsTest(
     y_batch = tf.reshape(
         1.0 + tf.range(batch_size, dtype=tf.float32), [batch_size, -1]
     )
+    layer_grad_vars, registry_fn_outputs_list = (
+        _run_model_forward_backward_pass(self._model, x_batch, y_batch)
+    )
     # Stop early for efficiency.
     if reduction == 'none':
       with self.assertRaises(NotImplementedError):
         clip_grads.compute_clipped_gradients_and_outputs(
             self._model,
+            registry_fn_outputs_list,
+            layer_grad_vars,
             l2_norm_clip,
-            layer_registry.make_default_layer_registry(),
             x_batch,
             y_batch,
         )
@@ -169,10 +197,12 @@ class ComputeClippedGradsAndOutputsTest(
       y_pred = self._model(x_batch)
       loss_value = loss_fn(y_pred, y_batch)
     true_grads = tape.gradient(loss_value, self._model.trainable_variables)
+
     clipped_grads, _, _ = clip_grads.compute_clipped_gradients_and_outputs(
         self._model,
+        registry_fn_outputs_list,
+        layer_grad_vars,
         l2_norm_clip,
-        layer_registry.make_default_layer_registry(),
         x_batch,
         y_batch,
     )

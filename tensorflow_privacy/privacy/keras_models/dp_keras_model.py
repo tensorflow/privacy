@@ -274,14 +274,36 @@ def make_dp_model_class(cls):
         # trick, and uses these norms to clip the per-example gradients.
         # NOTE: Reshaping of the input according to the effective number of
         # microbatches is done here.
+        tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
+
+        registry_generator_fn = (
+            gradient_clipping_utils.get_registry_generator_fn(
+                tape=tape,
+                layer_registry=self._layer_registry,
+                num_microbatches=num_microbatches,
+            )
+        )
+        layer_grad_vars, registry_fn_outputs_list = (
+            gradient_clipping_utils.model_forward_backward_pass(
+                tape=tape,
+                input_model=self,
+                x_batch=x,
+                y_batch=y,
+                registry_generator_fn=registry_generator_fn,
+                weight_batch=weights,
+                num_microbatches=num_microbatches,
+                trainable_vars=self.trainable_variables,
+            )
+        )
         clipped_grads, y_pred, clipping_loss = (
             clip_grads.compute_clipped_gradients_and_outputs(
                 input_model=self,
+                registry_fn_outputs_list=registry_fn_outputs_list,
+                layer_grad_vars=layer_grad_vars,
                 x_batch=x,
                 y_batch=y,
                 weight_batch=weights,
                 l2_norm_clip=self._l2_norm_clip,
-                layer_registry=self._layer_registry,
                 num_microbatches=self._num_microbatches,
                 clipping_loss=self._clipping_loss,
             )

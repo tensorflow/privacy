@@ -13,11 +13,13 @@
 # limitations under the License.
 """Utility functions that help in the computation of per-example gradient norms."""
 
+import collections
 from collections.abc import Callable, Sequence, Set
 import dataclasses
 from typing import Any, Optional, Tuple
 
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
 
@@ -96,6 +98,149 @@ def get_registry_generator_fn(
         return layer_instance(*args, **kwargs), None
 
   return registry_generator_fn
+
+
+def _infer_per_example_loss_fn(model: tf.keras.Model):
+  """Infer the per-example loss from model config."""
+
+  def _convert(loss_fn):
+    loss_config = loss_fn.get_config()
+    loss_config['reduction'] = tf.keras.losses.Reduction.NONE
+    return loss_fn.from_config(loss_config)
+
+  model_loss = model.loss
+  if isinstance(model_loss, tf.keras.losses.Loss):
+    return _convert(model_loss)
+  elif isinstance(model_loss, dict):
+    # Note that we cannot call the public method `.get_compile_config()` because
+    # it calls a numpy function, which is not supported inside a `tf.function`
+    # wrapped function.
+    compile_config = model._compile_config.config  # pylint: disable=protected-access
+    if compile_config is None:
+      raise ValueError('Model must be compiled for loss function conversion')
+    # Does a weighted mean of the configured losses. Note that we cannot build
+    # from the config of the compiled loss because (i) it builds a
+    # `keras.metrics.Mean` class, which generates non-unique `tf.Variable`s
+    # during its construction, (ii) non-unique `tf.Variables` cannot be used
+    # inside a `tf.function`, which is usually where this function is used.
+    if 'loss_weights' not in compile_config:
+      raise ValueError(
+          'Models with multiple loss must have corresponding loss weights for'
+          ' loss function conversion'
+      )
+    weights = compile_config['loss_weights']
+    per_example_losses = {k: _convert(v) for k, v in model_loss.items()}
+    num_losses = len(weights)
+
+    def _per_example_loss_fn(y_true, y_pred, sample_weight=None):
+      loss_values = []
+      if model_loss.keys() - y_pred.keys():
+        raise ValueError(
+            'y_pred must contain the same keys and the model losses, but '
+            'got %s and %s' % (y_pred.keys(), model_loss.keys())
+        )
+      if model_loss.keys() - y_true.keys():
+        raise ValueError(
+            'y_true must contain the same keys and the model losses, but '
+            'got %s and %s' % (y_true.keys(), model_loss.keys())
+        )
+      if sample_weight is not None:
+        if model_loss.keys() - sample_weight.keys():
+          raise ValueError(
+              'sample_weight must contain the same keys and the model losses,'
+              ' but got %s and %s' % (y_true.keys(), model_loss.keys())
+          )
+      for k in y_true.keys():
+        sgl_sample_weight = None if sample_weight is None else sample_weight[k]
+        sgl_value = (
+            weights[k]
+            * per_example_losses[k](y_true[k], y_pred[k], sgl_sample_weight)
+            / num_losses
+        )
+        loss_values.append(tf.reshape(sgl_value, shape=[-1]))
+      return tf.math.add_n(loss_values)
+
+    return _per_example_loss_fn
+  else:
+    raise ValueError(
+        'Unsupported type for loss function conversion: {}'.format(
+            type(model_loss)
+        )
+    )
+
+
+def model_forward_backward_pass(
+    tape: tf.GradientTape,
+    input_model: tf.keras.Model,
+    x_batch: type_aliases.InputTensors,
+    y_batch: type_aliases.OutputTensors,
+    registry_generator_fn: Optional[
+        Callable[..., Tuple[tf.Tensor, RegistryGeneratorFunctionOutput]]
+    ],
+    weight_batch: Optional[tf.Tensor] = None,
+    per_example_loss_fn: Optional[type_aliases.LossFn] = None,
+    num_microbatches: Optional[type_aliases.BatchSize] = None,
+    trainable_vars: Optional[Sequence[tf.Variable]] = None,
+) -> tuple[
+    dict[str, list[type_aliases.Tensor]], list[RegistryGeneratorFunctionOutput]
+]:
+  """Does a forward and backward pass of a model and returns useful intermediates."""
+  # First loop computes the model outputs, summed loss, and generator outputs.
+  with tape:
+    model_outputs, generator_outputs_list = model_forward_pass(
+        input_model, x_batch, generator_fn=registry_generator_fn
+    )
+
+    # Ignore the original loss function's reduction to get per-example loss.
+    if per_example_loss_fn is None:
+      per_example_loss_fn = _infer_per_example_loss_fn(input_model)
+
+    losses = per_example_loss_fn(y_batch, model_outputs, weight_batch)
+    if losses.shape is None:
+      raise NotImplementedError(
+          "The unreduced (or per-example) loss's shape cannot be `None`"
+      )
+    if len(losses.shape) != 1:
+      raise NotImplementedError(
+          'The unreduced (or per-example) loss needs to have a shape of length '
+          'one, but received an unreduced loss of shape length %s'
+          % len(losses.shape)
+      )
+    if num_microbatches is not None:
+      losses = tf.reduce_mean(
+          common_manip_utils.maybe_add_microbatch_axis(
+              losses, num_microbatches
+          ),
+          axis=1,
+      )
+    summed_loss = tf.reduce_sum(losses)
+  # Unwrap the generator outputs so that the next loop avoids duplicating
+  # backprop ops.
+  filtered_outputs = [t for t in generator_outputs_list if t is not None]
+
+  if trainable_vars is not None:
+    # Create a set using `ref()` for fast set membership check. tf.Variable
+    # itself is not hashable.
+    trainable_vars = set([v.ref() for v in trainable_vars])
+  layer_vars = collections.defaultdict(list)
+  for registry_fn_output in filtered_outputs:
+    if trainable_vars is None or any(
+        w.ref() in trainable_vars
+        for w in registry_fn_output.layer_trainable_weights
+    ):
+      layer_vars[registry_fn_output.layer_id].append(
+          registry_fn_output.layer_vars
+      )
+
+  layer_grad_vars = tape.gradient(
+      summed_loss,
+      layer_vars,
+      unconnected_gradients=tf.UnconnectedGradients.ZERO,
+  )
+  if not layer_grad_vars:
+    raise ValueError('The gradient list cannot be empty.')
+
+  return layer_grad_vars, filtered_outputs
 
 
 def model_forward_pass(

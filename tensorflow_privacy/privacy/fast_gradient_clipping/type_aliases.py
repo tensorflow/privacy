@@ -19,6 +19,8 @@ import tensorflow as tf
 
 
 # Tensorflow aliases.
+Tensor = Union[tf.Tensor, tf.IndexedSlices, tf.SparseTensor, tf.RaggedTensor]
+
 PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Mapping[str, tf.Tensor]]
 
 InputTensors = PackedTensors

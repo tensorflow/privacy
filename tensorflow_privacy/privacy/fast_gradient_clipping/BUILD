@@ -43,6 +43,7 @@ py_library(
     srcs = ["gradient_clipping_utils.py"],
     srcs_version = "PY3",
     deps = [
+        ":common_manip_utils",
         ":layer_registry",
         ":type_aliases",
     ],
@@ -94,6 +95,7 @@ py_test(
     deps = [
         ":clip_grads",
         ":common_test_utils",
+        ":gradient_clipping_utils",
         ":layer_registry",
         ":type_aliases",
     ],
