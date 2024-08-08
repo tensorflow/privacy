@@ -46,6 +46,8 @@ py_library(
         ":common_manip_utils",
         ":layer_registry",
         ":type_aliases",
+        "//tensorflow_privacy/privacy/sparsity_preserving_noise:layer_registry",
+        "//tensorflow_privacy/privacy/sparsity_preserving_noise:type_aliases",
     ],
 )
 
@@ -84,6 +86,7 @@ py_library(
 py_library(
     name = "noise_utils",
     srcs = ["noise_utils.py"],
+    deps = ["//tensorflow_privacy/privacy/sparsity_preserving_noise:sparse_noise_utils"],
 )
 
 py_test(

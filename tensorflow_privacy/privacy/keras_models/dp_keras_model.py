@@ -280,6 +280,7 @@ def make_dp_model_class(cls):
             gradient_clipping_utils.get_registry_generator_fn(
                 tape=tape,
                 layer_registry=self._layer_registry,
+                sparse_noise_layer_registry=None,
                 num_microbatches=num_microbatches,
             )
         )
