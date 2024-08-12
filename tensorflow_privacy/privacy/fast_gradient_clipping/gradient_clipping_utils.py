@@ -22,6 +22,8 @@ import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
 from tensorflow_privacy.privacy.fast_gradient_clipping import type_aliases
+from tensorflow_privacy.privacy.sparsity_preserving_noise import layer_registry as snlr
+from tensorflow_privacy.privacy.sparsity_preserving_noise import type_aliases as sn_type_aliases
 
 
 @dataclasses.dataclass(frozen=True)
@@ -29,6 +31,9 @@ class RegistryGeneratorFunctionOutput:
   layer_id: str
   layer_vars: Optional[Sequence[tf.Variable]]
   layer_sqr_norm_fn: Optional[type_aliases.SquareNormFunction]
+  varname_to_count_contribution_fn: Optional[
+      dict[str, sn_type_aliases.ContributionCountHistogramFn]
+  ]
   layer_trainable_weights: Optional[Sequence[tf.Variable]]
 
 
@@ -46,6 +51,7 @@ def has_internal_compute_graph(input_object: Any):
 def get_registry_generator_fn(
     tape: tf.GradientTape,
     layer_registry: lr.LayerRegistry,
+    sparse_noise_layer_registry: snlr.LayerRegistry,
     num_microbatches: Optional[type_aliases.BatchSize] = None,
 ) -> Optional[Callable[..., Tuple[tf.Tensor, RegistryGeneratorFunctionOutput]]]:
   """Creates the generator function for `model_forward_backward_pass()`.
@@ -58,6 +64,10 @@ def get_registry_generator_fn(
       `output` is the pre-activator tensor, `sqr_grad_norms` is related to the
       squared norms of a layer's pre-activation tensor, and `vars` are relevant
       trainable
+    sparse_noise_layer_registry: A `LayerRegistry` instance containing functions
+      that help compute contribution counts for sparse noise. See
+      `tensorflow_privacy.privacy.sparsity_preserving_noise.layer_registry` for
+      more details.
     num_microbatches: An optional number or scalar `tf.Tensor` for the number of
       microbatches. If not None, indicates that the loss is grouped into
       num_microbatches (in this case, the batch dimension needs to be a multiple
@@ -83,6 +93,16 @@ def get_registry_generator_fn(
               'be used for efficient gradient clipping.'
               % layer_instance.__class__.__name__
           )
+        varname_to_count_contribution_fn = None
+        if sparse_noise_layer_registry and sparse_noise_layer_registry.is_elem(
+            layer_instance
+        ):
+          count_contribution_registry_fn = sparse_noise_layer_registry.lookup(
+              layer_instance
+          )
+          varname_to_count_contribution_fn = count_contribution_registry_fn(
+              layer_instance, args, kwargs, num_microbatches
+          )
         registry_fn = layer_registry.lookup(layer_instance)
         (layer_vars, layer_outputs, layer_sqr_norm_fn) = registry_fn(
             layer_instance, args, kwargs, tape, num_microbatches
@@ -91,6 +111,7 @@ def get_registry_generator_fn(
             layer_id=str(id(layer_instance)),
             layer_vars=layer_vars,
             layer_sqr_norm_fn=layer_sqr_norm_fn,
+            varname_to_count_contribution_fn=varname_to_count_contribution_fn,
             layer_trainable_weights=layer_instance.trainable_weights,
         )
       else:

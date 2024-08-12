@@ -17,6 +17,8 @@ from typing import Any
 from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
+from tensorflow_privacy.privacy.fast_gradient_clipping import layer_registry as lr
+from tensorflow_privacy.privacy.sparsity_preserving_noise import layer_registry as snlr
 
 
 # ==============================================================================
@@ -173,6 +175,93 @@ class GenerateOutputsUsingCoreKerasLayers(
       self.assertTrue(
           isinstance(l, tf.keras.layers.Dense) or isinstance(l, TripleDense)
       )
+
+
+class RegistryGeneratorFnTest(tf.test.TestCase, parameterized.TestCase):
+
+  def _get_sparse_layer_registry(self):
+    def count_contribution_fn(_):
+      return None
+
+    def registry_fn(*_):
+      return {'var': count_contribution_fn}
+
+    registry = snlr.LayerRegistry()
+    registry.insert(tf.keras.layers.Embedding, registry_fn)
+    return registry, count_contribution_fn
+
+  def _get_layer_registry(self):
+    var = tf.Variable(1.0)
+    output = tf.ones((1, 1))
+
+    def sqr_norm_fn(_):
+      return None
+
+    def registry_fn(*_):
+      return [var], output, sqr_norm_fn
+
+    registry = lr.LayerRegistry()
+    registry.insert(tf.keras.layers.Embedding, registry_fn)
+    registry.insert(tf.keras.layers.Dense, registry_fn)
+    return registry, var, output, sqr_norm_fn
+
+  def test_registry_generator_fn(self):
+    inputs = tf.constant([[0, 1]])
+    model = tf.keras.Sequential([
+        tf.keras.layers.Embedding(10, 1),
+        tf.keras.layers.Dense(1),
+    ])
+
+    sparse_layer_registry, count_contribution_fn = (
+        self._get_sparse_layer_registry()
+    )
+    layer_registry, var, output, sqr_norm_fn = self._get_layer_registry()
+    registry_generator_fn = gradient_clipping_utils.get_registry_generator_fn(
+        tape=tf.GradientTape(),
+        layer_registry=layer_registry,
+        sparse_noise_layer_registry=sparse_layer_registry,
+        num_microbatches=None,
+    )
+    embedding_layer = model.layers[0]
+    out, embedding_registry_generator_fn_output = registry_generator_fn(
+        embedding_layer,
+        [inputs],
+        {},
+    )
+    expected_embedding_registry_generator_fn_output = (
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id=str(id(embedding_layer)),
+            layer_vars=[var],
+            layer_sqr_norm_fn=sqr_norm_fn,
+            varname_to_count_contribution_fn={'var': count_contribution_fn},
+            layer_trainable_weights=embedding_layer.trainable_weights,
+        )
+    )
+    self.assertEqual(
+        embedding_registry_generator_fn_output,
+        expected_embedding_registry_generator_fn_output,
+    )
+    self.assertEqual(out, output)
+    dense_layer = model.layers[1]
+    out, dense_registry_generator_fn_output = registry_generator_fn(
+        dense_layer,
+        [inputs],
+        {},
+    )
+    expected_dense_registry_generator_fn_output = (
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id=str(id(dense_layer)),
+            layer_vars=[var],
+            layer_sqr_norm_fn=sqr_norm_fn,
+            varname_to_count_contribution_fn=None,
+            layer_trainable_weights=dense_layer.trainable_weights,
+        )
+    )
+    self.assertEqual(
+        dense_registry_generator_fn_output,
+        expected_dense_registry_generator_fn_output,
+    )
+    self.assertEqual(out, output)
 
 
 if __name__ == '__main__':

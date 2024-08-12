@@ -132,6 +132,7 @@ def _run_model_forward_backward_pass(
   registry_generator_fn = gradient_clipping_utils.get_registry_generator_fn(
       tape=tape,
       layer_registry=layer_registry.make_default_layer_registry(),
+      sparse_noise_layer_registry=None,
       num_microbatches=None,
   )
   layer_grad_vars, registry_fn_outputs_list = (
