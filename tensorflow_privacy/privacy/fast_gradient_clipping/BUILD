@@ -84,6 +84,7 @@ py_library(
 py_library(
     name = "noise_utils",
     srcs = ["noise_utils.py"],
+    deps = ["//tensorflow_privacy/privacy/sparsity_preserving_noise:sparse_noise_utils"],
 )
 
 py_test(
