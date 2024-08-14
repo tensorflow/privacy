@@ -35,6 +35,7 @@ py_test(
 
 py_test(
     name = "dp_keras_model_distributed_test",
+    timeout = "long",
     srcs = ["dp_keras_model_distributed_test.py"],
     tags = [
         "manual",
