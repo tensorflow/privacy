@@ -17,6 +17,7 @@ from absl.testing import parameterized
 import numpy as np
 from scipy import stats
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.sparsity_preserving_noise import sparse_noise_utils
 
 
@@ -435,6 +436,96 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
     self.assertTrue(
         np.all(np.not_equal(noised_grad_valid_indices, grad.values.numpy()))
     )
+
+  def test_extract_varname_to_contribution_counts_fns(self):
+    def fn1(_):
+      return 1.0
+
+    def fn2(_):
+      return 2.0
+
+    var1 = tf.Variable(tf.ones((1, 2)), name='var1')
+    var2 = tf.Variable(tf.ones((1, 2)), name='var2')
+    var3 = tf.Variable(tf.ones((1, 2)), name='var3')
+
+    registry_fn_outputs_list = [
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id='layer1',
+            layer_vars=[var1],
+            layer_sqr_norm_fn=None,
+            layer_trainable_weights=[var1],
+            varname_to_count_contribution_fn=None,
+        ),
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id='layer2',
+            layer_vars=[var2],
+            layer_sqr_norm_fn=None,
+            layer_trainable_weights=[var2],
+            varname_to_count_contribution_fn={
+                'var2:0': [fn2],
+            },
+        ),
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id='layer3',
+            layer_vars=[var3],
+            layer_sqr_norm_fn=None,
+            layer_trainable_weights=[var3],
+            varname_to_count_contribution_fn={
+                'var3:0': [fn1],
+            },
+        ),
+    ]
+    expected_varname_to_contribution_counts_fns = {
+        'var2:0': [fn2],
+        'var3:0': [fn1],
+    }
+    varname_to_contribution_counts_fns = (
+        sparse_noise_utils.extract_varname_to_contribution_counts_fns(
+            registry_fn_outputs_list,
+            trainable_vars=None,
+        )
+    )
+    self.assertEqual(
+        varname_to_contribution_counts_fns,
+        expected_varname_to_contribution_counts_fns,
+    )
+
+  def test_extract_varname_to_contribution_counts_fns_duplicate_varnames(self):
+    def fn1(_):
+      return 1.0
+
+    def fn2(_):
+      return 2.0
+
+    var1 = tf.Variable(tf.ones((1, 2)), name='var1')
+    var2 = tf.Variable(tf.ones((1, 2)), name='var1')
+
+    registry_fn_outputs_list = [
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id='layer1',
+            layer_vars=[var1],
+            layer_sqr_norm_fn=None,
+            layer_trainable_weights=[var1],
+            varname_to_count_contribution_fn={
+                'var1:0': [fn1],
+            },
+        ),
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput(
+            layer_id='layer2',
+            layer_vars=[var2],
+            layer_sqr_norm_fn=None,
+            layer_trainable_weights=[var2],
+            varname_to_count_contribution_fn={
+                'var1:0': [fn2],
+            },
+        ),
+    ]
+
+    with self.assertRaises(ValueError):
+      sparse_noise_utils.extract_varname_to_contribution_counts_fns(
+          registry_fn_outputs_list,
+          trainable_vars=None,
+      )
 
 
 if __name__ == '__main__':

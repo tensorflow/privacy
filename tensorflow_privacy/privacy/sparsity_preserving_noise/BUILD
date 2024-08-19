@@ -5,12 +5,19 @@ licenses(["notice"])
 py_library(
     name = "sparse_noise_utils",
     srcs = ["sparse_noise_utils.py"],
+    deps = [
+        ":type_aliases",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:gradient_clipping_utils",
+    ],
 )
 
 py_test(
     name = "sparse_noise_utils_test",
     srcs = ["sparse_noise_utils_test.py"],
-    deps = [":sparse_noise_utils"],
+    deps = [
+        ":sparse_noise_utils",
+        "//tensorflow_privacy/privacy/fast_gradient_clipping:gradient_clipping_utils",
+    ],
 )
 
 py_library(

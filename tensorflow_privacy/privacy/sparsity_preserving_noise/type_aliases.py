@@ -22,7 +22,7 @@ InputKwargs = Mapping[str, Any]
 SparseGradient = tf.IndexedSlices
 ContributionCountHistogram = tf.SparseTensor
 ContributionCountHistogramFn = Callable[
-    [SparseGradient], Mapping[str, ContributionCountHistogram]
+    [SparseGradient], ContributionCountHistogram
 ]
 NumMicrobatches = int | tf.Tensor
 SparsityPreservingNoiseLayerRegistryFunction = Callable[

@@ -16,10 +16,13 @@
 For more details on the algorithm, refer to https://arxiv.org/abs/2311.08357.
 """
 
+import collections
 from typing import Mapping, Optional, Sequence
 
 from scipy import stats
 import tensorflow as tf
+from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
+from tensorflow_privacy.privacy.sparsity_preserving_noise import type_aliases
 import tensorflow_probability as tfp
 
 
@@ -288,15 +291,60 @@ def add_sparse_gradient_noise(
   )
 
 
+def extract_varname_to_contribution_counts_fns(
+    registry_fn_outputs_list: Sequence[
+        gradient_clipping_utils.RegistryGeneratorFunctionOutput
+    ],
+    trainable_vars: Sequence[tf.Variable],
+) -> Mapping[str, type_aliases.ContributionCountHistogramFn]:
+  """Extracts a map of contribution count fns from generator outputs.
+
+  Args:
+    registry_fn_outputs_list: A list of `RegistryGeneratorFunctionOutput`
+      instances returned by
+      `gradient_clipping_utils.model_forward_backward_pass`.
+    trainable_vars: A list of trainable variables.
+
+  Returns:
+    A `dict` from varname to contribution counts functions
+  """
+  if trainable_vars is not None:
+    # Create a set using `ref()` for fast set membership check. tf.Variable
+    # itself is not hashable.
+    trainable_vars = set([v.ref() for v in trainable_vars])
+
+  varname_to_contribution_counts_fns = collections.defaultdict(list)
+  for registry_fn_output in registry_fn_outputs_list:
+    if trainable_vars is None or any(
+        w.ref() in trainable_vars
+        for w in registry_fn_output.layer_trainable_weights
+    ):
+      if registry_fn_output.varname_to_count_contribution_fn is not None:
+        duplicate_varnames = set(
+            registry_fn_output.varname_to_count_contribution_fn.keys()
+        ) & set(varname_to_contribution_counts_fns.keys())
+        if duplicate_varnames:
+          raise ValueError(
+              'Duplicate varnames: {duplicate_varnames} found in contribution'
+              ' counts functions.'
+          )
+        varname_to_contribution_counts_fns.update(
+            registry_fn_output.varname_to_count_contribution_fn
+        )
+  return varname_to_contribution_counts_fns
+
+
 def get_contribution_counts(
-    trainable_vars: list[tf.Variable],
-    grads: list[tf.Tensor],
-    varname_to_contribution_counts_fns: Mapping[str, tf.SparseTensor],
-) -> list[tf.Tensor | None]:
+    trainable_vars: Sequence[tf.Variable],
+    grads: Sequence[tf.Tensor],
+    varname_to_contribution_counts_fns: Mapping[
+        str, type_aliases.ContributionCountHistogramFn
+    ],
+) -> Sequence[type_aliases.ContributionCountHistogram | None]:
   """Gets the contribution counts for each variable in the Model.
 
   Args:
-    trainable_vars: A list of the trainable variables in the Model.
+    trainable_vars: A list of trainable variables.
     grads: A corresponding list of gradients for each trainable variable.
     varname_to_contribution_counts_fns: A mapping from variable name to a list
       of functions to get the contribution counts for that variable.
