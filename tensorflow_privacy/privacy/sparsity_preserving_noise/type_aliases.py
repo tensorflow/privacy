@@ -19,7 +19,7 @@ import tensorflow as tf
 
 InputArgs = Sequence[Any]
 InputKwargs = Mapping[str, Any]
-SparseGradient = tf.IndexedSlices
+SparseGradient = tf.IndexedSlices | tf.SparseTensor
 ContributionCountHistogram = tf.SparseTensor
 ContributionCountHistogramFn = Callable[
     [SparseGradient], ContributionCountHistogram

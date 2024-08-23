@@ -369,7 +369,7 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
         tf.ones((1, 2)),
     ]
     varname_to_contribution_counts_fns = {
-        'var1:0': [lambda grad: 1.0],
+        'var1:0': lambda grad: 1.0,
         'var2:0': None,
     }
     contribution_counts = sparse_noise_utils.get_contribution_counts(

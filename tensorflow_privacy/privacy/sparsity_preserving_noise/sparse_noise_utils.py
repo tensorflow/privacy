@@ -166,7 +166,7 @@ def sample_true_positive_indices(
           tf.shape(contribution_count_values),
           mean=0.0,
           stddev=noise_multiplier,
-          dtype=tf.float32,
+          dtype=contribution_count_values.dtype,
       )
   )
   noised_contribution_counts_indices = contribution_counts.indices[
@@ -281,7 +281,7 @@ def add_sparse_gradient_noise(
   """
   filtered_grad_values = tf.gather(grad, indices)
   sparse_noise_values = tf.random.normal(
-      filtered_grad_values.shape, mean=0.0, stddev=noise_stddev
+      tf.shape(filtered_grad_values), mean=0.0, stddev=noise_stddev
   )
   filtered_noised_grad_values = filtered_grad_values + sparse_noise_values
   return tf.IndexedSlices(
@@ -362,15 +362,10 @@ def get_contribution_counts(
     if var.name not in varname_to_contribution_counts_fns:
       contribution_counts_list.append(None)
       continue
-    contribution_counts_fns = varname_to_contribution_counts_fns[var.name]
-    if not contribution_counts_fns or not contribution_counts_fns[0]:
+    contribution_counts_fn = varname_to_contribution_counts_fns[var.name]
+    if not contribution_counts_fn:
       contribution_counts_list.append(None)
       continue
-    if len(contribution_counts_fns) > 1:
-      raise NotImplementedError(
-          'Sparse noise is not supported for shared weight variables.'
-      )
-    contribution_counts_fn = contribution_counts_fns[0]
     contribution_counts = contribution_counts_fn(grad)
     contribution_counts_list.append(contribution_counts)
 

@@ -13,14 +13,35 @@
 # limitations under the License.
 """Keras Model for vectorized dpsgd with XLA acceleration."""
 
+import dataclasses
+
 from absl import logging
 import tensorflow as tf
 from tensorflow_privacy.privacy.fast_gradient_clipping import clip_grads
 from tensorflow_privacy.privacy.fast_gradient_clipping import common_manip_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import gradient_clipping_utils
 from tensorflow_privacy.privacy.fast_gradient_clipping import noise_utils
+from tensorflow_privacy.privacy.sparsity_preserving_noise import layer_registry as snlr
+from tensorflow_privacy.privacy.sparsity_preserving_noise import sparse_noise_utils
+
 
 _PRIVATIZED_LOSS_NAME = 'privatized_loss'
+
+
+@dataclasses.dataclass
+class SparsityPreservingDPSGDConfig:
+  """Config for adding sparsity preserving noise to the gradients."""
+
+  # The ratio of how the noise is split between partition selection and gradient
+  # noise.
+  sparse_selection_ratio: float = 0.0
+  # The threshold to use for private partition selection.
+  sparse_selection_threshold: int = 100
+  # A `LayerRegistry` instance containing functions that help compute
+  # contribution counts for sparse layers. See
+  # `tensorflow_privacy.privacy.sparsity_preserving_noise.layer_registry` for
+  # more details.
+  sparse_selection_layer_registry: snlr.LayerRegistry | None = None
 
 
 def make_dp_model_class(cls):
@@ -104,6 +125,9 @@ def make_dp_model_class(cls):
         num_microbatches=None,
         use_xla=True,
         layer_registry=None,
+        sparsity_preserving_dpsgd_config: (
+            SparsityPreservingDPSGDConfig | None
+        ) = None,
         *args,  # pylint: disable=keyword-arg-before-vararg, g-doc-args
         **kwargs,
     ):
@@ -118,6 +142,9 @@ def make_dp_model_class(cls):
           help compute gradient norms quickly. See
           `tensorflow_privacy.privacy.fast_gradient_clipping.layer_registry` for
           more details.
+        sparsity_preserving_dpsgd_config: If provided, uses partition selection
+          and sparse noise for privatizing sparse gradients for layers in
+          `sparsity_preserving_dpsgd_config.sparse_selection_layer_registry`.
         *args: These will be passed on to the base class `__init__` method.
         **kwargs: These will be passed on to the base class `__init__` method.
       """
@@ -126,6 +153,8 @@ def make_dp_model_class(cls):
       self._noise_multiplier = noise_multiplier
       self._layer_registry = layer_registry
       self._clipping_loss = None
+
+      self._sparsity_preserving_dpsgd_config = sparsity_preserving_dpsgd_config
 
       # Given that `num_microbatches` was added as an argument after the fact,
       # this check helps detect unintended calls to the earlier API.
@@ -276,11 +305,16 @@ def make_dp_model_class(cls):
         # microbatches is done here.
         tape = tf.GradientTape(persistent=True, watch_accessed_variables=False)
 
+        sparse_noise_layer_registry = None
+        if self._sparsity_preserving_dpsgd_config is not None:
+          sparse_noise_layer_registry = (
+              self._sparsity_preserving_dpsgd_config.sparse_selection_layer_registry
+          )
         registry_generator_fn = (
             gradient_clipping_utils.get_registry_generator_fn(
                 tape=tape,
                 layer_registry=self._layer_registry,
-                sparse_noise_layer_registry=None,
+                sparse_noise_layer_registry=sparse_noise_layer_registry,
                 num_microbatches=num_microbatches,
             )
         )
@@ -310,14 +344,53 @@ def make_dp_model_class(cls):
             )
         )
         output_metrics[_PRIVATIZED_LOSS_NAME] = clipping_loss
-        if self._noise_multiplier > 0:
+        noise_multiplier, noise_multiplier_sparse = self._noise_multiplier, None
+        contribution_counts = None
+        if self._sparsity_preserving_dpsgd_config is not None:
+          logging.info('Using sparse noise.')
+
+          varname_to_contribution_counts_fns = (
+              sparse_noise_utils.extract_varname_to_contribution_counts_fns(
+                  registry_fn_outputs_list,
+                  self.trainable_variables,
+              )
+          )
+          contribution_counts = sparse_noise_utils.get_contribution_counts(
+              self.trainable_variables,
+              clipped_grads,
+              varname_to_contribution_counts_fns,
+          )
+
+          noise_multiplier_sparse, noise_multiplier = (
+              sparse_noise_utils.split_noise_multiplier(
+                  noise_multiplier,
+                  self._sparsity_preserving_dpsgd_config.sparse_selection_ratio,
+                  contribution_counts,
+              )
+          )
+          logging.info(
+              'Split noise multiplier for gradient noise: %s and partition'
+              ' selection: %s',
+              noise_multiplier,
+              noise_multiplier_sparse,
+          )
+
+        if noise_multiplier > 0:
+          sparse_noise_config = None
+          if self._sparsity_preserving_dpsgd_config is not None:
+            sparse_noise_config = noise_utils.SparsityPreservingNoiseConfig(
+                sparse_noise_multiplier=noise_multiplier_sparse,
+                sparse_selection_threshold=self._sparsity_preserving_dpsgd_config.sparse_selection_threshold,
+                sparse_contribution_counts=contribution_counts,
+            )
           grads = noise_utils.add_aggregate_noise(
               clipped_grads,
               num_microbatches,
               self._l2_norm_clip,
-              self._noise_multiplier,
+              noise_multiplier,
               loss_reduction=None,
               loss_model=self,
+              sparse_noise_config=sparse_noise_config,
           )
         else:
           grads = clipped_grads

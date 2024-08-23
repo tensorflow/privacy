@@ -21,11 +21,11 @@ import tensorflow as tf
 # Tensorflow aliases.
 Tensor = Union[tf.Tensor, tf.IndexedSlices, tf.SparseTensor, tf.RaggedTensor]
 
-PackedTensors = Union[tf.Tensor, Iterable[tf.Tensor], Mapping[str, tf.Tensor]]
+PackedTensors = Union[Tensor, Iterable[Tensor], Mapping[str, Tensor]]
 
 InputTensors = PackedTensors
 
-OutputTensors = Union[tf.Tensor, Iterable[tf.Tensor]]
+OutputTensors = Union[Tensor, Iterable[Tensor]]
 
 BatchSize = Union[int, tf.Tensor]
 
