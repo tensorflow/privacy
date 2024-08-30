@@ -134,7 +134,7 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
     atol = 1e-1 if self.using_tpu else 1e-2
 
     # Each batched input is a reshape of a `tf.range()` call.
-    batch_size = 2
+    batch_size = 6
     example_size = np.prod(input_dims)
     example_values = tf.range(batch_size * example_size, dtype=tf.float32)
     x_batch = tf.reshape(example_values, [batch_size] + input_dims)
@@ -147,7 +147,9 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
       common_test_utils.assert_replica_values_are_close(self, true_norms)
       computed_norms = computed_norms.values[0]
       true_norms = true_norms.values[0]
-    self.assertEqual(tf.shape(computed_norms)[0], batch_size)
+    self.assertEqual(
+        tf.shape(computed_norms)[0], num_microbatches or batch_size
+    )
     self.assertAllClose(computed_norms, true_norms, rtol=rtol, atol=atol)
 
 
