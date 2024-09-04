@@ -37,7 +37,7 @@ setuptools.setup(
     install_requires=[
         'absl-py>=1.0,==1.*',
         'dm-tree==0.1.8',
-        'dp-accounting==0.4.4',
+        'dp-accounting==0.4.4',  # TODO(b/364653784)
         'numpy~=1.21',
         'packaging~=22.0',
         'scikit-learn>=1.0,==1.*',
