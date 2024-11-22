@@ -13,16 +13,16 @@
 # limitations under the License.
 """BoltOn Method for privacy."""
 
-from distutils import version
 import sys
 
+from packaging import version
 import tensorflow.compat.v1 as tf
 
-if version.LooseVersion(tf.__version__) < version.LooseVersion("2.0.0"):
+if version.Version(tf.__version__) < version.Version("2.0.0"):
   raise ImportError("Please upgrade your version "
                     "of tensorflow from: {0} to at least 2.0.0 to "
                     "use privacy/bolt_on".format(
-                        version.LooseVersion(tf.__version__)))
+                        version.Version(tf.__version__)))
 if hasattr(sys, "skip_tf_privacy_import"):  # Useful for standalone scripts.
   pass
 else:

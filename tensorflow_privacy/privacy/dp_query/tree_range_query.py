@@ -16,11 +16,11 @@
 'Offline' means all the leaf nodes are ready before the protocol starts.
 """
 
-import distutils
 import math
 from typing import Any, NamedTuple, Optional
 
 import dp_accounting
+import packaging
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import distributed_discrete_gaussian_query
 from tensorflow_privacy.privacy.dp_query import dp_query
@@ -270,8 +270,8 @@ class TreeRangeSumQuery(dp_query.SumAggregationDPQuery):
 
 def _get_add_noise(stddev, seed: Optional[int] = None):
   """Utility function to decide which `add_noise` to use according to tf version."""
-  if distutils.version.LooseVersion(
-      tf.__version__) < distutils.version.LooseVersion('2.0.0'):
+  if packaging.version.Version(
+      tf.__version__) < packaging.version.Version('2.0.0'):
 
     # The seed should be only used for testing purpose.
     if seed is not None:
