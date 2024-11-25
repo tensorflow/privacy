@@ -28,7 +28,7 @@ import tensorflow_probability as tfp
 
 def split_noise_multiplier(
     noise_multiplier: float,
-    sparse_selection_ratio: float,
+    sparse_selection_privacy_budget_fraction: float,
     sparse_selection_contribution_counts: Sequence[Optional[tf.SparseTensor]],
 ) -> tuple[float, float]:
   """Splits noise multiplier between partition selection and gradient noise.
@@ -40,8 +40,8 @@ def split_noise_multiplier(
 
   Args:
     noise_multiplier: The original noise multiplier.
-    sparse_selection_ratio: The ratio of partition selection noise and gradient
-      noise.
+    sparse_selection_privacy_budget_fraction: The fraction of privacy budget to
+      use for partition selection.
     sparse_selection_contribution_counts: The contribution counts for each
       sparse selection variable. If a sparse selection count is None, it will be
       ignored.
@@ -54,14 +54,22 @@ def split_noise_multiplier(
       sparse selection contribution counts is None, or if there are no sparse
       selection contribution counts.
   """
-  if sparse_selection_ratio <= 0.0 or sparse_selection_ratio >= 1.0:
-    raise ValueError('Sparse selection ratio must be between 0 and 1.')
+  if (
+      sparse_selection_privacy_budget_fraction <= 0.0
+      or sparse_selection_privacy_budget_fraction >= 1.0
+  ):
+    raise ValueError(
+        'Sparse selection privacy budget fraction must be between 0 and 1.'
+    )
   num_sparse_selections = sum(
       1 for c in sparse_selection_contribution_counts if c is not None
   )
   if num_sparse_selections == 0:
     raise ValueError('No sparse selections contribution counts found.')
 
+  sparse_selection_ratio = sparse_selection_privacy_budget_fraction / (
+      1.0 - sparse_selection_privacy_budget_fraction
+  )
   ratio = (1.0 + sparse_selection_ratio**2.0) ** 0.5
   total_noise_multiplier_sparse = noise_multiplier * ratio
   noise_multiplier_partition_selection = (

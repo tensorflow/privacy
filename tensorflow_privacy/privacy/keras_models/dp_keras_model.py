@@ -32,9 +32,8 @@ _PRIVATIZED_LOSS_NAME = 'privatized_loss'
 class SparsityPreservingDPSGDConfig:
   """Config for adding sparsity preserving noise to the gradients."""
 
-  # The ratio of how the noise is split between partition selection and gradient
-  # noise.
-  sparse_selection_ratio: float = 0.0
+  # The fraction of the privacy budget to use for partition selection.
+  sparse_selection_privacy_budget_fraction: float = 0.0
   # The threshold to use for private partition selection.
   sparse_selection_threshold: int = 100
   # A `LayerRegistry` instance containing functions that help compute
@@ -364,7 +363,7 @@ def make_dp_model_class(cls):
           noise_multiplier_sparse, noise_multiplier = (
               sparse_noise_utils.split_noise_multiplier(
                   noise_multiplier,
-                  self._sparsity_preserving_dpsgd_config.sparse_selection_ratio,
+                  self._sparsity_preserving_dpsgd_config.sparse_selection_privacy_budget_fraction,
                   contribution_counts,
               )
           )

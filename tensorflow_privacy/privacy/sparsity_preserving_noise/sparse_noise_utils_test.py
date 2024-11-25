@@ -27,7 +27,7 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
       dict(
           testcase_name='one_sparse_layer',
           noise_multiplier=1.0,
-          sparse_selection_ratio=0.8,
+          sparse_selection_privacy_budget_fraction=0.1,
           sparse_selection_contribution_counts=[
               tf.SparseTensor(
                   indices=[[0]],
@@ -39,7 +39,7 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
       dict(
           testcase_name='multiple_sparse_layer',
           noise_multiplier=1.0,
-          sparse_selection_ratio=0.1,
+          sparse_selection_privacy_budget_fraction=0.1,
           sparse_selection_contribution_counts=[
               tf.SparseTensor(
                   indices=[[0]],
@@ -62,29 +62,32 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
   def test_split_noise_multiplier(
       self,
       noise_multiplier,
-      sparse_selection_ratio,
+      sparse_selection_privacy_budget_fraction,
       sparse_selection_contribution_counts,
   ):
-    noise_multiplier_sparse, noise_multiplier_dense = (
+    sparse_selection_ratio = sparse_selection_privacy_budget_fraction / (
+        1.0 - sparse_selection_privacy_budget_fraction
+    )
+    noise_multiplier_partition_selection, noise_multiplier_dense = (
         sparse_noise_utils.split_noise_multiplier(
             noise_multiplier,
-            sparse_selection_ratio,
+            sparse_selection_privacy_budget_fraction,
             sparse_selection_contribution_counts,
         )
     )
     num_sparse_layers = len(sparse_selection_contribution_counts)
 
-    total_noise_multiplier_sparse = (
-        noise_multiplier_sparse / num_sparse_layers**0.5
+    total_noise_multiplier_partition_selection = (
+        noise_multiplier_partition_selection / num_sparse_layers**0.5
     )
     self.assertAlmostEqual(
-        total_noise_multiplier_sparse,
+        total_noise_multiplier_partition_selection,
         sparse_selection_ratio * noise_multiplier_dense,
     )
     total_noise_multiplier = (
         1.0
         / (
-            1.0 / total_noise_multiplier_sparse**2
+            1.0 / total_noise_multiplier_partition_selection**2
             + 1.0 / noise_multiplier_dense**2
         )
         ** 0.5
@@ -95,21 +98,21 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
       dict(
           testcase_name='no_sparse_layers',
           noise_multiplier=1.0,
-          sparse_selection_ratio=0.5,
+          sparse_selection_privacy_budget_fraction=0.5,
           sparse_selection_contribution_counts=[],
           error_message='No sparse selections contribution counts found.',
       ),
       dict(
           testcase_name='sparse_layers_none',
           noise_multiplier=1.0,
-          sparse_selection_ratio=0.5,
+          sparse_selection_privacy_budget_fraction=0.5,
           sparse_selection_contribution_counts=[None],
           error_message='No sparse selections contribution counts found.',
       ),
       dict(
           testcase_name='zero_ratio',
           noise_multiplier=1.0,
-          sparse_selection_ratio=0.0,
+          sparse_selection_privacy_budget_fraction=0.0,
           sparse_selection_contribution_counts=[
               tf.SparseTensor(
                   indices=[[0]],
@@ -117,12 +120,15 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
                   dense_shape=[3],
               )
           ],
-          error_message='Sparse selection ratio must be between 0 and 1.',
+          error_message=(
+              'Sparse selection privacy budget fraction must be between 0'
+              ' and 1.'
+          ),
       ),
       dict(
           testcase_name='one_ratio',
           noise_multiplier=1.0,
-          sparse_selection_ratio=1.0,
+          sparse_selection_privacy_budget_fraction=1.0,
           sparse_selection_contribution_counts=[
               tf.SparseTensor(
                   indices=[[0]],
@@ -130,20 +136,23 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
                   dense_shape=[3],
               )
           ],
-          error_message='Sparse selection ratio must be between 0 and 1.',
+          error_message=(
+              'Sparse selection privacy budget fraction must be between 0'
+              ' and 1.'
+          ),
       ),
   )
   def test_split_noise_multiplier_errors(
       self,
       noise_multiplier,
-      sparse_selection_ratio,
+      sparse_selection_privacy_budget_fraction,
       sparse_selection_contribution_counts,
       error_message,
   ):
     with self.assertRaisesRegex(ValueError, error_message):
       sparse_noise_utils.split_noise_multiplier(
           noise_multiplier,
-          sparse_selection_ratio,
+          sparse_selection_privacy_budget_fraction,
           sparse_selection_contribution_counts,
       )
 
