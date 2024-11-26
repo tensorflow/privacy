@@ -278,6 +278,7 @@ py_library(
         ":distributed_discrete_gaussian_query",
         ":dp_query",
         ":gaussian_query",
+        "//third_party/py/distutils",
     ],
 )
 
