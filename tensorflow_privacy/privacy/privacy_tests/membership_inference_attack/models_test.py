@@ -68,6 +68,16 @@ class TrainedAttackerTest(parameterized.TestCase):
         attack_input.is_multilabel_data(),
         msg='Expected multilabel check to pass.')
 
+  def test_create_attacker_data_loss_and_extra_features(self):
+    attack_input = AttackInputData(
+        loss_train=np.array([1, 3]),
+        loss_test=np.array([2, 4]),
+        extra_features_train=np.array([[2, 3], [4, 5]]),
+        extra_features_test=np.array([[3, 4], [5, 6]]),
+    )
+    attacker_data = models.create_attacker_data(attack_input, 2)
+    self.assertSequenceEqual(attacker_data.features_all.shape, [4, 3])
+
   def test_multilabel_create_attacker_data_logits_labels_sample_weights(self):
     attack_input = AttackInputData(
         logits_train=np.array([[1, 2], [5, 6], [8, 9]]),

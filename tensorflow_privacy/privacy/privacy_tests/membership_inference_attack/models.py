@@ -69,10 +69,16 @@ def create_attacker_data(attack_input_data: data_structures.AttackInputData,
   Returns:
     AttackerData.
   """
-  attack_input_train = _column_stack(attack_input_data.logits_or_probs_train,
-                                     attack_input_data.get_loss_train())
-  attack_input_test = _column_stack(attack_input_data.logits_or_probs_test,
-                                    attack_input_data.get_loss_test())
+  attack_input_train = _column_stack(
+      attack_input_data.logits_or_probs_train,
+      attack_input_data.get_loss_train(),
+      attack_input_data.extra_features_train,
+  )
+  attack_input_test = _column_stack(
+      attack_input_data.logits_or_probs_test,
+      attack_input_data.get_loss_test(),
+      attack_input_data.extra_features_test,
+  )
 
   ntrain, ntest = attack_input_train.shape[0], attack_input_test.shape[0]
   features_all = np.concatenate((attack_input_train, attack_input_test))
@@ -118,22 +124,32 @@ def _sample_multidimensional_array(array, size):
   return array[indices]
 
 
-def _column_stack(logits, loss):
-  """Stacks logits and losses.
+def _column_stack(logits, loss, extra_features):
+  """Stacks logits, losses, and extra features.
 
-  In case that only one exists, returns that one.
   Args:
     logits: logits array
     loss: loss array
+    extra_features: extra features array
 
   Returns:
-    stacked logits and losses (or only one if both do not exist).
+    stacked logits, losses, and extra features (of any that exists).
   """
-  if logits is None:
-    return np.expand_dims(loss, axis=-1)
-  if loss is None:
-    return logits
-  return np.column_stack((logits, loss))
+  columns = []
+  if logits is not None:
+    columns.append(logits)
+  if loss is not None:
+    if len(loss.shape) == 1:
+      loss = np.expand_dims(loss, axis=-1)
+    columns.append(loss)
+  if extra_features is not None:
+    columns.append(extra_features)
+
+  if not columns:
+    raise ValueError('logits, loss, and extra_features cannot all be None.')
+  if len(columns) == 1:
+    return columns[0]
+  return np.column_stack(columns)
 
 
 class TrainedAttacker(object):

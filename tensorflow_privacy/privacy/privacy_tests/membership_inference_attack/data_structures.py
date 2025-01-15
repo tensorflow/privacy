@@ -281,6 +281,14 @@ class AttackInputData:
   entropy_train: Optional[np.ndarray] = None
   entropy_test: Optional[np.ndarray] = None
 
+  # Extra features for the training and test sets. This may include metadata,
+  # additional losses, model outputs that are available to the adversary.
+  #
+  # These features will be used (in addition to logits/probabilities, losses)
+  # for trained attacks.
+  extra_features_train: Optional[np.ndarray] = None
+  extra_features_test: Optional[np.ndarray] = None
+
   # If loss is not explicitly specified, this function will be used to derive
   # loss from logits and labels. It can be a pre-defined `LossFunction` or its
   # string representation, or a callable.
