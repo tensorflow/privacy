@@ -14,8 +14,6 @@ py_test(
     name = "utils_test",
     timeout = "long",
     srcs = ["utils_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":utils"],
 )
 
@@ -28,7 +26,6 @@ py_test(
 py_library(
     name = "utils",
     srcs = ["utils.py"],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -39,5 +36,4 @@ py_library(
 py_library(
     name = "version",
     srcs = ["version.py"],
-    srcs_version = "PY3",
 )

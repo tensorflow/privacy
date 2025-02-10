@@ -14,7 +14,6 @@ py_library(
     srcs = [
         "head_utils.py",
     ],
-    srcs_version = "PY3",
     deps = [
         ":binary_class_head",
         ":multi_class_head",
@@ -26,7 +25,6 @@ py_library(
     srcs = [
         "binary_class_head.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -34,7 +32,6 @@ py_library(
     srcs = [
         "multi_class_head.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -42,7 +39,6 @@ py_library(
     srcs = [
         "multi_label_head.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -50,7 +46,6 @@ py_library(
     srcs = [
         "dnn.py",
     ],
-    srcs_version = "PY3",
     deps = [":head_utils"],
 )
 
@@ -59,15 +54,12 @@ py_library(
     srcs = [
         "test_utils.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "binary_class_head_test",
     timeout = "long",
     srcs = ["binary_class_head_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":binary_class_head",
         ":test_utils",
@@ -79,8 +71,6 @@ py_test(
     name = "multi_class_head_test",
     timeout = "long",
     srcs = ["multi_class_head_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":multi_class_head",
         ":test_utils",
@@ -92,8 +82,6 @@ py_test(
     name = "multi_label_head_test",
     timeout = "long",
     srcs = ["multi_label_head_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":multi_label_head",
         ":test_utils",
@@ -105,8 +93,6 @@ py_test(
     name = "dnn_test",
     timeout = "long",
     srcs = ["dnn_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":dnn",
         ":test_utils",

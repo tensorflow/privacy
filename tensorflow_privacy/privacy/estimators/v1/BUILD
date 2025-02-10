@@ -12,7 +12,6 @@ py_library(
     srcs = [
         "head.py",
     ],
-    srcs_version = "PY3",
 )
 
 py_library(
@@ -20,7 +19,6 @@ py_library(
     srcs = [
         "dnn.py",
     ],
-    srcs_version = "PY3",
     deps = [":head"],
 )
 
@@ -29,7 +27,6 @@ py_library(
     srcs = [
         "linear.py",
     ],
-    srcs_version = "PY3",
     deps = [":head"],
 )
 
@@ -37,8 +34,6 @@ py_test(
     name = "head_test",
     timeout = "long",
     srcs = ["head_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":head",
         "//tensorflow_privacy/privacy/estimators:test_utils",
@@ -50,8 +45,6 @@ py_test(
     name = "dnn_test",
     timeout = "long",
     srcs = ["dnn_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":dnn",
         "//tensorflow_privacy/privacy/estimators:test_utils",
@@ -63,8 +56,6 @@ py_test(
     name = "linear_test",
     timeout = "long",
     srcs = ["linear_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [
         ":linear",
         "//tensorflow_privacy/privacy/estimators:test_utils",

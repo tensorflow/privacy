@@ -12,7 +12,6 @@ py_library(
     srcs = [
         "dp_keras_model.py",
     ],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
@@ -26,9 +25,7 @@ py_library(
 py_test(
     name = "dp_keras_model_test",
     srcs = ["dp_keras_model_test.py"],
-    python_version = "PY3",
     shard_count = 16,
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
         "//tensorflow_privacy/privacy/keras_models:dp_keras_model",

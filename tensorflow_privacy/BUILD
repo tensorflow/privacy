@@ -13,7 +13,6 @@ exports_files([
 py_library(
     name = "tensorflow_privacy",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     deps = [
         ":version",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
@@ -52,7 +51,6 @@ build_test(
 py_library(
     name = "version",
     srcs = ["version.py"],
-    srcs_version = "PY3",
 )
 
 filegroup(

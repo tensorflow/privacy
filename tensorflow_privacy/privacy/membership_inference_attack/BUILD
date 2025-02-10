@@ -16,7 +16,6 @@ py_library(
 py_library(
     name = "plotting",
     srcs = ["plotting.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack:plotting",
     ],
@@ -32,7 +31,6 @@ py_library(
         "plotting.py",
         "seq2seq_mia.py",
     ],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack",
     ],

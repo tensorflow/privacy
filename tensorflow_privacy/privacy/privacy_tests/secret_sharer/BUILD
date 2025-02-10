@@ -10,21 +10,17 @@ py_library(
 py_library(
     name = "exposures",
     srcs = ["exposures.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "exposures_test",
     srcs = ["exposures_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":exposures"],
 )
 
 py_library(
     name = "generate_secrets",
     srcs = ["generate_secrets.py"],
-    srcs_version = "PY3",
 )
 
 py_test(

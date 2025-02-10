@@ -7,7 +7,6 @@ licenses(["notice"])
 py_library(
     name = "tensorflow_privacy_v1",
     srcs = ["__init__.py"],
-    srcs_version = "PY3",
     deps = [
         "//tensorflow_privacy/privacy/estimators/v1:dnn",
         "//tensorflow_privacy/privacy/optimizers:dp_optimizer",

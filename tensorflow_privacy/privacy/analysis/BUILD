@@ -10,14 +10,11 @@ py_library(
 py_library(
     name = "compute_dp_sgd_privacy_lib",
     srcs = ["compute_dp_sgd_privacy_lib.py"],
-    srcs_version = "PY3",
 )
 
 py_binary(
     name = "compute_dp_sgd_privacy",
     srcs = ["compute_dp_sgd_privacy.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":compute_dp_sgd_privacy_lib"],
 )
 
@@ -26,8 +23,6 @@ py_test(
     size = "small",
     timeout = "moderate",
     srcs = ["compute_dp_sgd_privacy_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":compute_dp_sgd_privacy_lib"],
 )
 
@@ -56,15 +51,12 @@ py_library(
 py_library(
     name = "tensor_buffer",
     srcs = ["tensor_buffer.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "tensor_buffer_eager_test",
     size = "small",
     srcs = ["tensor_buffer_eager_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":tensor_buffer"],
 )
 
@@ -72,21 +64,16 @@ py_test(
     name = "tensor_buffer_graph_test",
     size = "small",
     srcs = ["tensor_buffer_graph_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":tensor_buffer"],
 )
 
 py_library(
     name = "tree_aggregation_accountant",
     srcs = ["tree_aggregation_accountant.py"],
-    srcs_version = "PY3",
 )
 
 py_test(
     name = "tree_aggregation_accountant_test",
     srcs = ["tree_aggregation_accountant_test.py"],
-    python_version = "PY3",
-    srcs_version = "PY3",
     deps = [":tree_aggregation_accountant"],
 )
