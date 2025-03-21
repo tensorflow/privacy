@@ -32,7 +32,6 @@ py_test(
 py_library(
     name = "datasets",
     srcs = ["datasets.py"],
-    deps = ["//third_party/py/sklearn:v1_0_2"],
 )
 
 py_test(
