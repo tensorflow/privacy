@@ -268,7 +268,7 @@ class RandomForestAttacker(TrainedAttacker):
 
       param_grid = {
           'n_estimators': [100],
-          'max_features': ['auto', 'sqrt'],
+          'max_features': ['sqrt'],
           'max_depth': [5, 10, 20, None],
           'min_samples_split': [2, 5, 10],
           'min_samples_leaf': [1, 2, 4],
