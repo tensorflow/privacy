@@ -268,7 +268,7 @@ class RandomForestAttacker(TrainedAttacker):
 
       param_grid = {
           'n_estimators': [100],
-          'max_features': ['auto', 'sqrt'],
+          'max_features': ['sqrt'],
           'max_depth': [5, 10, 20, None],
           'min_samples_split': [2, 5, 10],
           'min_samples_leaf': [1, 2, 4],
@@ -286,14 +286,22 @@ class KNearestNeighborsAttacker(TrainedAttacker):
     super().__init__(backend=backend)
 
   def train_model(self, input_features, is_training_labels, sample_weight=None):
+    n_cv = 3
     del sample_weight  # K-NN attacker does not use sample weights.
     with self.ctx_mgr:
       knn_model = neighbors.KNeighborsClassifier(n_jobs=self.n_jobs)
       param_grid = {
-          'n_neighbors': [3, 5, 7],
+          'n_neighbors': [
+              k for k in [3, 5, 7] if k <= input_features.shape[0] // n_cv
+          ]
       }
       model = model_selection.GridSearchCV(
-          knn_model, param_grid=param_grid, cv=3, n_jobs=self.n_jobs, verbose=0)
+          knn_model,
+          param_grid=param_grid,
+          cv=n_cv,
+          n_jobs=self.n_jobs,
+          verbose=0,
+      )
       model.fit(input_features, is_training_labels)
     self.model = model
 
