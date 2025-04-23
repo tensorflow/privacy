@@ -11,8 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for sparse_noise_utils."""
-
 from absl.testing import parameterized
 import numpy as np
 from scipy import stats
@@ -209,6 +207,11 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
           prob=0.75,
           max_index=20,
       ),
+      dict(
+          testcase_name='max_index_20_prob_1e-10',
+          prob=1e-10,
+          max_index=20,
+      ),
   )
   def test_sample_false_positive_indices_random(self, max_index, prob):
     sampled_indices = sparse_noise_utils.sample_false_positive_indices(
@@ -216,8 +219,9 @@ class SparseNoiseUtilsTest(tf.test.TestCase, parameterized.TestCase):
     )
     sampled_indices = sampled_indices.numpy()
 
-    self.assertLessEqual(np.max(sampled_indices), max_index)
-    self.assertGreaterEqual(np.min(sampled_indices), 0)
+    if sampled_indices.size > 0:
+      self.assertLessEqual(np.max(sampled_indices), max_index)
+      self.assertGreaterEqual(np.min(sampled_indices), 0)
 
     self.assertGreater(
         stats.binomtest(k=len(sampled_indices), n=max_index, p=prob).pvalue,

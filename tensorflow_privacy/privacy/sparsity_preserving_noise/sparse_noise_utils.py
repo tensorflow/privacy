@@ -127,11 +127,29 @@ def sample_false_positive_indices(
 
   Returns:
     A tensor of sampled indices.
+
+  Raises:
+    InvalidArgumentError: If max_index is larger than 1 trillion.
   """
-  if probability <= 0.0:
+  max_index = tf.cast(max_index, tf.int64)
+  if max_index < 0:
     return tf.constant([], dtype=tf.int64)
 
-  sampled_indices = tf.TensorArray(tf.int32, size=0, dynamic_size=True)
+  # We don't support sampling indices larger than 1 trillion at the moment.
+  tf.assert_less(
+      max_index,
+      tf.cast(1e12, tf.int64),
+      'Sampling indices larger than 1 trillion is not supported. Please check'
+      ' value of max_index.',
+  )
+
+  expected_num_samples = tf.cast(max_index + 1, tf.float32) * probability
+  # If we expect to generate almost no samples, then we can return an empty
+  # tensor.
+  if expected_num_samples < 1e-15:
+    return tf.constant([], dtype=tf.int64)
+
+  sampled_indices = tf.TensorArray(tf.int64, size=0, dynamic_size=True)
 
   batch_size = batch_size or _sample_sparse_indices_batch_size_heuristic(
       max_index, probability
@@ -139,15 +157,19 @@ def sample_false_positive_indices(
 
   geom = tfp.distributions.geometric.Geometric(probs=probability)
 
-  i, current_max = tf.constant(0), tf.constant(-1)
+  i = tf.constant(0, dtype=tf.int32)
+  current_max = tf.constant(-1, dtype=tf.int64)
   while current_max < max_index:
-    sample = tf.cast(geom.sample(batch_size) + 1, tf.int32)
+    sample = tf.cast(geom.sample(batch_size) + 1, tf.int64)
     indices = current_max + tf.cumsum(sample)
-    current_max = indices[-1]
+    # We set any negative indices to int64.max as negatives only happen due to
+    # overflow.
+    indices = tf.where(indices < 0, tf.int64.max, indices)
+    current_max = tf.reduce_max(indices)
     sampled_indices = sampled_indices.write(i, indices)
     i += 1
 
-  indices = tf.cast(sampled_indices.concat(), tf.int32)
+  indices = sampled_indices.concat()
   indices = indices[indices <= max_index]
   return tf.cast(indices, tf.int64)
 
