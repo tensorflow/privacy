@@ -310,6 +310,7 @@ def make_sparse_keras_optimizer_class(cls):
         def increment_acc_iterations():
           # Always use locking when updating the steps, so we don't under-count
           # the steps (which could invalidate privacy accounting).
+          assert self._acc_iterations is not None
           return self._acc_iterations.assign_add(
               1, use_locking=True, read_value=False
           )

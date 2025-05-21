@@ -82,8 +82,9 @@ class SingleSliceSpec:
           f'Custom indices: train = {custom_train_indices}, '
           f'test = {custom_test_indices}, group_value = {slice_value}'
       )
-
-    return '%s=%s' % (self.feature.name, self.value)
+    feature = self.feature
+    assert feature is not None
+    return '%s=%s' % (feature.name, self.value)
 
 
 @dataclasses.dataclass
@@ -427,6 +428,11 @@ class AttackInputData:
       return self.loss_train.shape
     if self.entropy_train is not None:
       return self.entropy_train.shape
+    if self.logits_or_probs_train is None:
+      raise ValueError(
+          'logits_or_probs_train should not be None when loss and entropy are'
+          ' None.'
+      )
     return self.logits_or_probs_train.shape
 
   def get_test_shape(self):
@@ -435,6 +441,11 @@ class AttackInputData:
       return self.loss_test.shape
     if self.entropy_test is not None:
       return self.entropy_test.shape
+    if self.logits_or_probs_test is None:
+      raise ValueError(
+          'logits_or_probs_test should not be None when loss and entropy are'
+          ' None.'
+      )
     return self.logits_or_probs_test.shape
 
   def get_train_size(self):
@@ -1041,7 +1052,9 @@ class AttackResults:
       if slice_spec.entire_dataset:
         slice_feature, slice_value = str(slice_spec), ''
       else:
-        slice_feature, slice_value = slice_spec.feature.value, slice_spec.value
+        slice_spec_feature = slice_spec.feature
+        assert slice_spec_feature is not None
+        slice_feature, slice_value = slice_spec_feature.value, slice_spec.value
       slice_features.append(str(slice_feature))
       slice_values.append(str(slice_value))
       data_size_train.append(attack_result.data_size.ntrain)
@@ -1091,6 +1104,7 @@ class AttackResults:
 
     # Summary over all slices
     max_auc_result_all = self.get_result_with_max_auc()
+    assert max_auc_result_all is not None
     summary.append('Best-performing attacks over all slices')
     summary.append(
         '  %s (with %d training and %d test examples) achieved an AUC of %.2f'
@@ -1105,6 +1119,7 @@ class AttackResults:
     )
 
     max_advantage_result_all = self.get_result_with_max_attacker_advantage()
+    assert max_advantage_result_all is not None
     summary.append(
         '  %s (with %d training and %d test examples) achieved an advantage of'
         ' %.2f on slice %s'
@@ -1118,6 +1133,7 @@ class AttackResults:
     )
 
     max_ppv_result_all = self.get_result_with_max_ppv()
+    assert max_ppv_result_all is not None
     summary.append(
         '  %s (with %d training and %d test examples) achieved a positive '
         'predictive value of %.2f on slice %s' %
@@ -1126,6 +1142,7 @@ class AttackResults:
          max_ppv_result_all.slice_spec))
 
     max_epsilon_lower_bound_all = self.get_result_with_max_epsilon()
+    assert max_epsilon_lower_bound_all is not None
     summary.append(
         '  %s (with %d training and %d test examples) achieved top-%d epsilon '
         'lower bounds of %s on slice %s'
@@ -1149,6 +1166,7 @@ class AttackResults:
         summary.append('\nBest-performing attacks over slice: \"%s\"' %
                        slice_str)
         max_auc_result = results.get_result_with_max_auc()
+        assert max_auc_result is not None
         summary.append(
             '  %s (with %d training and %d test examples) achieved an AUC of'
             ' %.2f'
@@ -1160,6 +1178,7 @@ class AttackResults:
             )
         )
         max_advantage_result = results.get_result_with_max_attacker_advantage()
+        assert max_advantage_result is not None
         summary.append(
             '  %s (with %d training and %d test examples) achieved an advantage'
             ' of %.2f'
@@ -1171,12 +1190,14 @@ class AttackResults:
             )
         )
         max_ppv_result = results.get_result_with_max_ppv()
+        assert max_ppv_result is not None
         summary.append(
             '  %s (with %d training and %d test examples) achieved a positive '
             'predictive value of %.2f' %
             (max_ppv_result.attack_type, max_ppv_result.data_size.ntrain,
              max_ppv_result.data_size.ntest, max_ppv_result.get_ppv()))
         max_epsilon_lower_bound_all = results.get_result_with_max_epsilon()
+        assert max_epsilon_lower_bound_all is not None
         summary.append(
             '  %s (with %d training and %d test examples) achieved top-%d '
             'epsilon lower bounds of %s'
