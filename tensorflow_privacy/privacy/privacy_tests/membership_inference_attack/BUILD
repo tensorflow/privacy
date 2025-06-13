@@ -76,6 +76,7 @@ py_library(
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
         "//tensorflow_privacy/privacy/privacy_tests:utils",
+        "//third_party/py/joblib",
     ],
 )
 

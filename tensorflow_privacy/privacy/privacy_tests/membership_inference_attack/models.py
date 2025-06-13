@@ -17,14 +17,13 @@ import contextlib
 import dataclasses
 import logging
 from typing import Optional
+import joblib
 import numpy as np
 from sklearn import ensemble
 from sklearn import linear_model
 from sklearn import model_selection
 from sklearn import neighbors
 from sklearn import neural_network
-from sklearn.utils import parallel_backend
-
 from tensorflow_privacy.privacy.privacy_tests.membership_inference_attack import data_structures
 
 
@@ -176,11 +175,12 @@ class TrainedAttacker(object):
       logging.info('Using single-threaded backend for training.')
     else:
       self.n_jobs = -1
-      self.ctx_mgr = parallel_backend(
+      self.ctx_mgr = joblib.parallel_backend(
           # Values for 'backend': `loky`, `threading`, `multiprocessing`.
           # Can also use `dask`, `distributed`, `ray` if they are installed.
           backend=backend,
-          n_jobs=self.n_jobs)
+          n_jobs=self.n_jobs,
+      )
       logging.info('Using %s backend for training.', backend)
 
   def train_model(self, input_features, is_training_labels, sample_weight=None):
