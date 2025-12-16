@@ -43,13 +43,21 @@ def _get_tp_fp_for_thresholds(pos_scores: np.ndarray,
     A tuple as the true positives and false positives.
   """
   if thresholds is None:
-    # pylint:disable=protected-access
-    fp, tp, _ = sklearn.metrics._ranking._binary_clf_curve(
-        y_true=np.concatenate([
-            np.ones_like(pos_scores, dtype=int),
-            np.zeros_like(neg_scores, dtype=int)
-        ]),
-        y_score=np.concatenate([pos_scores, neg_scores]))
+    y_true = np.concatenate([
+        np.ones_like(pos_scores, dtype=int),
+        np.zeros_like(neg_scores, dtype=int),
+    ])
+    y_score = np.concatenate([pos_scores, neg_scores])
+    try:
+      # sklearn 1.8.0 or newer
+      _, fp, _, tp, _ = sklearn.metrics.confusion_matrix_at_thresholds(  # pytype:disable=module-attr
+          y_true=y_true, y_score=y_score
+      )
+    except AttributeError:
+      # sklearn 1.7.2 or older
+      fp, tp, _ = sklearn.metrics._ranking._binary_clf_curve(  # pylint:disable=protected-access  # pytype:disable=module-attr
+          y_true=y_true, y_score=y_score
+      )
     return tp, fp
 
   def get_cum_sum(scores, thresholds):
