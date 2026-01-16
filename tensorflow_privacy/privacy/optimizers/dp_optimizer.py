@@ -17,6 +17,8 @@ from absl import logging
 import tensorflow as tf
 from tensorflow_privacy.privacy.dp_query import gaussian_query
 
+# Add a random comment for no reason.
+
 
 def make_optimizer_class(cls):
   """Given a subclass of `tf.compat.v1.train.Optimizer`, returns a DP-SGD subclass of it.
