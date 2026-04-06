@@ -59,10 +59,12 @@ py_test(
     name = "dense_test",
     size = "large",
     srcs = ["dense_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 12,
     deps = [
         ":dense",
-        "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_test_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:layer_registry",
     ],
