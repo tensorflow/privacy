@@ -1,4 +1,7 @@
-package(default_visibility = ["//visibility:private"])
+package(
+    default_applicable_licenses = ["//third_party/py/tensorflow_privacy:license"],
+    default_visibility = ["//visibility:private"],
+)
 
 licenses(["notice"])
 
