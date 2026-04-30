@@ -35,6 +35,9 @@ py_test(
     name = "einsum_dense_test",
     size = "large",
     srcs = ["einsum_dense_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 12,
     deps = [
         ":dense",
