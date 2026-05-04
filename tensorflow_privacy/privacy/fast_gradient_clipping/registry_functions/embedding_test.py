@@ -151,5 +151,15 @@ class GradNormTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllClose(computed_norms, true_norms, rtol=1e-3, atol=1e-2)
 
 
+class GradNormTpuTest(GradNormTest):
+
+  def setUp(self):
+    tf.config.experimental.disable_mlir_bridge()
+    super().setUp()
+    self.strategy = common_test_utils.create_tpu_strategy()
+    self.assertIn('TPU', self.strategy.extended.worker_devices[0])
+    self.using_tpu = True
+
+
 if __name__ == '__main__':
   tf.test.main()

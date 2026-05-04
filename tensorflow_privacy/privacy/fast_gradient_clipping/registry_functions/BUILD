@@ -85,6 +85,9 @@ py_library(
 py_test(
     name = "embedding_test",
     srcs = ["embedding_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 12,
     deps = [
         ":dense",
@@ -107,6 +110,9 @@ py_library(
 py_test(
     name = "nlp_on_device_embedding_test",
     srcs = ["nlp_on_device_embedding_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 6,
     deps = [
         ":dense",
@@ -129,6 +135,9 @@ py_library(
 py_test(
     name = "nlp_position_embedding_test",
     srcs = ["nlp_position_embedding_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 6,
     deps = [
         ":dense",
@@ -151,6 +160,9 @@ py_library(
 py_test(
     name = "layer_normalization_test",
     srcs = ["layer_normalization_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 8,
     deps = [
         ":dense",
@@ -174,6 +186,9 @@ py_library(
 py_test(
     name = "multi_head_attention_test",
     srcs = ["multi_head_attention_test.py"],
+    env = {
+        "TESTBRIDGE_TEST_ONLY": "GradNormTest.",
+    },
     shard_count = 8,
     deps = [
         ":dense",
