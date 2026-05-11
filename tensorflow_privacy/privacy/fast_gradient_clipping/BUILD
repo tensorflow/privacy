@@ -1,3 +1,5 @@
+load("@rules_python//python:py_test.bzl", "py_test")
+
 package(
     default_applicable_licenses = ["//third_party/py/tensorflow_privacy:license"],
     default_visibility = ["//visibility:public"],
