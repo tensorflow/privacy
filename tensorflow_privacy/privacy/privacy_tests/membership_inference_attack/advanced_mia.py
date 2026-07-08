@@ -149,10 +149,10 @@ def compute_score_lira(stat_target: Union[np.ndarray, Sequence[float]],
     # standard deviation of statistics across shadow models and examples
     if option in ['in', 'both']:
       std_in = np.nanstd(
-          np.concatenate([l - m[np.newaxis] for l, m in zip(stat_in, avg_in)]))
+          np.concatenate([l - m[np.newaxis] for l, m in zip(stat_in, avg_in)]))  # pyrefly: ignore[unbound-name]
     if option in ['out', 'both']:
       std_out = np.nanstd(
-          np.concatenate([l - m[np.newaxis] for l, m in zip(stat_out, avg_out)
+          np.concatenate([l - m[np.newaxis] for l, m in zip(stat_out, avg_out)  # pyrefly: ignore[unbound-name]
                          ]))
   else:
     # standard deviation of statistics across shadow models
@@ -166,16 +166,16 @@ def compute_score_lira(stat_target: Union[np.ndarray, Sequence[float]],
 
   stat_target = np.array(stat_target)
   if option in ['in', 'both']:
-    log_pr_in = scipy.stats.norm.logpdf(stat_target, avg_in, std_in + 1e-30)
+    log_pr_in = scipy.stats.norm.logpdf(stat_target, avg_in, std_in + 1e-30)  # pyrefly: ignore[unbound-name]
   if option in ['out', 'both']:
-    log_pr_out = scipy.stats.norm.logpdf(stat_target, avg_out, std_out + 1e-30)
+    log_pr_out = scipy.stats.norm.logpdf(stat_target, avg_out, std_out + 1e-30)  # pyrefly: ignore[unbound-name]
 
   if option == 'both':
-    scores = -(log_pr_in - log_pr_out).mean(axis=1)
+    scores = -(log_pr_in - log_pr_out).mean(axis=1)  # pyrefly: ignore[unbound-name]
   elif option == 'in':
-    scores = -log_pr_in.mean(axis=1)
+    scores = -log_pr_in.mean(axis=1)  # pyrefly: ignore[unbound-name]
   else:
-    scores = log_pr_out.mean(axis=1)
+    scores = log_pr_out.mean(axis=1)  # pyrefly: ignore[unbound-name]
   return scores
 
 

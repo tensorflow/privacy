@@ -66,21 +66,21 @@ def nn_model_fn(features, labels, mode):
 
   # GMF part
   # Flatten the embedding vector as latent features in GMF
-  mf_user_latent = tf.keras.layers.Flatten()(mf_embedding_user(user_input))
-  mf_item_latent = tf.keras.layers.Flatten()(mf_embedding_item(item_input))
+  mf_user_latent = tf.keras.layers.Flatten()(mf_embedding_user(user_input))  # pyrefly: ignore[not-callable]
+  mf_item_latent = tf.keras.layers.Flatten()(mf_embedding_item(item_input))  # pyrefly: ignore[not-callable]
   # Element-wise multiply
   mf_vector = tf.keras.layers.multiply([mf_user_latent, mf_item_latent])
 
   # MLP part
   # Flatten the embedding vector as latent features in MLP
-  mlp_user_latent = tf.keras.layers.Flatten()(mlp_embedding_user(user_input))
-  mlp_item_latent = tf.keras.layers.Flatten()(mlp_embedding_item(item_input))
+  mlp_user_latent = tf.keras.layers.Flatten()(mlp_embedding_user(user_input))  # pyrefly: ignore[not-callable]
+  mlp_item_latent = tf.keras.layers.Flatten()(mlp_embedding_item(item_input))  # pyrefly: ignore[not-callable]
   # Concatenation of two latent features
   mlp_vector = tf.keras.layers.concatenate([mlp_user_latent, mlp_item_latent])
 
   predict_vector = tf.keras.layers.concatenate([mf_vector, mlp_vector])
 
-  logits = tf.keras.layers.Dense(5)(predict_vector)
+  logits = tf.keras.layers.Dense(5)(predict_vector)  # pyrefly: ignore[not-callable]
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(

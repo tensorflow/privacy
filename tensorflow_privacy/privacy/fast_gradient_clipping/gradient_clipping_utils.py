@@ -242,7 +242,7 @@ def model_forward_backward_pass(
   if trainable_vars is not None:
     # Create a set using `ref()` for fast set membership check. tf.Variable
     # itself is not hashable.
-    trainable_vars = set([v.ref() for v in trainable_vars])
+    trainable_vars = set([v.ref() for v in trainable_vars])  # pyrefly: ignore[bad-assignment]
   layer_vars = collections.defaultdict(list)
   for registry_fn_output in filtered_outputs:
     if trainable_vars is None or any(

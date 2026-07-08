@@ -183,7 +183,7 @@ def compute_dpsgd_noise_multiplier(num_train: int,
       make_event_from_param,
       epsilon,
       delta,
-      dp_accounting.LowerEndpointAndGuess(0, 1),
+      dp_accounting.LowerEndpointAndGuess(0, 1),  # pyrefly: ignore[bad-argument-count]
       tol=tolerance)
 
 

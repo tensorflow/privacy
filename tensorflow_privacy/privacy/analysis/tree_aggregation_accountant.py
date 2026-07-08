@@ -121,9 +121,9 @@ def compute_rdp_tree_restart(
         f"{steps_list}.")
 
   if np.isscalar(steps_list):
-    steps_list = [steps_list]
+    steps_list = [steps_list]  # pyrefly: ignore[bad-assignment]
 
-  for steps in steps_list:
+  for steps in steps_list:  # pyrefly: ignore[not-iterable]
     if steps < 0:
       raise ValueError(f"Steps must be non-negative, got {steps_list}")
 
@@ -132,7 +132,7 @@ def compute_rdp_tree_restart(
   else:
     rdp = np.array([
         _compute_rdp_tree_restart(noise_multiplier, steps_list, alpha)
-        for alpha in orders
+        for alpha in orders  # pyrefly: ignore[not-iterable]
     ])
 
   return rdp
@@ -317,11 +317,11 @@ def compute_rdp_single_tree(
       max_participation, min_separation, total_steps)
   if np.isscalar(orders):
     rdp = _compute_gaussian_rdp(noise_multiplier, sum_sensitivity_square,
-                                orders)
+                                orders)  # pyrefly: ignore[bad-argument-type]
   else:
     rdp = np.array([
         _compute_gaussian_rdp(noise_multiplier, sum_sensitivity_square, alpha)
-        for alpha in orders
+        for alpha in orders  # pyrefly: ignore[not-iterable]
     ])
   return rdp
 

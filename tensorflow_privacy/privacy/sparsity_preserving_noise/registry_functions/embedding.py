@@ -64,7 +64,7 @@ def embedding_layer_contribution_histogram(
           "The experimental embedding feature "
           "'_use_one_hot_matmul' is not supported."
       )
-  input_ids = tf.squeeze(tf.cast(*input_args, tf.int32))
+  input_ids = tf.squeeze(tf.cast(*input_args, tf.int32))  # pyrefly: ignore[bad-argument-count]
 
   def count_contributions_fn(
       grad: type_aliases.SparseGradient,

@@ -28,9 +28,9 @@ def get_cnn_model(features):
       32, 4, strides=2, padding='valid', activation='relu')(
           y)
   y = tf.keras.layers.MaxPool2D(2, 1)(y)
-  y = tf.keras.layers.Flatten()(y)
-  y = tf.keras.layers.Dense(32, activation='relu')(y)
-  logits = tf.keras.layers.Dense(10)(y)
+  y = tf.keras.layers.Flatten()(y)  # pyrefly: ignore[not-callable]
+  y = tf.keras.layers.Dense(32, activation='relu')(y)  # pyrefly: ignore[not-callable]
+  logits = tf.keras.layers.Dense(10)(y)  # pyrefly: ignore[not-callable]
 
   return logits
 
@@ -40,7 +40,7 @@ def make_input_fn(split, input_batch_size=256, repetitions=-1, tpu=False):
 
   def input_fn(params=None):
     """A simple input function."""
-    batch_size = params.get('batch_size', input_batch_size)
+    batch_size = params.get('batch_size', input_batch_size)  # pyrefly: ignore[missing-attribute]
 
     def parser(example):
       image, label = example['image'], example['label']

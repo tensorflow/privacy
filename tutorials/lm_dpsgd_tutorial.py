@@ -73,8 +73,8 @@ def rnn_model_fn(features, labels, mode):  # pylint: disable=unused-argument
   x = tf.reshape(x, [-1, SEQ_LEN])
   input_layer = x[:, :-1]
   input_one_hot = tf.one_hot(input_layer, 256)
-  lstm = tf.keras.layers.LSTM(256, return_sequences=True)(input_one_hot)
-  logits = tf.keras.layers.Dense(256)(lstm)
+  lstm = tf.keras.layers.LSTM(256, return_sequences=True)(input_one_hot)  # pyrefly: ignore[not-callable]
+  logits = tf.keras.layers.Dense(256)(lstm)  # pyrefly: ignore[not-callable]
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.softmax_cross_entropy_with_logits(
@@ -122,11 +122,11 @@ def load_data():
           'using a substitute dataset from the tensorflow_datasets module.')
     train_dataset = tfds.load(
         name='lm1b/subwords8k',
-        split=tfds.Split.TRAIN,
+        split=tfds.Split.TRAIN,  # pyrefly: ignore[missing-attribute]
         batch_size=NB_TRAIN,
         shuffle_files=True)
     test_dataset = tfds.load(
-        name='lm1b/subwords8k', split=tfds.Split.TEST, batch_size=10000)
+        name='lm1b/subwords8k', split=tfds.Split.TEST, batch_size=10000)  # pyrefly: ignore[missing-attribute]
     train_data = next(iter(tfds.as_numpy(train_dataset)))
     test_data = next(iter(tfds.as_numpy(test_dataset)))
     train_data = train_data['text'].flatten()

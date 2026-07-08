@@ -44,8 +44,8 @@ def nlp_position_embedding_layer_computation(
   del input_kwargs
   if len(input_args) != 1:
     raise ValueError("Only layer inputs of length 1 are permitted.")
-  input_ids = tf.cast(*input_args, tf.int32)
-  base_vars = layer_instance(input_ids)
+  input_ids = tf.cast(*input_args, tf.int32)  # pyrefly: ignore[bad-argument-count]
+  base_vars = layer_instance(input_ids)  # pyrefly: ignore[not-callable]
   tape.watch(base_vars)
 
   def sqr_norm_fn(grads):

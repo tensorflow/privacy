@@ -65,8 +65,8 @@ def plot_histograms(train: Iterable[float],
                     xlabel: Text = 'x',
                     thresh: Optional[float] = None) -> plt.Figure:
   """Plot histograms of training versus test metrics."""
-  xmin = min(np.min(train), np.min(test))
-  xmax = max(np.max(train), np.max(test))
+  xmin = min(np.min(train), np.min(test))  # pyrefly: ignore[no-matching-overload]
+  xmax = max(np.max(train), np.max(test))  # pyrefly: ignore[no-matching-overload]
   bins = np.linspace(xmin, xmax, 100)
   fig = plt.figure()
   plt.hist(test, bins=bins, density=True, alpha=0.5, label='test', log='y')

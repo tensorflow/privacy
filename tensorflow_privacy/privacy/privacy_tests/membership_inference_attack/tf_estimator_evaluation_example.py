@@ -44,9 +44,9 @@ def small_cnn_fn(features, labels, mode):
     y = tf.keras.layers.Conv2D(32, (3, 3), activation='relu')(input_layer)
     y = tf.keras.layers.MaxPool2D()(y)
 
-  y = tf.keras.layers.Flatten()(y)
-  y = tf.keras.layers.Dense(64, activation='relu')(y)
-  logits = tf.keras.layers.Dense(10)(y)
+  y = tf.keras.layers.Flatten()(y)  # pyrefly: ignore[not-callable]
+  y = tf.keras.layers.Dense(64, activation='relu')(y)  # pyrefly: ignore[not-callable]
+  logits = tf.keras.layers.Dense(10)(y)  # pyrefly: ignore[not-callable]
 
   if mode != tf_estimator.ModeKeys.PREDICT:
     vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -58,7 +58,7 @@ def small_cnn_fn(features, labels, mode):
     optimizer = tf.train.MomentumOptimizer(
         learning_rate=FLAGS.learning_rate, momentum=0.9)
     global_step = tf.compat.v1.train.get_global_step()
-    train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)
+    train_op = optimizer.minimize(loss=scalar_loss, global_step=global_step)  # pyrefly: ignore[unbound-name]
     return tf_estimator.EstimatorSpec(
         mode=mode, loss=scalar_loss, train_op=train_op)
 
@@ -70,7 +70,7 @@ def small_cnn_fn(features, labels, mode):
                 labels=labels, predictions=tf.argmax(input=logits, axis=1))
     }
     return tf_estimator.EstimatorSpec(
-        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)
+        mode=mode, loss=scalar_loss, eval_metric_ops=eval_metric_ops)  # pyrefly: ignore[unbound-name]
 
   # Output the prediction probability (for PREDICT mode).
   elif mode == tf_estimator.ModeKeys.PREDICT:

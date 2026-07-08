@@ -192,7 +192,7 @@ class TreeState(NamedTuple):
 def get_step_idx(state: TreeState) -> tf.Tensor:
   """Returns the current leaf node index based on `TreeState.level_buffer_idx`."""
   step_idx = tf.constant(-1, dtype=tf.int32)
-  for i in tf.range(len(state.level_buffer_idx)):
+  for i in tf.range(len(state.level_buffer_idx)):  # pyrefly: ignore[bad-argument-type]
     step_idx += tf.math.pow(2, state.level_buffer_idx[i])
   return step_idx
 
@@ -317,7 +317,7 @@ class TreeAggregator():
     # noise. To update the buffer, let us find the lowest level that will switch
     # from a right child (not in the buffer) to a left child.
     level_idx = 0  # new leaf node starts from level 0
-    while tf.less(level_idx, len(level_buffer_idx)) and tf.equal(
+    while tf.less(level_idx, len(level_buffer_idx)) and tf.equal(  # pyrefly: ignore[bad-argument-type]
         level_idx, level_buffer_idx[level_idx]):
       level_idx += 1
     # Left child nodes for the level lower than `level_idx` will be removed
@@ -334,7 +334,7 @@ class TreeAggregator():
     # i.e., `level_buffer_idx[level_idx] != level_idx`. Rename parameter to
     # buffer index for clarity.
     buffer_idx = level_idx
-    while tf.less(buffer_idx, len(level_buffer_idx)):
+    while tf.less(buffer_idx, len(level_buffer_idx)):  # pyrefly: ignore[bad-argument-type]
       new_level_buffer_idx = new_level_buffer_idx.write(
           write_buffer_idx, level_buffer_idx[buffer_idx])
       new_level_buffer = tf.nest.map_structure(
@@ -484,7 +484,7 @@ class EfficientTreeAggregator():
     level_idx = 0  # new leaf node starts from level 0
     new_value, value_generator_state = self.value_generator.next(
         value_generator_state)
-    while tf.less(level_idx, len(level_buffer_idx)) and tf.equal(
+    while tf.less(level_idx, len(level_buffer_idx)) and tf.equal(  # pyrefly: ignore[bad-argument-type]
         level_idx, level_buffer_idx[level_idx]):
       # Recursively update if the current node is a right child.
       node_value, value_generator_state = self.value_generator.next(
@@ -504,7 +504,7 @@ class EfficientTreeAggregator():
     # i.e., `level_buffer_idx[level_idx] != level_idx`. Rename parameter to
     # buffer index for clarity.
     buffer_idx = level_idx
-    while tf.less(buffer_idx, len(level_buffer_idx)):
+    while tf.less(buffer_idx, len(level_buffer_idx)):  # pyrefly: ignore[bad-argument-type]
       new_level_buffer_idx = new_level_buffer_idx.write(
           write_buffer_idx, level_buffer_idx[buffer_idx])
       new_level_buffer = tf.nest.map_structure(

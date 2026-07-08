@@ -116,9 +116,9 @@ def multi_head_attention_layer_computation(
     key = key.to_tensor(shape=bounding_shape)
     value = value.to_tensor(shape=bounding_shape)
   elif key_is_ragged:
-    key = key.to_tensor(shape=tf.shape(value))
+    key = key.to_tensor(shape=tf.shape(value))  # pyrefly: ignore[missing-attribute]
   elif value_is_ragged:
-    value = value.to_tensor(shape=tf.shape(key))
+    value = value.to_tensor(shape=tf.shape(key))  # pyrefly: ignore[missing-attribute]
   else:
     pass
   # ------------------------------

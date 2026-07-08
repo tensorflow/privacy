@@ -69,13 +69,13 @@ def main(_):
 
   # Create a dataset object and batch for the training data
   dataset = tf.data.Dataset.from_tensor_slices(
-      (tf.cast(train_images[..., tf.newaxis] / 255,
+      (tf.cast(train_images[..., tf.newaxis] / 255,  # pyrefly: ignore[bad-argument-type]
                tf.float32), tf.cast(train_labels, tf.int64)))
   dataset = dataset.shuffle(1000).batch(FLAGS.batch_size)
 
   # Create a dataset object and batch for the test data
   eval_dataset = tf.data.Dataset.from_tensor_slices(
-      (tf.cast(test_images[..., tf.newaxis] / 255,
+      (tf.cast(test_images[..., tf.newaxis] / 255,  # pyrefly: ignore[bad-argument-type]
                tf.float32), tf.cast(test_labels, tf.int64)))
   eval_dataset = eval_dataset.batch(10000)
 
@@ -133,7 +133,7 @@ def main(_):
     for (_, (images, labels)) in enumerate(eval_dataset.take(-1)):
       logits = mnist_model(images, training=False)
       correct_preds = tf.equal(tf.argmax(input=logits, axis=1), labels)
-    test_accuracy = np.mean(correct_preds.numpy())
+    test_accuracy = np.mean(correct_preds.numpy())  # pyrefly: ignore[unbound-name]
     print('Test accuracy after epoch %d is: %.3f' % (epoch, test_accuracy))
 
     # Compute the privacy budget expended so far.

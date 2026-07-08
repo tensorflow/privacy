@@ -203,7 +203,7 @@ def main(unused_argv):
   # Example of saving the results to the file and loading them back.
   with tempfile.TemporaryDirectory() as tmpdirname:
     filepath = os.path.join(tmpdirname, "results.pickle")
-    attack_results.save(filepath)
+    attack_results.save(filepath)  # pyrefly: ignore[unbound-name]
     loaded_results = data_structures.AttackResults.load(filepath)
     print(loaded_results.summary(by_slices=False))
 

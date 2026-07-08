@@ -277,9 +277,9 @@ def run_seq2seq_attack(attack_input: Seq2SeqAttackInputData,
   """
   attack_input.validate()
   attack_input_train, loss_train, accuracy_train = _get_attack_features_and_metadata(
-      attack_input.logits_train, attack_input.labels_train)
+      attack_input.logits_train, attack_input.labels_train)  # pyrefly: ignore[bad-argument-type]
   attack_input_test, loss_test, accuracy_test = _get_attack_features_and_metadata(
-      attack_input.logits_test, attack_input.labels_test)
+      attack_input.logits_test, attack_input.labels_test)  # pyrefly: ignore[bad-argument-type]
 
   privacy_report_metadata = privacy_report_metadata or PrivacyReportMetadata()
   privacy_report_metadata.loss_train = loss_train

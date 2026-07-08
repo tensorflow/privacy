@@ -223,9 +223,9 @@ def make_dp_model_class(cls):
           tf.keras.utils.unpack_x_y_sample_weight(microbatched_data)
       )
       with tf.GradientTape() as tape:
-        microbatched_y_pred = self(microbatched_x, training=True)
+        microbatched_y_pred = self(microbatched_x, training=True)  # pyrefly: ignore[not-callable]
         # NOTE: `self._clipping_loss` does not include any regularization terms.
-        microbatched_loss = self._clipping_loss(
+        microbatched_loss = self._clipping_loss(  # pyrefly: ignore[not-callable]
             microbatched_y,
             microbatched_y_pred,
             sample_weight=microbatched_weights,
@@ -410,7 +410,7 @@ def make_dp_model_class(cls):
             self._compute_per_example_grads,
             microbatched_data,
         )
-        y_pred = self(x, training=True)
+        y_pred = self(x, training=True)  # pyrefly: ignore[not-callable]
         grads = tf.nest.map_structure(
             self._reduce_per_example_grads, clipped_grads
         )

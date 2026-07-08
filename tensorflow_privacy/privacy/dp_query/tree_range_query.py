@@ -284,6 +284,6 @@ def _get_add_noise(stddev, seed: Optional[int] = None):
     random_normal = tf.random_normal_initializer(stddev=stddev, seed=seed)
 
     def add_noise(v):
-      return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
+      return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)  # pyrefly: ignore[not-callable]
 
   return add_noise

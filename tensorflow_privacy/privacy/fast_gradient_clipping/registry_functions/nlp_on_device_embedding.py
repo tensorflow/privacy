@@ -51,7 +51,7 @@ def nlp_on_device_embedding_layer_computation(
       )
   # NOTE: Since the implementation of `tfm.nlp.layers.OnDeviceEmbedding` uses
   # `.set_shape()`, we can assume that inputs are not ragged.
-  input_ids = tf.cast(*input_args, tf.int32)
+  input_ids = tf.cast(*input_args, tf.int32)  # pyrefly: ignore[bad-argument-count]
   if len(layer_instance.trainable_variables) != 1:
     raise ValueError(
         "Only layer instances with only one set of trainable variables"
@@ -59,7 +59,7 @@ def nlp_on_device_embedding_layer_computation(
     )
   base_vars = layer_instance.trainable_variables[0]
   tape.watch(base_vars)
-  outputs = layer_instance(input_ids)
+  outputs = layer_instance(input_ids)  # pyrefly: ignore[not-callable]
 
   def sqr_norm_fn(base_vars_grads: tf.IndexedSlices):
     return registry_function_utils.embedding_sqr_norm_fn(

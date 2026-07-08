@@ -34,7 +34,7 @@ def make_optimizer_class(cls):
   if has_compute_gradients:
     child_code = cls.compute_gradients.__code__
   GATE_OP = tf.compat.v1.train.Optimizer.GATE_OP  # pylint: disable=invalid-name
-  if has_compute_gradients and child_code is not parent_code:
+  if has_compute_gradients and child_code is not parent_code:  # pyrefly: ignore[unbound-name]
     logging.warning(
         'WARNING: Calling make_optimizer_class() on class %s that overrides '
         'method compute_gradients(). Check to ensure that '
@@ -278,7 +278,7 @@ def make_gaussian_optimizer_class(cls):
     A subclass of `cls` using DP-SGD with Gaussian averaging.
   """
 
-  class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=missing-class-docstring
+  class DPGaussianOptimizerClass(make_optimizer_class(cls)):  # pylint: disable=missing-class-docstring  # pyrefly: ignore[invalid-inheritance]
     __doc__ = ("""DP subclass of `{}`.
 
        You can use this as a differentially private replacement for

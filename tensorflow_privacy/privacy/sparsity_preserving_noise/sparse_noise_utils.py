@@ -98,7 +98,7 @@ def _sample_sparse_indices_batch_size_heuristic(
   Returns:
     The batch size to use for sampling.
   """
-  max_num_samples = tf.cast(max_index + 1, tf.float32)
+  max_num_samples = tf.cast(max_index + 1, tf.float32)  # pyrefly: ignore[unsupported-operation]
   expected_num_samples = max_num_samples * probability
   # For expected samples > 50, choosing a batch size of 1.2 * expected samples
   # will allow for sampling only once to get all indices >95% of the time.
@@ -151,7 +151,7 @@ def sample_false_positive_indices(
 
   sampled_indices = tf.TensorArray(tf.int64, size=0, dynamic_size=True)
 
-  batch_size = batch_size or _sample_sparse_indices_batch_size_heuristic(
+  batch_size = batch_size or _sample_sparse_indices_batch_size_heuristic(  # pyrefly: ignore[bad-assignment]
       max_index, probability
   )
 
@@ -341,7 +341,7 @@ def extract_varname_to_contribution_counts_fns(
   if trainable_vars is not None:
     # Create a set using `ref()` for fast set membership check. tf.Variable
     # itself is not hashable.
-    trainable_vars = set([v.ref() for v in trainable_vars])
+    trainable_vars = set([v.ref() for v in trainable_vars])  # pyrefly: ignore[bad-assignment]
 
   varname_to_contribution_counts_fns = collections.defaultdict(list)
   for registry_fn_output in registry_fn_outputs_list:

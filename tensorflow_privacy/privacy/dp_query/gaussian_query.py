@@ -88,7 +88,7 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
       random_normal = tf.random_normal_initializer(stddev=global_state.stddev)
 
       def add_noise(v):
-        return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)
+        return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)  # pyrefly: ignore[not-callable]
 
     result = tf.nest.map_structure(add_noise, sample_state)
     noise_multiplier = global_state.stddev / global_state.l2_norm_clip

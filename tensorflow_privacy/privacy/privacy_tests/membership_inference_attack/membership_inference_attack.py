@@ -119,7 +119,7 @@ def _run_trained_attack(
   # Predict the left out with the last attacker
   if left_out_indices.size:
     assert np.all(np.isnan(scores[left_out_indices]))
-    scores[left_out_indices] = attacker.predict(features[left_out_indices])
+    scores[left_out_indices] = attacker.predict(features[left_out_indices])  # pyrefly: ignore[unbound-name]
   assert not np.any(np.isnan(scores))
 
   # Generate ROC curves with scores.

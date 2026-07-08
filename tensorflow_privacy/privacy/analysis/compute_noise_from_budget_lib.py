@@ -47,7 +47,7 @@ def compute_noise(n, batch_size, target_epsilon, epochs, delta, noise_lbd):
 
   target_noise = dp_accounting.calibrate_dp_mechanism(
       make_accountant, make_event_from_noise, target_epsilon, delta,
-      dp_accounting.LowerEndpointAndGuess(noise_lbd, noise_lbd * 2))
+      dp_accounting.LowerEndpointAndGuess(noise_lbd, noise_lbd * 2))  # pyrefly: ignore[bad-argument-count]
 
   print(
       'DP-SGD with sampling rate = {:.3g}% and noise_multiplier = {} iterated'

@@ -77,9 +77,9 @@ def cnn_model_fn(features, labels, mode):
       32, 4, strides=2, padding='valid', activation='relu')(
           y)
   y = tf.keras.layers.MaxPool2D(2, 1)(y)
-  y = tf.keras.layers.Flatten()(y)
-  y = tf.keras.layers.Dense(32, activation='relu')(y)
-  logits = tf.keras.layers.Dense(10)(y)
+  y = tf.keras.layers.Flatten()(y)  # pyrefly: ignore[not-callable]
+  y = tf.keras.layers.Dense(32, activation='relu')(y)  # pyrefly: ignore[not-callable]
+  logits = tf.keras.layers.Dense(10)(y)  # pyrefly: ignore[not-callable]
 
   # Calculate loss as a vector (to support microbatches in DP-SGD).
   vector_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(

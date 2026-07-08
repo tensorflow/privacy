@@ -153,7 +153,7 @@ class EpsilonLowerBound:
   def compute_epsilon_lower_bound(self,
                                   method: BoundMethod,
                                   k: Optional[int] = None
-                                 ) -> npt.NDArray[float]:
+                                 ) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Computes lower bound w/ a specified method and returns top-k epsilons.
 
     Args:
@@ -175,7 +175,7 @@ class EpsilonLowerBound:
   def compute_epsilon_lower_bounds(
       self,
       methods: Optional[Iterable[BoundMethod]] = None,
-      k: Optional[int] = None) -> Dict[BoundMethod, npt.NDArray[float]]:
+      k: Optional[int] = None) -> Dict[BoundMethod, npt.NDArray[float]]:  # pyrefly: ignore[bad-specialization]
     """Computes lower bounds with all methods and returns the top-k epsilons.
 
     Args:
@@ -237,7 +237,8 @@ class RatioBound:
       self._is_scalar = True
     if isinstance(fp, numbers.Number):
       fp = [fp]
-    if len(tp) != len(fp):
+    if len(tp) != len(fp):  # pyrefly: ignore[bad-argument-type]
+      # pyrefly: ignore[bad-argument-type]
       raise ValueError('tp and fp should have the same number of elements, '
                        f'but get {len(tp)} and {len(fp)} respectively.')
     # Some methods need the original values.
@@ -276,7 +277,7 @@ class RatioBound:
     return tpr, fpr, fnr, tnr
 
   def compute_bound(self,
-                    method: BoundMethod) -> Union[float, npt.NDArray[float]]:
+                    method: BoundMethod) -> Union[float, npt.NDArray[float]]:  # pyrefly: ignore[bad-specialization]
     """Computes ratio bound using a specified method.
 
     Args:
@@ -295,7 +296,7 @@ class RatioBound:
   def compute_bounds(
       self,
       methods: Optional[Iterable[BoundMethod]] = None
-  ) -> Dict[BoundMethod, Union[float, npt.NDArray[float]]]:
+  ) -> Dict[BoundMethod, Union[float, npt.NDArray[float]]]:  # pyrefly: ignore[bad-specialization]
     """Computes ratio bounds for specified methods.
 
     Args:
@@ -310,7 +311,7 @@ class RatioBound:
         for method in methods or self.available_methods.keys()
     }
 
-  def _bound_katz_log(self) -> npt.NDArray[float]:
+  def _bound_katz_log(self) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Uses the logarithm Katz method to compute lower bound of ratio."""
     tp, fp = self._tp, np.where(self._idx_fp_0, 0.5, self._fp)
     tpr, fpr, fnr, tnr = self._get_statistics(tp, fp)
@@ -319,7 +320,7 @@ class RatioBound:
     return np.where(self._idx_tp_0, 0,
                     empirical_ratio * np.exp(self._z * sqrt_term))
 
-  def _bound_adjusted_log(self) -> npt.NDArray[float]:
+  def _bound_adjusted_log(self) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Uses the logarithm Walters method to compute lower bound of ratio."""
     log_empirical_ratio = (
         np.log((self._tp + 0.5) / (self._pos_size + 0.5)) - np.log(
@@ -330,7 +331,7 @@ class RatioBound:
         np.logical_and(self._idx_tp_0, self._idx_fp_0), 0,
         np.exp(log_empirical_ratio) * np.exp(self._z * sqrt_term))
 
-  def _bound_bailey(self) -> npt.NDArray[float]:
+  def _bound_bailey(self) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Uses the Bailey method to compute lower bound of ratio."""
     tp = np.where(self._tp_orig == self._pos_size, self._pos_size - 0.5,
                   self._tp_orig)
@@ -347,7 +348,7 @@ class RatioBound:
         self._idx_tp_0, 0,
         empirical_ratio * (power_3_term_numer / power_3_term_denom)**3)
 
-  def _bound_inv_hyperbolic_sine(self) -> npt.NDArray[float]:
+  def _bound_inv_hyperbolic_sine(self) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Uses the inverse sinh method to compute lower bound of ratio."""
     tp, fp = self._tp, np.where(self._idx_fp_0, self._z**2, self._fp)
     empirical_ratio = (tp / fp) / (self._pos_size / self._neg_size)
@@ -356,7 +357,7 @@ class RatioBound:
     return np.where(self._idx_tp_0, 0,
                     empirical_ratio * np.exp(2 * np.arcsinh(in_inve_sinh)))
 
-  def _bound_clopper_pearson(self) -> npt.NDArray[float]:
+  def _bound_clopper_pearson(self) -> npt.NDArray[float]:  # pyrefly: ignore[bad-specialization]
     """Uses the Clopper-Pearson method to compute lower bound of ratio."""
     # proportion_confint uses alpha / 2 budget on upper and lower, so total
     # budget will be 2 * alpha/2 = alpha.

@@ -73,7 +73,7 @@ class SingleSliceSpec:
       return 'Loss percentiles: %d-%d' % self.value
 
     if self.feature == SlicingFeature.CUSTOM:
-      custom_train_indices, custom_test_indices, slice_value, slice_name = (
+      custom_train_indices, custom_test_indices, slice_value, slice_name = (  # pyrefly: ignore[not-iterable]
           self.value
       )
       if slice_name is not None:
@@ -142,7 +142,8 @@ class SlicingSpec:
         self.all_custom_test_indices):
       raise ValueError('custom_train_indices and custom_test_indices must '
                        'be provided or set to None at the same time.')
-    if len(self.all_custom_train_indices) != len(self.all_custom_test_indices):
+    if len(self.all_custom_train_indices) != len(self.all_custom_test_indices):  # pyrefly: ignore[bad-argument-type]
+      # pyrefly: ignore[bad-argument-type]
       raise ValueError('all_custom_train_indices and all_custom_test_indices '
                        'should have the same length, but got'
                        f'{len(self.all_custom_train_indices)} and '
@@ -425,7 +426,7 @@ class AttackInputData:
                                 'applicable for multi-label data.')
     if self.entropy_train is not None:
       return self.entropy_train
-    return self._get_entropy(self.logits_train, self.labels_train)
+    return self._get_entropy(self.logits_train, self.labels_train)  # pyrefly: ignore[bad-argument-type]
 
   def get_entropy_test(self):
     """Calculates prediction entropy for the test set."""
@@ -435,7 +436,7 @@ class AttackInputData:
                                 'applicable for multi-label data.')
     if self.entropy_test is not None:
       return self.entropy_test
-    return self._get_entropy(self.logits_test, self.labels_test)
+    return self._get_entropy(self.logits_test, self.labels_test)  # pyrefly: ignore[bad-argument-type]
 
   def get_train_shape(self):
     """Returns the shape of the training set."""
@@ -1248,7 +1249,7 @@ class AttackResults:
       logging.info(('Suspiciously low AUC detected: %.2f. '
                     'There might be a bug in the classifier'), min(aucs))
 
-    return self.single_attack_results[np.argmax(aucs)]
+    return self.single_attack_results[np.argmax(aucs)]  # pyrefly: ignore[bad-index]
 
   def get_result_with_max_attacker_advantage(
       self,
@@ -1256,7 +1257,7 @@ class AttackResults:
     """Get the result with maximum advantage for all attacks and slices."""
     if not self.single_attack_results:
       return None
-    return self.single_attack_results[np.argmax([
+    return self.single_attack_results[np.argmax([  # pyrefly: ignore[bad-index]
         result.get_attacker_advantage() for result in self.single_attack_results
     ])]
 
@@ -1264,7 +1265,7 @@ class AttackResults:
     """Gets the result with max positive predictive value for all attacks and slices."""
     if not self.single_attack_results:
       return None
-    return self.single_attack_results[np.argmax(
+    return self.single_attack_results[np.argmax(  # pyrefly: ignore[bad-index]
         [result.get_ppv() for result in self.single_attack_results])]
 
   def get_result_with_max_epsilon(self) -> SingleAttackResult:
@@ -1273,7 +1274,7 @@ class AttackResults:
         result.get_epsilon_lower_bound().mean()
         for result in self.single_attack_results
     ]
-    return self.single_attack_results[np.argmax(avg_epsilon_bounds)]
+    return self.single_attack_results[np.argmax(avg_epsilon_bounds)]  # pyrefly: ignore[bad-index]
 
   def save(self, filepath):
     """Saves self to a pickle file."""

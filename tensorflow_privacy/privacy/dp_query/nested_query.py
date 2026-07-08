@@ -101,7 +101,7 @@ class NestedQuery(dp_query.DPQuery):
 
     return (tf.nest.pack_sequence_as(self._queries, flat_estimates),
             tf.nest.pack_sequence_as(self._queries, flat_new_global_states),
-            dp_accounting.ComposedDpEvent(events=flat_events))
+            dp_accounting.ComposedDpEvent(events=flat_events))  # pyrefly: ignore[bad-argument-type]
 
   def derive_metrics(self, global_state):
     """Implements `tensorflow_privacy.DPQuery.derive_metrics`."""

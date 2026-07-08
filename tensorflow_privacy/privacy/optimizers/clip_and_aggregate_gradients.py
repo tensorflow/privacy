@@ -73,7 +73,7 @@ def _batch_clip_by_global_norm(
         axis=0)
     return tf.reshape(e, new_shape)
 
-  return [
+  return [  # pyrefly: ignore[bad-return]
       v *
       _expand_dims(tf.cast(clip_ratio, v.dtype), v) if v is not None else None
       for v in vals
@@ -219,7 +219,7 @@ def clip_and_aggregate_gradients(
 
   if normalize or l2_norm_clip is not None:
     values, indices, dense_shape = zip(*grads)
-    values = _batch_clip_by_global_norm(values, normalize, l2_norm_clip)
+    values = _batch_clip_by_global_norm(values, normalize, l2_norm_clip)  # pyrefly: ignore[bad-argument-type]
     grads = zip(values, indices, dense_shape)
 
   new_output = []

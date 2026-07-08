@@ -82,7 +82,7 @@ def make_input_fn(features, labels, training, batch_size=16):
   def input_fn():
     """An input function for training or evaluating."""
     # Convert the inputs to a Dataset.
-    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))
+    dataset = tf.data.Dataset.from_tensor_slices((dict(features), labels))  # pyrefly: ignore[bad-argument-type]
 
     # Shuffle if in training mode.
     if training:
@@ -100,10 +100,10 @@ def make_model_fn(head, optimizer, feature_columns):
     feature_layer = tf.keras.layers.DenseFeatures(feature_columns)
     inputs = feature_layer(features)
     hidden_layer = tf.keras.layers.Dense(units=3, activation='relu')
-    hidden_layer_values = hidden_layer(inputs)
+    hidden_layer_values = hidden_layer(inputs)  # pyrefly: ignore[not-callable]
     logits_layer = tf.keras.layers.Dense(
         units=head.logits_dimension, activation=None)
-    logits = logits_layer(hidden_layer_values)
+    logits = logits_layer(hidden_layer_values)  # pyrefly: ignore[not-callable]
     return head.create_estimator_spec(
         features=features,
         labels=labels,

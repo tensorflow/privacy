@@ -63,7 +63,7 @@ def embedding_layer_computation(
           "The experimental embedding feature"
           "'_use_one_hot_matmul' is not supported."
       )
-  input_ids = tf.cast(*input_args, tf.int32)
+  input_ids = tf.cast(*input_args, tf.int32)  # pyrefly: ignore[bad-argument-count]
   if len(layer_instance.trainable_variables) != 1:
     raise ValueError(
         "Only layer instances with only one set of trainable variables"

@@ -69,7 +69,7 @@ def _compute_gradient_norms_internal(
   if trainable_vars is not None:
     # Create a set using `ref()` for fast set membership check. tf.Variable
     # itself is not hashable.
-    trainable_vars = set([v.ref() for v in trainable_vars])
+    trainable_vars = set([v.ref() for v in trainable_vars])  # pyrefly: ignore[bad-assignment]
 
   layer_sqr_norm_fns = collections.defaultdict(list)
   # The case of shared weights:
@@ -310,7 +310,7 @@ def compute_clipped_gradients_and_outputs(
     # (e.g. mean_squared_error and binary_crossentropy). However it
     # is not defined in the contract so may not hold, especially for
     # custom losses.
-    y_pred = input_model(x_batch, training=True)
+    y_pred = input_model(x_batch, training=True)  # pyrefly: ignore[not-callable]
     mb_y_batch = common_manip_utils.maybe_add_microbatch_axis(
         y_batch, num_microbatches
     )

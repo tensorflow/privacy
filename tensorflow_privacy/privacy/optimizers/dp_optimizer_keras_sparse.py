@@ -222,7 +222,7 @@ def make_sparse_keras_optimizer_class(cls):
       if self.gradient_accumulation_steps > 1:
         apply_update = tf.math.equal(
             tf.math.floormod(
-                self._acc_iterations + 1, self.gradient_accumulation_steps
+                self._acc_iterations + 1, self.gradient_accumulation_steps  # pyrefly: ignore[unsupported-operation]
             ),
             0,
         )

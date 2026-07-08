@@ -53,7 +53,7 @@ flags.DEFINE_float('data_l2_norm', 8, 'Bound on the L2 norm of normalized data')
 def lr_model_fn(features, labels, mode, nclasses, dim):
   """Model function for logistic regression."""
   input_layer = tf.reshape(features['x'], tuple([-1]) + dim)
-  logits = tf.keras.layers.Dense(
+  logits = tf.keras.layers.Dense(  # pyrefly: ignore[not-callable]
       units=nclasses,
       kernel_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer),
       bias_regularizer=tf.keras.regularizers.L2(l2=FLAGS.regularizer))(
@@ -165,10 +165,10 @@ def print_privacy_guarantees(epochs, batch_size, samples, noise_multiplier):
     # Using RDP accountant to compute eps. Doing computation analytically is
     # an option.
     rdp = [order * coef for order in orders]
-    eps, _ = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)
+    eps, _ = dp_accounting.rdp.compute_epsilon(orders, rdp, delta)  # pyrefly: ignore[bad-argument-type]
     print('\t{:g}% enjoy at least ({:.2f}, {})-DP'.format(p * 100, eps, delta))
 
-  accountant = dp_accounting.rdp.RdpAccountant(orders)
+  accountant = dp_accounting.rdp.RdpAccountant(orders)  # pyrefly: ignore[bad-argument-type]
   event = dp_accounting.SelfComposedDpEvent(
       dp_accounting.PoissonSampledDpEvent(
           batch_size / samples,

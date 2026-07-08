@@ -65,7 +65,7 @@ def log_loss(labels: np.ndarray,
   classes = np.unique(labels)
   if sample_weight is None:
     # If sample weights are not provided, set them to 1.0.
-    sample_weight = 1.0
+    sample_weight = 1.0  # pyrefly: ignore[bad-assignment]
   else:
     if np.shape(sample_weight)[0] != np.shape(labels)[0]:
       # Number of elements should be the same.
@@ -128,7 +128,7 @@ def squared_loss(y_true: np.ndarray,
                      'are %s and %s.' % (y_true.shape, y_pred.shape))
   if sample_weight is None:
     # If sample weights are not provided, set them to 1.0.
-    sample_weight = 1.0
+    sample_weight = 1.0  # pyrefly: ignore[bad-assignment]
   return sample_weight * (y_true - y_pred)**2
 
 
@@ -175,7 +175,7 @@ def multilabel_bce_loss(labels: np.ndarray,
                       '`from_logits` is set to False.'))
   if sample_weight is None:
     # If sample weights are not provided, set them to 1.0.
-    sample_weight = 1.0
+    sample_weight = 1.0  # pyrefly: ignore[bad-assignment]
   if isinstance(sample_weight, list):
     sample_weight = np.asarray(sample_weight)
   if isinstance(sample_weight, np.ndarray) and (sample_weight.ndim == 1):
@@ -245,15 +245,15 @@ def get_loss(
     loss_function = string_to_loss_function(loss_function)
   if loss_function == LossFunction.CROSS_ENTROPY:
     if multilabel_data:
-      loss = multilabel_bce_loss(labels, predictions, sample_weight,
+      loss = multilabel_bce_loss(labels, predictions, sample_weight,  # pyrefly: ignore[bad-argument-type]
                                  loss_function_using_logits)
     else:
-      loss = log_loss(labels, predictions, sample_weight,
+      loss = log_loss(labels, predictions, sample_weight,  # pyrefly: ignore[bad-argument-type]
                       loss_function_using_logits)
   elif loss_function == LossFunction.SQUARED:
-    loss = squared_loss(labels, predictions, sample_weight)
+    loss = squared_loss(labels, predictions, sample_weight)  # pyrefly: ignore[bad-argument-type]
   else:
-    loss = loss_function(labels, predictions, sample_weight)
+    loss = loss_function(labels, predictions, sample_weight)  # pyrefly: ignore[bad-argument-type]
   return loss
 
 

@@ -61,9 +61,9 @@ def test_loss_fn(
 ) -> tf.Tensor:
   # Define a loss function which is unlikely to be coincidently defined.
   if weights is None:
-    weights = 1.0
+    weights = 1.0  # pyrefly: ignore[bad-assignment]
   loss = 3.14 * tf.reduce_sum(
-      tf.cast(weights, tf.float32) * tf.square(x - y), axis=1
+      tf.cast(weights, tf.float32) * tf.square(x - y), axis=1  # pyrefly: ignore[unsupported-operation]
   )
   return loss
 
@@ -83,7 +83,7 @@ def compute_true_gradient_norms(
     loss_config['reduction'] = tf.keras.losses.Reduction.NONE
     per_example_loss_fn = input_model.loss.from_config(loss_config)
   with tf.GradientTape(persistent=True) as tape:
-    y_pred = input_model(x_batch)
+    y_pred = input_model(x_batch)  # pyrefly: ignore[not-callable]
     loss = per_example_loss_fn(y_batch, y_pred, weight_batch)
     if num_microbatches is not None:
       loss = tf.reduce_mean(
@@ -143,7 +143,7 @@ def get_computed_and_true_norms_from_model(
       trainable_vars = l.trainable_variables
       if trainable_vars:
         break
-  y_pred = model(x_batch)
+  y_pred = model(x_batch)  # pyrefly: ignore[not-callable]
   y_batch = tf.ones_like(y_pred)
   tf.keras.utils.set_random_seed(rng_seed)
   computed_norms = clip_grads.compute_gradient_norms(
@@ -266,7 +266,7 @@ def make_two_layer_functional_model(
   inputs = tf.keras.Input(shape=input_dims)
   layer1 = layer_generator(input_dims, output_dims)
   temp1 = layer1(inputs)
-  temp2 = tf.keras.layers.Dense(1)(temp1)
+  temp2 = tf.keras.layers.Dense(1)(temp1)  # pyrefly: ignore[not-callable]
   outputs = reshape_and_sum(temp2)
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
@@ -284,7 +284,7 @@ def make_two_tower_model(
   layer2 = layer_generator(input_dims, output_dims)
   temp2 = layer2(inputs2)
   temp3 = tf.add(temp1, temp2)
-  temp4 = tf.keras.layers.Dense(1)(temp3)
+  temp4 = tf.keras.layers.Dense(1)(temp3)  # pyrefly: ignore[not-callable]
   outputs = reshape_and_sum(temp4)
   return tf.keras.Model(inputs=[inputs1, inputs2], outputs=outputs)
 
@@ -336,7 +336,7 @@ def make_dense_bow_model(
   example_embs = tf.expand_dims(
       tf.reduce_sum(feature_embs, axis=reduction_axes), axis=-1
   )
-  outputs = tf.keras.layers.Dense(1)(example_embs)
+  outputs = tf.keras.layers.Dense(1)(example_embs)  # pyrefly: ignore[not-callable]
   return tf.keras.Model(inputs=inputs, outputs=outputs)
 
 
@@ -356,7 +356,7 @@ def make_weighted_bow_model(
     raise ValueError('Expected `output_dims` to be of size 1.')
   feature_embs = emb_layer(inputs)
   # Use deterministic weights to avoid seeding issues on TPUs.
-  feature_shape = input_dims + output_dims
+  feature_shape = input_dims + output_dims  # pyrefly: ignore[unsupported-operation]
   feature_weights = tf.expand_dims(
       tf.reshape(
           tf.range(np.prod(feature_shape), dtype=tf.float32),
@@ -373,5 +373,5 @@ def make_weighted_bow_model(
   example_embs = tf.expand_dims(
       tf.reduce_sum(weighted_embs, axis=reduction_axes), axis=-1
   )
-  outputs = tf.keras.layers.Dense(1)(example_embs)
+  outputs = tf.keras.layers.Dense(1)(example_embs)  # pyrefly: ignore[not-callable]
   return tf.keras.Model(inputs=inputs, outputs=outputs)

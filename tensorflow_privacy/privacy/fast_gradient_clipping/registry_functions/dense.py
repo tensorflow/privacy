@@ -68,7 +68,7 @@ def dense_layer_computation(
     raise ValueError("Only layer inputs of length 1 are permitted.")
   orig_activation = layer_instance.activation
   layer_instance.activation = None
-  base_vars = layer_instance(*input_args)
+  base_vars = layer_instance(*input_args)  # pyrefly: ignore[not-callable]
   tape.watch(base_vars)
   layer_instance.activation = orig_activation
   outputs = orig_activation(base_vars) if orig_activation else base_vars

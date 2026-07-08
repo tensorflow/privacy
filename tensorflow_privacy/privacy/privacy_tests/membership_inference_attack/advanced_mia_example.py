@@ -137,7 +137,7 @@ def main(unused_argv):
     in_indices.append(np.random.binomial(1, 0.5, n).astype(bool))
 
     model = small_cnn()
-    if _MODEL_DIR.value and os.path.exists(model_path):  # Load if exists
+    if _MODEL_DIR.value and os.path.exists(model_path):  # Load if exists  # pyrefly: ignore[unbound-name]
       model(x[:1])  # use this to make the `load_weights` work
       model.load_weights(model_path)
       print(f'Loaded model #{i} with {in_indices[-1].sum()} examples.')
