@@ -132,3 +132,7 @@ free to contact:
 ## Copyright
 
 Copyright 2019 - Google LLC
+
+---
+
+*[Mukller](https://github.com/Mukller)*
