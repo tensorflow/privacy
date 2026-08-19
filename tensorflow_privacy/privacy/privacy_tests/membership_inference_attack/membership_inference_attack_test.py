@@ -83,8 +83,9 @@ def get_multilabel_test_input_with_sample_weights(n_train, n_test):
       logits_test=rng.randn(n_test, num_classes) + 0.2,
       labels_train=get_multihot_labels_for_test(n_train, num_classes),
       labels_test=get_multihot_labels_for_test(n_test, num_classes),
-      sample_weight_train=rng.randn(n_train, 1),
-      sample_weight_test=rng.randn(n_test, 1))
+      sample_weight_train=rng.rand(n_train, 1),
+      sample_weight_test=rng.rand(n_test, 1),
+  )
 
 
 def get_test_input_logits_only(n_train, n_test):
@@ -101,8 +102,9 @@ def get_test_input_logits_only_with_sample_weights(n_train, n_test):
   return AttackInputData(
       logits_train=rng.randn(n_train, 5) + 0.2,
       logits_test=rng.randn(n_test, 5) + 0.2,
-      sample_weight_train=rng.randn(n_train, 1),
-      sample_weight_test=rng.randn(n_test, 1))
+      sample_weight_train=rng.rand(n_train, 1),
+      sample_weight_test=rng.rand(n_test, 1),
+  )
 
 
 class MockTrainedAttacker(object):
