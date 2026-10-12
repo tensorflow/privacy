@@ -50,12 +50,12 @@ def _get_tp_fp_for_thresholds(pos_scores: np.ndarray,
     y_score = np.concatenate([pos_scores, neg_scores])
     try:
       # sklearn 1.8.0 or newer
-      _, fp, _, tp, _ = sklearn.metrics.confusion_matrix_at_thresholds(  # pytype:disable=module-attr
+      _, fp, _, tp, _ = sklearn.metrics.confusion_matrix_at_thresholds(
           y_true=y_true, y_score=y_score
       )
     except AttributeError:
       # sklearn 1.7.2 or older
-      fp, tp, _ = sklearn.metrics._ranking._binary_clf_curve(  # pylint:disable=protected-access  # pytype:disable=module-attr
+      fp, tp, _ = sklearn.metrics._ranking._binary_clf_curve(  # pylint:disable=protected-access  # pyrefly: ignore[missing-attribute]
           y_true=y_true, y_score=y_score
       )
     return tp, fp

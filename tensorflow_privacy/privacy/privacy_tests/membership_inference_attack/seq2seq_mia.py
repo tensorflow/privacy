@@ -227,7 +227,7 @@ def _get_batch_loss_metrics(batch_logits: np.ndarray,
 
   if not tf.executing_eagerly():
     session = tf.compat.v1.Session()
-    batch_loss = batch_loss.eval(session)  # pytype: disable=attribute-error
+    batch_loss = batch_loss.eval(session)  # pyrefly: ignore[missing-attribute]
   return batch_loss / batch_length, batch_length
 
 
@@ -255,7 +255,7 @@ def _get_batch_accuracy_metrics(
 
   if not tf.executing_eagerly():
     session = tf.compat.v1.Session()
-    batch_correct_preds = batch_correct_preds.eval(session)  # pytype: disable=attribute-error
+    batch_correct_preds = batch_correct_preds.eval(session)  # pyrefly: ignore[missing-attribute]
   return batch_correct_preds, batch_total_preds
 
 
