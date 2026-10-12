@@ -56,6 +56,7 @@ py_test(
     name = "single_layer_softmax_test",
     size = "medium",
     srcs = ["single_layer_softmax_test.py"],
+    shard_count = 4,
     deps = [
         ":datasets",
         ":single_layer_softmax",
