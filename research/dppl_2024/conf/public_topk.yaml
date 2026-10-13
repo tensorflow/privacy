@@ -1,0 +1,10 @@
+defaults:
+  - common
+  - _self_
+
+dataset:
+  public_data: "embeddings/vit_h_14_imagenet64.npy"
+
+k: 5
+max_score: 1.65
+min_score: 1.35
