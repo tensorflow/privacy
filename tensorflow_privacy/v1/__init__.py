@@ -24,8 +24,18 @@ import sys
 if hasattr(sys, 'skip_tf_privacy_import'):  # Useful for standalone scripts.
   pass
 else:
-  # Estimators
-  from tensorflow_privacy.privacy.estimators.v1.dnn import DNNClassifier as DNNClassifierV1
+  # Estimators (optional / legacy TF1 compatibility, deprecated in TF 2.16+)
+  try:
+    from tensorflow_privacy.privacy.estimators.v1.dnn import DNNClassifier as DNNClassifierV1
+  except (ImportError, AttributeError):
+    class DNNClassifierV1:  # pylint: disable=invalid-name
+      """Stub for DNNClassifierV1 when tf-estimator is unavailable."""
+
+      def __init__(self, *args, **kwargs):
+        raise RuntimeError(
+            'DNNClassifierV1 requires tf-estimator, which is deprecated and '
+            'unavailable in TensorFlow 2.16+.'
+        )
 
   # Optimizers
   from tensorflow_privacy.privacy.optimizers.dp_optimizer import DPAdagradGaussianOptimizer
