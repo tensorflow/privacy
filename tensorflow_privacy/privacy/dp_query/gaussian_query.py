@@ -91,7 +91,15 @@ class GaussianSumQuery(dp_query.SumAggregationDPQuery):
         return v + tf.cast(random_normal(tf.shape(input=v)), dtype=v.dtype)  # pyrefly: ignore[not-callable]
 
     result = tf.nest.map_structure(add_noise, sample_state)
-    noise_multiplier = global_state.stddev / global_state.l2_norm_clip
+    if not tf.executing_eagerly():
+      # Cannot pass symbolic tensors to dp_accounting.GaussianDpEvent.
+      return result, global_state, dp_accounting.UnsupportedDpEvent()
+    l2_norm_clip = float(global_state.l2_norm_clip)
+    noise_multiplier = (
+        float('inf')
+        if l2_norm_clip == 0
+        else float(global_state.stddev) / l2_norm_clip
+    )
     event = dp_accounting.GaussianDpEvent(noise_multiplier)
 
     return result, global_state, event
