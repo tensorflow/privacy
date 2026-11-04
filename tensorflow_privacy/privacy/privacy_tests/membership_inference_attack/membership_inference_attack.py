@@ -406,16 +406,23 @@ def _compute_membership_probability(
   max_value = max(train_values.max(), test_values.max())
   bins_hist = np.logspace(
       np.log10(min_value), np.log10(max_value), num_bins + 1)
+  # 10**log10(x) can differ from x by a rounding error, so pin the outer bin
+  # edges to the extreme values. Otherwise the minimum value can fall outside
+  # the first bin and be assigned the last bin through index -1.
+  bins_hist[0] = min_value
+  bins_hist[-1] = max_value
 
   train_hist, _ = np.histogram(train_values, bins=bins_hist)
   train_hist = train_hist / (len(train_values) + 0.0)
-  train_hist_indices = np.fmin(
-      np.digitize(train_values, bins=bins_hist), num_bins) - 1
+  train_hist_indices = np.clip(
+      np.digitize(train_values, bins=bins_hist) - 1, 0, num_bins - 1
+  )
 
   test_hist, _ = np.histogram(test_values, bins=bins_hist)
   test_hist = test_hist / (len(test_values) + 0.0)
-  test_hist_indices = np.fmin(
-      np.digitize(test_values, bins=bins_hist), num_bins) - 1
+  test_hist_indices = np.clip(
+      np.digitize(test_values, bins=bins_hist) - 1, 0, num_bins - 1
+  )
 
   combined_hist = train_hist + test_hist
   combined_hist[combined_hist == 0] = small_value
