@@ -1077,6 +1077,70 @@ class AttackResultsTest(absltest.TestCase):
     self.assertIsNone(results.get_result_with_max_attacker_advantage())
     self.assertIsNone(results.get_result_with_max_auc())
     self.assertIsNone(results.get_result_with_max_ppv())
+    self.assertIsNone(results.get_result_with_max_epsilon())
+
+  def test_get_result_with_max_epsilon_ignores_empty_and_nan_bounds(self):
+    # compute_epsilon_lower_bound keeps only positive ratio bounds, so small
+    # or low-leakage slices produce empty bounds like this one.
+    empty_bounds_result = SingleAttackResult(
+        slice_spec=SingleSliceSpec(SlicingFeature.CLASS, 0),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        roc_curve=RocCurve(
+            tpr=np.array([0.0, 0.5, 1.0]),
+            fpr=np.array([0.0, 0.5, 1.0]),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0,
+        ),
+        epsilon_lower_bound_value=EpsilonLowerBoundValue(
+            bounds={elb.BoundMethod.CLOPPER_PEARSON: np.array([])}
+        ),
+        data_size=DataSize(ntrain=10, ntest=10),
+    )
+    # Synthetic, defensive case: the library itself does not emit NaN bounds.
+    nan_bounds_result = SingleAttackResult(
+        slice_spec=SingleSliceSpec(SlicingFeature.CLASS, 1),
+        attack_type=AttackType.THRESHOLD_ATTACK,
+        roc_curve=RocCurve(
+            tpr=np.array([0.0, 0.5, 1.0]),
+            fpr=np.array([0.0, 0.5, 1.0]),
+            thresholds=np.array([0, 1, 2]),
+            test_train_ratio=1.0,
+        ),
+        epsilon_lower_bound_value=EpsilonLowerBoundValue(
+            bounds={elb.BoundMethod.BAILEY: np.array([np.nan, 1.0])}
+        ),
+        data_size=DataSize(ntrain=10, ntest=10),
+    )
+
+    results_with_positive = AttackResults([
+        empty_bounds_result,
+        nan_bounds_result,
+        self.perfect_classifier_result,
+    ])
+    self.assertEqual(
+        results_with_positive.get_result_with_max_epsilon(),
+        self.perfect_classifier_result,
+    )
+    self.assertIn(
+        'achieved top-5 epsilon lower bounds of 3.2813, 3.2813 on slice'
+        ' CORRECTLY_CLASSIFIED=True',
+        results_with_positive.summary(by_slices=True),
+    )
+
+    # Negative finite epsilon lower bounds should still beat empty bounds.
+    results_with_negative = AttackResults(
+        [empty_bounds_result, self.random_classifier_result]
+    )
+    self.assertEqual(
+        results_with_negative.get_result_with_max_epsilon(),
+        self.random_classifier_result,
+    )
+
+    # All-empty bounds on non-empty AttackResults should not crash.
+    all_empty_results = AttackResults([empty_bounds_result])
+    self.assertEqual(
+        all_empty_results.get_result_with_max_epsilon(), empty_bounds_result
+    )
 
 
 if __name__ == '__main__':
