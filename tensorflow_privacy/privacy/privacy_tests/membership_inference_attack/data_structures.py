@@ -1268,11 +1268,20 @@ class AttackResults:
     return self.single_attack_results[np.argmax(  # pyrefly: ignore[bad-index]
         [result.get_ppv() for result in self.single_attack_results])]
 
-  def get_result_with_max_epsilon(self) -> SingleAttackResult:
+  def get_result_with_max_epsilon(self) -> Optional[SingleAttackResult]:
     """Gets the result with max averaged epsilon lower bound."""
+    if not self.single_attack_results:
+      return None
+
+    def _mean_epsilon_bound(result: SingleAttackResult) -> float:
+      bounds = result.get_epsilon_lower_bound()
+      if bounds.size == 0:
+        return -np.inf
+      mean_bound = float(bounds.mean())
+      return -np.inf if np.isnan(mean_bound) else mean_bound
+
     avg_epsilon_bounds = [
-        result.get_epsilon_lower_bound().mean()
-        for result in self.single_attack_results
+        _mean_epsilon_bound(result) for result in self.single_attack_results
     ]
     return self.single_attack_results[np.argmax(avg_epsilon_bounds)]  # pyrefly: ignore[bad-index]
 
