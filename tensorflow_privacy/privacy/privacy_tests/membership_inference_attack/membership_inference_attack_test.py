@@ -444,6 +444,31 @@ class RunAttacksTest(parameterized.TestCase):
     np.testing.assert_almost_equal(
         result.test_membership_probs, [0.5, 0.33, 0.33, 0, 0], decimal=2)
 
+  def test_compute_membership_probability_keeps_minimum_in_first_bin(self):
+    # 10**log10(0.003) rounds up, so the first logspace bin edge used to start
+    # just above the minimum loss. That loss was then dropped from the
+    # histogram and scored with the highest-loss bin through index -1.
+    result = mia._compute_membership_probability(
+        AttackInputData(
+            loss_train=np.array([0.003, 0.004, 0.005]),
+            loss_test=np.array([4.0, 5.0]),
+        )
+    )
+
+    np.testing.assert_almost_equal(result.train_membership_probs, [1, 1, 1])
+    np.testing.assert_almost_equal(result.test_membership_probs, [0, 0])
+
+  def test_compute_membership_probability_is_invariant_to_split_sizes(self):
+    # Train and test losses have the same distribution but the train split is
+    # four times larger, so every point should get a probability of 0.5.
+    losses = np.array([0.003, 0.02, 0.3, 4.0])
+    result = mia._compute_membership_probability(
+        AttackInputData(loss_train=np.tile(losses, 4), loss_test=losses)
+    )
+
+    np.testing.assert_almost_equal(result.train_membership_probs, 0.5)
+    np.testing.assert_almost_equal(result.test_membership_probs, 0.5)
+
   def test_run_attack_data_size(self):
     result = mia.run_attacks(
         get_test_input(100, 80), SlicingSpec(by_class=True),
