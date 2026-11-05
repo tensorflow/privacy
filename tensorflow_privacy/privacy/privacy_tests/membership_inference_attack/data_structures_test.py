@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import dataclasses
 import os
 import tempfile
 from unittest import mock
@@ -55,6 +56,46 @@ class SingleSliceSpecTest(parameterized.TestCase):
   )
   def testStr(self, feature, value, expected_str):
     self.assertEqual(str(SingleSliceSpec(feature, value)), expected_str)
+
+  @parameterized.parameters(int, bool)
+  def testStrLargeCustomIndicesDistinct(self, dtype):
+    # Two groupings that only differ in the middle are abbreviated by NumPy to
+    # the same head and tail elements.
+    n = 2000
+    train_a = np.zeros(n, dtype=dtype)
+    train_b = np.zeros(n, dtype=dtype)
+    train_a[n // 2] = 1
+    train_b[n // 2 + 1] = 1
+    test = np.zeros(n, dtype=dtype)
+    self.assertEqual(str(train_a), str(train_b))
+
+    str_a = str(
+        SingleSliceSpec(SlicingFeature.CUSTOM, (train_a, test, 1, None))
+    )
+    str_b = str(
+        SingleSliceSpec(SlicingFeature.CUSTOM, (train_b, test, 1, None))
+    )
+    self.assertNotEqual(str_a, str_b)
+    self.assertIn('sha256=', str_a)
+    self.assertLess(len(str_a), 400)
+    # The representation is deterministic.
+    self.assertEqual(
+        str_a,
+        str(
+            SingleSliceSpec(
+                SlicingFeature.CUSTOM, (train_a.copy(), test.copy(), 1, None)
+            )
+        ),
+    )
+
+  def testStrCustomIndicesBelowPrintThresholdUnchanged(self):
+    indices = np.zeros(1000, dtype=int)
+    self.assertEqual(
+        str(
+            SingleSliceSpec(SlicingFeature.CUSTOM, (indices, indices, 0, None))
+        ),
+        f'Custom indices: train = {indices}, test = {indices}, group_value = 0',
+    )
 
 
 class AttackInputDataTest(parameterized.TestCase):
@@ -982,6 +1023,24 @@ class AttackResultsTest(absltest.TestCase):
     self.assertEqual(
         results.get_result_with_max_epsilon(), self.perfect_classifier_result
     )
+
+  def test_summary_by_slices_large_custom_slices_not_merged(self):
+    n = 2000
+    train_a = np.zeros(n, dtype=int)
+    train_b = np.zeros(n, dtype=int)
+    train_a[n // 2] = 1
+    train_b[n // 2 + 1] = 1
+    test = np.zeros(n, dtype=int)
+    spec_a = SingleSliceSpec(SlicingFeature.CUSTOM, (train_a, test, 1, None))
+    spec_b = SingleSliceSpec(SlicingFeature.CUSTOM, (train_b, test, 1, None))
+    results = AttackResults([
+        dataclasses.replace(self.perfect_classifier_result, slice_spec=spec_a),
+        dataclasses.replace(self.random_classifier_result, slice_spec=spec_b),
+    ])
+    summary = results.summary(by_slices=True)
+    self.assertEqual(summary.count('Best-performing attacks over slice:'), 2)
+    self.assertIn(f'over slice: "{spec_a}"', summary)
+    self.assertIn(f'over slice: "{spec_b}"', summary)
 
   def test_summary_by_slices(self):
     results = AttackResults(

@@ -17,6 +17,7 @@ import collections
 import dataclasses
 import enum
 import glob
+import hashlib
 import logging
 import os
 import pickle
@@ -46,6 +47,37 @@ class SlicingFeature(enum.Enum):
   PERCENTILE = 'percentile'
   CORRECTLY_CLASSIFIED = 'correctly_classified'
   CUSTOM = 'custom'
+
+
+def _format_custom_indices(indices: Any) -> str:
+  """Formats custom slice indices for `SingleSliceSpec.__str__`.
+
+  NumPy abbreviates arrays larger than its print threshold to their first and
+  last elements, so distinct groupings can share the same string. For such
+  arrays, append the shape, dtype and a digest of the contents to keep the
+  string unique without printing every element.
+
+  Args:
+    indices: custom train or test indices of a slice.
+
+  Returns:
+    String representation of the indices.
+  """
+  if (
+      not isinstance(indices, np.ndarray)
+      or indices.size <= np.get_printoptions()['threshold']
+  ):
+    return f'{indices}'
+  hasher = hashlib.sha256()
+  hasher.update(f'{indices.dtype.str}{indices.shape}'.encode())
+  if indices.dtype.hasobject:
+    hasher.update(repr(indices.tolist()).encode())
+  else:
+    hasher.update(np.ascontiguousarray(indices).tobytes())
+  return (
+      f'{indices} (shape={indices.shape}, dtype={indices.dtype}, '
+      f'sha256={hasher.hexdigest()[:16]})'
+  )
 
 
 @dataclasses.dataclass
@@ -79,8 +111,10 @@ class SingleSliceSpec:
       if slice_name is not None:
         return f'Custom indices: slice_name = {slice_name}'
       return (
-          f'Custom indices: train = {custom_train_indices}, '
-          f'test = {custom_test_indices}, group_value = {slice_value}'
+          'Custom indices: train ='
+          f' {_format_custom_indices(custom_train_indices)}, test ='
+          f' {_format_custom_indices(custom_test_indices)}, group_value ='
+          f' {slice_value}'
       )
     feature = self.feature
     assert feature is not None
