@@ -268,6 +268,27 @@ class AttackInputDataTest(parameterized.TestCase):
     np.testing.assert_allclose(attack_input.get_loss_train(), expected)
     np.testing.assert_allclose(attack_input.get_loss_test(), expected)
 
+  @parameterized.named_parameters(
+      ('both', np.array([0, 0.0]), np.array([1, 1.0]), np.array([1, 0.0])),
+      ('only_logits', np.array([0, 0.0]), None, np.array([1, 0.0])),
+      ('only_probs', None, np.array([1, 1.0]), np.array([0, 1.0])),
+  )
+  def test_default_loss_function_using_logits_test_loss_first(
+      self, logits, probs, expected
+  ):
+    """Tests that calling get_loss_test() first also prefers logits."""
+    attack_input = AttackInputData(
+        logits_train=logits,
+        logits_test=logits,
+        probs_train=probs,
+        probs_test=probs,
+        labels_train=np.array([1, 0.0]),
+        labels_test=np.array([1, 0.0]),
+        loss_function=utils.LossFunction.SQUARED,
+    )
+    np.testing.assert_allclose(attack_input.get_loss_test(), expected)
+    np.testing.assert_allclose(attack_input.get_loss_train(), expected)
+
   @parameterized.parameters(
       (None, np.array([1.]), True),
       (np.array([1.]), None, False),

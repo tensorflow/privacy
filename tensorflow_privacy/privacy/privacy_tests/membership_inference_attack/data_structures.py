@@ -446,7 +446,7 @@ class AttackInputData:
       Loss (or None if neither the loss nor the labels are present).
     """
     if self.loss_function_using_logits is None:
-      self.loss_function_using_logits = bool(self.logits_test)
+      self.loss_function_using_logits = self.logits_test is not None
     return utils.get_loss(self.loss_test, self.labels_test, self.logits_test,
                           self.probs_test, self.loss_function,
                           self.loss_function_using_logits, self.multilabel_data,

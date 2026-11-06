@@ -49,6 +49,9 @@ def _slice_data_by_indices(
   result.labels_train = _slice_if_not_none(data.labels_train, idx_train)
   result.loss_train = _slice_if_not_none(data.loss_train, idx_train)
   result.entropy_train = _slice_if_not_none(data.entropy_train, idx_train)
+  result.extra_features_train = _slice_if_not_none(
+      data.extra_features_train, idx_train
+  )
   # Slice sample weights if provided.
   result.sample_weight_train = _slice_if_not_none(data.sample_weight_train,
                                                   idx_train)
@@ -59,9 +62,16 @@ def _slice_data_by_indices(
   result.labels_test = _slice_if_not_none(data.labels_test, idx_test)
   result.loss_test = _slice_if_not_none(data.loss_test, idx_test)
   result.entropy_test = _slice_if_not_none(data.entropy_test, idx_test)
+  result.extra_features_test = _slice_if_not_none(
+      data.extra_features_test, idx_test
+  )
   # Slice sample weights if provided.
   result.sample_weight_test = _slice_if_not_none(data.sample_weight_test,
                                                  idx_test)
+
+  # Preserve the loss configuration from the parent data.
+  result.loss_function = data.loss_function
+  result.loss_function_using_logits = data.loss_function_using_logits
 
   # A slice has the same multilabel status as the original data. This is because
   # of the way multilabel status is computed. A dataset is multilabel if at

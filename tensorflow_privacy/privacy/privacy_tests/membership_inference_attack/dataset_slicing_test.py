@@ -292,6 +292,35 @@ class GetSliceTest(parameterized.TestCase):
     self.assertLen(output.sample_weight_test, 1)
     np.testing.assert_array_equal(output.sample_weight_test, [0.5])
 
+  def test_slice_by_class_preserves_extra_features_and_loss_config(self):
+
+    def abs_loss(labels, predictions, sample_weight=None):
+      del sample_weight  # Unused.
+      return np.abs(labels - predictions)
+
+    input_data = AttackInputData(
+        logits_train=np.array([5.0, 6.0, 7.0, 8.0]),
+        logits_test=np.array([9.0, 10.0, 11.0]),
+        probs_train=np.array([0.9, 0.2, 0.4, 0.7]),
+        probs_test=np.array([0.1, 0.8, 0.3]),
+        labels_train=np.array([0, 1, 0, 1]),
+        labels_test=np.array([0, 1, 0]),
+        extra_features_train=np.array([[1.0], [2.0], [3.0], [4.0]]),
+        extra_features_test=np.array([[5.0], [6.0], [7.0]]),
+        loss_function=abs_loss,
+        loss_function_using_logits=False,
+    )
+    output = get_slice(input_data, SingleSliceSpec(SlicingFeature.CLASS, 0))
+
+    np.testing.assert_array_equal(output.extra_features_train, [[1.0], [3.0]])
+    np.testing.assert_array_equal(output.extra_features_test, [[5.0], [7.0]])
+    self.assertIs(output.loss_function, abs_loss)
+    self.assertIs(output.loss_function_using_logits, False)
+    # Losses on the slice must be derived from the probabilities with the
+    # configured loss, exactly as on the full dataset.
+    np.testing.assert_allclose(output.get_loss_train(), [0.9, 0.4])
+    np.testing.assert_allclose(output.get_loss_test(), [0.1, 0.3])
+
   def test_slice_by_percentile(self):
     percentile_slice = SingleSliceSpec(SlicingFeature.PERCENTILE, (0, 50))
     output = get_slice(self.input_data, percentile_slice)
