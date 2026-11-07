@@ -28,6 +28,7 @@ py_library(
     srcs = [
         "binary_class_head.py",
     ],
+    strict_deps = False,
 )
 
 py_library(
@@ -35,6 +36,7 @@ py_library(
     srcs = [
         "multi_class_head.py",
     ],
+    strict_deps = False,
 )
 
 py_library(
@@ -42,6 +44,7 @@ py_library(
     srcs = [
         "multi_label_head.py",
     ],
+    strict_deps = False,
 )
 
 py_library(
