@@ -1,0 +1,9 @@
+seed: 42
+dataset:
+  train_data: "embeddings/vit_h_14_cifar100_train.npy"
+  train_labels: "embeddings/vit_h_14_cifar100_train_targets.npy"
+  test_data: "embeddings/vit_h_14_cifar100_test.npy"
+  test_labels: "embeddings/vit_h_14_cifar100_test_targets.npy"
+
+imbalance_ratio: 1
+epsilon: 0.5
