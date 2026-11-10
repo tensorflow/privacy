@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "privacy_tests",
     srcs = ["__init__.py"],
+    type_checking = True,
     deps = [
         ":version",
     ],
@@ -30,14 +32,17 @@ py_test(
 py_library(
     name = "utils",
     srcs = ["utils.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "epsilon_lower_bound",
     srcs = ["epsilon_lower_bound.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "version",
     srcs = ["version.py"],
+    type_checking = True,
 )

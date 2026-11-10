@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "v1",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
@@ -16,6 +18,7 @@ py_library(
     srcs = [
         "head.py",
     ],
+    type_checking = True,
 )
 
 py_library(
@@ -23,6 +26,7 @@ py_library(
     srcs = [
         "dnn.py",
     ],
+    type_checking = True,
     deps = [":head"],
 )
 
@@ -31,6 +35,7 @@ py_library(
     srcs = [
         "linear.py",
     ],
+    type_checking = True,
     deps = [":head"],
 )
 

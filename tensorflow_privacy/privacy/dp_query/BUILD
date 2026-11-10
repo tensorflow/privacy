@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,11 +10,13 @@ licenses(["notice"])
 py_library(
     name = "__init__",  # There is already a dp_query.
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "dp_query",
     srcs = ["dp_query.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -25,6 +28,7 @@ py_test(
 py_library(
     name = "discrete_gaussian_utils",
     srcs = ["discrete_gaussian_utils.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -36,6 +40,7 @@ py_test(
 py_library(
     name = "discrete_gaussian_query",
     srcs = ["discrete_gaussian_query.py"],
+    type_checking = True,
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
@@ -55,6 +60,7 @@ py_test(
 py_library(
     name = "distributed_discrete_gaussian_query",
     srcs = ["distributed_discrete_gaussian_query.py"],
+    type_checking = True,
     deps = [
         ":discrete_gaussian_utils",
         ":dp_query",
@@ -74,6 +80,7 @@ py_test(
 py_library(
     name = "distributed_skellam_query",
     srcs = ["distributed_skellam_query.py"],
+    type_checking = True,
     deps = [
         ":dp_query",
         ":normalized_query",
@@ -92,6 +99,7 @@ py_test(
 py_library(
     name = "gaussian_query",
     srcs = ["gaussian_query.py"],
+    type_checking = True,
     deps = [":dp_query"],
 )
 
@@ -108,6 +116,7 @@ py_test(
 py_library(
     name = "no_privacy_query",
     srcs = ["no_privacy_query.py"],
+    type_checking = True,
     deps = [":dp_query"],
 )
 
@@ -124,6 +133,7 @@ py_test(
 py_library(
     name = "normalized_query",
     srcs = ["normalized_query.py"],
+    type_checking = True,
     deps = [":dp_query"],
 )
 
@@ -141,6 +151,7 @@ py_test(
 py_library(
     name = "nested_query",
     srcs = ["nested_query.py"],
+    type_checking = True,
     deps = [":dp_query"],
 )
 
@@ -160,6 +171,7 @@ py_test(
 py_library(
     name = "quantile_adaptive_clip_sum_query",
     srcs = ["quantile_adaptive_clip_sum_query.py"],
+    type_checking = True,
     deps = [
         ":dp_query",
         ":gaussian_query",
@@ -179,6 +191,7 @@ py_test(
 py_library(
     name = "quantile_estimator_query",
     srcs = ["quantile_estimator_query.py"],
+    type_checking = True,
     deps = [
         ":dp_query",
         ":gaussian_query",
@@ -200,11 +213,13 @@ py_test(
 py_library(
     name = "test_utils",
     srcs = ["test_utils.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "tree_aggregation",
     srcs = ["tree_aggregation.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -228,6 +243,7 @@ py_test(
 py_library(
     name = "tree_aggregation_query",
     srcs = ["tree_aggregation_query.py"],
+    type_checking = True,
     deps = [
         ":dp_query",
         ":tree_aggregation",
@@ -237,6 +253,7 @@ py_library(
 py_library(
     name = "tree_range_query",
     srcs = ["tree_range_query.py"],
+    type_checking = True,
     deps = [
         ":distributed_discrete_gaussian_query",
         ":dp_query",
@@ -262,12 +279,14 @@ py_test(
 py_library(
     name = "restart_query",
     srcs = ["restart_query.py"],
+    type_checking = True,
     deps = [":dp_query"],
 )
 
 py_library(
     name = "quantile_adaptive_clip_tree_query",
     srcs = ["quantile_adaptive_clip_tree_query.py"],
+    type_checking = True,
     deps = [
         ":dp_query",
         ":quantile_estimator_query",

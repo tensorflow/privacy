@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "embedding",
     srcs = ["embedding.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/sparsity_preserving_noise:type_aliases"],
 )
 

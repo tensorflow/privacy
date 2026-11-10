@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -10,6 +11,7 @@ licenses(["notice"])
 py_library(
     name = "keras_models",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
@@ -17,6 +19,7 @@ py_library(
     srcs = [
         "dp_keras_model.py",
     ],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:clip_grads",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",

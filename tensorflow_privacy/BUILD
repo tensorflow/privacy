@@ -1,4 +1,5 @@
 load("@bazel_skylib//rules:build_test.bzl", "build_test")
+load("@rules_python//python:py_library.bzl", "py_library")
 
 package(
     default_visibility = ["//visibility:public"],
@@ -13,6 +14,7 @@ exports_files([
 py_library(
     name = "tensorflow_privacy",
     srcs = ["__init__.py"],
+    type_checking = True,
     deps = [
         ":version",
         "//tensorflow_privacy/privacy/analysis:compute_dp_sgd_privacy_lib",
@@ -51,6 +53,7 @@ build_test(
 py_library(
     name = "version",
     srcs = ["version.py"],
+    type_checking = True,
 )
 
 filegroup(

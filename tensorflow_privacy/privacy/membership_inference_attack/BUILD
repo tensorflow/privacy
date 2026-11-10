@@ -1,3 +1,5 @@
+load("@rules_python//python:py_library.bzl", "py_library")
+
 package(
     default_visibility = ["//visibility:public"],
 )
@@ -7,17 +9,20 @@ licenses(["notice"])
 py_library(
     name = "__init__",  # There is already a membership_inference_attack.
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "keras_evaluation",
     srcs = ["keras_evaluation.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack:keras_evaluation"],
 )
 
 py_library(
     name = "plotting",
     srcs = ["plotting.py"],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack:plotting",
     ],
@@ -33,6 +38,7 @@ py_library(
         "plotting.py",
         "seq2seq_mia.py",
     ],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack",
     ],
@@ -41,11 +47,13 @@ py_library(
 py_library(
     name = "privacy_report",
     srcs = ["privacy_report.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack"],
 )
 
 py_library(
     name = "tf_estimator_evaluation",
     srcs = ["tf_estimator_evaluation.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/privacy_tests/membership_inference_attack:tf_estimator_evaluation"],
 )

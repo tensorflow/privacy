@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "sparse_noise_utils",
     srcs = ["sparse_noise_utils.py"],
+    type_checking = True,
     deps = [
         ":type_aliases",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:gradient_clipping_utils",
@@ -27,11 +29,13 @@ py_test(
 py_library(
     name = "type_aliases",
     srcs = ["type_aliases.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "layer_registry",
     srcs = ["layer_registry.py"],
+    type_checking = True,
     deps = [
         ":type_aliases",
         "//tensorflow_privacy/privacy/sparsity_preserving_noise/registry_functions:embedding",

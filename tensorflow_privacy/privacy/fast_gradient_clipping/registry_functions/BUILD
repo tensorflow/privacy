@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -7,12 +8,14 @@ package(
 py_library(
     name = "registry_function_utils",
     srcs = ["registry_function_utils.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases"],
 )
 
 py_library(
     name = "einsum_utils",
     srcs = ["einsum_utils.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils"],
 )
 
@@ -26,6 +29,7 @@ py_test(
 py_library(
     name = "einsum_dense",
     srcs = ["einsum_dense.py"],
+    type_checking = True,
     deps = [
         ":einsum_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
@@ -53,6 +57,7 @@ py_test(
 py_library(
     name = "dense",
     srcs = ["dense.py"],
+    type_checking = True,
     deps = [
         ":einsum_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
@@ -78,6 +83,7 @@ py_test(
 py_library(
     name = "embedding",
     srcs = ["embedding.py"],
+    type_checking = True,
     deps = [
         ":registry_function_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
@@ -103,6 +109,7 @@ py_test(
 py_library(
     name = "nlp_on_device_embedding",
     srcs = ["nlp_on_device_embedding.py"],
+    type_checking = True,
     deps = [
         ":registry_function_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
@@ -128,6 +135,7 @@ py_test(
 py_library(
     name = "nlp_position_embedding",
     srcs = ["nlp_position_embedding.py"],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
@@ -153,6 +161,7 @@ py_test(
 py_library(
     name = "layer_normalization",
     srcs = ["layer_normalization.py"],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:type_aliases",
@@ -178,6 +187,7 @@ py_test(
 py_library(
     name = "multi_head_attention",
     srcs = ["multi_head_attention.py"],
+    type_checking = True,
     deps = [
         ":einsum_dense",
         "//tensorflow_privacy/privacy/fast_gradient_clipping:common_manip_utils",

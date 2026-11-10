@@ -1,4 +1,4 @@
-load("@rules_python//python:defs.bzl", "py_library")
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -10,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "estimators",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
@@ -17,6 +18,7 @@ py_library(
     srcs = [
         "head_utils.py",
     ],
+    type_checking = True,
     deps = [
         ":binary_class_head",
         ":multi_class_head",
@@ -49,6 +51,7 @@ py_library(
     srcs = [
         "dnn.py",
     ],
+    type_checking = True,
     deps = [":head_utils"],
 )
 
@@ -57,6 +60,7 @@ py_library(
     srcs = [
         "test_utils.py",
     ],
+    type_checking = True,
 )
 
 py_test(

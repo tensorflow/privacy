@@ -1,3 +1,5 @@
+load("@rules_python//python:py_binary.bzl", "py_binary")
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,11 +11,13 @@ licenses(["notice"])
 py_library(
     name = "__init__",  # There is already a membership_inference_attack.
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "plotting",
     srcs = ["plotting.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -64,6 +68,7 @@ py_test(
 py_library(
     name = "privacy_report",
     srcs = ["privacy_report.py"],
+    type_checking = True,
     deps = [":membership_inference_attack"],
 )
 
@@ -77,6 +82,7 @@ py_library(
         "plotting.py",
         "seq2seq_mia.py",
     ],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/privacy_tests:epsilon_lower_bound",
         "//tensorflow_privacy/privacy/privacy_tests:utils",
@@ -87,6 +93,7 @@ py_library(
 py_library(
     name = "utils_tensorboard",
     srcs = ["utils_tensorboard.py"],
+    type_checking = True,
     deps = [":membership_inference_attack"],
 )
 
@@ -102,6 +109,7 @@ py_test(
 py_library(
     name = "tf_estimator_evaluation",
     srcs = ["tf_estimator_evaluation.py"],
+    type_checking = True,
     deps = [
         ":membership_inference_attack",
         ":utils_tensorboard",
@@ -112,6 +120,7 @@ py_library(
 py_binary(
     name = "tf_estimator_evaluation_example",
     srcs = ["tf_estimator_evaluation_example.py"],
+    type_checking = True,
     deps = [
         ":membership_inference_attack",
         ":tf_estimator_evaluation",
@@ -121,6 +130,7 @@ py_binary(
 py_library(
     name = "keras_evaluation",
     srcs = ["keras_evaluation.py"],
+    type_checking = True,
     deps = [
         ":membership_inference_attack",
         ":utils_tensorboard",
@@ -137,6 +147,7 @@ py_test(
 py_binary(
     name = "keras_evaluation_example",
     srcs = ["keras_evaluation_example.py"],
+    type_checking = True,
     deps = [
         ":keras_evaluation",
         ":membership_inference_attack",
@@ -157,6 +168,7 @@ py_library(
     srcs = [
         "advanced_mia.py",
     ],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/privacy_tests:utils"],
 )
 
@@ -170,6 +182,7 @@ py_test(
 py_binary(
     name = "advanced_mia_example",
     srcs = ["advanced_mia_example.py"],
+    type_checking = True,
     deps = [
         ":advanced_mia",
         ":membership_inference_attack",

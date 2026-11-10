@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,11 +10,13 @@ licenses(["notice"])
 py_library(
     name = "secret_sharer",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "exposures",
     srcs = ["exposures.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -25,6 +28,7 @@ py_test(
 py_library(
     name = "generate_secrets",
     srcs = ["generate_secrets.py"],
+    type_checking = True,
 )
 
 py_test(

@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,6 +10,7 @@ licenses(["notice"])
 py_library(
     name = "optimizers",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
@@ -16,6 +18,7 @@ py_library(
     srcs = [
         "clip_and_aggregate_gradients.py",
     ],
+    type_checking = True,
 )
 
 py_library(
@@ -23,6 +26,7 @@ py_library(
     srcs = [
         "dp_optimizer.py",
     ],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/dp_query:gaussian_query"],
 )
 
@@ -31,6 +35,7 @@ py_library(
     srcs = [
         "dp_optimizer_keras.py",
     ],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
@@ -44,6 +49,7 @@ py_library(
     srcs = [
         "dp_optimizer_keras_sparse.py",
     ],
+    type_checking = True,
     deps = [":clip_and_aggregate_gradients"],
 )
 
@@ -52,6 +58,7 @@ py_library(
     srcs = [
         "dp_optimizer_vectorized.py",
     ],
+    type_checking = True,
 )
 
 py_library(
@@ -59,6 +66,7 @@ py_library(
     srcs = [
         "dp_optimizer_keras.py",
     ],
+    type_checking = True,
     deps = [
         "//tensorflow_privacy/privacy/dp_query",
         "//tensorflow_privacy/privacy/dp_query:gaussian_query",
@@ -72,6 +80,7 @@ py_library(
     srcs = [
         "dp_optimizer_keras_vectorized.py",
     ],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/dp_query:gaussian_query"],
 )
 

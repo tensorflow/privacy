@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -9,11 +10,13 @@ licenses(["notice"])
 py_library(
     name = "logistic_regression",
     srcs = ["__init__.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "multinomial_logistic",
     srcs = ["multinomial_logistic.py"],
+    type_checking = True,
     deps = [
         ":datasets",
         ":single_layer_softmax",
@@ -36,6 +39,7 @@ py_test(
 py_library(
     name = "datasets",
     srcs = ["datasets.py"],
+    type_checking = True,
 )
 
 py_test(
@@ -49,6 +53,7 @@ py_test(
 py_library(
     name = "single_layer_softmax",
     srcs = ["single_layer_softmax.py"],
+    type_checking = True,
     deps = [":datasets"],
 )
 

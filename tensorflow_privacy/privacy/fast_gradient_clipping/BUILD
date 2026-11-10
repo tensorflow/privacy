@@ -1,3 +1,4 @@
+load("@rules_python//python:py_library.bzl", "py_library")
 load("@rules_python//python:py_test.bzl", "py_test")
 
 package(
@@ -8,11 +9,13 @@ package(
 py_library(
     name = "type_aliases",
     srcs = ["type_aliases.py"],
+    type_checking = True,
 )
 
 py_library(
     name = "bert_encoder_utils",
     srcs = ["bert_encoder_utils.py"],
+    type_checking = True,
     deps = [":gradient_clipping_utils"],
 )
 
@@ -25,12 +28,14 @@ py_test(
 py_library(
     name = "common_manip_utils",
     srcs = ["common_manip_utils.py"],
+    type_checking = True,
     deps = [":type_aliases"],
 )
 
 py_library(
     name = "common_test_utils",
     srcs = ["common_test_utils.py"],
+    type_checking = True,
     deps = [
         ":clip_grads",
         ":layer_registry",
@@ -41,6 +46,7 @@ py_library(
 py_library(
     name = "gradient_clipping_utils",
     srcs = ["gradient_clipping_utils.py"],
+    type_checking = True,
     deps = [
         ":common_manip_utils",
         ":layer_registry",
@@ -64,6 +70,7 @@ py_test(
 py_library(
     name = "layer_registry",
     srcs = ["layer_registry.py"],
+    type_checking = True,
     deps = [
         ":type_aliases",
         "//tensorflow_privacy/privacy/fast_gradient_clipping/registry_functions:dense",
@@ -74,6 +81,7 @@ py_library(
 py_library(
     name = "clip_grads",
     srcs = ["clip_grads.py"],
+    type_checking = True,
     deps = [
         ":common_manip_utils",
         ":gradient_clipping_utils",
@@ -85,6 +93,7 @@ py_library(
 py_library(
     name = "noise_utils",
     srcs = ["noise_utils.py"],
+    type_checking = True,
     deps = ["//tensorflow_privacy/privacy/sparsity_preserving_noise:sparse_noise_utils"],
 )
 
