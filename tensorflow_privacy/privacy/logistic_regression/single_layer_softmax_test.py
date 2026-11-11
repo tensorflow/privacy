@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
+from absl.testing import absltest
 from absl.testing import parameterized
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
@@ -27,13 +26,17 @@ class SingleLayerSoftmaxTest(parameterized.TestCase):
       (10000, 1000, 3, 40, 4, 0.1),
       (10000, 1000, 4, 40, 4, 0.1),
   )
-  def test_single_layer_softmax(self, num_train, num_test, dimension, epochs,
-                                num_classes, tolerance):
-    (train_dataset, test_dataset) = datasets.synthetic_linearly_separable_data(
-        num_train, num_test, dimension, num_classes)
+  def test_single_layer_softmax(
+      self, num_train, num_test, dimension, epochs, num_classes, tolerance
+  ):
+    train_dataset, test_dataset = datasets.synthetic_linearly_separable_data(
+        num_train, num_test, dimension, num_classes
+    )
     _, accuracy = single_layer_softmax.single_layer_softmax_classifier(
-        train_dataset, test_dataset, epochs, num_classes, 'sgd')
+        train_dataset, test_dataset, epochs, num_classes, 'sgd'
+    )
     self.assertAlmostEqual(accuracy[-1], 1, delta=tolerance)
 
+
 if __name__ == '__main__':
-  unittest.main()
+  absltest.main()
