@@ -54,8 +54,19 @@ else:
   from tensorflow_privacy.privacy.dp_query.tree_aggregation_query import TreeResidualSumQuery
   from tensorflow_privacy.privacy.dp_query.tree_range_query import TreeRangeSumQuery
 
-  # Estimators
-  from tensorflow_privacy.privacy.estimators.dnn import DNNClassifier
+  # Estimators (optional / legacy TF1 compatibility, deprecated in TF 2.16+)
+  try:
+    from tensorflow_privacy.privacy.estimators.dnn import DNNClassifier
+  except (ImportError, AttributeError):
+    class DNNClassifier:  # pylint: disable=invalid-name
+      """Stub for DNNClassifier when tf-estimator is unavailable."""
+
+      def __init__(self, *args, **kwargs):
+        raise RuntimeError(
+            'DNNClassifier requires tf-estimator, which is deprecated and '
+            'unavailable in TensorFlow 2.16+. Please migrate to Keras-based DP '
+            'models (e.g., tensorflow_privacy.DPModel or DPSequential).'
+        )
 
   # Keras Models
   from tensorflow_privacy.privacy.keras_models.dp_keras_model import DPModel
