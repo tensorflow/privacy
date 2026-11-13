@@ -35,7 +35,7 @@ and provide a hands-on tutorial.
 The only prerequisite for following this tutorial is to be able to train a
 simple neural network with TensorFlow. If you are not familiar with
 convolutional neural networks or how to train them, we recommend reading
-[this tutorial first](https://www.tensorflow.org/tutorials/keras/basic_classification)
+[this tutorial first](https://www.tensorflow.org/tutorials/keras/classification)
 to get started with TensorFlow and machine learning.
 
 Upon completing the tutorial presented in this post, you will be able to wrap
@@ -69,7 +69,7 @@ with max pooling layers, a fully-connected layer, and a softmax. The model's
 output is a vector where each component indicates how likely the input is to be
 in one of the 10 classes of the handwriting recognition problem we considered.
 If any of this sounds unfamiliar, we recommend reading
-[this tutorial first](https://www.tensorflow.org/tutorials/keras/basic_classification)
+[this tutorial first](https://www.tensorflow.org/tutorials/keras/classification)
 to get started with TensorFlow and machine learning.
 
 ```python
