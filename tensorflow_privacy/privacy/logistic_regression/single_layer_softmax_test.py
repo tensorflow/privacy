@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-
 from absl.testing import parameterized
+import tensorflow as tf
 from tensorflow_privacy.privacy.logistic_regression import datasets
 from tensorflow_privacy.privacy.logistic_regression import single_layer_softmax
 
@@ -36,4 +35,4 @@ class SingleLayerSoftmaxTest(parameterized.TestCase):
     self.assertAlmostEqual(accuracy[-1], 1, delta=tolerance)
 
 if __name__ == '__main__':
-  unittest.main()
+  tf.test.main()
